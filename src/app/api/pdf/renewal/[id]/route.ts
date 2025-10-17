@@ -35,7 +35,7 @@ export async function GET(
         const html = generateContractHTML(contractData, 'Kayıt Yenileme')
         const pdf = await generatePDF(html)
 
-        return new NextResponse(pdf, {
+        return new NextResponse(Buffer.from(pdf), {
             headers: {
                 'Content-Type': 'application/pdf',
                 'Content-Disposition': `attachment; filename="kayit-yenileme-${renewal.student.firstName}-${renewal.student.lastName}.pdf"`
