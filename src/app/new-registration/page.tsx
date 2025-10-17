@@ -12,6 +12,8 @@ interface Student {
   firstName: string
   lastName: string
   tcNumber: string
+  grade: string
+  address: string
 }
 
 export default function NewRegistrationPage() {
@@ -80,7 +82,6 @@ export default function NewRegistrationPage() {
       setClubs([])
     }
   }
-
 
   const handleSaveAllContracts = async () => {
     if (!selectedStudent) return
@@ -216,7 +217,6 @@ export default function NewRegistrationPage() {
       </div>
 
       <div className="max-w-4xl mx-auto">
-        {/* Sözleşme Detayları */}
         <Card>
           <CardHeader>
             <CardTitle>Yeni Kayıt Sözleşmesi</CardTitle>
@@ -268,308 +268,308 @@ export default function NewRegistrationPage() {
 
               {selectedStudent ? (
                 <div className="space-y-4">
-
-                {/* Yeni Kayıt Sözleşmesi */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-blue-600">Yeni Kayıt Sözleşmesi</h3>
-                  <div>
-                    <Label htmlFor="contractDate">Sözleşme Tarihi</Label>
-                    <Input
-                      id="contractDate"
-                      type="date"
-                      defaultValue={new Date().toISOString().split('T')[0]}
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="academicYear">Eğitim Öğretim Yılı</Label>
-                    <Input
-                      id="academicYear"
-                      value={contractData.academicYear}
-                      onChange={(e) => setContractData({ ...contractData, academicYear: e.target.value })}
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="grade">Sınıf</Label>
-                    <Input
-                      id="grade"
-                      value={contractData.grade}
-                      onChange={(e) => setContractData({ ...contractData, grade: e.target.value })}
-                      placeholder="Örn: 9. Sınıf"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="tuitionFee">Öğrenim Ücreti</Label>
-                    <Input
-                      id="tuitionFee"
-                      type="number"
-                      value={contractData.tuitionFee}
-                      onChange={(e) => setContractData({ ...contractData, tuitionFee: e.target.value })}
-                      placeholder="Örn: 50000"
-                    />
-                  </div>
-                </div>
-
-                {/* Forma Sözleşmesi */}
-                <div className="space-y-4 border-t pt-4">
-                  <h3 className="text-lg font-semibold text-green-600">Forma Sözleşmesi</h3>
-                  <div>
-                    <Label htmlFor="contractDate">Sözleşme Tarihi</Label>
-                    <Input
-                      id="contractDate"
-                      type="date"
-                      defaultValue={new Date().toISOString().split('T')[0]}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  {/* Yeni Kayıt Sözleşmesi */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-blue-600">Yeni Kayıt Sözleşmesi</h3>
                     <div>
-                      <Label htmlFor="uniformSize">Forma Bedeni</Label>
+                      <Label htmlFor="contractDate">Sözleşme Tarihi</Label>
                       <Input
-                        id="uniformSize"
-                        value={contractData.uniformSize}
-                        onChange={(e) => setContractData({ ...contractData, uniformSize: e.target.value })}
-                        placeholder="Örn: M, L, XL"
+                        id="contractDate"
+                        type="date"
+                        defaultValue={new Date().toISOString().split('T')[0]}
                       />
                     </div>
+                    
                     <div>
-                      <Label htmlFor="uniformPrice">Forma Ücreti</Label>
+                      <Label htmlFor="academicYear">Eğitim Öğretim Yılı</Label>
                       <Input
-                        id="uniformPrice"
+                        id="academicYear"
+                        value={contractData.academicYear}
+                        onChange={(e) => setContractData({ ...contractData, academicYear: e.target.value })}
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="grade">Sınıf</Label>
+                      <Input
+                        id="grade"
+                        value={contractData.grade}
+                        onChange={(e) => setContractData({ ...contractData, grade: e.target.value })}
+                        placeholder="Örn: 9. Sınıf"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="tuitionFee">Öğrenim Ücreti</Label>
+                      <Input
+                        id="tuitionFee"
                         type="number"
-                        value={contractData.uniformPrice}
-                        onChange={(e) => setContractData({ ...contractData, uniformPrice: e.target.value })}
-                        placeholder="Örn: 500"
+                        value={contractData.tuitionFee}
+                        onChange={(e) => setContractData({ ...contractData, tuitionFee: e.target.value })}
+                        placeholder="Örn: 50000"
                       />
                     </div>
                   </div>
-                  <div>
-                    <Label htmlFor="uniformDeliveryDate">Teslimat Tarihi</Label>
-                    <Input
-                      id="uniformDeliveryDate"
-                      type="date"
-                      value={contractData.uniformDeliveryDate}
-                      onChange={(e) => setContractData({ ...contractData, uniformDeliveryDate: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="uniformItems">Teslim Edilecek Formalar</Label>
-                    <div className="space-y-2 mt-2">
-                      {['eşofman takımı', 'eşofman takımı + 2 tişört', 'tişört 2 adet'].map((item) => (
-                        <label key={item} className="flex items-center">
-                          <input
-                            type="checkbox"
-                            className="mr-2"
-                            onChange={(e) => {
-                              const currentItems = contractData.uniformItems || []
-                              if (e.target.checked) {
-                                setContractData({ ...contractData, uniformItems: [...currentItems, item] })
-                              } else {
-                                setContractData({ ...contractData, uniformItems: currentItems.filter(i => i !== item) })
-                              }
-                            }}
-                          />
-                          {item}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </div>
 
-                {/* Yemek Sözleşmesi */}
-                <div className="space-y-4 border-t pt-4">
-                  <h3 className="text-lg font-semibold text-orange-600">Yemek Sözleşmesi</h3>
-                  <div>
-                    <Label htmlFor="contractDate">Sözleşme Tarihi</Label>
-                    <Input
-                      id="contractDate"
-                      type="date"
-                      defaultValue={new Date().toISOString().split('T')[0]}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="mealPeriods">Ödeme Dönemleri</Label>
-                    <div className="grid grid-cols-3 gap-2 mt-2">
-                      {['eylül', 'ekim', 'kasım', 'aralık', 'ocak', 'şubat', 'mart', 'nisan', 'mayıs', 'haziran', '1.dönem', '2.dönem', 'tüm yıl'].map((period) => (
-                        <label key={period} className="flex items-center">
-                          <input
-                            type="checkbox"
-                            className="mr-2"
-                            onChange={(e) => {
-                              const currentPeriods = contractData.mealPeriods || []
-                              if (e.target.checked) {
-                                setContractData({ ...contractData, mealPeriods: [...currentPeriods, period] })
-                              } else {
-                                setContractData({ ...contractData, mealPeriods: currentPeriods.filter(p => p !== period) })
-                              }
-                            }}
-                          />
-                          {period}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="mealPrice">Yemek Ücreti</Label>
-                    <Input
-                      id="mealPrice"
-                      type="number"
-                      value={contractData.mealPrice}
-                      onChange={(e) => setContractData({ ...contractData, mealPrice: e.target.value })}
-                      placeholder="Örn: 2000"
-                    />
-                  </div>
-                </div>
-
-                {/* Kitap Sözleşmesi */}
-                <div className="space-y-4 border-t pt-4">
-                  <h3 className="text-lg font-semibold text-purple-600">Kitap Sözleşmesi</h3>
-                  <div>
-                    <Label htmlFor="contractDate">Sözleşme Tarihi</Label>
-                    <Input
-                      id="contractDate"
-                      type="date"
-                      defaultValue={new Date().toISOString().split('T')[0]}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  {/* Forma Sözleşmesi */}
+                  <div className="space-y-4 border-t pt-4">
+                    <h3 className="text-lg font-semibold text-green-600">Forma Sözleşmesi</h3>
                     <div>
-                      <Label htmlFor="studentName">Öğrenci Ad Soyad</Label>
+                      <Label htmlFor="contractDate">Sözleşme Tarihi</Label>
                       <Input
-                        id="studentName"
-                        value={selectedStudent ? `${selectedStudent.firstName} ${selectedStudent.lastName}` : ""}
-                        disabled
-                        className="bg-gray-100"
+                        id="contractDate"
+                        type="date"
+                        defaultValue={new Date().toISOString().split('T')[0]}
                       />
                     </div>
-                    <div>
-                      <Label htmlFor="studentGrade">Sınıfı</Label>
-                      <Input
-                        id="studentGrade"
-                        value={selectedStudent?.grade || ""}
-                        disabled
-                        className="bg-gray-100"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="bookSet">Kitap Seti</Label>
-                    <Input
-                      id="bookSet"
-                      value={contractData.bookSet}
-                      onChange={(e) => setContractData({ ...contractData, bookSet: e.target.value })}
-                      placeholder="Örn: 9. Sınıf Seti"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="bookDeliveryDate">Teslimat Tarihi</Label>
-                    <Input
-                      id="bookDeliveryDate"
-                      type="date"
-                      value={contractData.bookDeliveryDate}
-                      onChange={(e) => setContractData({ ...contractData, bookDeliveryDate: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                {/* Servis Sözleşmesi */}
-                <div className="space-y-4 border-t pt-4">
-                  <h3 className="text-lg font-semibold text-red-600">Servis Sözleşmesi</h3>
-                  <div>
-                    <Label htmlFor="contractDate">Sözleşme Tarihi</Label>
-                    <Input
-                      id="contractDate"
-                      type="date"
-                      defaultValue={new Date().toISOString().split('T')[0]}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="serviceRegion">Servis Bölgesi</Label>
-                    <select
-                      id="serviceRegion"
-                      value={contractData.serviceRegion}
-                      onChange={(e) => setContractData({ ...contractData, serviceRegion: e.target.value })}
-                      className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="">Bölge seçin...</option>
-                      <option value="1.bölge">1. Bölge</option>
-                      <option value="2.bölge">2. Bölge</option>
-                      <option value="3.bölge">3. Bölge</option>
-                      <option value="4.bölge">4. Bölge</option>
-                      <option value="5.bölge">5. Bölge</option>
-                      <option value="6.bölge">6. Bölge</option>
-                      <option value="çayeli">Çayeli</option>
-                      <option value="pazar/ardeşen">Pazar/Ardeşen</option>
-                    </select>
-                  </div>
-                  <div>
-                    <Label htmlFor="studentAddress">Adres</Label>
-                    <Input
-                      id="studentAddress"
-                      value={selectedStudent?.address || ""}
-                      disabled
-                      className="bg-gray-100"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="servicePrice">Servis Ücreti - Dönemlik</Label>
-                    <Input
-                      id="servicePrice"
-                      type="number"
-                      value={contractData.servicePrice}
-                      onChange={(e) => setContractData({ ...contractData, servicePrice: e.target.value })}
-                      placeholder="Örn: 800"
-                    />
-                  </div>
-                </div>
-
-                {/* Kulüp Seçimi */}
-                <div className="space-y-4 border-t pt-4">
-                  <h3 className="text-lg font-semibold text-indigo-600">Kulüp Seçimi (En fazla 3 kulüp)</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {clubs.map((club) => (
-                      <label key={club.id} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          className="mr-2"
-                          onChange={(e) => {
-                            const currentClubs = contractData.selectedClubs || []
-                            if (e.target.checked && currentClubs.length < 3) {
-                              setContractData({ ...contractData, selectedClubs: [...currentClubs, club.id] })
-                            } else if (!e.target.checked) {
-                              setContractData({ ...contractData, selectedClubs: currentClubs.filter(c => c !== club.id) })
-                            }
-                          }}
-                          disabled={contractData.selectedClubs?.length >= 3 && !contractData.selectedClubs?.includes(club.id)}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="uniformSize">Forma Bedeni</Label>
+                        <Input
+                          id="uniformSize"
+                          value={contractData.uniformSize}
+                          onChange={(e) => setContractData({ ...contractData, uniformSize: e.target.value })}
+                          placeholder="Örn: M, L, XL"
                         />
-                        {club.name}
-                      </label>
-                    ))}
-                  </div>
-                  {contractData.selectedClubs?.length > 0 && (
-                    <div className="text-sm text-gray-600">
-                      Seçilen kulüpler: {contractData.selectedClubs.map(clubId => 
-                        clubs.find(c => c.id === clubId)?.name
-                      ).join(", ")}
+                      </div>
+                      <div>
+                        <Label htmlFor="uniformPrice">Forma Ücreti</Label>
+                        <Input
+                          id="uniformPrice"
+                          type="number"
+                          value={contractData.uniformPrice}
+                          onChange={(e) => setContractData({ ...contractData, uniformPrice: e.target.value })}
+                          placeholder="Örn: 500"
+                        />
+                      </div>
                     </div>
-                  )}
-                </div>
+                    <div>
+                      <Label htmlFor="uniformDeliveryDate">Teslimat Tarihi</Label>
+                      <Input
+                        id="uniformDeliveryDate"
+                        type="date"
+                        value={contractData.uniformDeliveryDate}
+                        onChange={(e) => setContractData({ ...contractData, uniformDeliveryDate: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="uniformItems">Teslim Edilecek Formalar</Label>
+                      <div className="space-y-2 mt-2">
+                        {['eşofman takımı', 'eşofman takımı + 2 tişört', 'tişört 2 adet'].map((item) => (
+                          <label key={item} className="flex items-center">
+                            <input
+                              type="checkbox"
+                              className="mr-2"
+                              onChange={(e) => {
+                                const currentItems = contractData.uniformItems || []
+                                if (e.target.checked) {
+                                  setContractData({ ...contractData, uniformItems: [...currentItems, item] })
+                                } else {
+                                  setContractData({ ...contractData, uniformItems: currentItems.filter(i => i !== item) })
+                                }
+                              }}
+                            />
+                            {item}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
 
-                <div className="flex gap-2">
-                  <Button onClick={handleSaveAllContracts}>
-                    <Save className="h-4 w-4 mr-2" />
-                    Tüm Sözleşmeleri Kaydet
-                  </Button>
-                  <Button onClick={handleDownloadCombinedPDF} variant="outline">
-                    <Download className="h-4 w-4 mr-2" />
-                    Tüm Sözleşmeleri PDF İndir
-                  </Button>
+                  {/* Yemek Sözleşmesi */}
+                  <div className="space-y-4 border-t pt-4">
+                    <h3 className="text-lg font-semibold text-orange-600">Yemek Sözleşmesi</h3>
+                    <div>
+                      <Label htmlFor="contractDate">Sözleşme Tarihi</Label>
+                      <Input
+                        id="contractDate"
+                        type="date"
+                        defaultValue={new Date().toISOString().split('T')[0]}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="mealPeriods">Ödeme Dönemleri</Label>
+                      <div className="grid grid-cols-3 gap-2 mt-2">
+                        {['eylül', 'ekim', 'kasım', 'aralık', 'ocak', 'şubat', 'mart', 'nisan', 'mayıs', 'haziran', '1.dönem', '2.dönem', 'tüm yıl'].map((period) => (
+                          <label key={period} className="flex items-center">
+                            <input
+                              type="checkbox"
+                              className="mr-2"
+                              onChange={(e) => {
+                                const currentPeriods = contractData.mealPeriods || []
+                                if (e.target.checked) {
+                                  setContractData({ ...contractData, mealPeriods: [...currentPeriods, period] })
+                                } else {
+                                  setContractData({ ...contractData, mealPeriods: currentPeriods.filter(p => p !== period) })
+                                }
+                              }}
+                            />
+                            {period}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="mealPrice">Yemek Ücreti</Label>
+                      <Input
+                        id="mealPrice"
+                        type="number"
+                        value={contractData.mealPrice}
+                        onChange={(e) => setContractData({ ...contractData, mealPrice: e.target.value })}
+                        placeholder="Örn: 2000"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Kitap Sözleşmesi */}
+                  <div className="space-y-4 border-t pt-4">
+                    <h3 className="text-lg font-semibold text-purple-600">Kitap Sözleşmesi</h3>
+                    <div>
+                      <Label htmlFor="contractDate">Sözleşme Tarihi</Label>
+                      <Input
+                        id="contractDate"
+                        type="date"
+                        defaultValue={new Date().toISOString().split('T')[0]}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="studentName">Öğrenci Ad Soyad</Label>
+                        <Input
+                          id="studentName"
+                          value={selectedStudent ? `${selectedStudent.firstName} ${selectedStudent.lastName}` : ""}
+                          disabled
+                          className="bg-gray-100"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="studentGrade">Sınıfı</Label>
+                        <Input
+                          id="studentGrade"
+                          value={selectedStudent?.grade || ""}
+                          disabled
+                          className="bg-gray-100"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="bookSet">Kitap Seti</Label>
+                      <Input
+                        id="bookSet"
+                        value={contractData.bookSet}
+                        onChange={(e) => setContractData({ ...contractData, bookSet: e.target.value })}
+                        placeholder="Örn: 9. Sınıf Seti"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="bookDeliveryDate">Teslimat Tarihi</Label>
+                      <Input
+                        id="bookDeliveryDate"
+                        type="date"
+                        value={contractData.bookDeliveryDate}
+                        onChange={(e) => setContractData({ ...contractData, bookDeliveryDate: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Servis Sözleşmesi */}
+                  <div className="space-y-4 border-t pt-4">
+                    <h3 className="text-lg font-semibold text-red-600">Servis Sözleşmesi</h3>
+                    <div>
+                      <Label htmlFor="contractDate">Sözleşme Tarihi</Label>
+                      <Input
+                        id="contractDate"
+                        type="date"
+                        defaultValue={new Date().toISOString().split('T')[0]}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="serviceRegion">Servis Bölgesi</Label>
+                      <select
+                        id="serviceRegion"
+                        value={contractData.serviceRegion}
+                        onChange={(e) => setContractData({ ...contractData, serviceRegion: e.target.value })}
+                        className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">Bölge seçin...</option>
+                        <option value="1.bölge">1. Bölge</option>
+                        <option value="2.bölge">2. Bölge</option>
+                        <option value="3.bölge">3. Bölge</option>
+                        <option value="4.bölge">4. Bölge</option>
+                        <option value="5.bölge">5. Bölge</option>
+                        <option value="6.bölge">6. Bölge</option>
+                        <option value="çayeli">Çayeli</option>
+                        <option value="pazar/ardeşen">Pazar/Ardeşen</option>
+                      </select>
+                    </div>
+                    <div>
+                      <Label htmlFor="studentAddress">Adres</Label>
+                      <Input
+                        id="studentAddress"
+                        value={selectedStudent?.address || ""}
+                        disabled
+                        className="bg-gray-100"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="servicePrice">Servis Ücreti - Dönemlik</Label>
+                      <Input
+                        id="servicePrice"
+                        type="number"
+                        value={contractData.servicePrice}
+                        onChange={(e) => setContractData({ ...contractData, servicePrice: e.target.value })}
+                        placeholder="Örn: 800"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Kulüp Seçimi */}
+                  <div className="space-y-4 border-t pt-4">
+                    <h3 className="text-lg font-semibold text-indigo-600">Kulüp Seçimi (En fazla 3 kulüp)</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      {clubs.map((club) => (
+                        <label key={club.id} className="flex items-center">
+                          <input
+                            type="checkbox"
+                            className="mr-2"
+                            onChange={(e) => {
+                              const currentClubs = contractData.selectedClubs || []
+                              if (e.target.checked && currentClubs.length < 3) {
+                                setContractData({ ...contractData, selectedClubs: [...currentClubs, club.id] })
+                              } else if (!e.target.checked) {
+                                setContractData({ ...contractData, selectedClubs: currentClubs.filter(c => c !== club.id) })
+                              }
+                            }}
+                            disabled={contractData.selectedClubs?.length >= 3 && !contractData.selectedClubs?.includes(club.id)}
+                          />
+                          {club.name}
+                        </label>
+                      ))}
+                    </div>
+                    {contractData.selectedClubs?.length > 0 && (
+                      <div className="text-sm text-gray-600">
+                        Seçilen kulüpler: {contractData.selectedClubs.map(clubId => 
+                          clubs.find(c => c.id === clubId)?.name
+                        ).join(", ")}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button onClick={handleSaveAllContracts}>
+                      <Save className="h-4 w-4 mr-2" />
+                      Tüm Sözleşmeleri Kaydet
+                    </Button>
+                    <Button onClick={handleDownloadCombinedPDF} variant="outline">
+                      <Download className="h-4 w-4 mr-2" />
+                      Tüm Sözleşmeleri PDF İndir
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <p className="text-gray-500">Lütfen bir öğrenci seçin</p>
-            )}
+              ) : (
+                <p className="text-gray-500">Lütfen bir öğrenci seçin</p>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
