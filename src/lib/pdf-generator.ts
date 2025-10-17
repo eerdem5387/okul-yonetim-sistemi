@@ -9,10 +9,7 @@ export async function generatePDF(html: string, options?: { format?: string; mar
   })
 
   const page = await browser.newPage()
-  await page.setContent(html, { 
-    waitUntil: 'networkidle0',
-    encoding: 'utf-8'
-  })
+  await page.setContent(html, { waitUntil: 'networkidle0' })
 
   const pdf = await page.pdf({
     format: (options?.format || 'A4') as 'A4',
