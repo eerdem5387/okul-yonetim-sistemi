@@ -10,11 +10,11 @@ export async function generatePDF(html: string, options?: { format?: string; mar
 
   const page = await browser.newPage()
   
-  // HTML'i UTF-8 Buffer olarak encode et
-  const htmlBuffer = Buffer.from(html, 'utf-8')
-  const htmlString = htmlBuffer.toString('utf-8')
+  // HTML'i base64 olarak encode et ve data URL olarak kullan
+  const base64Html = Buffer.from(html, 'utf-8').toString('base64')
+  const dataUrl = `data:text/html;charset=utf-8;base64,${base64Html}`
   
-  await page.setContent(htmlString, { waitUntil: 'networkidle0' })
+  await page.goto(dataUrl, { waitUntil: 'networkidle0' })
 
   const pdf = await page.pdf({
     format: (options?.format || 'A4') as 'A4',
