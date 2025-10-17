@@ -10,22 +10,11 @@ export async function generatePDF(html: string, options?: { format?: string; mar
 
   const page = await browser.newPage()
   
-  // Türkçe karakterleri HTML entity'lere çevir
-  const encodedHtml = html
-    .replace(/ç/g, '&#231;')
-    .replace(/ğ/g, '&#287;')
-    .replace(/ı/g, '&#305;')
-    .replace(/ö/g, '&#246;')
-    .replace(/ş/g, '&#351;')
-    .replace(/ü/g, '&#252;')
-    .replace(/Ç/g, '&#199;')
-    .replace(/Ğ/g, '&#286;')
-    .replace(/İ/g, '&#304;')
-    .replace(/Ö/g, '&#214;')
-    .replace(/Ş/g, '&#350;')
-    .replace(/Ü/g, '&#220;')
+  // HTML'i UTF-8 Buffer olarak encode et
+  const htmlBuffer = Buffer.from(html, 'utf-8')
+  const htmlString = htmlBuffer.toString('utf-8')
   
-  await page.setContent(encodedHtml, { waitUntil: 'networkidle0' })
+  await page.setContent(htmlString, { waitUntil: 'networkidle0' })
 
   const pdf = await page.pdf({
     format: (options?.format || 'A4') as 'A4',
