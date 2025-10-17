@@ -9,7 +9,10 @@ export async function generatePDF(html: string, options?: { format?: string; mar
   })
 
   const page = await browser.newPage()
-  await page.setContent(html, { waitUntil: 'networkidle0' })
+  await page.setContent(html, { 
+    waitUntil: 'networkidle0',
+    encoding: 'utf-8'
+  })
 
   const pdf = await page.pdf({
     format: (options?.format || 'A4') as 'A4',
@@ -35,6 +38,7 @@ export function generateContractHTML(contractData: Record<string, unknown>, cont
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>${contractType}</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
         <style>
             body {
                 font-family: Arial, sans-serif;
@@ -265,6 +269,7 @@ export function generateCombinedContractHTML(data: {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Tüm Sözleşmeler</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
         <style>
             body {
                 font-family: Arial, sans-serif;
