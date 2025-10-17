@@ -9,7 +9,7 @@ export async function POST(
     try {
         const params = await context.params
         const body = await request.json()
-        const { contractTypes, contractData } = body
+        const { contractTypes, mainContractData, otherContractData } = body
 
         // Öğrenci bilgilerini al
         const student = await prisma.student.findUnique({
@@ -24,7 +24,8 @@ export async function POST(
         const combinedHTML = generateCombinedContractHTML({
             student,
             contractTypes,
-            contractData
+            mainContractData,
+            otherContractData
         })
 
         const pdf = await generatePDF(combinedHTML)
