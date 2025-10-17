@@ -1,10 +1,13 @@
-import puppeteer from 'puppeteer'
+import puppeteer from 'puppeteer-core'
+import chromium from '@sparticuz/chromium'
 
-export async function generatePDF(html: string, options?: { format?: string; margin?: any }) {
-    const browser = await puppeteer.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
-    })
+export async function generatePDF(html: string, options?: { format?: string; margin?: Record<string, string> }) {
+  const browser = await puppeteer.launch({
+    args: chromium.args,
+    defaultViewport: chromium.defaultViewport,
+    executablePath: await chromium.executablePath(),
+    headless: chromium.headless,
+  })
 
     const page = await browser.newPage()
     await page.setContent(html, { waitUntil: 'networkidle0' })
@@ -23,7 +26,7 @@ export async function generatePDF(html: string, options?: { format?: string; mar
     return pdf
 }
 
-export function generateContractHTML(contractData: any, contractType: string) {
+export function generateContractHTML(contractData: Record<string, unknown>, contractType: string) {
     const currentDate = new Date().toLocaleDateString('tr-TR')
 
     const baseHTML = `
@@ -145,7 +148,7 @@ export function generateContractHTML(contractData: any, contractType: string) {
     return baseHTML
 }
 
-function generateContractSpecificFields(contractData: any, contractType: string) {
+function generateContractSpecificFields(contractData: Record<string, unknown>, contractType: string) {
     switch (contractType) {
         case 'Yeni Kayıt':
             return `

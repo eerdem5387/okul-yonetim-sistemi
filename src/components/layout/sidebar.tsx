@@ -11,8 +11,7 @@ import {
   Utensils, 
   Bus, 
   BookOpen, 
-  History,
-  Settings
+  History
 } from "lucide-react"
 
 const navigation = [

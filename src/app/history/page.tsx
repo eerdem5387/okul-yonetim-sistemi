@@ -15,7 +15,7 @@ interface Contract {
     lastName: string
     tcNumber: string
   }
-  contractData: any
+  contractData: Record<string, unknown>
   createdAt: string
   pdfPath?: string
 }
@@ -32,7 +32,7 @@ export default function HistoryPage() {
 
   useEffect(() => {
     filterContracts()
-  }, [contracts, searchTerm, filterType])
+  }, [contracts, searchTerm, filterType, filterContracts])
 
   const fetchContracts = async () => {
     try {
@@ -46,12 +46,12 @@ export default function HistoryPage() {
       ])
 
       const allContracts = [
-        ...newRegistrations.map((c: any) => ({ ...c, type: "Yeni Kayıt" })),
-        ...renewals.map((c: any) => ({ ...c, type: "Kayıt Yenileme" })),
-        ...uniforms.map((c: any) => ({ ...c, type: "Forma Sözleşmesi" })),
-        ...meals.map((c: any) => ({ ...c, type: "Yemek Sözleşmesi" })),
-        ...services.map((c: any) => ({ ...c, type: "Servis Sözleşmesi" })),
-        ...books.map((c: any) => ({ ...c, type: "Kitap Sözleşmesi" }))
+        ...newRegistrations.map((c: Record<string, unknown>) => ({ ...c, type: "Yeni Kayıt" })),
+        ...renewals.map((c: Record<string, unknown>) => ({ ...c, type: "Kayıt Yenileme" })),
+        ...uniforms.map((c: Record<string, unknown>) => ({ ...c, type: "Forma Sözleşmesi" })),
+        ...meals.map((c: Record<string, unknown>) => ({ ...c, type: "Yemek Sözleşmesi" })),
+        ...services.map((c: Record<string, unknown>) => ({ ...c, type: "Servis Sözleşmesi" })),
+        ...books.map((c: Record<string, unknown>) => ({ ...c, type: "Kitap Sözleşmesi" }))
       ]
 
       setContracts(allContracts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()))
