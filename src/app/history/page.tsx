@@ -32,7 +32,7 @@ export default function HistoryPage() {
 
   useEffect(() => {
     filterContracts()
-  }, [contracts, searchTerm, filterType, filterContracts])
+  }, [contracts, searchTerm, filterType])
 
   const fetchContracts = async () => {
     try {
