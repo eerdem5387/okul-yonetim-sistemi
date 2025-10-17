@@ -11,15 +11,15 @@ export async function generatePDF(html: string, options?: { format?: string; mar
     const page = await browser.newPage()
     await page.setContent(html, { waitUntil: 'networkidle0' })
 
-    const pdf = await page.pdf({
-        format: options?.format || 'A4',
-        margin: options?.margin || {
-            top: '20mm',
-            right: '20mm',
-            bottom: '20mm',
-            left: '20mm'
-        }
-    })
+  const pdf = await page.pdf({
+    format: (options?.format || 'A4') as 'A4',
+    margin: options?.margin || {
+      top: '20mm',
+      right: '20mm',
+      bottom: '20mm',
+      left: '20mm'
+    }
+  })
 
     await browser.close()
     return pdf
