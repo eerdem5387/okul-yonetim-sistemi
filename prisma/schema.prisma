@@ -16,12 +16,16 @@ model Student {
   lastName    String
   tcNumber    String   @unique
   birthDate   DateTime
+  grade       String   // Sınıf (zorunlu)
   phone       String?
   email       String?
-  address     String?
-  parentName  String
-  parentPhone String
-  parentEmail String?
+  address     String   // Adres (zorunlu)
+  parentName  String   // 1. Veli Ad Soyad (zorunlu)
+  parentPhone String   // 1. Veli Telefon (zorunlu)
+  parentEmail String   // 1. Veli E-posta (zorunlu)
+  parent2Name String? // 2. Veli Ad Soyad (zorunlu değil)
+  parent2Phone String? // 2. Veli Telefon (zorunlu değil)
+  parent2Email String? // 2. Veli E-posta (zorunlu değil)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @default(now())
 

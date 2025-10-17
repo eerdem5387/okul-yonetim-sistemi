@@ -1,30 +1,20 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
-export async function GET() {
+export async function PUT(
+    request: NextRequest,
+    context: { params: Promise<{ id: string }> }
+) {
     try {
-        const students = await prisma.student.findMany({
-            orderBy: {
-                createdAt: "desc"
-            }
-        })
-
-        return NextResponse.json(students)
-    } catch (error) {
-        console.error("Error fetching students:", error)
-        return NextResponse.json({ error: "Failed to fetch students" }, { status: 500 })
-    }
-}
-
-export async function POST(request: NextRequest) {
-    try {
+        const params = await context.params
         const body = await request.json()
         const { 
             firstName, lastName, tcNumber, birthDate, grade, phone, email, address, 
             parentName, parentPhone, parentEmail, parent2Name, parent2Phone, parent2Email 
         } = body
 
-        const student = await prisma.student.create({
+        const student = await prisma.student.update({
+            where: { id: params.id },
             data: {
                 firstName,
                 lastName,
@@ -45,7 +35,24 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json(student)
     } catch (error) {
-        console.error("Error creating student:", error)
-        return NextResponse.json({ error: "Failed to create student" }, { status: 500 })
+        console.error("Error updating student:", error)
+        return NextResponse.json({ error: "Failed to update student" }, { status: 500 })
+    }
+}
+
+export async function DELETE(
+    request: NextRequest,
+    context: { params: Promise<{ id: string }> }
+) {
+    try {
+        const params = await context.params
+        await prisma.student.delete({
+            where: { id: params.id }
+        })
+
+        return NextResponse.json({ success: true })
+    } catch (error) {
+        console.error("Error deleting student:", error)
+        return NextResponse.json({ error: "Failed to delete student" }, { status: 500 })
     }
 }

@@ -11,10 +11,12 @@ import {
   Utensils, 
   Bus, 
   BookOpen, 
-  History
+  History,
+  UserPlus
 } from "lucide-react"
 
 const navigation = [
+  { name: "Öğrenci Yönetimi", href: "/students", icon: UserPlus },
   { name: "Kulüp Yönetimi", href: "/clubs", icon: Users },
   { name: "Yeni Kayıt", href: "/new-registration", icon: GraduationCap },
   { name: "Kayıt Yenileme", href: "/renewal", icon: FileText },
