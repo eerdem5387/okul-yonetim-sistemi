@@ -72,13 +72,13 @@ export default function HistoryPage() {
         booksRes.ok ? booksRes.json() : []
       ])
 
-      const allContracts = [
-        ...(Array.isArray(newRegistrations) ? newRegistrations.map((c: Record<string, unknown>) => ({ ...c, type: "Yeni Kayıt" })) : []),
-        ...(Array.isArray(renewals) ? renewals.map((c: Record<string, unknown>) => ({ ...c, type: "Kayıt Yenileme" })) : []),
-        ...(Array.isArray(uniforms) ? uniforms.map((c: Record<string, unknown>) => ({ ...c, type: "Forma Sözleşmesi" })) : []),
-        ...(Array.isArray(meals) ? meals.map((c: Record<string, unknown>) => ({ ...c, type: "Yemek Sözleşmesi" })) : []),
-        ...(Array.isArray(services) ? services.map((c: Record<string, unknown>) => ({ ...c, type: "Servis Sözleşmesi" })) : []),
-        ...(Array.isArray(books) ? books.map((c: Record<string, unknown>) => ({ ...c, type: "Kitap Sözleşmesi" })) : [])
+      const allContracts: Contract[] = [
+        ...(Array.isArray(newRegistrations) ? newRegistrations.map((c: any) => ({ ...c, type: "Yeni Kayıt" })) : []),
+        ...(Array.isArray(renewals) ? renewals.map((c: any) => ({ ...c, type: "Kayıt Yenileme" })) : []),
+        ...(Array.isArray(uniforms) ? uniforms.map((c: any) => ({ ...c, type: "Forma Sözleşmesi" })) : []),
+        ...(Array.isArray(meals) ? meals.map((c: any) => ({ ...c, type: "Yemek Sözleşmesi" })) : []),
+        ...(Array.isArray(services) ? services.map((c: any) => ({ ...c, type: "Servis Sözleşmesi" })) : []),
+        ...(Array.isArray(books) ? books.map((c: any) => ({ ...c, type: "Kitap Sözleşmesi" })) : [])
       ]
 
       setContracts(allContracts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()))
