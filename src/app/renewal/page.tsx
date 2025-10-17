@@ -83,7 +83,6 @@ export default function RenewalPage() {
     parentSignature: "",
     contractDate: "",
     registrarName: "",
-    registrationDate: "",
     registrarSignature: ""
   })
 

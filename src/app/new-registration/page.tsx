@@ -83,7 +83,6 @@ export default function NewRegistrationPage() {
     parentSignature: "",
     contractDate: "",
     registrarName: "",
-    registrationDate: "",
     registrarSignature: ""
   })
 
