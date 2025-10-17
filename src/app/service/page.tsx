@@ -58,6 +58,8 @@ export default function ServicePage() {
 
       if (response.ok) {
         alert("Servis sözleşmesi başarıyla kaydedildi!")
+      } else {
+        alert("Servis sözleşmesi kaydedilirken hata oluştu!")
       }
     } catch (error) {
       console.error("Error saving contract:", error)

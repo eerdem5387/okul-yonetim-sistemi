@@ -59,6 +59,8 @@ export default function UniformPage() {
 
       if (response.ok) {
         alert("Forma sözleşmesi başarıyla kaydedildi!")
+      } else {
+        alert("Forma sözleşmesi kaydedilirken hata oluştu!")
       }
     } catch (error) {
       console.error("Error saving contract:", error)

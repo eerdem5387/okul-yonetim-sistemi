@@ -58,6 +58,8 @@ export default function MealPage() {
 
       if (response.ok) {
         alert("Yemek sözleşmesi başarıyla kaydedildi!")
+      } else {
+        alert("Yemek sözleşmesi kaydedilirken hata oluştu!")
       }
     } catch (error) {
       console.error("Error saving contract:", error)

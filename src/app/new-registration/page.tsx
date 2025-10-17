@@ -106,6 +106,8 @@ export default function NewRegistrationPage() {
 
       if (response.ok) {
         alert("Sözleşme başarıyla kaydedildi!")
+      } else {
+        alert("Sözleşme kaydedilirken hata oluştu!")
       }
     } catch (error) {
       console.error("Error saving contract:", error)

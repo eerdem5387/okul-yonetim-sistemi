@@ -58,6 +58,8 @@ export default function BookPage() {
 
       if (response.ok) {
         alert("Kitap sözleşmesi başarıyla kaydedildi!")
+      } else {
+        alert("Kitap sözleşmesi kaydedilirken hata oluştu!")
       }
     } catch (error) {
       console.error("Error saving contract:", error)

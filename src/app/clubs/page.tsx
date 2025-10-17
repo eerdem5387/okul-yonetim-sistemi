@@ -68,6 +68,8 @@ export default function ClubsPage() {
         setShowForm(false)
         setEditingClub(null)
         setFormData({ name: "", description: "", capacity: 0 })
+      } else {
+        alert("Kulüp kaydedilirken hata oluştu!")
       }
     } catch (error) {
       console.error("Error saving club:", error)
@@ -93,6 +95,8 @@ export default function ClubsPage() {
 
         if (response.ok) {
           fetchClubs()
+        } else {
+          alert("Kulüp silinirken hata oluştu!")
         }
       } catch (error) {
         console.error("Error deleting club:", error)

@@ -54,27 +54,37 @@ export default function HistoryPage() {
 
   const fetchContracts = async () => {
     try {
+      const [newRegistrationsRes, renewalsRes, uniformsRes, mealsRes, servicesRes, booksRes] = await Promise.all([
+        fetch("/api/new-registrations"),
+        fetch("/api/renewals"),
+        fetch("/api/uniform-contracts"),
+        fetch("/api/meal-contracts"),
+        fetch("/api/service-contracts"),
+        fetch("/api/book-contracts")
+      ])
+
       const [newRegistrations, renewals, uniforms, meals, services, books] = await Promise.all([
-        fetch("/api/new-registrations").then(res => res.json()),
-        fetch("/api/renewals").then(res => res.json()),
-        fetch("/api/uniform-contracts").then(res => res.json()),
-        fetch("/api/meal-contracts").then(res => res.json()),
-        fetch("/api/service-contracts").then(res => res.json()),
-        fetch("/api/book-contracts").then(res => res.json())
+        newRegistrationsRes.ok ? newRegistrationsRes.json() : [],
+        renewalsRes.ok ? renewalsRes.json() : [],
+        uniformsRes.ok ? uniformsRes.json() : [],
+        mealsRes.ok ? mealsRes.json() : [],
+        servicesRes.ok ? servicesRes.json() : [],
+        booksRes.ok ? booksRes.json() : []
       ])
 
       const allContracts = [
-        ...newRegistrations.map((c: Record<string, unknown>) => ({ ...c, type: "Yeni Kayıt" })),
-        ...renewals.map((c: Record<string, unknown>) => ({ ...c, type: "Kayıt Yenileme" })),
-        ...uniforms.map((c: Record<string, unknown>) => ({ ...c, type: "Forma Sözleşmesi" })),
-        ...meals.map((c: Record<string, unknown>) => ({ ...c, type: "Yemek Sözleşmesi" })),
-        ...services.map((c: Record<string, unknown>) => ({ ...c, type: "Servis Sözleşmesi" })),
-        ...books.map((c: Record<string, unknown>) => ({ ...c, type: "Kitap Sözleşmesi" }))
+        ...(Array.isArray(newRegistrations) ? newRegistrations.map((c: Record<string, unknown>) => ({ ...c, type: "Yeni Kayıt" })) : []),
+        ...(Array.isArray(renewals) ? renewals.map((c: Record<string, unknown>) => ({ ...c, type: "Kayıt Yenileme" })) : []),
+        ...(Array.isArray(uniforms) ? uniforms.map((c: Record<string, unknown>) => ({ ...c, type: "Forma Sözleşmesi" })) : []),
+        ...(Array.isArray(meals) ? meals.map((c: Record<string, unknown>) => ({ ...c, type: "Yemek Sözleşmesi" })) : []),
+        ...(Array.isArray(services) ? services.map((c: Record<string, unknown>) => ({ ...c, type: "Servis Sözleşmesi" })) : []),
+        ...(Array.isArray(books) ? books.map((c: Record<string, unknown>) => ({ ...c, type: "Kitap Sözleşmesi" })) : [])
       ]
 
       setContracts(allContracts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()))
     } catch (error) {
       console.error("Error fetching contracts:", error)
+      setContracts([])
     }
   }
 

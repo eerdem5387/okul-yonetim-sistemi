@@ -59,6 +59,8 @@ export default function RenewalPage() {
 
       if (response.ok) {
         alert("Kayıt yenileme sözleşmesi başarıyla kaydedildi!")
+      } else {
+        alert("Kayıt yenileme sözleşmesi kaydedilirken hata oluştu!")
       }
     } catch (error) {
       console.error("Error saving contract:", error)
