@@ -250,7 +250,6 @@ export function generateCombinedContractHTML(data: {
   mainContractData: Record<string, unknown>
   otherContractData: Record<string, unknown>
 }) {
-  const currentDate = new Date().toLocaleDateString('tr-TR')
   const { student, contractTypes, mainContractData, otherContractData } = data
 
   // Ana sözleşme HTML'i (Eğitim Öğretim Hizmet Sözleşmesi)
@@ -416,7 +415,7 @@ export function generateCombinedContractHTML(data: {
   `
 }
 
-function generateMainContractHTML(student: any, contractData: Record<string, unknown>) {
+function generateMainContractHTML(student: { firstName: string; lastName: string; tcNumber: string; grade: string; address: string; birthDate: string; parentName: string }, contractData: Record<string, unknown>) {
   return `
     <div class="contract-header">
       <div class="contract-title">EĞİTİM ÖĞRETİM HİZMET SÖZLEŞMESİ</div>
@@ -679,7 +678,7 @@ function generateMainContractHTML(student: any, contractData: Record<string, unk
   `
 }
 
-function generateOtherContractsHTML(student: any, contractTypes: string[], contractData: Record<string, unknown>) {
+function generateOtherContractsHTML(student: { firstName: string; lastName: string; tcNumber: string; grade: string; address: string }, contractTypes: string[], contractData: Record<string, unknown>) {
   let html = ''
   
   if (contractTypes.includes('uniform')) {
@@ -701,7 +700,7 @@ function generateOtherContractsHTML(student: any, contractTypes: string[], contr
   return html
 }
 
-function generateUniformContractHTML(student: any, contractData: Record<string, unknown>) {
+function generateUniformContractHTML(student: { firstName: string; lastName: string; tcNumber: string }, contractData: Record<string, unknown>) {
   return `
     <div class="page-break"></div>
     
@@ -754,7 +753,7 @@ function generateUniformContractHTML(student: any, contractData: Record<string, 
   `
 }
 
-function generateMealContractHTML(student: any, contractData: Record<string, unknown>) {
+function generateMealContractHTML(student: { firstName: string; lastName: string; tcNumber: string }, contractData: Record<string, unknown>) {
   return `
     <div class="page-break"></div>
     
@@ -799,7 +798,7 @@ function generateMealContractHTML(student: any, contractData: Record<string, unk
   `
 }
 
-function generateBookContractHTML(student: any, contractData: Record<string, unknown>) {
+function generateBookContractHTML(student: { firstName: string; lastName: string; tcNumber: string; grade: string }, contractData: Record<string, unknown>) {
   return `
     <div class="page-break"></div>
     
@@ -848,7 +847,7 @@ function generateBookContractHTML(student: any, contractData: Record<string, unk
   `
 }
 
-function generateServiceContractHTML(student: any, contractData: Record<string, unknown>) {
+function generateServiceContractHTML(student: { firstName: string; lastName: string; tcNumber: string; address: string }, contractData: Record<string, unknown>) {
   return `
     <div class="page-break"></div>
     
