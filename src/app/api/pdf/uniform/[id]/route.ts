@@ -4,9 +4,10 @@ import { generatePDF, generateContractHTML } from "@/lib/pdf-generator"
 
 export async function GET(
     request: Request,
-    { params }: { params: { id: string } }
+    context: { params: Promise<{ id: string }> }
 ) {
     try {
+        const params = await context.params
         const contract = await prisma.uniformContract.findFirst({
             where: {
                 student: {

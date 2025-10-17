@@ -3,9 +3,10 @@ import { prisma } from "@/lib/prisma"
 
 export async function PUT(
     request: Request,
-    { params }: { params: { id: string } }
+    context: { params: Promise<{ id: string }> }
 ) {
     try {
+        const params = await context.params
         const body = await request.json()
         const { name, description, capacity } = body
 
@@ -27,9 +28,10 @@ export async function PUT(
 
 export async function DELETE(
     request: Request,
-    { params }: { params: { id: string } }
+    context: { params: Promise<{ id: string }> }
 ) {
     try {
+        const params = await context.params
         await prisma.club.delete({
             where: { id: params.id }
         })
