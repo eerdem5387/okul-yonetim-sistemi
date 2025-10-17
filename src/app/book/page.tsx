@@ -12,11 +12,17 @@ interface Student {
   firstName: string
   lastName: string
   tcNumber: string
+  grade: string
+  address: string
 }
 
 export default function BookPage() {
   const [students, setStudents] = useState<Student[]>([])
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
+  const [contractData, setContractData] = useState({
+    bookSet: "",
+    bookDeliveryDate: ""
+  })
 
   useEffect(() => {
     fetchStudents()
@@ -40,29 +46,29 @@ export default function BookPage() {
     if (!selectedStudent) return
 
     try {
-      const contractData = {
-        studentId: selectedStudent.id,
-        contractData: {
-          studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
-          tcNumber: selectedStudent.tcNumber,
-        }
-      }
-
       const response = await fetch("/api/book-contracts", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(contractData),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId: selectedStudent.id,
+          contractData: {
+            studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
+            tcNumber: selectedStudent.tcNumber,
+            grade: selectedStudent.grade,
+            bookSet: contractData.bookSet,
+            deliveryDate: contractData.bookDeliveryDate
+          }
+        })
       })
 
       if (response.ok) {
         alert("Kitap sözleşmesi başarıyla kaydedildi!")
       } else {
-        alert("Kitap sözleşmesi kaydedilirken hata oluştu!")
+        alert("Sözleşme kaydedilirken hata oluştu!")
       }
     } catch (error) {
       console.error("Error saving contract:", error)
+      alert("Sözleşme kaydedilirken hata oluştu!")
     }
   }
 
@@ -70,7 +76,20 @@ export default function BookPage() {
     if (!selectedStudent) return
 
     try {
-      const response = await fetch(`/api/pdf/book/${selectedStudent.id}`)
+      const response = await fetch(`/api/pdf/book/${selectedStudent.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contractData: {
+            studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
+            tcNumber: selectedStudent.tcNumber,
+            grade: selectedStudent.grade,
+            bookSet: contractData.bookSet,
+            deliveryDate: contractData.bookDeliveryDate
+          }
+        })
+      })
+
       if (response.ok) {
         const blob = await response.blob()
         const url = window.URL.createObjectURL(blob)
@@ -81,6 +100,8 @@ export default function BookPage() {
         a.click()
         window.URL.revokeObjectURL(url)
         document.body.removeChild(a)
+      } else {
+        alert("PDF oluşturulurken hata oluştu!")
       }
     } catch (error) {
       console.error("Error downloading PDF:", error)
@@ -94,52 +115,57 @@ export default function BookPage() {
         <p className="text-gray-600 mt-2">Öğrenci kitap sözleşmesini oluşturun</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Öğrenci Seçimi</CardTitle>
-            <CardDescription>Kitap sözleşmesi yapılacak öğrenciyi seçin</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div>
-              <Label>Mevcut Öğrenciler</Label>
-              <div className="mt-2 space-y-2">
-                {students.map((student) => (
-                  <div
-                    key={student.id}
-                    className={`p-3 border rounded cursor-pointer ${
-                      selectedStudent?.id === student.id ? "bg-blue-50 border-blue-500" : "hover:bg-gray-50"
-                    }`}
-                    onClick={() => setSelectedStudent(student)}
-                  >
-                    <div className="font-medium">{student.firstName} {student.lastName}</div>
-                    <div className="text-sm text-gray-500">TC: {student.tcNumber}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
+      <div className="max-w-4xl mx-auto">
         <Card>
           <CardHeader>
             <CardTitle>Kitap Sözleşmesi</CardTitle>
             <CardDescription>
               {selectedStudent 
-                ? `${selectedStudent.firstName} ${selectedStudent.lastName} için sözleşme oluşturuluyor`
+                ? `${selectedStudent.firstName} ${selectedStudent.lastName} için kitap sözleşmesi oluşturuluyor`
                 : "Önce bir öğrenci seçin"
               }
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {selectedStudent ? (
-              <div className="space-y-4">
+            <div className="space-y-4">
+              {/* Öğrenci Seçimi */}
+              <div className="mb-6">
+                <Label htmlFor="studentSelect">Öğrenci Seçin *</Label>
+                <select
+                  id="studentSelect"
+                  value={selectedStudent?.id || ""}
+                  onChange={(e) => {
+                    const student = students.find(s => s.id === e.target.value)
+                    setSelectedStudent(student || null)
+                  }}
+                  className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                >
+                  <option value="">Öğrenci seçin...</option>
+                  {students.map((student) => (
+                    <option key={student.id} value={student.id}>
+                      {student.firstName} {student.lastName} - {student.tcNumber} - {student.grade}
+                    </option>
+                  ))}
+                </select>
+                {!students.length && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    Önce <a href="/students" className="text-blue-600 hover:underline">Öğrenci Yönetimi</a> sayfasından öğrenci ekleyin.
+                  </p>
+                )}
+              </div>
+
+              {selectedStudent && (
                 <div className="p-4 bg-gray-50 rounded">
-                  <h3 className="font-medium mb-2">Öğrenci Bilgileri</h3>
+                  <h3 className="font-medium mb-2">Seçilen Öğrenci Bilgileri</h3>
                   <p><strong>Ad Soyad:</strong> {selectedStudent.firstName} {selectedStudent.lastName}</p>
                   <p><strong>TC Kimlik No:</strong> {selectedStudent.tcNumber}</p>
+                  <p><strong>Sınıf:</strong> {selectedStudent.grade}</p>
+                  <p><strong>Adres:</strong> {selectedStudent.address}</p>
                 </div>
+              )}
 
+              {selectedStudent ? (
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="contractDate">Sözleşme Tarihi</Label>
@@ -150,46 +176,62 @@ export default function BookPage() {
                     />
                   </div>
                   
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="studentName">Öğrenci Ad Soyad</Label>
+                      <Input
+                        id="studentName"
+                        value={selectedStudent ? `${selectedStudent.firstName} ${selectedStudent.lastName}` : ""}
+                        disabled
+                        className="bg-gray-100"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="studentGrade">Sınıfı</Label>
+                      <Input
+                        id="studentGrade"
+                        value={selectedStudent?.grade || ""}
+                        disabled
+                        className="bg-gray-100"
+                      />
+                    </div>
+                  </div>
+                  
                   <div>
                     <Label htmlFor="bookSet">Kitap Seti</Label>
                     <Input
                       id="bookSet"
-                      placeholder="9. Sınıf kitap seti"
+                      value={contractData.bookSet}
+                      onChange={(e) => setContractData({ ...contractData, bookSet: e.target.value })}
+                      placeholder="Örn: 9. Sınıf Seti"
                     />
                   </div>
-
+                  
                   <div>
-                    <Label htmlFor="bookPrice">Kitap Ücreti</Label>
+                    <Label htmlFor="bookDeliveryDate">Teslimat Tarihi</Label>
                     <Input
-                      id="bookPrice"
-                      type="number"
-                      placeholder="0"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="deliveryDate">Teslim Tarihi</Label>
-                    <Input
-                      id="deliveryDate"
+                      id="bookDeliveryDate"
                       type="date"
+                      value={contractData.bookDeliveryDate}
+                      onChange={(e) => setContractData({ ...contractData, bookDeliveryDate: e.target.value })}
                     />
                   </div>
-                </div>
 
-                <div className="flex gap-2">
-                  <Button onClick={handleSaveContract}>
-                    <Save className="h-4 w-4 mr-2" />
-                    Kaydet
-                  </Button>
-                  <Button onClick={handleDownloadPDF} variant="outline">
-                    <Download className="h-4 w-4 mr-2" />
-                    PDF İndir
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button onClick={handleSaveContract}>
+                      <Save className="h-4 w-4 mr-2" />
+                      Sözleşmeyi Kaydet
+                    </Button>
+                    <Button onClick={handleDownloadPDF} variant="outline">
+                      <Download className="h-4 w-4 mr-2" />
+                      PDF İndir
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <p className="text-gray-500">Lütfen bir öğrenci seçin</p>
-            )}
+              ) : (
+                <p className="text-gray-500">Lütfen bir öğrenci seçin</p>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>

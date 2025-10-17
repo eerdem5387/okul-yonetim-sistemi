@@ -12,11 +12,17 @@ interface Student {
   firstName: string
   lastName: string
   tcNumber: string
+  grade: string
+  address: string
 }
 
 export default function ServicePage() {
   const [students, setStudents] = useState<Student[]>([])
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
+  const [contractData, setContractData] = useState({
+    serviceRegion: "",
+    servicePrice: ""
+  })
 
   useEffect(() => {
     fetchStudents()
@@ -40,29 +46,29 @@ export default function ServicePage() {
     if (!selectedStudent) return
 
     try {
-      const contractData = {
-        studentId: selectedStudent.id,
-        contractData: {
-          studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
-          tcNumber: selectedStudent.tcNumber,
-        }
-      }
-
       const response = await fetch("/api/service-contracts", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(contractData),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId: selectedStudent.id,
+          contractData: {
+            studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
+            tcNumber: selectedStudent.tcNumber,
+            serviceRegion: contractData.serviceRegion,
+            servicePrice: contractData.servicePrice,
+            address: selectedStudent.address
+          }
+        })
       })
 
       if (response.ok) {
         alert("Servis sözleşmesi başarıyla kaydedildi!")
       } else {
-        alert("Servis sözleşmesi kaydedilirken hata oluştu!")
+        alert("Sözleşme kaydedilirken hata oluştu!")
       }
     } catch (error) {
       console.error("Error saving contract:", error)
+      alert("Sözleşme kaydedilirken hata oluştu!")
     }
   }
 
@@ -70,7 +76,20 @@ export default function ServicePage() {
     if (!selectedStudent) return
 
     try {
-      const response = await fetch(`/api/pdf/service/${selectedStudent.id}`)
+      const response = await fetch(`/api/pdf/service/${selectedStudent.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contractData: {
+            studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
+            tcNumber: selectedStudent.tcNumber,
+            serviceRegion: contractData.serviceRegion,
+            servicePrice: contractData.servicePrice,
+            address: selectedStudent.address
+          }
+        })
+      })
+
       if (response.ok) {
         const blob = await response.blob()
         const url = window.URL.createObjectURL(blob)
@@ -81,6 +100,8 @@ export default function ServicePage() {
         a.click()
         window.URL.revokeObjectURL(url)
         document.body.removeChild(a)
+      } else {
+        alert("PDF oluşturulurken hata oluştu!")
       }
     } catch (error) {
       console.error("Error downloading PDF:", error)
@@ -94,52 +115,57 @@ export default function ServicePage() {
         <p className="text-gray-600 mt-2">Öğrenci servis sözleşmesini oluşturun</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Öğrenci Seçimi</CardTitle>
-            <CardDescription>Servis sözleşmesi yapılacak öğrenciyi seçin</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div>
-              <Label>Mevcut Öğrenciler</Label>
-              <div className="mt-2 space-y-2">
-                {students.map((student) => (
-                  <div
-                    key={student.id}
-                    className={`p-3 border rounded cursor-pointer ${
-                      selectedStudent?.id === student.id ? "bg-blue-50 border-blue-500" : "hover:bg-gray-50"
-                    }`}
-                    onClick={() => setSelectedStudent(student)}
-                  >
-                    <div className="font-medium">{student.firstName} {student.lastName}</div>
-                    <div className="text-sm text-gray-500">TC: {student.tcNumber}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
+      <div className="max-w-4xl mx-auto">
         <Card>
           <CardHeader>
             <CardTitle>Servis Sözleşmesi</CardTitle>
             <CardDescription>
               {selectedStudent 
-                ? `${selectedStudent.firstName} ${selectedStudent.lastName} için sözleşme oluşturuluyor`
+                ? `${selectedStudent.firstName} ${selectedStudent.lastName} için servis sözleşmesi oluşturuluyor`
                 : "Önce bir öğrenci seçin"
               }
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {selectedStudent ? (
-              <div className="space-y-4">
+            <div className="space-y-4">
+              {/* Öğrenci Seçimi */}
+              <div className="mb-6">
+                <Label htmlFor="studentSelect">Öğrenci Seçin *</Label>
+                <select
+                  id="studentSelect"
+                  value={selectedStudent?.id || ""}
+                  onChange={(e) => {
+                    const student = students.find(s => s.id === e.target.value)
+                    setSelectedStudent(student || null)
+                  }}
+                  className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                >
+                  <option value="">Öğrenci seçin...</option>
+                  {students.map((student) => (
+                    <option key={student.id} value={student.id}>
+                      {student.firstName} {student.lastName} - {student.tcNumber} - {student.grade}
+                    </option>
+                  ))}
+                </select>
+                {!students.length && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    Önce <a href="/students" className="text-blue-600 hover:underline">Öğrenci Yönetimi</a> sayfasından öğrenci ekleyin.
+                  </p>
+                )}
+              </div>
+
+              {selectedStudent && (
                 <div className="p-4 bg-gray-50 rounded">
-                  <h3 className="font-medium mb-2">Öğrenci Bilgileri</h3>
+                  <h3 className="font-medium mb-2">Seçilen Öğrenci Bilgileri</h3>
                   <p><strong>Ad Soyad:</strong> {selectedStudent.firstName} {selectedStudent.lastName}</p>
                   <p><strong>TC Kimlik No:</strong> {selectedStudent.tcNumber}</p>
+                  <p><strong>Sınıf:</strong> {selectedStudent.grade}</p>
+                  <p><strong>Adres:</strong> {selectedStudent.address}</p>
                 </div>
+              )}
 
+              {selectedStudent ? (
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="contractDate">Sözleşme Tarihi</Label>
@@ -151,45 +177,61 @@ export default function ServicePage() {
                   </div>
                   
                   <div>
-                    <Label htmlFor="route">Güzergah</Label>
+                    <Label htmlFor="serviceRegion">Servis Bölgesi</Label>
+                    <select
+                      id="serviceRegion"
+                      value={contractData.serviceRegion}
+                      onChange={(e) => setContractData({ ...contractData, serviceRegion: e.target.value })}
+                      className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">Bölge seçin...</option>
+                      <option value="1.bölge">1. Bölge</option>
+                      <option value="2.bölge">2. Bölge</option>
+                      <option value="3.bölge">3. Bölge</option>
+                      <option value="4.bölge">4. Bölge</option>
+                      <option value="5.bölge">5. Bölge</option>
+                      <option value="6.bölge">6. Bölge</option>
+                      <option value="çayeli">Çayeli</option>
+                      <option value="pazar/ardeşen">Pazar/Ardeşen</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="studentAddress">Adres</Label>
                     <Input
-                      id="route"
-                      placeholder="Evden okula güzergah"
+                      id="studentAddress"
+                      value={selectedStudent?.address || ""}
+                      disabled
+                      className="bg-gray-100"
                     />
                   </div>
-
+                  
                   <div>
-                    <Label htmlFor="servicePrice">Servis Ücreti</Label>
+                    <Label htmlFor="servicePrice">Servis Ücreti - Dönemlik</Label>
                     <Input
                       id="servicePrice"
                       type="number"
-                      placeholder="0"
+                      value={contractData.servicePrice}
+                      onChange={(e) => setContractData({ ...contractData, servicePrice: e.target.value })}
+                      placeholder="Örn: 800"
                     />
                   </div>
 
-                  <div>
-                    <Label htmlFor="pickupTime">Alış Saati</Label>
-                    <Input
-                      id="pickupTime"
-                      type="time"
-                    />
+                  <div className="flex gap-2">
+                    <Button onClick={handleSaveContract}>
+                      <Save className="h-4 w-4 mr-2" />
+                      Sözleşmeyi Kaydet
+                    </Button>
+                    <Button onClick={handleDownloadPDF} variant="outline">
+                      <Download className="h-4 w-4 mr-2" />
+                      PDF İndir
+                    </Button>
                   </div>
                 </div>
-
-                <div className="flex gap-2">
-                  <Button onClick={handleSaveContract}>
-                    <Save className="h-4 w-4 mr-2" />
-                    Kaydet
-                  </Button>
-                  <Button onClick={handleDownloadPDF} variant="outline">
-                    <Download className="h-4 w-4 mr-2" />
-                    PDF İndir
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <p className="text-gray-500">Lütfen bir öğrenci seçin</p>
-            )}
+              ) : (
+                <p className="text-gray-500">Lütfen bir öğrenci seçin</p>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>

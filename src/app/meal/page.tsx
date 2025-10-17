@@ -12,11 +12,17 @@ interface Student {
   firstName: string
   lastName: string
   tcNumber: string
+  grade: string
+  address: string
 }
 
 export default function MealPage() {
   const [students, setStudents] = useState<Student[]>([])
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
+  const [contractData, setContractData] = useState({
+    mealPeriods: [] as string[],
+    mealPrice: ""
+  })
 
   useEffect(() => {
     fetchStudents()
@@ -40,29 +46,28 @@ export default function MealPage() {
     if (!selectedStudent) return
 
     try {
-      const contractData = {
-        studentId: selectedStudent.id,
-        contractData: {
-          studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
-          tcNumber: selectedStudent.tcNumber,
-        }
-      }
-
       const response = await fetch("/api/meal-contracts", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(contractData),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId: selectedStudent.id,
+          contractData: {
+            studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
+            tcNumber: selectedStudent.tcNumber,
+            mealPeriods: contractData.mealPeriods,
+            mealPrice: contractData.mealPrice
+          }
+        })
       })
 
       if (response.ok) {
         alert("Yemek sözleşmesi başarıyla kaydedildi!")
       } else {
-        alert("Yemek sözleşmesi kaydedilirken hata oluştu!")
+        alert("Sözleşme kaydedilirken hata oluştu!")
       }
     } catch (error) {
       console.error("Error saving contract:", error)
+      alert("Sözleşme kaydedilirken hata oluştu!")
     }
   }
 
@@ -70,7 +75,19 @@ export default function MealPage() {
     if (!selectedStudent) return
 
     try {
-      const response = await fetch(`/api/pdf/meal/${selectedStudent.id}`)
+      const response = await fetch(`/api/pdf/meal/${selectedStudent.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contractData: {
+            studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
+            tcNumber: selectedStudent.tcNumber,
+            mealPeriods: contractData.mealPeriods,
+            mealPrice: contractData.mealPrice
+          }
+        })
+      })
+
       if (response.ok) {
         const blob = await response.blob()
         const url = window.URL.createObjectURL(blob)
@@ -81,6 +98,8 @@ export default function MealPage() {
         a.click()
         window.URL.revokeObjectURL(url)
         document.body.removeChild(a)
+      } else {
+        alert("PDF oluşturulurken hata oluştu!")
       }
     } catch (error) {
       console.error("Error downloading PDF:", error)
@@ -94,52 +113,57 @@ export default function MealPage() {
         <p className="text-gray-600 mt-2">Öğrenci yemek sözleşmesini oluşturun</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Öğrenci Seçimi</CardTitle>
-            <CardDescription>Yemek sözleşmesi yapılacak öğrenciyi seçin</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div>
-              <Label>Mevcut Öğrenciler</Label>
-              <div className="mt-2 space-y-2">
-                {students.map((student) => (
-                  <div
-                    key={student.id}
-                    className={`p-3 border rounded cursor-pointer ${
-                      selectedStudent?.id === student.id ? "bg-blue-50 border-blue-500" : "hover:bg-gray-50"
-                    }`}
-                    onClick={() => setSelectedStudent(student)}
-                  >
-                    <div className="font-medium">{student.firstName} {student.lastName}</div>
-                    <div className="text-sm text-gray-500">TC: {student.tcNumber}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
+      <div className="max-w-4xl mx-auto">
         <Card>
           <CardHeader>
             <CardTitle>Yemek Sözleşmesi</CardTitle>
             <CardDescription>
               {selectedStudent 
-                ? `${selectedStudent.firstName} ${selectedStudent.lastName} için sözleşme oluşturuluyor`
+                ? `${selectedStudent.firstName} ${selectedStudent.lastName} için yemek sözleşmesi oluşturuluyor`
                 : "Önce bir öğrenci seçin"
               }
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {selectedStudent ? (
-              <div className="space-y-4">
+            <div className="space-y-4">
+              {/* Öğrenci Seçimi */}
+              <div className="mb-6">
+                <Label htmlFor="studentSelect">Öğrenci Seçin *</Label>
+                <select
+                  id="studentSelect"
+                  value={selectedStudent?.id || ""}
+                  onChange={(e) => {
+                    const student = students.find(s => s.id === e.target.value)
+                    setSelectedStudent(student || null)
+                  }}
+                  className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                >
+                  <option value="">Öğrenci seçin...</option>
+                  {students.map((student) => (
+                    <option key={student.id} value={student.id}>
+                      {student.firstName} {student.lastName} - {student.tcNumber} - {student.grade}
+                    </option>
+                  ))}
+                </select>
+                {!students.length && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    Önce <a href="/students" className="text-blue-600 hover:underline">Öğrenci Yönetimi</a> sayfasından öğrenci ekleyin.
+                  </p>
+                )}
+              </div>
+
+              {selectedStudent && (
                 <div className="p-4 bg-gray-50 rounded">
-                  <h3 className="font-medium mb-2">Öğrenci Bilgileri</h3>
+                  <h3 className="font-medium mb-2">Seçilen Öğrenci Bilgileri</h3>
                   <p><strong>Ad Soyad:</strong> {selectedStudent.firstName} {selectedStudent.lastName}</p>
                   <p><strong>TC Kimlik No:</strong> {selectedStudent.tcNumber}</p>
+                  <p><strong>Sınıf:</strong> {selectedStudent.grade}</p>
+                  <p><strong>Adres:</strong> {selectedStudent.address}</p>
                 </div>
+              )}
 
+              {selectedStudent ? (
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="contractDate">Sözleşme Tarihi</Label>
@@ -151,45 +175,54 @@ export default function MealPage() {
                   </div>
                   
                   <div>
-                    <Label htmlFor="mealType">Yemek Türü</Label>
-                    <Input
-                      id="mealType"
-                      placeholder="Öğle yemeği, Kahvaltı, vb."
-                    />
+                    <Label htmlFor="mealPeriods">Ödeme Dönemleri</Label>
+                    <div className="grid grid-cols-3 gap-2 mt-2">
+                      {['eylül', 'ekim', 'kasım', 'aralık', 'ocak', 'şubat', 'mart', 'nisan', 'mayıs', 'haziran', '1.dönem', '2.dönem', 'tüm yıl'].map((period) => (
+                        <label key={period} className="flex items-center">
+                          <input
+                            type="checkbox"
+                            className="mr-2"
+                            onChange={(e) => {
+                              const currentPeriods = contractData.mealPeriods || []
+                              if (e.target.checked) {
+                                setContractData({ ...contractData, mealPeriods: [...currentPeriods, period] })
+                              } else {
+                                setContractData({ ...contractData, mealPeriods: currentPeriods.filter(p => p !== period) })
+                              }
+                            }}
+                          />
+                          {period}
+                        </label>
+                      ))}
+                    </div>
                   </div>
-
+                  
                   <div>
                     <Label htmlFor="mealPrice">Yemek Ücreti</Label>
                     <Input
                       id="mealPrice"
                       type="number"
-                      placeholder="0"
+                      value={contractData.mealPrice}
+                      onChange={(e) => setContractData({ ...contractData, mealPrice: e.target.value })}
+                      placeholder="Örn: 2000"
                     />
                   </div>
 
-                  <div>
-                    <Label htmlFor="startDate">Başlangıç Tarihi</Label>
-                    <Input
-                      id="startDate"
-                      type="date"
-                    />
+                  <div className="flex gap-2">
+                    <Button onClick={handleSaveContract}>
+                      <Save className="h-4 w-4 mr-2" />
+                      Sözleşmeyi Kaydet
+                    </Button>
+                    <Button onClick={handleDownloadPDF} variant="outline">
+                      <Download className="h-4 w-4 mr-2" />
+                      PDF İndir
+                    </Button>
                   </div>
                 </div>
-
-                <div className="flex gap-2">
-                  <Button onClick={handleSaveContract}>
-                    <Save className="h-4 w-4 mr-2" />
-                    Kaydet
-                  </Button>
-                  <Button onClick={handleDownloadPDF} variant="outline">
-                    <Download className="h-4 w-4 mr-2" />
-                    PDF İndir
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <p className="text-gray-500">Lütfen bir öğrenci seçin</p>
-            )}
+              ) : (
+                <p className="text-gray-500">Lütfen bir öğrenci seçin</p>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
