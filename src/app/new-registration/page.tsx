@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Save, Download, Plus } from "lucide-react"
+import { Save, Download } from "lucide-react"
 
 interface Student {
   id: string
@@ -18,18 +18,6 @@ export default function NewRegistrationPage() {
   const [students, setStudents] = useState<Student[]>([])
   const [clubs, setClubs] = useState<{id: string, name: string}[]>([])
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    tcNumber: "",
-    birthDate: "",
-    phone: "",
-    email: "",
-    address: "",
-    parentName: "",
-    parentPhone: "",
-    parentEmail: ""
-  })
 
   // Sözleşme form verileri
   const [contractData, setContractData] = useState({
@@ -93,39 +81,6 @@ export default function NewRegistrationPage() {
     }
   }
 
-  const handleStudentSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    try {
-      const response = await fetch("/api/students", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      })
-
-      if (response.ok) {
-        const newStudent = await response.json()
-        setStudents([...students, newStudent])
-        setSelectedStudent(newStudent)
-        setShowStudentForm(false)
-        setFormData({
-          firstName: "",
-          lastName: "",
-          tcNumber: "",
-          birthDate: "",
-          phone: "",
-          email: "",
-          address: "",
-          parentName: "",
-          parentPhone: "",
-          parentEmail: ""
-        })
-      }
-    } catch (error) {
-      console.error("Error creating student:", error)
-    }
-  }
 
   const handleSaveAllContracts = async () => {
     if (!selectedStudent) return
