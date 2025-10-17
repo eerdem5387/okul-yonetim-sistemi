@@ -121,9 +121,8 @@ export default function NewRegistrationPage() {
             contractData: {
               studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
               tcNumber: selectedStudent.tcNumber,
-              mealType: contractData.mealType,
-              mealPrice: contractData.mealPrice,
-              startDate: contractData.mealStartDate
+              mealPeriods: contractData.mealPeriods,
+              mealPrice: contractData.mealPrice
             }
           }
         },
@@ -135,7 +134,6 @@ export default function NewRegistrationPage() {
               studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
               tcNumber: selectedStudent.tcNumber,
               bookSet: contractData.bookSet,
-              bookPrice: contractData.bookPrice,
               deliveryDate: contractData.bookDeliveryDate
             }
           }
@@ -147,9 +145,8 @@ export default function NewRegistrationPage() {
             contractData: {
               studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
               tcNumber: selectedStudent.tcNumber,
-              route: contractData.serviceRoute,
-              servicePrice: contractData.servicePrice,
-              pickupTime: contractData.servicePickupTime
+              serviceRegion: contractData.serviceRegion,
+              servicePrice: contractData.servicePrice
             }
           }
         }
