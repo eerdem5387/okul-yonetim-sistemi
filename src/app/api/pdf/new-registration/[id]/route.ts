@@ -29,7 +29,7 @@ export async function GET(
         const contractData = {
             studentName: `${registration.student.firstName} ${registration.student.lastName}`,
             tcNumber: registration.student.tcNumber,
-            ...registration.contractData
+            ...(registration.contractData as Record<string, unknown>)
         }
 
         const html = generateContractHTML(contractData, 'Yeni Kayıt')
