@@ -16,8 +16,8 @@ interface Student {
 
 export default function NewRegistrationPage() {
   const [students, setStudents] = useState<Student[]>([])
+  const [clubs, setClubs] = useState<{id: string, name: string}[]>([])
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
-  const [showStudentForm, setShowStudentForm] = useState(false)
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -42,25 +42,27 @@ export default function NewRegistrationPage() {
     uniformSize: "",
     uniformPrice: "",
     uniformDeliveryDate: "",
+    uniformItems: [] as string[],
     
     // Yemek Sözleşmesi
-    mealType: "",
+    mealPeriods: [] as string[],
     mealPrice: "",
-    mealStartDate: "",
     
     // Kitap Sözleşmesi
     bookSet: "",
-    bookPrice: "",
     bookDeliveryDate: "",
     
     // Servis Sözleşmesi
-    serviceRoute: "",
+    serviceRegion: "",
     servicePrice: "",
-    servicePickupTime: ""
+    
+    // Kulüp Seçimi
+    selectedClubs: [] as string[]
   })
 
   useEffect(() => {
     fetchStudents()
+    fetchClubs()
   }, [])
 
   const fetchStudents = async () => {
@@ -74,6 +76,20 @@ export default function NewRegistrationPage() {
     } catch (error) {
       console.error("Error fetching students:", error)
       setStudents([])
+    }
+  }
+
+  const fetchClubs = async () => {
+    try {
+      const response = await fetch("/api/clubs")
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      setClubs(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error("Error fetching clubs:", error)
+      setClubs([])
     }
   }
 
@@ -247,154 +263,7 @@ export default function NewRegistrationPage() {
         <p className="text-gray-600 mt-2">Yeni öğrenci kayıt sözleşmesini oluşturun</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Öğrenci Seçimi */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Öğrenci Seçimi</CardTitle>
-            <CardDescription>Kayıt yapılacak öğrenciyi seçin</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex gap-2">
-              <Button onClick={() => setShowStudentForm(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Yeni Öğrenci
-              </Button>
-            </div>
-
-            {showStudentForm && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Yeni Öğrenci Ekle</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleStudentSubmit} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="firstName">Ad</Label>
-                        <Input
-                          id="firstName"
-                          value={formData.firstName}
-                          onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="lastName">Soyad</Label>
-                        <Input
-                          id="lastName"
-                          value={formData.lastName}
-                          onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                          required
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <Label htmlFor="tcNumber">TC Kimlik No</Label>
-                      <Input
-                        id="tcNumber"
-                        value={formData.tcNumber}
-                        onChange={(e) => setFormData({ ...formData, tcNumber: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="birthDate">Doğum Tarihi</Label>
-                      <Input
-                        id="birthDate"
-                        type="date"
-                        value={formData.birthDate}
-                        onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="phone">Telefon</Label>
-                        <Input
-                          id="phone"
-                          value={formData.phone}
-                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="email">E-posta</Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          value={formData.email}
-                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <Label htmlFor="address">Adres</Label>
-                      <Input
-                        id="address"
-                        value={formData.address}
-                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="parentName">Veli Adı</Label>
-                      <Input
-                        id="parentName"
-                        value={formData.parentName}
-                        onChange={(e) => setFormData({ ...formData, parentName: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="parentPhone">Veli Telefon</Label>
-                        <Input
-                          id="parentPhone"
-                          value={formData.parentPhone}
-                          onChange={(e) => setFormData({ ...formData, parentPhone: e.target.value })}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="parentEmail">Veli E-posta</Label>
-                        <Input
-                          id="parentEmail"
-                          type="email"
-                          value={formData.parentEmail}
-                          onChange={(e) => setFormData({ ...formData, parentEmail: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button type="submit">Öğrenci Ekle</Button>
-                      <Button type="button" variant="outline" onClick={() => setShowStudentForm(false)}>
-                        İptal
-                      </Button>
-                    </div>
-                  </form>
-                </CardContent>
-              </Card>
-            )}
-
-            <div>
-              <Label>Mevcut Öğrenciler</Label>
-              <div className="mt-2 space-y-2">
-                {students.map((student) => (
-                  <div
-                    key={student.id}
-                    className={`p-3 border rounded cursor-pointer ${
-                      selectedStudent?.id === student.id ? "bg-blue-50 border-blue-500" : "hover:bg-gray-50"
-                    }`}
-                    onClick={() => setSelectedStudent(student)}
-                  >
-                    <div className="font-medium">{student.firstName} {student.lastName}</div>
-                    <div className="text-sm text-gray-500">TC: {student.tcNumber}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
+      <div className="max-w-4xl mx-auto">
         {/* Sözleşme Detayları */}
         <Card>
           <CardHeader>
@@ -407,13 +276,46 @@ export default function NewRegistrationPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {selectedStudent ? (
-              <div className="space-y-4">
+            <div className="space-y-4">
+              {/* Öğrenci Seçimi */}
+              <div className="mb-6">
+                <Label htmlFor="studentSelect">Öğrenci Seçin *</Label>
+                <select
+                  id="studentSelect"
+                  value={selectedStudent?.id || ""}
+                  onChange={(e) => {
+                    const student = students.find(s => s.id === e.target.value)
+                    setSelectedStudent(student || null)
+                  }}
+                  className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                >
+                  <option value="">Öğrenci seçin...</option>
+                  {students.map((student) => (
+                    <option key={student.id} value={student.id}>
+                      {student.firstName} {student.lastName} - {student.tcNumber} - {student.grade}
+                    </option>
+                  ))}
+                </select>
+                {!students.length && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    Önce <a href="/students" className="text-blue-600 hover:underline">Öğrenci Yönetimi</a> sayfasından öğrenci ekleyin.
+                  </p>
+                )}
+              </div>
+
+              {selectedStudent && (
                 <div className="p-4 bg-gray-50 rounded">
-                  <h3 className="font-medium mb-2">Öğrenci Bilgileri</h3>
+                  <h3 className="font-medium mb-2">Seçilen Öğrenci Bilgileri</h3>
                   <p><strong>Ad Soyad:</strong> {selectedStudent.firstName} {selectedStudent.lastName}</p>
                   <p><strong>TC Kimlik No:</strong> {selectedStudent.tcNumber}</p>
+                  <p><strong>Sınıf:</strong> {selectedStudent.grade}</p>
+                  <p><strong>Adres:</strong> {selectedStudent.address}</p>
                 </div>
+              )}
+
+              {selectedStudent ? (
+                <div className="space-y-4">
 
                 {/* Yeni Kayıt Sözleşmesi */}
                 <div className="space-y-4">
@@ -461,6 +363,14 @@ export default function NewRegistrationPage() {
                 {/* Forma Sözleşmesi */}
                 <div className="space-y-4 border-t pt-4">
                   <h3 className="text-lg font-semibold text-green-600">Forma Sözleşmesi</h3>
+                  <div>
+                    <Label htmlFor="contractDate">Sözleşme Tarihi</Label>
+                    <Input
+                      id="contractDate"
+                      type="date"
+                      defaultValue={new Date().toISOString().split('T')[0]}
+                    />
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="uniformSize">Forma Bedeni</Label>
@@ -491,39 +401,71 @@ export default function NewRegistrationPage() {
                       onChange={(e) => setContractData({ ...contractData, uniformDeliveryDate: e.target.value })}
                     />
                   </div>
+                  <div>
+                    <Label htmlFor="uniformItems">Teslim Edilecek Formalar</Label>
+                    <div className="space-y-2 mt-2">
+                      {['eşofman takımı', 'eşofman takımı + 2 tişört', 'tişört 2 adet'].map((item) => (
+                        <label key={item} className="flex items-center">
+                          <input
+                            type="checkbox"
+                            className="mr-2"
+                            onChange={(e) => {
+                              const currentItems = contractData.uniformItems || []
+                              if (e.target.checked) {
+                                setContractData({ ...contractData, uniformItems: [...currentItems, item] })
+                              } else {
+                                setContractData({ ...contractData, uniformItems: currentItems.filter(i => i !== item) })
+                              }
+                            }}
+                          />
+                          {item}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Yemek Sözleşmesi */}
                 <div className="space-y-4 border-t pt-4">
                   <h3 className="text-lg font-semibold text-orange-600">Yemek Sözleşmesi</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="mealType">Yemek Türü</Label>
-                      <Input
-                        id="mealType"
-                        value={contractData.mealType}
-                        onChange={(e) => setContractData({ ...contractData, mealType: e.target.value })}
-                        placeholder="Örn: Tam Gün, Yarım Gün"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="mealPrice">Yemek Ücreti</Label>
-                      <Input
-                        id="mealPrice"
-                        type="number"
-                        value={contractData.mealPrice}
-                        onChange={(e) => setContractData({ ...contractData, mealPrice: e.target.value })}
-                        placeholder="Örn: 2000"
-                      />
+                  <div>
+                    <Label htmlFor="contractDate">Sözleşme Tarihi</Label>
+                    <Input
+                      id="contractDate"
+                      type="date"
+                      defaultValue={new Date().toISOString().split('T')[0]}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="mealPeriods">Ödeme Dönemleri</Label>
+                    <div className="grid grid-cols-3 gap-2 mt-2">
+                      {['eylül', 'ekim', 'kasım', 'aralık', 'ocak', 'şubat', 'mart', 'nisan', 'mayıs', 'haziran', '1.dönem', '2.dönem', 'tüm yıl'].map((period) => (
+                        <label key={period} className="flex items-center">
+                          <input
+                            type="checkbox"
+                            className="mr-2"
+                            onChange={(e) => {
+                              const currentPeriods = contractData.mealPeriods || []
+                              if (e.target.checked) {
+                                setContractData({ ...contractData, mealPeriods: [...currentPeriods, period] })
+                              } else {
+                                setContractData({ ...contractData, mealPeriods: currentPeriods.filter(p => p !== period) })
+                              }
+                            }}
+                          />
+                          {period}
+                        </label>
+                      ))}
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="mealStartDate">Başlangıç Tarihi</Label>
+                    <Label htmlFor="mealPrice">Yemek Ücreti</Label>
                     <Input
-                      id="mealStartDate"
-                      type="date"
-                      value={contractData.mealStartDate}
-                      onChange={(e) => setContractData({ ...contractData, mealStartDate: e.target.value })}
+                      id="mealPrice"
+                      type="number"
+                      value={contractData.mealPrice}
+                      onChange={(e) => setContractData({ ...contractData, mealPrice: e.target.value })}
+                      placeholder="Örn: 2000"
                     />
                   </div>
                 </div>
@@ -531,26 +473,42 @@ export default function NewRegistrationPage() {
                 {/* Kitap Sözleşmesi */}
                 <div className="space-y-4 border-t pt-4">
                   <h3 className="text-lg font-semibold text-purple-600">Kitap Sözleşmesi</h3>
+                  <div>
+                    <Label htmlFor="contractDate">Sözleşme Tarihi</Label>
+                    <Input
+                      id="contractDate"
+                      type="date"
+                      defaultValue={new Date().toISOString().split('T')[0]}
+                    />
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="bookSet">Kitap Seti</Label>
+                      <Label htmlFor="studentName">Öğrenci Ad Soyad</Label>
                       <Input
-                        id="bookSet"
-                        value={contractData.bookSet}
-                        onChange={(e) => setContractData({ ...contractData, bookSet: e.target.value })}
-                        placeholder="Örn: 9. Sınıf Seti"
+                        id="studentName"
+                        value={selectedStudent ? `${selectedStudent.firstName} ${selectedStudent.lastName}` : ""}
+                        disabled
+                        className="bg-gray-100"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="bookPrice">Kitap Ücreti</Label>
+                      <Label htmlFor="studentGrade">Sınıfı</Label>
                       <Input
-                        id="bookPrice"
-                        type="number"
-                        value={contractData.bookPrice}
-                        onChange={(e) => setContractData({ ...contractData, bookPrice: e.target.value })}
-                        placeholder="Örn: 1500"
+                        id="studentGrade"
+                        value={selectedStudent?.grade || ""}
+                        disabled
+                        className="bg-gray-100"
                       />
                     </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="bookSet">Kitap Seti</Label>
+                    <Input
+                      id="bookSet"
+                      value={contractData.bookSet}
+                      onChange={(e) => setContractData({ ...contractData, bookSet: e.target.value })}
+                      placeholder="Örn: 9. Sınıf Seti"
+                    />
                   </div>
                   <div>
                     <Label htmlFor="bookDeliveryDate">Teslimat Tarihi</Label>
@@ -566,36 +524,84 @@ export default function NewRegistrationPage() {
                 {/* Servis Sözleşmesi */}
                 <div className="space-y-4 border-t pt-4">
                   <h3 className="text-lg font-semibold text-red-600">Servis Sözleşmesi</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="serviceRoute">Servis Güzergahı</Label>
-                      <Input
-                        id="serviceRoute"
-                        value={contractData.serviceRoute}
-                        onChange={(e) => setContractData({ ...contractData, serviceRoute: e.target.value })}
-                        placeholder="Örn: Merkez - Okul"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="servicePrice">Servis Ücreti</Label>
-                      <Input
-                        id="servicePrice"
-                        type="number"
-                        value={contractData.servicePrice}
-                        onChange={(e) => setContractData({ ...contractData, servicePrice: e.target.value })}
-                        placeholder="Örn: 800"
-                      />
-                    </div>
-                  </div>
                   <div>
-                    <Label htmlFor="servicePickupTime">Alış Saati</Label>
+                    <Label htmlFor="contractDate">Sözleşme Tarihi</Label>
                     <Input
-                      id="servicePickupTime"
-                      type="time"
-                      value={contractData.servicePickupTime}
-                      onChange={(e) => setContractData({ ...contractData, servicePickupTime: e.target.value })}
+                      id="contractDate"
+                      type="date"
+                      defaultValue={new Date().toISOString().split('T')[0]}
                     />
                   </div>
+                  <div>
+                    <Label htmlFor="serviceRegion">Servis Bölgesi</Label>
+                    <select
+                      id="serviceRegion"
+                      value={contractData.serviceRegion}
+                      onChange={(e) => setContractData({ ...contractData, serviceRegion: e.target.value })}
+                      className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">Bölge seçin...</option>
+                      <option value="1.bölge">1. Bölge</option>
+                      <option value="2.bölge">2. Bölge</option>
+                      <option value="3.bölge">3. Bölge</option>
+                      <option value="4.bölge">4. Bölge</option>
+                      <option value="5.bölge">5. Bölge</option>
+                      <option value="6.bölge">6. Bölge</option>
+                      <option value="çayeli">Çayeli</option>
+                      <option value="pazar/ardeşen">Pazar/Ardeşen</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="studentAddress">Adres</Label>
+                    <Input
+                      id="studentAddress"
+                      value={selectedStudent?.address || ""}
+                      disabled
+                      className="bg-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="servicePrice">Servis Ücreti - Dönemlik</Label>
+                    <Input
+                      id="servicePrice"
+                      type="number"
+                      value={contractData.servicePrice}
+                      onChange={(e) => setContractData({ ...contractData, servicePrice: e.target.value })}
+                      placeholder="Örn: 800"
+                    />
+                  </div>
+                </div>
+
+                {/* Kulüp Seçimi */}
+                <div className="space-y-4 border-t pt-4">
+                  <h3 className="text-lg font-semibold text-indigo-600">Kulüp Seçimi (En fazla 3 kulüp)</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {clubs.map((club) => (
+                      <label key={club.id} className="flex items-center">
+                        <input
+                          type="checkbox"
+                          className="mr-2"
+                          onChange={(e) => {
+                            const currentClubs = contractData.selectedClubs || []
+                            if (e.target.checked && currentClubs.length < 3) {
+                              setContractData({ ...contractData, selectedClubs: [...currentClubs, club.id] })
+                            } else if (!e.target.checked) {
+                              setContractData({ ...contractData, selectedClubs: currentClubs.filter(c => c !== club.id) })
+                            }
+                          }}
+                          disabled={contractData.selectedClubs?.length >= 3 && !contractData.selectedClubs?.includes(club.id)}
+                        />
+                        {club.name}
+                      </label>
+                    ))}
+                  </div>
+                  {contractData.selectedClubs?.length > 0 && (
+                    <div className="text-sm text-gray-600">
+                      Seçilen kulüpler: {contractData.selectedClubs.map(clubId => 
+                        clubs.find(c => c.id === clubId)?.name
+                      ).join(", ")}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-2">
