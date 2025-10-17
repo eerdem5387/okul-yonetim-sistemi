@@ -22,7 +22,15 @@ export async function POST(
 
         // Tüm sözleşmeleri birleştir
         const combinedHTML = generateCombinedContractHTML({
-            student,
+            student: {
+                firstName: student.firstName,
+                lastName: student.lastName,
+                tcNumber: student.tcNumber,
+                grade: student.grade,
+                address: student.address,
+                birthDate: student.birthDate.toISOString().split('T')[0], // Date'i string'e çevir
+                parentName: student.parentName
+            },
             contractTypes,
             mainContractData,
             otherContractData
