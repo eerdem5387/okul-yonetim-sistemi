@@ -1,16 +1,16 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
 export async function PUT(
-    request: NextRequest,
-    { params }: { params: { id: string } }
+    request: Request,
+    context: { params: { id: string } }
 ) {
     try {
         const body = await request.json()
         const { name, description, capacity } = body
 
         const club = await prisma.club.update({
-            where: { id: params.id },
+            where: { id: context.params.id },
             data: {
                 name,
                 description,
@@ -26,12 +26,12 @@ export async function PUT(
 }
 
 export async function DELETE(
-    request: NextRequest,
-    { params }: { params: { id: string } }
+    request: Request,
+    context: { params: { id: string } }
 ) {
     try {
         await prisma.club.delete({
-            where: { id: params.id }
+            where: { id: context.params.id }
         })
 
         return NextResponse.json({ success: true })

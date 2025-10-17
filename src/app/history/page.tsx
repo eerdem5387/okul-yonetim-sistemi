@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -30,9 +30,27 @@ export default function HistoryPage() {
     fetchContracts()
   }, [])
 
+  const filterContracts = useCallback(() => {
+    let filtered = contracts
+
+    if (searchTerm) {
+      filtered = filtered.filter(contract =>
+        contract.student.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        contract.student.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        contract.student.tcNumber.includes(searchTerm)
+      )
+    }
+
+    if (filterType !== "all") {
+      filtered = filtered.filter(contract => contract.type === filterType)
+    }
+
+    setFilteredContracts(filtered)
+  }, [contracts, searchTerm, filterType])
+
   useEffect(() => {
     filterContracts()
-  }, [contracts, searchTerm, filterType])
+  }, [filterContracts])
 
   const fetchContracts = async () => {
     try {
@@ -60,23 +78,7 @@ export default function HistoryPage() {
     }
   }
 
-  const filterContracts = () => {
-    let filtered = contracts
-
-    if (searchTerm) {
-      filtered = filtered.filter(contract =>
-        contract.student.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        contract.student.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        contract.student.tcNumber.includes(searchTerm)
-      )
-    }
-
-    if (filterType !== "all") {
-      filtered = filtered.filter(contract => contract.type === filterType)
-    }
-
-    setFilteredContracts(filtered)
-  }
+  
 
   const handleDownloadPDF = async (contract: Contract) => {
     try {
