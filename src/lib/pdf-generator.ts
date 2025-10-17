@@ -583,6 +583,58 @@ function generateMainContractHTML(student: { firstName: string; lastName: string
     <div class="page-break"></div>
 
     <div class="contract-header">
+      <div class="contract-title">ŞARTLAR</div>
+    </div>
+
+    <div class="terms-section">
+      <ol class="terms-list">
+        <li>Öğrenci eğitimi, kayıtlı olduğu veya nakil yapıldığı okuldaki tüm sınıfların sonuna kadar devam eder. Sözleşme, imzalandığı öğretim yılının 15 Haziran tarihinde sona erer.</li>
+        <li>Öğrenci bir sonraki öğretim yılında okula devam etmek isterse, <strong>Ödeme Bilgileri Bölümünde Öğrenci İçin Belirlenen Öğrenim Ücreti</strong>ne göre artış yapılacaktır.</li>
+        <li>Kurum, bir sonraki yılın eğitim ve öğretim ücretleri ile diğer ücretleri (takviye kursları, yemek, servis, kıyafet, kırtasiye, yurt vb.) Ocak ayından Mayıs ayı sonuna kadar duyurur. Bu duyurularda ödemelerin öğretim yılı başına mı yoksa saat başına mı, nakit mi taksitli mi olduğu ve diğer indirimler belirtilir.</li>
+        <li>Okulun ara sınıflarının eğitim ücretleri, Milli Eğitim Bakanlığı mevzuatına göre belirlenir.</li>
+        <li>Sözleşmesi sona eren velinin fiyatlandırması, yeni kayıt olan öğrenci fiyatı üzerinden yapılır.</li>
+        <li>Kurumun eğitim ve öğretim ücretleri, kurum adına açılan ve valiliğe bildirilen banka hesabına yatırılarak tahsil edilir. Tahsil edilen ücretler e-okul sistemine kaydedilerek velilere sunulur. Ödemeler kredi kartı ile veya anlaşmalı bankaların öğrenci taksit sistemi ile yapılabilir.</li>
+        <li>Kurum, iş takviminde belirtilen süre içinde ücretlerini ödemeyen öğrencilerin kayıtlarını yenilememe hakkını saklı tutar. Veli/vasinin ücret ödememe konusunda ısrar etmesi durumunda, çocuğun kaydı eğitim müfettişlerince yapılan inceleme sonucunda nakil ve yerleştirme komisyonu aracılığıyla uygun resmi okula veya açık liseye nakledilir.</li>
+        <li>Yenileme dönemlerinde kayıtlarını yenilemeyen öğrenciler, e-okul sistemindeki öğrenci ücretleri üzerinden fiyatlandırılır.</li>
+        <li>Bu sözleşme ile kaydı garanti edilen öğrencinin daha önce gizlenen okul disiplin cezası olduğu, aleyhinde adli süreç/soruşturma başlatıldığı, Milli Eğitim Bakanlığı disiplin yönetmeliğine aykırı davranışta bulunduğu (adli dosya açılmasa bile) veya mevcut disiplin cezasının silindiği tespit edilirse bu sözleşme geçersiz sayılır.</li>
+        <li>Öğrencilerin önceki öğretim dönemlerinde sınıf tekrarı yaptığı veya aşırı devamsızlık yaptığı tespit edilirse, Kurucu kayıt sözleşmesini tek taraflı olarak feshedebilir. Öğrenci velisi yazılı olarak bilgilendirilir.</li>
+      </ol>
+    </div>
+
+    <div class="page-break"></div>
+
+    <div class="contract-header">
+      <div class="contract-title">ŞARTLAR (DEVAM)</div>
+    </div>
+
+    <div class="terms-section">
+      <ol class="terms-list" start="11">
+        <li>İlk taksit veya iki taksit üst üste zamanında ödenmezse, Kurucu kayıt taahhüt sözleşmesini feshedebilir.</li>
+        <li>Öğrenim ücreti içinde yemek, servis, kaynak ücretleri ve okul forması bulunmamaktadır. Yaz kursları kurumun kararına göre ücretli veya ücretsiz olup, ücretleri eğitim ücreti içinde değildir.</li>
+        <li>Öğrenci ücreti içinde yurt içi (il içi, il dışı) ve yurt dışı seyahat masrafları bulunmamaktadır.</li>
+        <li>Öğrenci kayıt olduktan sonra okul kurallarına uymazsa, okul yönetiminin talebi üzerine kayıt sözleşmesi feshedilebilir ve kayıt başka okula nakledilebilir.</li>
+        <li>Öğrenci velisi, kurumun mal ve demirbaşlarına verilen zararlardan sorumludur. Zararlar fatura ile veliye bildirilir.</li>
+        <li>Sözleşme imzalayan öğrencinin sözleşme feshi durumunda ödeme şartları: Belirlenen ücretin %10'u (Özel Öğretim Kurumları Kanunu 56. madde) ödenir. Öğrenci eğitime başlamışsa, resmi öğrenim ücretinin %10'u artı Milli Eğitim Bakanlığı Yönergesi'ne göre eğitim süresi (dokuz ay) oranında ödeme yapılır. Ödeme yapılmamışsa okula alacak kaydedilir.</li>
+        <li>KDV oranlarındaki aşağı yönlü değişiklikler öğrenci sözleşmesine yansıtılmayacaktır. Vergi veya devlet kaynaklı gelirlerdeki yukarı yönlü değişikliklerin eğitim ücretine eklenme hakkı saklıdır.</li>
+        <li>Bu sözleşme 30.06.2026 tarihine kadar geçerlidir. Bu tarihe kadar sözleşme yenileme işlemi tamamlanmazsa, okul yönetimi öğrenci kaydını iptal etme hakkına sahiptir. Sözleşme bitiş tarihine kadar kayıt yenileme yapılmazsa, "yeni öğrenci" statüsünde tamamen yeni sözleşme yapılacaktır.</li>
+      </ol>
+    </div>
+
+    <div class="signature-section">
+      <div class="signature-box">
+        <div class="signature-line"></div>
+        <div class="signature-label"><strong>Okul Kurucusu</strong></div>
+        <div style="margin-top: 10px; font-weight: bold;">ABDULKADİR ERDEM</div>
+      </div>
+      <div class="signature-box">
+        <div class="signature-line"></div>
+        <div class="signature-label"><strong>Öğrenci Velisi</strong></div>
+      </div>
+    </div>
+
+    <div class="page-break"></div>
+
+    <div class="contract-header">
       <div class="contract-title">ÖDEME TAAHHÜTNAMESİ</div>
     </div>
 
