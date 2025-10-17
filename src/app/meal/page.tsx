@@ -25,10 +25,14 @@ export default function MealPage() {
   const fetchStudents = async () => {
     try {
       const response = await fetch("/api/students")
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
       const data = await response.json()
-      setStudents(data)
+      setStudents(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error("Error fetching students:", error)
+      setStudents([])
     }
   }
 
