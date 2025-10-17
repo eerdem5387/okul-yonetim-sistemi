@@ -31,6 +31,34 @@ export default function NewRegistrationPage() {
     parentEmail: ""
   })
 
+  // Sözleşme form verileri
+  const [contractData, setContractData] = useState({
+    // Yeni Kayıt Sözleşmesi
+    academicYear: "2024-2025",
+    grade: "",
+    tuitionFee: "",
+    
+    // Forma Sözleşmesi
+    uniformSize: "",
+    uniformPrice: "",
+    uniformDeliveryDate: "",
+    
+    // Yemek Sözleşmesi
+    mealType: "",
+    mealPrice: "",
+    mealStartDate: "",
+    
+    // Kitap Sözleşmesi
+    bookSet: "",
+    bookPrice: "",
+    bookDeliveryDate: "",
+    
+    // Servis Sözleşmesi
+    serviceRoute: "",
+    servicePrice: "",
+    servicePickupTime: ""
+  })
+
   useEffect(() => {
     fetchStudents()
   }, [])
@@ -83,52 +111,129 @@ export default function NewRegistrationPage() {
     }
   }
 
-  const handleSaveContract = async () => {
+  const handleSaveAllContracts = async () => {
     if (!selectedStudent) return
 
     try {
-      const contractData = {
-        studentId: selectedStudent.id,
-        contractData: {
-          studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
-          tcNumber: selectedStudent.tcNumber,
-          // Diğer sözleşme alanları buraya eklenecek
-        }
-      }
-
-      const response = await fetch("/api/new-registrations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      // Tüm sözleşmeleri ayrı ayrı kaydet
+      const contracts = [
+        {
+          type: "new-registration",
+          data: {
+            studentId: selectedStudent.id,
+            contractData: {
+              studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
+              tcNumber: selectedStudent.tcNumber,
+              academicYear: contractData.academicYear,
+              grade: contractData.grade,
+              tuitionFee: contractData.tuitionFee
+            }
+          }
         },
-        body: JSON.stringify(contractData),
-      })
+        {
+          type: "uniform",
+          data: {
+            studentId: selectedStudent.id,
+            contractData: {
+              studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
+              tcNumber: selectedStudent.tcNumber,
+              uniformSize: contractData.uniformSize,
+              uniformPrice: contractData.uniformPrice,
+              deliveryDate: contractData.uniformDeliveryDate
+            }
+          }
+        },
+        {
+          type: "meal",
+          data: {
+            studentId: selectedStudent.id,
+            contractData: {
+              studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
+              tcNumber: selectedStudent.tcNumber,
+              mealType: contractData.mealType,
+              mealPrice: contractData.mealPrice,
+              startDate: contractData.mealStartDate
+            }
+          }
+        },
+        {
+          type: "book",
+          data: {
+            studentId: selectedStudent.id,
+            contractData: {
+              studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
+              tcNumber: selectedStudent.tcNumber,
+              bookSet: contractData.bookSet,
+              bookPrice: contractData.bookPrice,
+              deliveryDate: contractData.bookDeliveryDate
+            }
+          }
+        },
+        {
+          type: "service",
+          data: {
+            studentId: selectedStudent.id,
+            contractData: {
+              studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
+              tcNumber: selectedStudent.tcNumber,
+              route: contractData.serviceRoute,
+              servicePrice: contractData.servicePrice,
+              pickupTime: contractData.servicePickupTime
+            }
+          }
+        }
+      ]
 
-      if (response.ok) {
-        alert("Sözleşme başarıyla kaydedildi!")
+      // Tüm sözleşmeleri kaydet
+      const responses = await Promise.all(
+        contracts.map(contract => 
+          fetch(`/api/${contract.type}-contracts`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(contract.data)
+          })
+        )
+      )
+
+      const allSuccessful = responses.every(response => response.ok)
+      
+      if (allSuccessful) {
+        alert("Tüm sözleşmeler başarıyla kaydedildi!")
       } else {
-        alert("Sözleşme kaydedilirken hata oluştu!")
+        alert("Bazı sözleşmeler kaydedilirken hata oluştu!")
       }
     } catch (error) {
-      console.error("Error saving contract:", error)
+      console.error("Error saving contracts:", error)
+      alert("Sözleşmeler kaydedilirken hata oluştu!")
     }
   }
 
-  const handleDownloadPDF = async () => {
+  const handleDownloadCombinedPDF = async () => {
     if (!selectedStudent) return
 
     try {
-      const response = await fetch(`/api/pdf/new-registration/${selectedStudent.id}`)
+      // Tüm sözleşmeleri tek PDF'de birleştir
+      const response = await fetch(`/api/pdf/combined/${selectedStudent.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contractTypes: ["new-registration", "uniform", "meal", "book", "service"],
+          contractData: contractData
+        })
+      })
+
       if (response.ok) {
         const blob = await response.blob()
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement("a")
         a.href = url
-        a.download = `yeni-kayit-${selectedStudent.firstName}-${selectedStudent.lastName}.pdf`
+        a.download = `tum-sozlesmeler-${selectedStudent.firstName}-${selectedStudent.lastName}.pdf`
         document.body.appendChild(a)
         a.click()
         window.URL.revokeObjectURL(url)
         document.body.removeChild(a)
+      } else {
+        alert("PDF oluşturulurken hata oluştu!")
       }
     } catch (error) {
       console.error("Error downloading PDF:", error)
@@ -310,8 +415,9 @@ export default function NewRegistrationPage() {
                   <p><strong>TC Kimlik No:</strong> {selectedStudent.tcNumber}</p>
                 </div>
 
-                {/* Sözleşme alanları buraya eklenecek */}
+                {/* Yeni Kayıt Sözleşmesi */}
                 <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-blue-600">Yeni Kayıt Sözleşmesi</h3>
                   <div>
                     <Label htmlFor="contractDate">Sözleşme Tarihi</Label>
                     <Input
@@ -325,7 +431,8 @@ export default function NewRegistrationPage() {
                     <Label htmlFor="academicYear">Eğitim Öğretim Yılı</Label>
                     <Input
                       id="academicYear"
-                      defaultValue="2024-2025"
+                      value={contractData.academicYear}
+                      onChange={(e) => setContractData({ ...contractData, academicYear: e.target.value })}
                     />
                   </div>
 
@@ -333,6 +440,8 @@ export default function NewRegistrationPage() {
                     <Label htmlFor="grade">Sınıf</Label>
                     <Input
                       id="grade"
+                      value={contractData.grade}
+                      onChange={(e) => setContractData({ ...contractData, grade: e.target.value })}
                       placeholder="Örn: 9. Sınıf"
                     />
                   </div>
@@ -342,19 +451,161 @@ export default function NewRegistrationPage() {
                     <Input
                       id="tuitionFee"
                       type="number"
-                      placeholder="0"
+                      value={contractData.tuitionFee}
+                      onChange={(e) => setContractData({ ...contractData, tuitionFee: e.target.value })}
+                      placeholder="Örn: 50000"
+                    />
+                  </div>
+                </div>
+
+                {/* Forma Sözleşmesi */}
+                <div className="space-y-4 border-t pt-4">
+                  <h3 className="text-lg font-semibold text-green-600">Forma Sözleşmesi</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="uniformSize">Forma Bedeni</Label>
+                      <Input
+                        id="uniformSize"
+                        value={contractData.uniformSize}
+                        onChange={(e) => setContractData({ ...contractData, uniformSize: e.target.value })}
+                        placeholder="Örn: M, L, XL"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="uniformPrice">Forma Ücreti</Label>
+                      <Input
+                        id="uniformPrice"
+                        type="number"
+                        value={contractData.uniformPrice}
+                        onChange={(e) => setContractData({ ...contractData, uniformPrice: e.target.value })}
+                        placeholder="Örn: 500"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="uniformDeliveryDate">Teslimat Tarihi</Label>
+                    <Input
+                      id="uniformDeliveryDate"
+                      type="date"
+                      value={contractData.uniformDeliveryDate}
+                      onChange={(e) => setContractData({ ...contractData, uniformDeliveryDate: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                {/* Yemek Sözleşmesi */}
+                <div className="space-y-4 border-t pt-4">
+                  <h3 className="text-lg font-semibold text-orange-600">Yemek Sözleşmesi</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="mealType">Yemek Türü</Label>
+                      <Input
+                        id="mealType"
+                        value={contractData.mealType}
+                        onChange={(e) => setContractData({ ...contractData, mealType: e.target.value })}
+                        placeholder="Örn: Tam Gün, Yarım Gün"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="mealPrice">Yemek Ücreti</Label>
+                      <Input
+                        id="mealPrice"
+                        type="number"
+                        value={contractData.mealPrice}
+                        onChange={(e) => setContractData({ ...contractData, mealPrice: e.target.value })}
+                        placeholder="Örn: 2000"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="mealStartDate">Başlangıç Tarihi</Label>
+                    <Input
+                      id="mealStartDate"
+                      type="date"
+                      value={contractData.mealStartDate}
+                      onChange={(e) => setContractData({ ...contractData, mealStartDate: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                {/* Kitap Sözleşmesi */}
+                <div className="space-y-4 border-t pt-4">
+                  <h3 className="text-lg font-semibold text-purple-600">Kitap Sözleşmesi</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="bookSet">Kitap Seti</Label>
+                      <Input
+                        id="bookSet"
+                        value={contractData.bookSet}
+                        onChange={(e) => setContractData({ ...contractData, bookSet: e.target.value })}
+                        placeholder="Örn: 9. Sınıf Seti"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="bookPrice">Kitap Ücreti</Label>
+                      <Input
+                        id="bookPrice"
+                        type="number"
+                        value={contractData.bookPrice}
+                        onChange={(e) => setContractData({ ...contractData, bookPrice: e.target.value })}
+                        placeholder="Örn: 1500"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="bookDeliveryDate">Teslimat Tarihi</Label>
+                    <Input
+                      id="bookDeliveryDate"
+                      type="date"
+                      value={contractData.bookDeliveryDate}
+                      onChange={(e) => setContractData({ ...contractData, bookDeliveryDate: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                {/* Servis Sözleşmesi */}
+                <div className="space-y-4 border-t pt-4">
+                  <h3 className="text-lg font-semibold text-red-600">Servis Sözleşmesi</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="serviceRoute">Servis Güzergahı</Label>
+                      <Input
+                        id="serviceRoute"
+                        value={contractData.serviceRoute}
+                        onChange={(e) => setContractData({ ...contractData, serviceRoute: e.target.value })}
+                        placeholder="Örn: Merkez - Okul"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="servicePrice">Servis Ücreti</Label>
+                      <Input
+                        id="servicePrice"
+                        type="number"
+                        value={contractData.servicePrice}
+                        onChange={(e) => setContractData({ ...contractData, servicePrice: e.target.value })}
+                        placeholder="Örn: 800"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="servicePickupTime">Alış Saati</Label>
+                    <Input
+                      id="servicePickupTime"
+                      type="time"
+                      value={contractData.servicePickupTime}
+                      onChange={(e) => setContractData({ ...contractData, servicePickupTime: e.target.value })}
                     />
                   </div>
                 </div>
 
                 <div className="flex gap-2">
-                  <Button onClick={handleSaveContract}>
+                  <Button onClick={handleSaveAllContracts}>
                     <Save className="h-4 w-4 mr-2" />
-                    Kaydet
+                    Tüm Sözleşmeleri Kaydet
                   </Button>
-                  <Button onClick={handleDownloadPDF} variant="outline">
+                  <Button onClick={handleDownloadCombinedPDF} variant="outline">
                     <Download className="h-4 w-4 mr-2" />
-                    PDF İndir
+                    Tüm Sözleşmeleri PDF İndir
                   </Button>
                 </div>
               </div>
