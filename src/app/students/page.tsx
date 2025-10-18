@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -48,9 +48,23 @@ export default function StudentsPage() {
     parent2Email: ""
   })
 
+  const fetchStudents = useCallback(async () => {
+    try {
+      const response = await fetch("/api/students")
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      setStudents(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error("Error fetching students:", error)
+      setStudents([])
+    }
+  }, [])
+
   useEffect(() => {
     fetchStudents()
-  }, [])
+  }, [fetchStudents])
 
   useEffect(() => {
     if (searchTerm) {
@@ -65,20 +79,6 @@ export default function StudentsPage() {
       setFilteredStudents(students)
     }
   }, [searchTerm, students])
-
-  const fetchStudents = async () => {
-    try {
-      const response = await fetch("/api/students")
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      const data = await response.json()
-      setStudents(Array.isArray(data) ? data : [])
-    } catch (error) {
-      console.error("Error fetching students:", error)
-      setStudents([])
-    }
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

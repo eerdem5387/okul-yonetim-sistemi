@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -168,12 +168,7 @@ export default function NewRegistrationPage() {
     selectedClubs: [] as string[]
   })
 
-  useEffect(() => {
-    fetchStudents()
-    fetchClubs()
-  }, [])
-
-  const fetchStudents = async () => {
+  const fetchStudents = useCallback(async () => {
     try {
       const response = await fetch("/api/students")
       if (!response.ok) {
@@ -185,9 +180,9 @@ export default function NewRegistrationPage() {
       console.error("Error fetching students:", error)
       setStudents([])
     }
-  }
+  }, [])
 
-  const fetchClubs = async () => {
+  const fetchClubs = useCallback(async () => {
     try {
       const response = await fetch("/api/clubs")
       if (!response.ok) {
@@ -199,7 +194,12 @@ export default function NewRegistrationPage() {
       console.error("Error fetching clubs:", error)
       setClubs([])
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchStudents()
+    fetchClubs()
+  }, [fetchStudents, fetchClubs])
 
   const handleSaveAllContracts = async () => {
     if (!selectedStudent) return

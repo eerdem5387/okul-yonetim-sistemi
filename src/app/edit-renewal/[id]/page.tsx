@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -52,13 +52,7 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
     getParams()
   }, [params])
 
-  useEffect(() => {
-    if (contractId) {
-      fetchContract()
-    }
-  }, [contractId, fetchContract])
-
-  const fetchContract = async () => {
+  const fetchContract = useCallback(async () => {
     try {
       const response = await fetch(`/api/renewals/${contractId}`)
       if (response.ok) {
@@ -70,7 +64,13 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
     } finally {
       setLoading(false)
     }
-  }
+  }, [contractId])
+
+  useEffect(() => {
+    if (contractId) {
+      fetchContract()
+    }
+  }, [contractId, fetchContract])
 
   const handleSave = async () => {
     if (!contract) return
