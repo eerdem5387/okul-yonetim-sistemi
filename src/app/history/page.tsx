@@ -179,7 +179,9 @@ export default function HistoryPage() {
         alert("Sözleşme başarıyla silindi!")
         fetchContracts() // Listeyi yenile
       } else {
-        alert("Sözleşme silinirken bir hata oluştu.")
+        const errorText = await response.text()
+        console.error("Delete failed:", response.status, errorText)
+        alert(`Sözleşme silinirken bir hata oluştu. (HTTP ${response.status})`)
       }
     } catch (error) {
       console.error("Error deleting contract:", error)
@@ -222,7 +224,7 @@ export default function HistoryPage() {
     try {
       const deletePromises = Array.from(selectedContracts).map(async (contractId) => {
         const contract = contracts.find(c => c.id === contractId)
-        if (!contract) return
+        if (!contract) return { success: false, error: "Contract not found" }
 
         const contractSlug = getContractTypeSlug(contract.type)
         const endpoint = contractSlug === "new-registration" 
@@ -231,14 +233,31 @@ export default function HistoryPage() {
           ? `/api/renewals/${contractId}`
           : `/api/${contractSlug}-contracts/${contractId}`
 
-        return fetch(endpoint, { method: "DELETE" })
+        try {
+          const response = await fetch(endpoint, { method: "DELETE" })
+          return { success: response.ok, error: response.ok ? null : `HTTP ${response.status}` }
+        } catch (error) {
+          return { success: false, error: error.message }
+        }
       })
 
-      await Promise.all(deletePromises)
-      alert(`${selectedContracts.size} sözleşme başarıyla silindi!`)
-      setSelectedContracts(new Set())
-      setSelectAll(false)
-      fetchContracts() // Listeyi yenile
+      const results = await Promise.all(deletePromises)
+      const successCount = results.filter(r => r.success).length
+      const failureCount = results.filter(r => !r.success).length
+
+      if (failureCount === 0) {
+        alert(`${successCount} sözleşme başarıyla silindi!`)
+        setSelectedContracts(new Set())
+        setSelectAll(false)
+        fetchContracts() // Listeyi yenile
+      } else if (successCount === 0) {
+        alert("Hiçbir sözleşme silinemedi. Lütfen tekrar deneyin.")
+      } else {
+        alert(`${successCount} sözleşme silindi, ${failureCount} sözleşme silinemedi.`)
+        setSelectedContracts(new Set())
+        setSelectAll(false)
+        fetchContracts() // Listeyi yenile
+      }
     } catch (error) {
       console.error("Error bulk deleting contracts:", error)
       alert("Sözleşmeler silinirken bir hata oluştu.")
