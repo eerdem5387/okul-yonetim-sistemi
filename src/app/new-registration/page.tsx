@@ -219,13 +219,18 @@ export default function NewRegistrationPage() {
 
       // Tüm sözleşmeleri kaydet
       const responses = await Promise.all(
-        contracts.map(contract => 
-          fetch(`/api/${contract.type}-contracts`, {
+        contracts.map(contract => {
+          // new-registration type'ı için doğru endpoint kullan
+          const endpoint = contract.type === "new-registration" 
+            ? "/api/new-registrations" 
+            : `/api/${contract.type}-contracts`
+          
+          return fetch(endpoint, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(contract.data)
           })
-        )
+        })
       )
 
       const allSuccessful = responses.every(response => response.ok)

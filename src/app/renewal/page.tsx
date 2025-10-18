@@ -219,13 +219,18 @@ export default function RenewalPage() {
 
       // Tüm sözleşmeleri kaydet
       const responses = await Promise.all(
-        contracts.map(contract => 
-          fetch(`/api/${contract.type}-contracts`, {
+        contracts.map(contract => {
+          // renewal type'ı için doğru endpoint kullan
+          const endpoint = contract.type === "renewal" 
+            ? "/api/renewals" 
+            : `/api/${contract.type}-contracts`
+          
+          return fetch(endpoint, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(contract.data)
           })
-        )
+        })
       )
 
       const allSuccessful = responses.every(response => response.ok)
