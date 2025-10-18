@@ -63,6 +63,11 @@ export function Sidebar() {
           )
         })}
       </nav>
+      <div className="px-4 py-3 border-t border-gray-200">
+        <span className="text-xs text-gray-500">
+          © {new Date().getFullYear()} Developed by Yakın Boğaz
+        </span>
+      </div>
     </div>
   )
 }
