@@ -227,7 +227,7 @@ export default function RenewalPage() {
           
           // Kulüp seçimlerini sadece ana sözleşmeye ekle
           const requestBody = contract.type === "renewal" 
-            ? { ...contract.data, selectedClubs: contractData.selectedClubs }
+            ? { ...contract.data, selectedClubs: mainContractData.selectedClubs }
             : contract.data
           
           return fetch(endpoint, {
