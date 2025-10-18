@@ -85,10 +85,6 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
     }
   }, [clubId, fetchClub, fetchStudents])
 
-  useEffect(() => {
-    filterStudents()
-  }, [filterStudents])
-
   const filterStudents = useCallback(() => {
     if (!club) return
 
@@ -105,6 +101,10 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
 
     setFilteredStudents(filtered)
   }, [club, allStudents, searchTerm])
+
+  useEffect(() => {
+    filterStudents()
+  }, [filterStudents])
 
   const handleAddStudent = async (studentId: string) => {
     try {
