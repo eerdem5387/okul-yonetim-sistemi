@@ -237,7 +237,7 @@ export default function HistoryPage() {
           const response = await fetch(endpoint, { method: "DELETE" })
           return { success: response.ok, error: response.ok ? null : `HTTP ${response.status}` }
         } catch (error) {
-          return { success: false, error: error.message }
+          return { success: false, error: error instanceof Error ? error.message : String(error) }
         }
       })
 
