@@ -51,17 +51,6 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
     getParams()
   }, [params])
 
-  useEffect(() => {
-    if (clubId) {
-      fetchClub()
-      fetchStudents()
-    }
-  }, [clubId, fetchClub, fetchStudents])
-
-  useEffect(() => {
-    filterStudents()
-  }, [filterStudents])
-
   const fetchClub = useCallback(async () => {
     try {
       const response = await fetch(`/api/clubs/${clubId}`)
@@ -88,6 +77,17 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
       setAllStudents([])
     }
   }, [])
+
+  useEffect(() => {
+    if (clubId) {
+      fetchClub()
+      fetchStudents()
+    }
+  }, [clubId, fetchClub, fetchStudents])
+
+  useEffect(() => {
+    filterStudents()
+  }, [filterStudents])
 
   const filterStudents = useCallback(() => {
     if (!club) return
