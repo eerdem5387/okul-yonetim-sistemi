@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState, useEffect, useCallback } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ArrowLeft, Users, Plus, Trash2, Search, UserPlus, UserMinus } from "lucide-react"
+import { ArrowLeft, Users, Plus, Search, UserPlus, UserMinus } from "lucide-react"
 import Link from "next/link"
 
 interface Club {
@@ -43,15 +43,17 @@ export default function ClubDetailPage({ params }: { params: { id: string } }) {
   const [showAddStudent, setShowAddStudent] = useState(false)
 
   useEffect(() => {
-    fetchClub()
-    fetchStudents()
-  }, [params.id])
+    if (params.id) {
+      fetchClub()
+      fetchStudents()
+    }
+  }, [params.id, fetchClub, fetchStudents])
 
   useEffect(() => {
     filterStudents()
-  }, [allStudents, searchTerm, club])
+  }, [filterStudents])
 
-  const fetchClub = async () => {
+  const fetchClub = useCallback(async () => {
     try {
       const response = await fetch(`/api/clubs/${params.id}`)
       if (response.ok) {
@@ -63,9 +65,9 @@ export default function ClubDetailPage({ params }: { params: { id: string } }) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [params.id])
 
-  const fetchStudents = async () => {
+  const fetchStudents = useCallback(async () => {
     try {
       const response = await fetch("/api/students")
       if (response.ok) {
@@ -76,9 +78,9 @@ export default function ClubDetailPage({ params }: { params: { id: string } }) {
       console.error("Error fetching students:", error)
       setAllStudents([])
     }
-  }
+  }, [])
 
-  const filterStudents = () => {
+  const filterStudents = useCallback(() => {
     if (!club) return
 
     const clubStudentIds = club.selections.map(selection => selection.student.id)
@@ -93,7 +95,7 @@ export default function ClubDetailPage({ params }: { params: { id: string } }) {
     }
 
     setFilteredStudents(filtered)
-  }
+  }, [club, allStudents, searchTerm])
 
   const handleAddStudent = async (studentId: string) => {
     try {
