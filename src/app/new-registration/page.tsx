@@ -227,7 +227,7 @@ export default function NewRegistrationPage() {
           
           // Kulüp seçimlerini sadece ana sözleşmeye ekle
           const requestBody = contract.type === "new-registration" 
-            ? { ...contract.data, selectedClubs: contractData.selectedClubs }
+            ? { ...contract.data, selectedClubs: mainContractData.selectedClubs }
             : contract.data
           
           return fetch(endpoint, {
