@@ -33,11 +33,11 @@ export function Sidebar() {
   const pathname = usePathname()
 
   return (
-    <div className="flex h-full w-64 flex-col sidebar">
+    <div className="flex h-full w-64 flex-col sidebar lg:w-64 md:w-56 sm:w-48 w-0 hidden lg:flex">
       <div className="flex h-16 items-center px-4 border-b border-gray-200">
-        <h1 className="text-xl font-bold" style={{ color: 'var(--primary-dark)' }}>Okul Yönetim Sistemi</h1>
+        <h1 className="text-xl font-bold lg:text-xl md:text-lg sm:text-base" style={{ color: 'var(--primary-dark)' }}>Okul Yönetim Sistemi</h1>
       </div>
-      <nav className="flex-1 space-y-1 px-2 py-4">
+      <nav className="flex-1 space-y-1 px-2 py-4 overflow-y-auto">
         {navigation.map((item) => {
           const isActive = pathname === item.href
           return (

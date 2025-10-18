@@ -20,6 +20,28 @@ body {
   color: #1f2937;
 }
 
+/* Responsive improvements */
+@media (max-width: 768px) {
+  .sidebar {
+    display: none;
+  }
+  
+  .card-soft {
+    margin: 0.5rem;
+    padding: 1rem;
+  }
+  
+  .input-compact {
+    font-size: 14px;
+    padding: 0.5rem;
+  }
+  
+  .btn-primary, .btn-outline, .btn-destructive {
+    padding: 0.5rem 1rem;
+    font-size: 14px;
+  }
+}
+
 /* Sidebar styles */
 .sidebar {
   background-color: var(--primary-light);
