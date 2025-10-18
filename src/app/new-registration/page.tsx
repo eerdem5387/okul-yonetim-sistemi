@@ -46,26 +46,34 @@ export default function NewRegistrationPage() {
     announcedMealFee: string
     announcedServiceFee: string
     announcedBookFee: string
+    announcedStationeryFee: string
+    announcedStudyHallFee: string
+    announcedTotal: string
     studentTuitionFee: string
     studentClothingFee: string
     studentCourseFee: string
     studentMealFee: string
     studentServiceFee: string
     studentBookFee: string
-    totalFee: string
-    paymentMethod: string
-    paymentInstallments: string
-    paymentStartDate: string
-    paymentEndDate: string
-    paymentAmount: string
-    paymentFrequency: string
-    paymentDay: string
-    paymentBank: string
-    paymentAccount: string
-    paymentIBAN: string
-    paymentReference: string
-    paymentNote: string
+    studentStationeryFee: string
+    studentStudyHallFee: string
+    studentTotal: string
+    installmentStartDate: string
+    downPayment: string
+    installmentDetails: string
+    achievementDiscountRate: string
+    achievementDiscountType: string
+    siblingDiscount: boolean
+    staffChildDiscount: boolean
+    corporateDiscount: boolean
+    martyrVeteranDiscount: boolean
+    teacherChildDiscount: boolean
+    achievementDiscount: boolean
+    otherDiscount: boolean
+    otherDiscountDescription: string
     parentSignature: string
+    contractDate: string
+    registrarName: string
     registrarSignature: string
     serviceRegion: string
     servicePrice: string
