@@ -179,7 +179,7 @@ export default function ClubsPage() {
           }
           
           return (
-            <Card key={club.id} className="card-soft hover:shadow-lg transition-all duration-200 border-0">
+            <Card key={club.id} className="card-soft hover:shadow-lg transition-all duration-200 border-0 cursor-pointer" onClick={() => window.location.href = `/clubs/${club.id}`}>
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
@@ -191,7 +191,7 @@ export default function ClubsPage() {
                       {club.selections.length}/{club.capacity} öğrenci
                     </CardDescription>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                     <Button 
                       size="sm" 
                       variant="outline" 
