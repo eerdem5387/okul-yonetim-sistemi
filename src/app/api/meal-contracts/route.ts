@@ -52,3 +52,27 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Failed to create meal contract" }, { status: 500 })
     }
 }
+
+export async function DELETE(request: NextRequest) {
+    try {
+        const body = await request.json()
+        const { contractIds } = body
+
+        if (Array.isArray(contractIds)) {
+            // Bulk delete
+            await prisma.mealContract.deleteMany({
+                where: { id: { in: contractIds } }
+            })
+        } else {
+            // Single delete
+            await prisma.mealContract.delete({
+                where: { id: contractIds }
+            })
+        }
+
+        return NextResponse.json({ success: true })
+    } catch (error) {
+        console.error("Error deleting meal contracts:", error)
+        return NextResponse.json({ error: "Failed to delete meal contracts" }, { status: 500 })
+    }
+}

@@ -52,3 +52,27 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Failed to create service contract" }, { status: 500 })
     }
 }
+
+export async function DELETE(request: NextRequest) {
+    try {
+        const body = await request.json()
+        const { contractIds } = body
+
+        if (Array.isArray(contractIds)) {
+            // Bulk delete
+            await prisma.serviceContract.deleteMany({
+                where: { id: { in: contractIds } }
+            })
+        } else {
+            // Single delete
+            await prisma.serviceContract.delete({
+                where: { id: contractIds }
+            })
+        }
+
+        return NextResponse.json({ success: true })
+    } catch (error) {
+        console.error("Error deleting service contracts:", error)
+        return NextResponse.json({ error: "Failed to delete service contracts" }, { status: 500 })
+    }
+}

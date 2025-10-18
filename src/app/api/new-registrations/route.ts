@@ -66,3 +66,27 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Failed to create new registration" }, { status: 500 })
     }
 }
+
+export async function DELETE(request: NextRequest) {
+    try {
+        const body = await request.json()
+        const { contractIds } = body
+
+        if (Array.isArray(contractIds)) {
+            // Bulk delete
+            await prisma.newRegistration.deleteMany({
+                where: { id: { in: contractIds } }
+            })
+        } else {
+            // Single delete
+            await prisma.newRegistration.delete({
+                where: { id: contractIds }
+            })
+        }
+
+        return NextResponse.json({ success: true })
+    } catch (error) {
+        console.error("Error deleting new registrations:", error)
+        return NextResponse.json({ error: "Failed to delete new registrations" }, { status: 500 })
+    }
+}

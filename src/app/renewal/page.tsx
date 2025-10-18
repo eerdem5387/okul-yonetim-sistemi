@@ -148,6 +148,35 @@ export default function RenewalPage() {
     fetchClubs()
   }, [fetchStudents, fetchClubs])
 
+  const handleSaveClubSelections = async () => {
+    if (!selectedStudent || !otherContractData.selectedClubs?.length) return
+
+    try {
+      // Kulüp seçimlerini kaydet
+      const clubSelections = otherContractData.selectedClubs.map(clubId => ({
+        clubId,
+        studentId: selectedStudent.id
+      }))
+
+      const response = await fetch("/api/clubs/students", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clubSelections })
+      })
+
+      if (response.ok) {
+        alert("Kulüp seçimleri başarıyla kaydedildi!")
+        // Kulüp listesini yenile
+        fetchClubs()
+      } else {
+        alert("Kulüp seçimleri kaydedilirken hata oluştu!")
+      }
+    } catch (error) {
+      console.error("Error saving club selections:", error)
+      alert("Kulüp seçimleri kaydedilirken hata oluştu!")
+    }
+  }
+
   const handleSaveAllContracts = async () => {
     if (!selectedStudent) return
 
@@ -996,6 +1025,16 @@ export default function RenewalPage() {
                     ).join(", ")}
                   </div>
                 )}
+                <div className="mt-4">
+                  <Button 
+                    onClick={handleSaveClubSelections} 
+                    className="bg-indigo-600 hover:bg-indigo-700"
+                    disabled={!otherContractData.selectedClubs?.length}
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    Kulüp Seçimlerini Kaydet
+                  </Button>
+                </div>
               </CardContent>
             </Card>
 
