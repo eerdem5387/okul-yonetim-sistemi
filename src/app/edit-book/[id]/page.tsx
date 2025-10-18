@@ -39,7 +39,7 @@ export default function EditBookPage({ params }: { params: Promise<{ id: string 
     if (contractId) {
       fetchContract()
     }
-  }, [contractId])
+  }, [contractId, fetchContract])
 
   const fetchContract = async () => {
     try {

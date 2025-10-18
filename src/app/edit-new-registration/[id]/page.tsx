@@ -8,20 +8,6 @@ import { Label } from "@/components/ui/label"
 import { ArrowLeft, Save } from "lucide-react"
 import Link from "next/link"
 
-interface Student {
-  id: string
-  firstName: string
-  lastName: string
-  tcNumber: string
-  grade: string
-  address: string
-  parentName: string
-  parentPhone: string
-  parentEmail: string
-  parent2Name?: string
-  parent2Phone?: string
-  parent2Email?: string
-}
 
 interface ContractData {
   studentName: string
@@ -71,7 +57,7 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
     if (contractId) {
       fetchContract()
     }
-  }, [contractId])
+  }, [contractId, fetchContract])
 
   const fetchContract = async () => {
     try {

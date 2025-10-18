@@ -41,7 +41,7 @@ export default function EditUniformPage({ params }: { params: Promise<{ id: stri
     if (contractId) {
       fetchContract()
     }
-  }, [contractId])
+  }, [contractId, fetchContract])
 
   const fetchContract = async () => {
     try {

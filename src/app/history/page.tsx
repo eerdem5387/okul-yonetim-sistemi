@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -257,43 +257,6 @@ export default function HistoryPage() {
     setSelectAll(false)
   }
 
-  const formatContractData = (contractData: Record<string, unknown>) => {
-    const formattedData: Record<string, string> = {}
-    
-    Object.entries(contractData).forEach(([key, value]) => {
-      if (value !== null && value !== undefined && value !== "") {
-        // Key'i daha okunabilir hale getir
-        const formattedKey = key
-          .replace(/([A-Z])/g, ' $1')
-          .replace(/^./, str => str.toUpperCase())
-          .replace(/studentName/g, 'Öğrenci Adı')
-          .replace(/tcNumber/g, 'TC Kimlik No')
-          .replace(/grade/g, 'Sınıf')
-          .replace(/address/g, 'Adres')
-          .replace(/parentName/g, 'Veli Adı')
-          .replace(/parentPhone/g, 'Veli Telefon')
-          .replace(/parentEmail/g, 'Veli E-posta')
-          .replace(/uniformSize/g, 'Forma Bedeni')
-          .replace(/uniformPrice/g, 'Forma Ücreti')
-          .replace(/serviceRegion/g, 'Servis Bölgesi')
-          .replace(/servicePrice/g, 'Servis Ücreti')
-          .replace(/mealPrice/g, 'Yemek Ücreti')
-          .replace(/bookSet/g, 'Kitap Seti')
-          .replace(/deliveryDate/g, 'Teslim Tarihi')
-          .replace(/academicYear/g, 'Eğitim Yılı')
-          .replace(/tuitionFee/g, 'Öğrenim Ücreti')
-          .replace(/contractDate/g, 'Sözleşme Tarihi')
-          .replace(/registrationDate/g, 'Kayıt Tarihi')
-          .replace(/registrarName/g, 'Kayıt Sorumlusu')
-          .replace(/schoolLicenseNo/g, 'Okul Ruhsat No')
-          .replace(/contractNo/g, 'Sözleşme No')
-        
-        formattedData[formattedKey] = String(value)
-      }
-    })
-    
-    return formattedData
-  }
 
   return (
     <div className="p-6">

@@ -56,7 +56,7 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
     if (contractId) {
       fetchContract()
     }
-  }, [contractId])
+  }, [contractId, fetchContract])
 
   const fetchContract = async () => {
     try {
