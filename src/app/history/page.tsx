@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Download, Search, Filter, Eye, Edit } from "lucide-react"
+import { Download, Search, Filter, Edit, Trash2, CheckSquare, Square } from "lucide-react"
 
 interface Contract {
   id: string
@@ -25,8 +25,10 @@ export default function HistoryPage() {
   const [filteredContracts, setFilteredContracts] = useState<Contract[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState("all")
-  const [selectedContract, setSelectedContract] = useState<Contract | null>(null)
-  const [showModal, setShowModal] = useState(false)
+  const [selectedContracts, setSelectedContracts] = useState<Set<string>>(new Set())
+  const [selectAll, setSelectAll] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(50)
 
   useEffect(() => {
     fetchContracts()
@@ -48,6 +50,7 @@ export default function HistoryPage() {
     }
 
     setFilteredContracts(filtered)
+    setCurrentPage(1) // Filtreleme yapıldığında sayfa 1'e dön
   }, [contracts, searchTerm, filterType])
 
   useEffect(() => {
@@ -92,9 +95,43 @@ export default function HistoryPage() {
 
   
 
+  const getContractTypeSlug = (contractType: string) => {
+    const typeMapping: Record<string, string> = {
+      "Yeni Kayıt": "new-registration",
+      "Kayıt Yenileme": "renewal", 
+      "Forma Sözleşmesi": "uniform",
+      "Yemek Sözleşmesi": "meal",
+      "Servis Sözleşmesi": "service",
+      "Kitap Sözleşmesi": "book"
+    }
+    return typeMapping[contractType] || contractType.toLowerCase().replace(/\s+/g, '-')
+  }
+
   const handleDownloadPDF = async (contract: Contract) => {
     try {
-      const response = await fetch(`/api/pdf/${contract.type.toLowerCase().replace(/\s+/g, '-')}/${contract.student.tcNumber}`)
+      const contractSlug = getContractTypeSlug(contract.type)
+      
+      // Yeni Kayıt ve Kayıt Yenileme için combined endpoint kullan
+      let endpoint = `/api/pdf/${contractSlug}/${contract.student.tcNumber}`
+      let requestBody = null
+      
+      if (contract.type === "Yeni Kayıt" || contract.type === "Kayıt Yenileme") {
+        endpoint = `/api/pdf/combined/${contract.student.tcNumber}`
+        requestBody = {
+          contractTypes: [contractSlug],
+          mainContractData: contract.contractData,
+          otherContractData: {}
+        }
+      }
+      
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: requestBody ? JSON.stringify(requestBody) : undefined
+      })
+      
       if (response.ok) {
         const blob = await response.blob()
         const url = window.URL.createObjectURL(blob)
@@ -105,15 +142,119 @@ export default function HistoryPage() {
         a.click()
         window.URL.revokeObjectURL(url)
         document.body.removeChild(a)
+      } else {
+        console.error("PDF download failed:", response.status, response.statusText)
+        alert("PDF indirme başarısız oldu. Lütfen tekrar deneyin.")
       }
     } catch (error) {
       console.error("Error downloading PDF:", error)
+      alert("PDF indirme sırasında bir hata oluştu.")
     }
   }
 
-  const handleViewContract = (contract: Contract) => {
-    setSelectedContract(contract)
-    setShowModal(true)
+  const handleEditContract = (contract: Contract) => {
+    const contractSlug = getContractTypeSlug(contract.type)
+    // Sözleşme düzenleme sayfasına yönlendir
+    window.location.href = `/edit-${contractSlug}/${contract.id}`
+  }
+
+  const handleDeleteContract = async (contract: Contract) => {
+    if (!confirm(`${contract.type} sözleşmesini silmek istediğinizden emin misiniz?`)) {
+      return
+    }
+
+    try {
+      const contractSlug = getContractTypeSlug(contract.type)
+      const endpoint = contractSlug === "new-registration" 
+        ? `/api/new-registrations/${contract.id}`
+        : contractSlug === "renewal"
+        ? `/api/renewals/${contract.id}`
+        : `/api/${contractSlug}-contracts/${contract.id}`
+
+      const response = await fetch(endpoint, {
+        method: "DELETE"
+      })
+
+      if (response.ok) {
+        alert("Sözleşme başarıyla silindi!")
+        fetchContracts() // Listeyi yenile
+      } else {
+        alert("Sözleşme silinirken bir hata oluştu.")
+      }
+    } catch (error) {
+      console.error("Error deleting contract:", error)
+      alert("Sözleşme silinirken bir hata oluştu.")
+    }
+  }
+
+  const handleSelectAll = () => {
+    if (selectAll) {
+      setSelectedContracts(new Set())
+      setSelectAll(false)
+    } else {
+      const allIds = new Set(filteredContracts.map(contract => contract.id))
+      setSelectedContracts(allIds)
+      setSelectAll(true)
+    }
+  }
+
+  const handleSelectContract = (contractId: string) => {
+    const newSelected = new Set(selectedContracts)
+    if (newSelected.has(contractId)) {
+      newSelected.delete(contractId)
+    } else {
+      newSelected.add(contractId)
+    }
+    setSelectedContracts(newSelected)
+    setSelectAll(newSelected.size === filteredContracts.length)
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedContracts.size === 0) {
+      alert("Lütfen silinecek sözleşmeleri seçin.")
+      return
+    }
+
+    if (!confirm(`${selectedContracts.size} sözleşmeyi silmek istediğinizden emin misiniz?`)) {
+      return
+    }
+
+    try {
+      const deletePromises = Array.from(selectedContracts).map(async (contractId) => {
+        const contract = contracts.find(c => c.id === contractId)
+        if (!contract) return
+
+        const contractSlug = getContractTypeSlug(contract.type)
+        const endpoint = contractSlug === "new-registration" 
+          ? `/api/new-registrations/${contractId}`
+          : contractSlug === "renewal"
+          ? `/api/renewals/${contractId}`
+          : `/api/${contractSlug}-contracts/${contractId}`
+
+        return fetch(endpoint, { method: "DELETE" })
+      })
+
+      await Promise.all(deletePromises)
+      alert(`${selectedContracts.size} sözleşme başarıyla silindi!`)
+      setSelectedContracts(new Set())
+      setSelectAll(false)
+      fetchContracts() // Listeyi yenile
+    } catch (error) {
+      console.error("Error bulk deleting contracts:", error)
+      alert("Sözleşmeler silinirken bir hata oluştu.")
+    }
+  }
+
+  // Sayfalama hesaplamaları
+  const totalPages = Math.ceil(filteredContracts.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const currentContracts = filteredContracts.slice(startIndex, endIndex)
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+    setSelectedContracts(new Set()) // Sayfa değiştiğinde seçimi temizle
+    setSelectAll(false)
   }
 
   const formatContractData = (contractData: Record<string, unknown>) => {
@@ -170,7 +311,7 @@ export default function HistoryPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
               <Label htmlFor="search">Arama</Label>
               <div className="relative">
@@ -202,63 +343,87 @@ export default function HistoryPage() {
               </select>
             </div>
           </div>
+          
+          {/* Toplu İşlemler */}
+          <div className="flex items-center gap-4 pt-4 border-t">
+            <Button
+              onClick={handleSelectAll}
+              variant="outline"
+              size="sm"
+            >
+              {selectAll ? <CheckSquare className="h-4 w-4 mr-2" /> : <Square className="h-4 w-4 mr-2" />}
+              {selectAll ? "Seçimi Kaldır" : "Tümünü Seç"}
+            </Button>
+            
+            {selectedContracts.size > 0 && (
+              <Button
+                onClick={handleBulkDelete}
+                variant="destructive"
+                size="sm"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Seçilenleri Sil ({selectedContracts.size})
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 
       {/* Sözleşmeler Listesi */}
-      <div className="space-y-4">
-        {filteredContracts.length > 0 ? (
-          filteredContracts.map((contract) => (
-            <Card key={contract.id} className="hover:shadow-md transition-shadow">
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-lg">{contract.type}</CardTitle>
-                    <CardDescription>
-                      {contract.student.firstName} {contract.student.lastName} - TC: {contract.student.tcNumber}
-                    </CardDescription>
+      <div className="space-y-2">
+        {currentContracts.length > 0 ? (
+          currentContracts.map((contract) => (
+            <Card key={contract.id} className="hover:shadow-sm transition-shadow">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  {/* Sol taraf - Seçim kutusu ve temel bilgiler */}
+                  <div className="flex items-center gap-4 flex-1">
+                    <input
+                      type="checkbox"
+                      checked={selectedContracts.has(contract.id)}
+                      onChange={() => handleSelectContract(contract.id)}
+                      className="h-4 w-4 text-blue-600 rounded border-gray-300"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-4">
+                        <span className="font-medium text-lg">{contract.type}</span>
+                        <span className="text-gray-600">
+                          {contract.student.firstName} {contract.student.lastName}
+                        </span>
+                        <span className="text-sm text-gray-500">
+                          {new Date(contract.createdAt).toLocaleDateString('tr-TR')}
+                        </span>
+                      </div>
+                    </div>
                   </div>
+                  
+                  {/* Sağ taraf - Butonlar */}
                   <div className="flex gap-2">
                     <Button
-                      onClick={() => handleViewContract(contract)}
+                      onClick={() => handleEditContract(contract)}
                       variant="outline"
                       size="sm"
                     >
-                      <Eye className="h-4 w-4 mr-2" />
-                      Detayları Gör
+                      <Edit className="h-4 w-4 mr-1" />
+                      Düzenle
                     </Button>
                     <Button
                       onClick={() => handleDownloadPDF(contract)}
                       variant="outline"
                       size="sm"
                     >
-                      <Download className="h-4 w-4 mr-2" />
-                      PDF İndir
+                      <Download className="h-4 w-4 mr-1" />
+                      PDF
+                    </Button>
+                    <Button
+                      onClick={() => handleDeleteContract(contract)}
+                      variant="destructive"
+                      size="sm"
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Sil
                     </Button>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-sm text-gray-600">
-                  <p><strong>Oluşturulma Tarihi:</strong> {new Date(contract.createdAt).toLocaleDateString('tr-TR')}</p>
-                  {contract.contractData && (
-                    <div className="mt-3">
-                      <p className="font-medium text-gray-700 mb-2">Sözleşme Özeti:</p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {Object.entries(formatContractData(contract.contractData)).slice(0, 4).map(([key, value]) => (
-                          <div key={key} className="flex justify-between">
-                            <span className="text-gray-600">{key}:</span>
-                            <span className="font-medium">{value}</span>
-                          </div>
-                        ))}
-                      </div>
-                      {Object.keys(formatContractData(contract.contractData)).length > 4 && (
-                        <p className="text-xs text-gray-500 mt-2">
-                          +{Object.keys(formatContractData(contract.contractData)).length - 4} daha fazla alan
-                        </p>
-                      )}
-                    </div>
-                  )}
                 </div>
               </CardContent>
             </Card>
@@ -272,65 +437,57 @@ export default function HistoryPage() {
         )}
       </div>
 
-      {/* Sözleşme Detay Modal */}
-      {showModal && selectedContract && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold">{selectedContract.type} - Detayları</h2>
-              <Button
-                onClick={() => setShowModal(false)}
-                variant="outline"
-                size="sm"
-              >
-                ✕
-              </Button>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-lg mb-2">Öğrenci Bilgileri</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  <div><strong>Ad Soyad:</strong> {selectedContract.student.firstName} {selectedContract.student.lastName}</div>
-                  <div><strong>TC Kimlik No:</strong> {selectedContract.student.tcNumber}</div>
-                  <div><strong>Oluşturulma Tarihi:</strong> {new Date(selectedContract.createdAt).toLocaleDateString('tr-TR')}</div>
-                </div>
+      {/* Sayfalama */}
+      {totalPages > 1 && (
+        <Card className="mt-6">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-600">
+                {startIndex + 1}-{Math.min(endIndex, filteredContracts.length)} / {filteredContracts.length} sözleşme
               </div>
-
-              {selectedContract.contractData && (
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h3 className="font-semibold text-lg mb-2">Sözleşme Detayları</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {Object.entries(formatContractData(selectedContract.contractData)).map(([key, value]) => (
-                      <div key={key} className="flex justify-between">
-                        <span className="text-gray-600">{key}:</span>
-                        <span className="font-medium">{value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-2 pt-4">
+              <div className="flex items-center gap-2">
                 <Button
-                  onClick={() => handleDownloadPDF(selectedContract)}
-                  className="flex-1"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  PDF İndir
-                </Button>
-                <Button
-                  onClick={() => setShowModal(false)}
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
                   variant="outline"
-                  className="flex-1"
+                  size="sm"
                 >
-                  Kapat
+                  Önceki
+                </Button>
+                
+                <div className="flex gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    const pageNum = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i
+                    if (pageNum > totalPages) return null
+                    
+                    return (
+                      <Button
+                        key={pageNum}
+                        onClick={() => handlePageChange(pageNum)}
+                        variant={currentPage === pageNum ? "default" : "outline"}
+                        size="sm"
+                        className="w-10"
+                      >
+                        {pageNum}
+                      </Button>
+                    )
+                  })}
+                </div>
+                
+                <Button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  variant="outline"
+                  size="sm"
+                >
+                  Sonraki
                 </Button>
               </div>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
+
     </div>
   )
 }
