@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,11 +26,7 @@ export default function UniformPage() {
     uniformItems: [] as string[]
   })
 
-  useEffect(() => {
-    fetchStudents()
-  }, [])
-
-  const fetchStudents = async () => {
+  const fetchStudents = useCallback(async () => {
     try {
       const response = await fetch("/api/students")
       if (!response.ok) {
@@ -42,7 +38,11 @@ export default function UniformPage() {
       console.error("Error fetching students:", error)
       setStudents([])
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchStudents()
+  }, [fetchStudents])
 
   const handleSaveContract = async () => {
     if (!selectedStudent) return

@@ -83,7 +83,12 @@ export default function RenewalPage() {
     parentSignature: "",
     contractDate: "",
     registrarName: "",
-    registrarSignature: ""
+    registrarSignature: "",
+    
+    // Servis ve Kulüp Bilgileri
+    serviceRegion: "",
+    servicePrice: "",
+    selectedClubs: [] as string[]
   })
 
   // Diğer Sözleşme Form Verileri
