@@ -29,7 +29,48 @@ export default function NewRegistrationPage() {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
 
   // Ana Sözleşme Form Verileri
-  const [mainContractData, setMainContractData] = useState({
+  const [mainContractData, setMainContractData] = useState<{
+    studentName: string
+    studentClass: string
+    studentTC: string
+    studentBirthDate: string
+    schoolLicenseNo: string
+    contractNo: string
+    registrationResponsible: string
+    registrationDate: string
+    contractStudentName: string
+    contractParentName: string
+    announcedTuitionFee: string
+    announcedClothingFee: string
+    announcedCourseFee: string
+    announcedMealFee: string
+    announcedServiceFee: string
+    announcedBookFee: string
+    studentTuitionFee: string
+    studentClothingFee: string
+    studentCourseFee: string
+    studentMealFee: string
+    studentServiceFee: string
+    studentBookFee: string
+    totalFee: string
+    paymentMethod: string
+    paymentInstallments: string
+    paymentStartDate: string
+    paymentEndDate: string
+    paymentAmount: string
+    paymentFrequency: string
+    paymentDay: string
+    paymentBank: string
+    paymentAccount: string
+    paymentIBAN: string
+    paymentReference: string
+    paymentNote: string
+    parentSignature: string
+    registrarSignature: string
+    serviceRegion: string
+    servicePrice: string
+    selectedClubs: string[]
+  }>({
     // Öğrenci ve Sözleşme Bilgileri
     studentName: "",
     studentClass: "",
