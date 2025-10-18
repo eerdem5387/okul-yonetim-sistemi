@@ -21,18 +21,29 @@ interface ContractData {
   servicePrice: string
 }
 
-export default function EditServicePage({ params }: { params: { id: string } }) {
+export default function EditServicePage({ params }: { params: Promise<{ id: string }> }) {
   const [contract, setContract] = useState<ContractData | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [contractId, setContractId] = useState<string>("")
 
   useEffect(() => {
-    fetchContract()
-  }, [params.id])
+    const getParams = async () => {
+      const resolvedParams = await params
+      setContractId(resolvedParams.id)
+    }
+    getParams()
+  }, [params])
+
+  useEffect(() => {
+    if (contractId) {
+      fetchContract()
+    }
+  }, [contractId])
 
   const fetchContract = async () => {
     try {
-      const response = await fetch(`/api/service-contracts/${params.id}`)
+      const response = await fetch(`/api/service-contracts/${contractId}`)
       if (response.ok) {
         const data = await response.json()
         setContract(data.contractData)
@@ -49,7 +60,7 @@ export default function EditServicePage({ params }: { params: { id: string } }) 
     
     setSaving(true)
     try {
-      const response = await fetch(`/api/service-contracts/${params.id}`, {
+      const response = await fetch(`/api/service-contracts/${contractId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
