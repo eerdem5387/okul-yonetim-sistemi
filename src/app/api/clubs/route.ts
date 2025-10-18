@@ -47,3 +47,48 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Failed to create club" }, { status: 500 })
     }
 }
+
+export async function PUT(request: NextRequest) {
+    try {
+        const body = await request.json()
+        const { id, name, description, capacity } = body
+
+        const club = await prisma.club.update({
+            where: { id },
+            data: {
+                name,
+                description,
+                capacity: parseInt(capacity)
+            }
+        })
+
+        return NextResponse.json(club)
+    } catch (error) {
+        console.error("Error updating club:", error)
+        return NextResponse.json({ error: "Failed to update club" }, { status: 500 })
+    }
+}
+
+export async function DELETE(request: NextRequest) {
+    try {
+        const body = await request.json()
+        const { clubIds } = body
+
+        if (Array.isArray(clubIds)) {
+            // Bulk delete
+            await prisma.club.deleteMany({
+                where: { id: { in: clubIds } }
+            })
+        } else {
+            // Single delete
+            await prisma.club.delete({
+                where: { id: clubIds }
+            })
+        }
+
+        return NextResponse.json({ success: true })
+    } catch (error) {
+        console.error("Error deleting clubs:", error)
+        return NextResponse.json({ error: "Failed to delete clubs" }, { status: 500 })
+    }
+}

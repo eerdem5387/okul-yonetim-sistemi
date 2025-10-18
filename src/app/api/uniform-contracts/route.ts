@@ -53,6 +53,32 @@ export async function POST(request: NextRequest) {
     }
 }
 
+export async function PUT(request: NextRequest) {
+    try {
+        const body = await request.json()
+        const { id, contractData } = body
+
+        const contract = await prisma.uniformContract.update({
+            where: { id },
+            data: { contractData },
+            include: {
+                student: {
+                    select: {
+                        firstName: true,
+                        lastName: true,
+                        tcNumber: true
+                    }
+                }
+            }
+        })
+
+        return NextResponse.json(contract)
+    } catch (error) {
+        console.error("Error updating uniform contract:", error)
+        return NextResponse.json({ error: "Failed to update uniform contract" }, { status: 500 })
+    }
+}
+
 export async function DELETE(request: NextRequest) {
     try {
         const body = await request.json()

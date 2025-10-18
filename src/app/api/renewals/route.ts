@@ -67,6 +67,32 @@ export async function POST(request: NextRequest) {
     }
 }
 
+export async function PUT(request: NextRequest) {
+    try {
+        const body = await request.json()
+        const { id, contractData } = body
+
+        const renewal = await prisma.renewal.update({
+            where: { id },
+            data: { contractData },
+            include: {
+                student: {
+                    select: {
+                        firstName: true,
+                        lastName: true,
+                        tcNumber: true
+                    }
+                }
+            }
+        })
+
+        return NextResponse.json(renewal)
+    } catch (error) {
+        console.error("Error updating renewal:", error)
+        return NextResponse.json({ error: "Failed to update renewal" }, { status: 500 })
+    }
+}
+
 export async function DELETE(request: NextRequest) {
     try {
         const body = await request.json()

@@ -67,6 +67,32 @@ export async function POST(request: NextRequest) {
     }
 }
 
+export async function PUT(request: NextRequest) {
+    try {
+        const body = await request.json()
+        const { id, contractData } = body
+
+        const registration = await prisma.newRegistration.update({
+            where: { id },
+            data: { contractData },
+            include: {
+                student: {
+                    select: {
+                        firstName: true,
+                        lastName: true,
+                        tcNumber: true
+                    }
+                }
+            }
+        })
+
+        return NextResponse.json(registration)
+    } catch (error) {
+        console.error("Error updating new registration:", error)
+        return NextResponse.json({ error: "Failed to update new registration" }, { status: 500 })
+    }
+}
+
 export async function DELETE(request: NextRequest) {
     try {
         const body = await request.json()
