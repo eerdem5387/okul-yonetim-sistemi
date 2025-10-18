@@ -34,20 +34,29 @@ interface Student {
   grade: string
 }
 
-export default function ClubDetailPage({ params }: { params: { id: string } }) {
+export default function ClubDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const [club, setClub] = useState<Club | null>(null)
   const [allStudents, setAllStudents] = useState<Student[]>([])
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [loading, setLoading] = useState(true)
   const [showAddStudent, setShowAddStudent] = useState(false)
+  const [clubId, setClubId] = useState<string>("")
 
   useEffect(() => {
-    if (params.id) {
+    const getParams = async () => {
+      const resolvedParams = await params
+      setClubId(resolvedParams.id)
+    }
+    getParams()
+  }, [params])
+
+  useEffect(() => {
+    if (clubId) {
       fetchClub()
       fetchStudents()
     }
-  }, [params.id, fetchClub, fetchStudents])
+  }, [clubId, fetchClub, fetchStudents])
 
   useEffect(() => {
     filterStudents()
@@ -55,7 +64,7 @@ export default function ClubDetailPage({ params }: { params: { id: string } }) {
 
   const fetchClub = useCallback(async () => {
     try {
-      const response = await fetch(`/api/clubs/${params.id}`)
+      const response = await fetch(`/api/clubs/${clubId}`)
       if (response.ok) {
         const data = await response.json()
         setClub(data)
@@ -65,7 +74,7 @@ export default function ClubDetailPage({ params }: { params: { id: string } }) {
     } finally {
       setLoading(false)
     }
-  }, [params.id])
+  }, [clubId])
 
   const fetchStudents = useCallback(async () => {
     try {
@@ -99,7 +108,7 @@ export default function ClubDetailPage({ params }: { params: { id: string } }) {
 
   const handleAddStudent = async (studentId: string) => {
     try {
-      const response = await fetch(`/api/clubs/${params.id}/students`, {
+      const response = await fetch(`/api/clubs/${clubId}/students`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -126,7 +135,7 @@ export default function ClubDetailPage({ params }: { params: { id: string } }) {
     }
 
     try {
-      const response = await fetch(`/api/clubs/${params.id}/students/${selectionId}`, {
+      const response = await fetch(`/api/clubs/${clubId}/students/${selectionId}`, {
         method: "DELETE"
       })
 
