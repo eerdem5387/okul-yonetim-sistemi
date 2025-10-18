@@ -225,10 +225,15 @@ export default function RenewalPage() {
             ? "/api/renewals" 
             : `/api/${contract.type}-contracts`
           
+          // Kulüp seçimlerini sadece ana sözleşmeye ekle
+          const requestBody = contract.type === "renewal" 
+            ? { ...contract.data, selectedClubs: contractData.selectedClubs }
+            : contract.data
+          
           return fetch(endpoint, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(contract.data)
+            body: JSON.stringify(requestBody)
           })
         })
       )

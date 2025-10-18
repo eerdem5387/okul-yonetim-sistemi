@@ -12,17 +12,17 @@ export default function HomePage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Link href="/students">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <UserPlus className="h-5 w-5" />
+          <Card className="card-soft dashboard-card hover:shadow-lg transition-all duration-200 cursor-pointer border-0">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-3 text-lg">
+                <UserPlus className="h-6 w-6 icon-blue" />
                 Öğrenci Yönetimi
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-sm">
                 Öğrenci bilgilerini yönetin ve düzenleyin
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <p className="text-sm text-gray-600">
                 Öğrenci ekleyin, düzenleyin ve arama yapın.
               </p>
@@ -31,17 +31,17 @@ export default function HomePage() {
         </Link>
 
         <Link href="/clubs">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
+          <Card className="card-soft dashboard-card hover:shadow-lg transition-all duration-200 cursor-pointer border-0">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-3 text-lg">
+                <Users className="h-6 w-6 icon-green" />
                 Kulüp Yönetimi
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-sm">
                 Kulüp oluşturma ve öğrenci kulüp seçimlerini yönetin
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <p className="text-sm text-gray-600">
                 Yeni kulüpler oluşturun, kontejan belirleyin ve öğrenci seçimlerini takip edin.
               </p>
@@ -50,17 +50,17 @@ export default function HomePage() {
         </Link>
 
         <Link href="/new-registration">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
+          <Card className="card-soft dashboard-card hover:shadow-lg transition-all duration-200 cursor-pointer border-0">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-3 text-lg">
+                <FileText className="h-6 w-6 icon-green" />
                 Yeni Kayıt
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-sm">
                 Yeni öğrenci kayıt sözleşmelerini oluşturun
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <p className="text-sm text-gray-600">
                 Yeni öğrenci kayıt sözleşmelerini doldurun ve PDF olarak indirin.
               </p>
@@ -69,17 +69,17 @@ export default function HomePage() {
         </Link>
 
         <Link href="/renewal">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
+          <Card className="card-soft dashboard-card hover:shadow-lg transition-all duration-200 cursor-pointer border-0">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-3 text-lg">
+                <FileText className="h-6 w-6 icon-orange" />
                 Kayıt Yenileme
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-sm">
                 Mevcut öğrenci kayıt yenileme sözleşmelerini oluşturun
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <p className="text-sm text-gray-600">
                 Kayıt yenileme sözleşmelerini doldurun ve PDF olarak indirin.
               </p>
@@ -88,17 +88,17 @@ export default function HomePage() {
         </Link>
 
         <Link href="/uniform">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shirt className="h-5 w-5" />
+          <Card className="card-soft dashboard-card hover:shadow-lg transition-all duration-200 cursor-pointer border-0">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-3 text-lg">
+                <Shirt className="h-6 w-6 icon-purple" />
                 Forma Sözleşmesi
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-sm">
                 Öğrenci forma sözleşmelerini oluşturun
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <p className="text-sm text-gray-600">
                 Forma sözleşmelerini doldurun ve PDF olarak indirin.
               </p>
@@ -107,17 +107,17 @@ export default function HomePage() {
         </Link>
 
         <Link href="/meal">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Utensils className="h-5 w-5" />
+          <Card className="card-soft dashboard-card hover:shadow-lg transition-all duration-200 cursor-pointer border-0">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-3 text-lg">
+                <Utensils className="h-6 w-6 icon-red" />
                 Yemek Sözleşmesi
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-sm">
                 Öğrenci yemek sözleşmelerini oluşturun
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <p className="text-sm text-gray-600">
                 Yemek sözleşmelerini doldurun ve PDF olarak indirin.
               </p>
@@ -126,17 +126,17 @@ export default function HomePage() {
         </Link>
 
         <Link href="/service">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bus className="h-5 w-5" />
+          <Card className="card-soft dashboard-card hover:shadow-lg transition-all duration-200 cursor-pointer border-0">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-3 text-lg">
+                <Bus className="h-6 w-6 icon-cyan" />
                 Servis Sözleşmesi
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-sm">
                 Öğrenci servis sözleşmelerini oluşturun
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <p className="text-sm text-gray-600">
                 Servis sözleşmelerini doldurun ve PDF olarak indirin.
               </p>
@@ -145,17 +145,17 @@ export default function HomePage() {
         </Link>
 
         <Link href="/book">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BookOpen className="h-5 w-5" />
+          <Card className="card-soft dashboard-card hover:shadow-lg transition-all duration-200 cursor-pointer border-0">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-3 text-lg">
+                <BookOpen className="h-6 w-6 icon-lime" />
                 Kitap Sözleşmesi
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-sm">
                 Öğrenci kitap sözleşmelerini oluşturun
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <p className="text-sm text-gray-600">
                 Kitap sözleşmelerini doldurun ve PDF olarak indirin.
               </p>
@@ -164,17 +164,17 @@ export default function HomePage() {
         </Link>
 
         <Link href="/history">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <History className="h-5 w-5" />
+          <Card className="card-soft dashboard-card hover:shadow-lg transition-all duration-200 cursor-pointer border-0">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-3 text-lg">
+                <History className="h-6 w-6 icon-pink" />
                 Geçmiş Sözleşmeler
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-sm">
                 Tüm sözleşmeleri görüntüleyin ve yönetin
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <p className="text-sm text-gray-600">
                 Geçmiş sözleşmeleri görüntüleyin, düzenleyin ve PDF olarak indirin.
               </p>

@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Plus, Edit, Trash2 } from "lucide-react"
+import { Plus, Edit, Trash2, Users, Eye, BarChart3 } from "lucide-react"
 
 interface Club {
   id: string
@@ -169,47 +169,99 @@ export default function ClubsPage() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {clubs.map((club) => (
-          <Card key={club.id}>
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle>{club.name}</CardTitle>
-                  <CardDescription>
-                    Kontejan: {club.selections.length}/{club.capacity}
-                  </CardDescription>
+        {clubs.map((club) => {
+          const capacityPercentage = (club.selections.length / club.capacity) * 100
+          const getCapacityColor = () => {
+            if (capacityPercentage >= 100) return "bg-red-500"
+            if (capacityPercentage >= 80) return "bg-orange-500"
+            if (capacityPercentage >= 60) return "bg-yellow-500"
+            return "bg-green-500"
+          }
+          
+          return (
+            <Card key={club.id} className="card-soft hover:shadow-lg transition-all duration-200 border-0">
+              <CardHeader className="pb-3">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <CardTitle className="flex items-center gap-3 text-lg">
+                      <Users className="h-6 w-6 icon-blue" />
+                      {club.name}
+                    </CardTitle>
+                    <CardDescription className="text-sm mt-1">
+                      {club.selections.length}/{club.capacity} öğrenci
+                    </CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => window.location.href = `/clubs/${club.id}`}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => handleEdit(club)}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => handleDelete(club.id)}
+                      className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => handleEdit(club)}>
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => handleDelete(club.id)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {club.description && (
-                <p className="text-sm text-gray-600 mb-4">{club.description}</p>
-              )}
-              <div>
-                <h4 className="font-medium mb-2">Seçen Öğrenciler:</h4>
-                {club.selections.length > 0 ? (
-                  <ul className="space-y-1">
-                    {club.selections.map((selection, index) => (
-                      <li key={index} className="text-sm text-gray-600">
-                        {selection.student.firstName} {selection.student.lastName}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-gray-500">Henüz seçim yapılmamış</p>
+              </CardHeader>
+              <CardContent className="pt-0">
+                {club.description && (
+                  <p className="text-sm text-gray-600 mb-4">{club.description}</p>
                 )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                
+                {/* Kontejan Dolum Barı */}
+                <div className="mb-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-gray-700">Kontejan</span>
+                    <span className="text-sm text-gray-500">{Math.round(capacityPercentage)}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full transition-all duration-300 ${getCapacityColor()}`}
+                      style={{ width: `${Math.min(capacityPercentage, 100)}%` }}
+                    ></div>
+                  </div>
+                </div>
+
+                {/* Öğrenci Listesi */}
+                <div>
+                  <h4 className="font-medium mb-2 text-sm text-gray-700">Seçen Öğrenciler:</h4>
+                  {club.selections.length > 0 ? (
+                    <div className="max-h-20 overflow-y-auto">
+                      {club.selections.slice(0, 3).map((selection, index) => (
+                        <div key={index} className="text-sm text-gray-600 py-1">
+                          {selection.student.firstName} {selection.student.lastName}
+                        </div>
+                      ))}
+                      {club.selections.length > 3 && (
+                        <div className="text-xs text-gray-500">
+                          +{club.selections.length - 3} daha fazla
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500">Henüz öğrenci seçimi yapılmamış</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )
+        })}
       </div>
     </div>
   )

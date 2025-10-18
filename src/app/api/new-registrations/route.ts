@@ -28,8 +28,9 @@ export async function GET() {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
-        const { studentId, contractData } = body
+        const { studentId, contractData, selectedClubs } = body
 
+        // Sözleşmeyi oluştur
         const registration = await prisma.newRegistration.create({
             data: {
                 studentId,
@@ -45,6 +46,19 @@ export async function POST(request: NextRequest) {
                 }
             }
         })
+
+        // Kulüp seçimlerini ekle
+        if (selectedClubs && selectedClubs.length > 0) {
+            const clubSelections = selectedClubs.map((clubId: string) => ({
+                clubId,
+                studentId
+            }))
+
+            await prisma.clubSelection.createMany({
+                data: clubSelections,
+                skipDuplicates: true
+            })
+        }
 
         return NextResponse.json(registration)
     } catch (error) {
