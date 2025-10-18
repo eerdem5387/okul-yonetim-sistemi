@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, FileText, Shirt, Utensils, Bus, BookOpen } from "lucide-react"
+import { Users, FileText, Shirt, Utensils, Bus, BookOpen, UserPlus, History } from "lucide-react"
+import Link from "next/link"
 
 export default function HomePage() {
   return (
@@ -10,124 +11,176 @@ export default function HomePage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Kulüp Yönetimi
-            </CardTitle>
-            <CardDescription>
-              Kulüp oluşturma ve öğrenci kulüp seçimlerini yönetin
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-600">
-              Yeni kulüpler oluşturun, kontejan belirleyin ve öğrenci seçimlerini takip edin.
-            </p>
-          </CardContent>
-        </Card>
+        <Link href="/students">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <UserPlus className="h-5 w-5" />
+                Öğrenci Yönetimi
+              </CardTitle>
+              <CardDescription>
+                Öğrenci bilgilerini yönetin ve düzenleyin
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600">
+                Öğrenci ekleyin, düzenleyin ve arama yapın.
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Yeni Kayıt
-            </CardTitle>
-            <CardDescription>
-              Yeni öğrenci kayıt sözleşmelerini oluşturun
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-600">
-              Yeni öğrenci kayıt sözleşmelerini doldurun ve PDF olarak indirin.
-            </p>
-          </CardContent>
-        </Card>
+        <Link href="/clubs">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Kulüp Yönetimi
+              </CardTitle>
+              <CardDescription>
+                Kulüp oluşturma ve öğrenci kulüp seçimlerini yönetin
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600">
+                Yeni kulüpler oluşturun, kontejan belirleyin ve öğrenci seçimlerini takip edin.
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Kayıt Yenileme
-            </CardTitle>
-            <CardDescription>
-              Mevcut öğrenci kayıt yenileme sözleşmelerini oluşturun
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-600">
-              Kayıt yenileme sözleşmelerini doldurun ve PDF olarak indirin.
-            </p>
-          </CardContent>
-        </Card>
+        <Link href="/new-registration">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Yeni Kayıt
+              </CardTitle>
+              <CardDescription>
+                Yeni öğrenci kayıt sözleşmelerini oluşturun
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600">
+                Yeni öğrenci kayıt sözleşmelerini doldurun ve PDF olarak indirin.
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shirt className="h-5 w-5" />
-              Forma Sözleşmesi
-            </CardTitle>
-            <CardDescription>
-              Öğrenci forma sözleşmelerini oluşturun
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-600">
-              Forma sözleşmelerini doldurun ve PDF olarak indirin.
-            </p>
-          </CardContent>
-        </Card>
+        <Link href="/renewal">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Kayıt Yenileme
+              </CardTitle>
+              <CardDescription>
+                Mevcut öğrenci kayıt yenileme sözleşmelerini oluşturun
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600">
+                Kayıt yenileme sözleşmelerini doldurun ve PDF olarak indirin.
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Utensils className="h-5 w-5" />
-              Yemek Sözleşmesi
-            </CardTitle>
-            <CardDescription>
-              Öğrenci yemek sözleşmelerini oluşturun
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-600">
-              Yemek sözleşmelerini doldurun ve PDF olarak indirin.
-            </p>
-          </CardContent>
-        </Card>
+        <Link href="/uniform">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shirt className="h-5 w-5" />
+                Forma Sözleşmesi
+              </CardTitle>
+              <CardDescription>
+                Öğrenci forma sözleşmelerini oluşturun
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600">
+                Forma sözleşmelerini doldurun ve PDF olarak indirin.
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Bus className="h-5 w-5" />
-              Servis Sözleşmesi
-            </CardTitle>
-            <CardDescription>
-              Öğrenci servis sözleşmelerini oluşturun
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-600">
-              Servis sözleşmelerini doldurun ve PDF olarak indirin.
-            </p>
-          </CardContent>
-        </Card>
+        <Link href="/meal">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Utensils className="h-5 w-5" />
+                Yemek Sözleşmesi
+              </CardTitle>
+              <CardDescription>
+                Öğrenci yemek sözleşmelerini oluşturun
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600">
+                Yemek sözleşmelerini doldurun ve PDF olarak indirin.
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5" />
-              Kitap Sözleşmesi
-            </CardTitle>
-            <CardDescription>
-              Öğrenci kitap sözleşmelerini oluşturun
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-600">
-              Kitap sözleşmelerini doldurun ve PDF olarak indirin.
-            </p>
-          </CardContent>
-        </Card>
+        <Link href="/service">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bus className="h-5 w-5" />
+                Servis Sözleşmesi
+              </CardTitle>
+              <CardDescription>
+                Öğrenci servis sözleşmelerini oluşturun
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600">
+                Servis sözleşmelerini doldurun ve PDF olarak indirin.
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/book">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BookOpen className="h-5 w-5" />
+                Kitap Sözleşmesi
+              </CardTitle>
+              <CardDescription>
+                Öğrenci kitap sözleşmelerini oluşturun
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600">
+                Kitap sözleşmelerini doldurun ve PDF olarak indirin.
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/history">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <History className="h-5 w-5" />
+                Geçmiş Sözleşmeler
+              </CardTitle>
+              <CardDescription>
+                Tüm sözleşmeleri görüntüleyin ve yönetin
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600">
+                Geçmiş sözleşmeleri görüntüleyin, düzenleyin ve PDF olarak indirin.
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
     </div>
   )

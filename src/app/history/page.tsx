@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Download, Search, Filter } from "lucide-react"
+import { Download, Search, Filter, Eye, Edit } from "lucide-react"
 
 interface Contract {
   id: string
@@ -25,6 +25,8 @@ export default function HistoryPage() {
   const [filteredContracts, setFilteredContracts] = useState<Contract[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState("all")
+  const [selectedContract, setSelectedContract] = useState<Contract | null>(null)
+  const [showModal, setShowModal] = useState(false)
 
   useEffect(() => {
     fetchContracts()
@@ -109,6 +111,49 @@ export default function HistoryPage() {
     }
   }
 
+  const handleViewContract = (contract: Contract) => {
+    setSelectedContract(contract)
+    setShowModal(true)
+  }
+
+  const formatContractData = (contractData: Record<string, unknown>) => {
+    const formattedData: Record<string, string> = {}
+    
+    Object.entries(contractData).forEach(([key, value]) => {
+      if (value !== null && value !== undefined && value !== "") {
+        // Key'i daha okunabilir hale getir
+        const formattedKey = key
+          .replace(/([A-Z])/g, ' $1')
+          .replace(/^./, str => str.toUpperCase())
+          .replace(/studentName/g, 'Öğrenci Adı')
+          .replace(/tcNumber/g, 'TC Kimlik No')
+          .replace(/grade/g, 'Sınıf')
+          .replace(/address/g, 'Adres')
+          .replace(/parentName/g, 'Veli Adı')
+          .replace(/parentPhone/g, 'Veli Telefon')
+          .replace(/parentEmail/g, 'Veli E-posta')
+          .replace(/uniformSize/g, 'Forma Bedeni')
+          .replace(/uniformPrice/g, 'Forma Ücreti')
+          .replace(/serviceRegion/g, 'Servis Bölgesi')
+          .replace(/servicePrice/g, 'Servis Ücreti')
+          .replace(/mealPrice/g, 'Yemek Ücreti')
+          .replace(/bookSet/g, 'Kitap Seti')
+          .replace(/deliveryDate/g, 'Teslim Tarihi')
+          .replace(/academicYear/g, 'Eğitim Yılı')
+          .replace(/tuitionFee/g, 'Öğrenim Ücreti')
+          .replace(/contractDate/g, 'Sözleşme Tarihi')
+          .replace(/registrationDate/g, 'Kayıt Tarihi')
+          .replace(/registrarName/g, 'Kayıt Sorumlusu')
+          .replace(/schoolLicenseNo/g, 'Okul Ruhsat No')
+          .replace(/contractNo/g, 'Sözleşme No')
+        
+        formattedData[formattedKey] = String(value)
+      }
+    })
+    
+    return formattedData
+  }
+
   return (
     <div className="p-6">
       <div className="mb-6">
@@ -164,7 +209,7 @@ export default function HistoryPage() {
       <div className="space-y-4">
         {filteredContracts.length > 0 ? (
           filteredContracts.map((contract) => (
-            <Card key={contract.id}>
+            <Card key={contract.id} className="hover:shadow-md transition-shadow">
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div>
@@ -173,25 +218,45 @@ export default function HistoryPage() {
                       {contract.student.firstName} {contract.student.lastName} - TC: {contract.student.tcNumber}
                     </CardDescription>
                   </div>
-                  <Button
-                    onClick={() => handleDownloadPDF(contract)}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    PDF İndir
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => handleViewContract(contract)}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      Detayları Gör
+                    </Button>
+                    <Button
+                      onClick={() => handleDownloadPDF(contract)}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      PDF İndir
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="text-sm text-gray-600">
                   <p><strong>Oluşturulma Tarihi:</strong> {new Date(contract.createdAt).toLocaleDateString('tr-TR')}</p>
                   {contract.contractData && (
-                    <div className="mt-2">
-                      <p><strong>Sözleşme Detayları:</strong></p>
-                      <pre className="text-xs bg-gray-50 p-2 rounded mt-1 overflow-auto">
-                        {JSON.stringify(contract.contractData, null, 2)}
-                      </pre>
+                    <div className="mt-3">
+                      <p className="font-medium text-gray-700 mb-2">Sözleşme Özeti:</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {Object.entries(formatContractData(contract.contractData)).slice(0, 4).map(([key, value]) => (
+                          <div key={key} className="flex justify-between">
+                            <span className="text-gray-600">{key}:</span>
+                            <span className="font-medium">{value}</span>
+                          </div>
+                        ))}
+                      </div>
+                      {Object.keys(formatContractData(contract.contractData)).length > 4 && (
+                        <p className="text-xs text-gray-500 mt-2">
+                          +{Object.keys(formatContractData(contract.contractData)).length - 4} daha fazla alan
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -206,6 +271,66 @@ export default function HistoryPage() {
           </Card>
         )}
       </div>
+
+      {/* Sözleşme Detay Modal */}
+      {showModal && selectedContract && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold">{selectedContract.type} - Detayları</h2>
+              <Button
+                onClick={() => setShowModal(false)}
+                variant="outline"
+                size="sm"
+              >
+                ✕
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="font-semibold text-lg mb-2">Öğrenci Bilgileri</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <div><strong>Ad Soyad:</strong> {selectedContract.student.firstName} {selectedContract.student.lastName}</div>
+                  <div><strong>TC Kimlik No:</strong> {selectedContract.student.tcNumber}</div>
+                  <div><strong>Oluşturulma Tarihi:</strong> {new Date(selectedContract.createdAt).toLocaleDateString('tr-TR')}</div>
+                </div>
+              </div>
+
+              {selectedContract.contractData && (
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="font-semibold text-lg mb-2">Sözleşme Detayları</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {Object.entries(formatContractData(selectedContract.contractData)).map(([key, value]) => (
+                      <div key={key} className="flex justify-between">
+                        <span className="text-gray-600">{key}:</span>
+                        <span className="font-medium">{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-4">
+                <Button
+                  onClick={() => handleDownloadPDF(selectedContract)}
+                  className="flex-1"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  PDF İndir
+                </Button>
+                <Button
+                  onClick={() => setShowModal(false)}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Kapat
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
