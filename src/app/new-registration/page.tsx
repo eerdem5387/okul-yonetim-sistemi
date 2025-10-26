@@ -416,8 +416,8 @@ export default function NewRegistrationPage() {
             serviceRegion: "",
             servicePrice: "",
             selectedClubs: []
-          })
-          alert("Form temizlendi. Yeni kayıt yapabilirsiniz.")
+          });
+          alert("Form temizlendi. Yeni kayıt yapabilirsiniz.");
         }
       } else {
         alert("Bazı sözleşmeler kaydedilirken hata oluştu!")
