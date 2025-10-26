@@ -353,7 +353,7 @@ export default function NewRegistrationPage() {
         alert("Sözleşme başarıyla kaydedildi!");
         
         // Formu temizle
-        setSelectedStudent(null)
+        setSelectedStudent(null);
         setMainContractData({
             studentName: "",
             studentClass: "",
