@@ -110,11 +110,7 @@ export default function HistoryPage() {
 
       const allContracts: Contract[] = [
         ...(Array.isArray(newRegistrations) ? newRegistrations.map((c: Record<string, unknown>) => ({ ...c, type: "Yeni Kayıt" } as Contract)) : []),
-        ...(Array.isArray(renewals) ? renewals.map((c: Record<string, unknown>) => ({ ...c, type: "Kayıt Yenileme" } as Contract)) : []),
-        ...(Array.isArray(uniforms) ? uniforms.map((c: Record<string, unknown>) => ({ ...c, type: "Forma Sözleşmesi" } as Contract)) : []),
-        ...(Array.isArray(meals) ? meals.map((c: Record<string, unknown>) => ({ ...c, type: "Yemek Sözleşmesi" } as Contract)) : []),
-        ...(Array.isArray(services) ? services.map((c: Record<string, unknown>) => ({ ...c, type: "Servis Sözleşmesi" } as Contract)) : []),
-        ...(Array.isArray(books) ? books.map((c: Record<string, unknown>) => ({ ...c, type: "Kitap Sözleşmesi" } as Contract)) : [])
+        ...(Array.isArray(renewals) ? renewals.map((c: Record<string, unknown>) => ({ ...c, type: "Kayıt Yenileme" } as Contract)) : [])
       ]
 
       setContracts(allContracts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()))
@@ -143,11 +139,11 @@ export default function HistoryPage() {
       const contractSlug = getContractTypeSlug(contract.type)
       
       // Yeni Kayıt ve Kayıt Yenileme için combined endpoint kullan
-      let endpoint = `/api/pdf/${contractSlug}/${contract.student.tcNumber}`
+      let endpoint = `/api/pdf/${contractSlug}/${contract.id}`
       let requestBody = null
       
       if (contract.type === "Yeni Kayıt" || contract.type === "Kayıt Yenileme") {
-        endpoint = `/api/pdf/combined/${contract.student.tcNumber}`
+        endpoint = `/api/pdf/combined/${contract.id}`
         requestBody = {
           contractTypes: [contractSlug],
           mainContractData: contract.contractData,
@@ -386,10 +382,6 @@ export default function HistoryPage() {
                 <option value="all">Tümü</option>
                 <option value="Yeni Kayıt">Yeni Kayıt</option>
                 <option value="Kayıt Yenileme">Kayıt Yenileme</option>
-                <option value="Forma Sözleşmesi">Forma Sözleşmesi</option>
-                <option value="Yemek Sözleşmesi">Yemek Sözleşmesi</option>
-                <option value="Servis Sözleşmesi">Servis Sözleşmesi</option>
-                <option value="Kitap Sözleşmesi">Kitap Sözleşmesi</option>
               </select>
             </div>
             <div>

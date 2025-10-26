@@ -350,15 +350,11 @@ export default function NewRegistrationPage() {
       const allSuccessful = responses.every(response => response.ok)
       
       if (allSuccessful) {
-        const result = confirm(`Tüm sözleşmeler başarıyla kaydedildi!\n\nNe yapmak istersiniz?\n\nTamam = Geçmiş Sözleşmelere Git\nİptal = Yeni Kayıt Yap (Form Temizle)`)
+        alert("Sözleşme başarıyla kaydedildi!")
         
-        if (result) {
-          // Geçmiş sözleşmelere git
-          window.location.href = "/history"
-        } else {
-          // Formu temizle
-          setSelectedStudent(null)
-          setMainContractData({
+        // Formu temizle
+        setSelectedStudent(null)
+        setMainContractData({
             studentName: "",
             studentClass: "",
             studentTC: "",
