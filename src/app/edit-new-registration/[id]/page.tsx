@@ -133,6 +133,7 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
     
     setSaving(true)
     try {
+      // Ana sözleşmeyi güncelle
       const response = await fetch(`/api/new-registrations/${contractId}`, {
         method: "PUT",
         headers: {
@@ -470,6 +471,157 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
                 İptal
               </Button>
             </Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Forma Sözleşmesi */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="text-indigo-600">Forma Sözleşmesi</CardTitle>
+          <CardDescription>Forma bilgilerini düzenleyin</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="uniformSize">Forma Bedeni</Label>
+              <Input
+                id="uniformSize"
+                value={(contract as Record<string, unknown>).uniformSize as string || ""}
+                onChange={(e) => handleInputChange("uniformSize" as keyof ContractData, e.target.value)}
+                placeholder="Örn: M, L, XL"
+              />
+            </div>
+            <div>
+              <Label htmlFor="uniformPrice">Forma Ücreti (TL)</Label>
+              <Input
+                id="uniformPrice"
+                type="number"
+                value={(contract as Record<string, unknown>).uniformPrice as string || ""}
+                onChange={(e) => handleInputChange("uniformPrice" as keyof ContractData, e.target.value)}
+                placeholder="Örn: 500"
+              />
+            </div>
+            <div>
+              <Label htmlFor="uniformDeliveryDate">Teslim Tarihi</Label>
+              <Input
+                id="uniformDeliveryDate"
+                type="date"
+                value={(contract as Record<string, unknown>).uniformDeliveryDate as string || ""}
+                onChange={(e) => handleInputChange("uniformDeliveryDate" as keyof ContractData, e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="uniformItems">Teslim Edilecek Formalar</Label>
+              <Input
+                id="uniformItems"
+                value={Array.isArray((contract as Record<string, unknown>).uniformItems) ? ((contract as Record<string, unknown>).uniformItems as string[]).join(", ") : ""}
+                onChange={(e) => handleInputChange("uniformItems" as keyof ContractData, e.target.value.split(", "))}
+                placeholder="Örn: eşofman takımı, tişört 2 adet"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Yemek Sözleşmesi */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="text-green-600">Yemek Sözleşmesi</CardTitle>
+          <CardDescription>Yemek bilgilerini düzenleyin</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="mealPrice">Yemek Ücreti (TL)</Label>
+              <Input
+                id="mealPrice"
+                type="number"
+                value={(contract as Record<string, unknown>).mealPrice as string || ""}
+                onChange={(e) => handleInputChange("mealPrice" as keyof ContractData, e.target.value)}
+                placeholder="Örn: 150"
+              />
+            </div>
+            <div>
+              <Label htmlFor="mealPeriods">Ödeme Dönemleri</Label>
+              <Input
+                id="mealPeriods"
+                value={Array.isArray((contract as Record<string, unknown>).mealPeriods) ? ((contract as Record<string, unknown>).mealPeriods as string[]).join(", ") : ""}
+                onChange={(e) => handleInputChange("mealPeriods" as keyof ContractData, e.target.value.split(", "))}
+                placeholder="Örn: eylül, ekim, kasım"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Kitap Sözleşmesi */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="text-purple-600">Kitap Sözleşmesi</CardTitle>
+          <CardDescription>Kitap bilgilerini düzenleyin</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="bookSet">Kitap Seti</Label>
+              <Input
+                id="bookSet"
+                value={(contract as Record<string, unknown>).bookSet as string || ""}
+                onChange={(e) => handleInputChange("bookSet" as keyof ContractData, e.target.value)}
+                placeholder="Örn: 5. Sınıf Tam Set"
+              />
+            </div>
+            <div>
+              <Label htmlFor="bookDeliveryDate">Teslim Tarihi</Label>
+              <Input
+                id="bookDeliveryDate"
+                type="date"
+                value={(contract as Record<string, unknown>).bookDeliveryDate as string || ""}
+                onChange={(e) => handleInputChange("bookDeliveryDate" as keyof ContractData, e.target.value)}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Servis Sözleşmesi */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="text-orange-600">Servis Sözleşmesi</CardTitle>
+          <CardDescription>Servis bilgilerini düzenleyin</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="serviceRegion">Servis Bölgesi</Label>
+              <select
+                id="serviceRegion"
+                value={(contract as Record<string, unknown>).serviceRegion as string || ""}
+                onChange={(e) => handleInputChange("serviceRegion" as keyof ContractData, e.target.value)}
+                className="w-full h-11 px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl text-sm text-gray-900 transition-all duration-200 hover:border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 focus:outline-none cursor-pointer"
+              >
+                <option value="">Bölge seçin...</option>
+                <option value="1.bölge">1. Bölge</option>
+                <option value="2.bölge">2. Bölge</option>
+                <option value="3.bölge">3. Bölge</option>
+                <option value="4.bölge">4. Bölge</option>
+                <option value="5.bölge">5. Bölge</option>
+                <option value="6.bölge">6. Bölge</option>
+                <option value="çayeli">Çayeli</option>
+                <option value="pazar/ardeşen">Pazar/Ardeşen</option>
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="servicePrice">Servis Ücreti (TL)</Label>
+              <Input
+                id="servicePrice"
+                type="number"
+                value={(contract as Record<string, unknown>).servicePrice as string || ""}
+                onChange={(e) => handleInputChange("servicePrice" as keyof ContractData, e.target.value)}
+                placeholder="Örn: 800"
+              />
+            </div>
           </div>
         </CardContent>
       </Card>

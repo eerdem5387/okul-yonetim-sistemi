@@ -86,22 +86,22 @@ export async function POST(
             Object.assign(otherContractDataFromDB, bookContract.contractData as Record<string, unknown>)
         }
 
-        // Eğer yan sözleşmeler yoksa, ana sözleşmedeki verileri kullan
-        if (Object.keys(otherContractDataFromDB).length === 0) {
+        // Eğer yan sözleşmeler yoksa ve mainContractData varsa, ana sözleşmedeki verileri kullan
+        if (Object.keys(otherContractDataFromDB).length === 0 && mainContractData) {
             // Ana sözleşmedeki verileri yan sözleşmelere aktar
-            otherContractDataFromDB.uniformSize = mainContractData.uniformSize || ""
-            otherContractDataFromDB.uniformPrice = mainContractData.uniformPrice || ""
-            otherContractDataFromDB.uniformDeliveryDate = mainContractData.uniformDeliveryDate || ""
-            otherContractDataFromDB.uniformItems = mainContractData.uniformItems || []
+            otherContractDataFromDB.uniformSize = (mainContractData as Record<string, unknown>).uniformSize || ""
+            otherContractDataFromDB.uniformPrice = (mainContractData as Record<string, unknown>).uniformPrice || ""
+            otherContractDataFromDB.uniformDeliveryDate = (mainContractData as Record<string, unknown>).uniformDeliveryDate || ""
+            otherContractDataFromDB.uniformItems = (mainContractData as Record<string, unknown>).uniformItems || []
 
-            otherContractDataFromDB.mealPeriods = mainContractData.mealPeriods || []
-            otherContractDataFromDB.mealPrice = mainContractData.mealPrice || ""
+            otherContractDataFromDB.mealPeriods = (mainContractData as Record<string, unknown>).mealPeriods || []
+            otherContractDataFromDB.mealPrice = (mainContractData as Record<string, unknown>).mealPrice || ""
 
-            otherContractDataFromDB.bookSet = mainContractData.bookSet || ""
-            otherContractDataFromDB.bookDeliveryDate = mainContractData.bookDeliveryDate || ""
+            otherContractDataFromDB.bookSet = (mainContractData as Record<string, unknown>).bookSet || ""
+            otherContractDataFromDB.bookDeliveryDate = (mainContractData as Record<string, unknown>).bookDeliveryDate || ""
 
-            otherContractDataFromDB.serviceRegion = mainContractData.serviceRegion || ""
-            otherContractDataFromDB.servicePrice = mainContractData.servicePrice || ""
+            otherContractDataFromDB.serviceRegion = (mainContractData as Record<string, unknown>).serviceRegion || ""
+            otherContractDataFromDB.servicePrice = (mainContractData as Record<string, unknown>).servicePrice || ""
         }
 
         // Frontend'den gelen veya veritabanından çekilen verileri kullan
@@ -142,6 +142,10 @@ export async function POST(
         })
     } catch (error) {
         console.error("Error generating combined PDF:", error)
-        return NextResponse.json({ error: "Failed to generate combined PDF" }, { status: 500 })
+        const errorMessage = error instanceof Error ? error.message : "Unknown error"
+        return NextResponse.json({
+            error: "Failed to generate combined PDF",
+            details: errorMessage
+        }, { status: 500 })
     }
 }

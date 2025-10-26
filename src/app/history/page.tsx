@@ -197,8 +197,9 @@ export default function HistoryPage() {
         window.URL.revokeObjectURL(url)
         document.body.removeChild(a)
       } else {
-        console.error("PDF download failed:", response.status, response.statusText)
-        alert("PDF indirme başarısız oldu. Lütfen tekrar deneyin.")
+        const errorData = await response.json()
+        console.error("PDF download failed:", response.status, response.statusText, errorData)
+        alert(`PDF indirme başarısız oldu!\n\nHata: ${errorData.details || errorData.error || "Bilinmeyen hata"}`)
       }
     } catch (error) {
       console.error("Error downloading PDF:", error)

@@ -1306,15 +1306,22 @@ export default function NewRegistrationPage() {
             </Card>
 
             {/* Kaydet ve PDF İndir Butonları */}
-            <div className="flex gap-2">
-              <Button onClick={handleSaveAllContracts} className="bg-blue-600 hover:bg-blue-700">
-                <Save className="h-4 w-4 mr-2" />
-                Tüm Sözleşmeleri Kaydet
-              </Button>
-              <Button onClick={handleDownloadCombinedPDF} variant="outline">
-                <Download className="h-4 w-4 mr-2" />
-                Tüm Sözleşmeleri PDF İndir
-              </Button>
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <Button onClick={handleSaveAllContracts} className="bg-blue-600 hover:bg-blue-700">
+                  <Save className="h-4 w-4 mr-2" />
+                  Tüm Sözleşmeleri Kaydet
+                </Button>
+                <Button onClick={handleDownloadCombinedPDF} variant="outline">
+                  <Download className="h-4 w-4 mr-2" />
+                  Tüm Sözleşmeleri PDF İndir
+                </Button>
+              </div>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <p className="text-sm text-amber-800">
+                  <strong>ℹ️ Bilgilendirme:</strong> PDF indirmek için önce "Tüm Sözleşmeleri Kaydet" butonuna tıklayarak sözleşmeleri kaydetmeniz gerekmektedir.
+                </p>
+              </div>
             </div>
           </>
         )}
