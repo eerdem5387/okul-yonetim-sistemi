@@ -1319,7 +1319,7 @@ export default function NewRegistrationPage() {
               </div>
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
                 <p className="text-sm text-amber-800">
-                  <strong>ℹ️ Bilgilendirme:</strong> PDF indirmek için önce "Tüm Sözleşmeleri Kaydet" butonuna tıklayarak sözleşmeleri kaydetmeniz gerekmektedir.
+                  <strong>ℹ️ Bilgilendirme:</strong> PDF indirmek için önce &quot;Tüm Sözleşmeleri Kaydet&quot; butonuna tıklayarak sözleşmeleri kaydetmeniz gerekmektedir.
                 </p>
               </div>
             </div>
