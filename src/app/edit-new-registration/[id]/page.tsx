@@ -156,7 +156,7 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
     }
   }
 
-  const handleInputChange = (field: keyof ContractData, value: string | boolean) => {
+  const handleInputChange = (field: keyof ContractData, value: string | boolean | string[]) => {
     if (!contract) return
     setContract({
       ...contract,
