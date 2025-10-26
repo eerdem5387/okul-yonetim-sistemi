@@ -328,7 +328,75 @@ export default function NewRegistrationPage() {
       const allSuccessful = responses.every(response => response.ok)
       
       if (allSuccessful) {
-        alert("Tüm sözleşmeler başarıyla kaydedildi!")
+        const result = confirm(`Tüm sözleşmeler başarıyla kaydedildi!\n\nNe yapmak istersiniz?\n\nTamam = Geçmiş Sözleşmelere Git\nİptal = Yeni Kayıt Yap (Form Temizle)`)
+        
+        if (result) {
+          // Geçmiş sözleşmelere git
+          window.location.href = "/history"
+        } else {
+          // Formu temizle
+          setSelectedStudent(null)
+          setMainContractData({
+            studentName: "",
+            studentClass: "",
+            studentTC: "",
+            studentBirthDate: "",
+            schoolLicenseNo: "",
+            contractNo: "",
+            registrationResponsible: "",
+            registrationDate: "",
+            contractStudentName: "",
+            contractParentName: "",
+            announcedTuitionFee: "",
+            announcedClothingFee: "",
+            announcedCourseFee: "",
+            announcedBookFee: "",
+            announcedStationeryFee: "",
+            announcedStudyHallFee: "",
+            announcedTotal: "",
+            studentTuitionFee: "",
+            studentClothingFee: "",
+            studentCourseFee: "",
+            studentBookFee: "",
+            studentStationeryFee: "",
+            studentStudyHallFee: "",
+            studentTotal: "",
+            installmentStartDate: "",
+            downPayment: "",
+            installmentDetails: "",
+            achievementDiscountRate: "",
+            achievementDiscountType: "none",
+            siblingDiscount: false,
+            staffChildDiscount: false,
+            corporateDiscount: false,
+            martyrVeteranDiscount: false,
+            teacherChildDiscount: false,
+            achievementDiscount: false,
+            otherDiscount: false,
+            otherDiscountDescription: "",
+            parentSignature: "",
+            contractDate: "",
+            registrarName: "",
+            registrarSignature: "",
+            serviceRegion: "",
+            servicePrice: "",
+            selectedClubs: []
+          })
+          setOtherContractData({
+            uniformSize: "",
+            uniformPrice: "",
+            uniformDeliveryDate: "",
+            uniformItems: [],
+            mealPeriods: [],
+            mealPrice: "",
+            bookSet: "",
+            bookDeliveryDate: "",
+            serviceRegion: "",
+            servicePrice: "",
+            selectedClubs: []
+          })
+          alert("Form temizlendi. Yeni kayıt yapabilirsiniz.")
+        }
       } else {
         alert("Bazı sözleşmeler kaydedilirken hata oluştu!")
       }
@@ -518,7 +586,42 @@ export default function NewRegistrationPage() {
 
                   {/* Ödeme Bilgileri */}
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">ÖDEME BİLGİLERİ (2024-2025 Öğretim Yılı İçin)</h3>
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-lg font-semibold">ÖDEME BİLGİLERİ (2024-2025 Öğretim Yılı İçin)</h3>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const announced = [
+                            parseFloat(mainContractData.announcedTuitionFee) || 0,
+                            parseFloat(mainContractData.announcedClothingFee) || 0,
+                            parseFloat(mainContractData.announcedCourseFee) || 0,
+                            parseFloat(mainContractData.announcedBookFee) || 0,
+                            parseFloat(mainContractData.announcedStationeryFee) || 0,
+                            parseFloat(mainContractData.announcedStudyHallFee) || 0
+                          ]
+                          const student = [
+                            parseFloat(mainContractData.studentTuitionFee) || 0,
+                            parseFloat(mainContractData.studentClothingFee) || 0,
+                            parseFloat(mainContractData.studentCourseFee) || 0,
+                            parseFloat(mainContractData.studentBookFee) || 0,
+                            parseFloat(mainContractData.studentStationeryFee) || 0,
+                            parseFloat(mainContractData.studentStudyHallFee) || 0
+                          ]
+                          const announcedTotal = announced.reduce((a, b) => a + b, 0)
+                          const studentTotal = student.reduce((a, b) => a + b, 0)
+                          setMainContractData({
+                            ...mainContractData,
+                            announcedTotal: announcedTotal.toString(),
+                            studentTotal: studentTotal.toString()
+                          })
+                        }}
+                        className="text-xs"
+                      >
+                        Toplamı Hesapla
+                      </Button>
+                    </div>
                     
                     <div className="grid grid-cols-3 gap-4">
                       <div className="font-semibold">Ücret Türü</div>

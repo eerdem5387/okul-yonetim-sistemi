@@ -465,7 +465,42 @@ export default function RenewalPage() {
 
                   {/* Ödeme Bilgileri */}
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">ÖDEME BİLGİLERİ (2024-2025 Öğretim Yılı İçin)</h3>
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-lg font-semibold">ÖDEME BİLGİLERİ (2024-2025 Öğretim Yılı İçin)</h3>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const announced = [
+                            parseFloat(mainContractData.announcedTuitionFee) || 0,
+                            parseFloat(mainContractData.announcedClothingFee) || 0,
+                            parseFloat(mainContractData.announcedCourseFee) || 0,
+                            parseFloat(mainContractData.announcedBookFee) || 0,
+                            parseFloat(mainContractData.announcedStationeryFee) || 0,
+                            parseFloat(mainContractData.announcedStudyHallFee) || 0
+                          ]
+                          const student = [
+                            parseFloat(mainContractData.studentTuitionFee) || 0,
+                            parseFloat(mainContractData.studentClothingFee) || 0,
+                            parseFloat(mainContractData.studentCourseFee) || 0,
+                            parseFloat(mainContractData.studentBookFee) || 0,
+                            parseFloat(mainContractData.studentStationeryFee) || 0,
+                            parseFloat(mainContractData.studentStudyHallFee) || 0
+                          ]
+                          const announcedTotal = announced.reduce((a, b) => a + b, 0)
+                          const studentTotal = student.reduce((a, b) => a + b, 0)
+                          setMainContractData({
+                            ...mainContractData,
+                            announcedTotal: announcedTotal.toString(),
+                            studentTotal: studentTotal.toString()
+                          })
+                        }}
+                        className="text-xs"
+                      >
+                        Toplamı Hesapla
+                      </Button>
+                    </div>
                     
                     <div className="grid grid-cols-3 gap-4">
                       <div className="font-semibold">Ücret Türü</div>
