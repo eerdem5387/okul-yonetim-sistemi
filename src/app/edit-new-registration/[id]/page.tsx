@@ -487,7 +487,7 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
               <Label htmlFor="uniformSize">Forma Bedeni</Label>
               <Input
                 id="uniformSize"
-                value={(contract as Record<string, unknown>).uniformSize as string || ""}
+                value={(contract as unknown as Record<string, unknown>).uniformSize as string || ""}
                 onChange={(e) => handleInputChange("uniformSize" as keyof ContractData, e.target.value)}
                 placeholder="Örn: M, L, XL"
               />
@@ -497,7 +497,7 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
               <Input
                 id="uniformPrice"
                 type="number"
-                value={(contract as Record<string, unknown>).uniformPrice as string || ""}
+                value={(contract as unknown as Record<string, unknown>).uniformPrice as string || ""}
                 onChange={(e) => handleInputChange("uniformPrice" as keyof ContractData, e.target.value)}
                 placeholder="Örn: 500"
               />
@@ -507,7 +507,7 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
               <Input
                 id="uniformDeliveryDate"
                 type="date"
-                value={(contract as Record<string, unknown>).uniformDeliveryDate as string || ""}
+                value={(contract as unknown as Record<string, unknown>).uniformDeliveryDate as string || ""}
                 onChange={(e) => handleInputChange("uniformDeliveryDate" as keyof ContractData, e.target.value)}
               />
             </div>
@@ -515,7 +515,7 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
               <Label htmlFor="uniformItems">Teslim Edilecek Formalar</Label>
               <Input
                 id="uniformItems"
-                value={Array.isArray((contract as Record<string, unknown>).uniformItems) ? ((contract as Record<string, unknown>).uniformItems as string[]).join(", ") : ""}
+                value={Array.isArray((contract as unknown as Record<string, unknown>).uniformItems) ? ((contract as unknown as Record<string, unknown>).uniformItems as string[]).join(", ") : ""}
                 onChange={(e) => handleInputChange("uniformItems" as keyof ContractData, e.target.value.split(", "))}
                 placeholder="Örn: eşofman takımı, tişört 2 adet"
               />
@@ -537,7 +537,7 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
               <Input
                 id="mealPrice"
                 type="number"
-                value={(contract as Record<string, unknown>).mealPrice as string || ""}
+                value={(contract as unknown as Record<string, unknown>).mealPrice as string || ""}
                 onChange={(e) => handleInputChange("mealPrice" as keyof ContractData, e.target.value)}
                 placeholder="Örn: 150"
               />
@@ -546,7 +546,7 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
               <Label htmlFor="mealPeriods">Ödeme Dönemleri</Label>
               <Input
                 id="mealPeriods"
-                value={Array.isArray((contract as Record<string, unknown>).mealPeriods) ? ((contract as Record<string, unknown>).mealPeriods as string[]).join(", ") : ""}
+                value={Array.isArray((contract as unknown as Record<string, unknown>).mealPeriods) ? ((contract as unknown as Record<string, unknown>).mealPeriods as string[]).join(", ") : ""}
                 onChange={(e) => handleInputChange("mealPeriods" as keyof ContractData, e.target.value.split(", "))}
                 placeholder="Örn: eylül, ekim, kasım"
               />
@@ -567,7 +567,7 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
               <Label htmlFor="bookSet">Kitap Seti</Label>
               <Input
                 id="bookSet"
-                value={(contract as Record<string, unknown>).bookSet as string || ""}
+                value={(contract as unknown as Record<string, unknown>).bookSet as string || ""}
                 onChange={(e) => handleInputChange("bookSet" as keyof ContractData, e.target.value)}
                 placeholder="Örn: 5. Sınıf Tam Set"
               />
@@ -577,7 +577,7 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
               <Input
                 id="bookDeliveryDate"
                 type="date"
-                value={(contract as Record<string, unknown>).bookDeliveryDate as string || ""}
+                value={(contract as unknown as Record<string, unknown>).bookDeliveryDate as string || ""}
                 onChange={(e) => handleInputChange("bookDeliveryDate" as keyof ContractData, e.target.value)}
               />
             </div>
@@ -597,7 +597,7 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
               <Label htmlFor="serviceRegion">Servis Bölgesi</Label>
               <select
                 id="serviceRegion"
-                value={(contract as Record<string, unknown>).serviceRegion as string || ""}
+                value={(contract as unknown as Record<string, unknown>).serviceRegion as string || ""}
                 onChange={(e) => handleInputChange("serviceRegion" as keyof ContractData, e.target.value)}
                 className="w-full h-11 px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl text-sm text-gray-900 transition-all duration-200 hover:border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 focus:outline-none cursor-pointer"
               >
@@ -617,7 +617,7 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
               <Input
                 id="servicePrice"
                 type="number"
-                value={(contract as Record<string, unknown>).servicePrice as string || ""}
+                value={(contract as unknown as Record<string, unknown>).servicePrice as string || ""}
                 onChange={(e) => handleInputChange("servicePrice" as keyof ContractData, e.target.value)}
                 placeholder="Örn: 800"
               />
