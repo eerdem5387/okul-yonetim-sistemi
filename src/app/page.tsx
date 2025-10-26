@@ -43,6 +43,7 @@ export default function HomePage() {
 
   useEffect(() => {
     fetchDashboardData()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const fetchDashboardData = async () => {
@@ -90,7 +91,7 @@ export default function HomePage() {
       
       // Kulüp doluluk ortalaması
       const clubCapacityAverage = clubs.length > 0
-        ? clubs.reduce((acc: number, club: any) => {
+        ? clubs.reduce((acc: number, club: { selections?: unknown[]; capacity?: number }) => {
             const percentage = (club.selections?.length || 0) / (club.capacity || 1) * 100
             return acc + percentage
           }, 0) / clubs.length
@@ -113,16 +114,16 @@ export default function HomePage() {
       }
       
       // Son 10 işlem (tüm sözleşmelerden)
-      const allContractsWithDetails = allContracts.map((contract: any) => {
-        const student = students.find((s: any) => s.id === contract.studentId)
+      const allContractsWithDetails = allContracts.map((contract: { id: string; studentId: string; type?: string; createdAt: string }) => {
+        const student = students.find((s: { id: string; firstName: string; lastName: string }) => s.id === contract.studentId)
         return {
           id: contract.id,
           type: contract.type || "unknown",
           studentName: student ? `${student.firstName} ${student.lastName}` : "Bilinmeyen Öğrenci",
           createdAt: contract.createdAt,
-          contractType: getContractTypeDisplay(contract.type)
+          contractType: getContractTypeDisplay(contract.type || "unknown")
         }
-      }).sort((a: any, b: any) => 
+      }).sort((a: { createdAt: string }, b: { createdAt: string }) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       ).slice(0, 10)
       

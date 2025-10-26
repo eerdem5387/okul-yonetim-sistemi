@@ -1182,7 +1182,7 @@ export default function NewRegistrationPage() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {clubs.map((club: any) => {
+                  {clubs.map((club: { id: string; name: string; selections?: unknown[]; capacity?: number }) => {
                     const isSelected = otherContractData.selectedClubs?.includes(club.id)
                     const currentSelections = club.selections?.length || 0
                     const capacity = club.capacity || 0
