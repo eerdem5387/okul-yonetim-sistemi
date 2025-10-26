@@ -86,6 +86,24 @@ export async function POST(
             Object.assign(otherContractDataFromDB, bookContract.contractData as Record<string, unknown>)
         }
 
+        // Eğer yan sözleşmeler yoksa, ana sözleşmedeki verileri kullan
+        if (Object.keys(otherContractDataFromDB).length === 0) {
+            // Ana sözleşmedeki verileri yan sözleşmelere aktar
+            otherContractDataFromDB.uniformSize = mainContractData.uniformSize || ""
+            otherContractDataFromDB.uniformPrice = mainContractData.uniformPrice || ""
+            otherContractDataFromDB.uniformDeliveryDate = mainContractData.uniformDeliveryDate || ""
+            otherContractDataFromDB.uniformItems = mainContractData.uniformItems || []
+
+            otherContractDataFromDB.mealPeriods = mainContractData.mealPeriods || []
+            otherContractDataFromDB.mealPrice = mainContractData.mealPrice || ""
+
+            otherContractDataFromDB.bookSet = mainContractData.bookSet || ""
+            otherContractDataFromDB.bookDeliveryDate = mainContractData.bookDeliveryDate || ""
+
+            otherContractDataFromDB.serviceRegion = mainContractData.serviceRegion || ""
+            otherContractDataFromDB.servicePrice = mainContractData.servicePrice || ""
+        }
+
         // Frontend'den gelen veya veritabanından çekilen verileri kullan
         const finalOtherContractData = Object.keys(otherContractData || {}).length > 0
             ? otherContractData
