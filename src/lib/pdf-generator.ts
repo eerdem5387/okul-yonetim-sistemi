@@ -431,159 +431,161 @@ function generateMainContractHTML(student: { firstName: string; lastName: string
 
     <div class="contract-info">
       <div><strong>Okul Ruhsat No:</strong> ${contractData.schoolLicenseNo || '___________'}</div>
-      <div><strong>Sözleşme No (Okul No):</strong> ${contractData.contractNo || '___________'}</div>
-      <div><strong>Kayıt/Kayıt Yenileme Sorumlusu:</strong> ${contractData.registrationResponsible || '___________'}</div>
-      <div><strong>Kayıt/Kayıt Yenileme Tarihi:</strong> ${contractData.registrationDate || '___________'}</div>
+      <div><strong>Sözleşme No:</strong> ${contractData.contractNo || '___________'}</div>
+      <div><strong>Sorumlu:</strong> ${contractData.registrationResponsible || '___________'}</div>
+      <div><strong>Tarih:</strong> ${contractData.registrationDate || '___________'}</div>
     </div>
 
-    <div class="section">
-      <div class="section-title">ÖĞRENCİ BİLGİLERİ</div>
-      <div class="field-row">
+    <div class="section" style="margin-bottom: 10px;">
+      <div class="section-title" style="margin-bottom: 8px;">ÖĞRENCİ BİLGİLERİ</div>
+      <div class="field-row" style="margin-bottom: 5px;">
         <div class="field-label">Öğrenci Adı:</div>
         <div class="field-value">${contractData.studentName || student.firstName + ' ' + student.lastName}</div>
       </div>
-      <div class="field-row">
+      <div class="field-row" style="margin-bottom: 5px;">
         <div class="field-label">Sınıfı:</div>
         <div class="field-value">${contractData.studentClass || student.grade}</div>
       </div>
-      <div class="field-row">
+      <div class="field-row" style="margin-bottom: 5px;">
         <div class="field-label">TC Kimlik No:</div>
         <div class="field-value">${contractData.studentTC || student.tcNumber}</div>
       </div>
-      <div class="field-row">
+      <div class="field-row" style="margin-bottom: 5px;">
         <div class="field-label">Doğum Tarihi:</div>
         <div class="field-value">${contractData.studentBirthDate || student.birthDate}</div>
       </div>
     </div>
 
-    <div class="section">
-      <div class="section-title">ÖDEME BİLGİLERİ (2024-2025 Öğretim Yılı İçin)</div>
-      <table class="table">
+    <div class="section" style="margin-bottom: 10px;">
+      <div class="section-title" style="margin-bottom: 8px;">ÖDEME BİLGİLERİ (2024-2025 Öğretim Yılı İçin)</div>
+      <table class="table" style="margin-bottom: 10px;">
         <thead>
           <tr>
-            <th>ÜCRET TÜRÜ</th>
-            <th>KURUMUN İLAN ETTİĞİ ÜCRETLER (KDV Dahil)</th>
-            <th>ÖĞRENCİ İÇİN BELİRLENEN ÜCRETLER (KDV Dahil)</th>
+            <th style="font-size: 9px; padding: 3px;">ÜCRET TÜRÜ</th>
+            <th style="font-size: 9px; padding: 3px;">İLAN EDİLEN (KDV Dahil)</th>
+            <th style="font-size: 9px; padding: 3px;">ÖĞRENCİ İÇİN (KDV Dahil)</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td>Öğrenim Ücreti</td>
-            <td>${contractData.announcedTuitionFee || '0'}</td>
-            <td>${contractData.studentTuitionFee || '0'}</td>
+            <td style="font-size: 10px; padding: 2px;">Öğrenim Ücreti</td>
+            <td style="font-size: 10px; padding: 2px;">${contractData.announcedTuitionFee || '0'}</td>
+            <td style="font-size: 10px; padding: 2px;">${contractData.studentTuitionFee || '0'}</td>
           </tr>
           <tr>
-            <td>KIYAFET ÜCRETİ</td>
-            <td>${contractData.announcedClothingFee || '0'}</td>
-            <td>${contractData.studentClothingFee || '0'}</td>
+            <td style="font-size: 10px; padding: 2px;">Kıyafet Ücreti</td>
+            <td style="font-size: 10px; padding: 2px;">${contractData.announcedClothingFee || '0'}</td>
+            <td style="font-size: 10px; padding: 2px;">${contractData.studentClothingFee || '0'}</td>
           </tr>
           <tr>
-            <td style="padding-left: 20px;">Takviye Kursu Ücreti</td>
-            <td>${contractData.announcedCourseFee || '0'}</td>
-            <td>${contractData.studentCourseFee || '0'}</td>
+            <td style="font-size: 10px; padding: 2px; padding-left: 15px;">Takviye Kursu</td>
+            <td style="font-size: 10px; padding: 2px;">${contractData.announcedCourseFee || '0'}</td>
+            <td style="font-size: 10px; padding: 2px;">${contractData.studentCourseFee || '0'}</td>
           </tr>
           <tr>
-            <td style="padding-left: 20px;">Kitap Ücreti</td>
-            <td>${contractData.announcedBookFee || '0'}</td>
-            <td>${contractData.studentBookFee || '0'}</td>
+            <td style="font-size: 10px; padding: 2px; padding-left: 15px;">Kitap</td>
+            <td style="font-size: 10px; padding: 2px;">${contractData.announcedBookFee || '0'}</td>
+            <td style="font-size: 10px; padding: 2px;">${contractData.studentBookFee || '0'}</td>
           </tr>
           <tr>
-            <td style="padding-left: 20px;">Kırtasiye Ücreti</td>
-            <td>${contractData.announcedStationeryFee || '0'}</td>
-            <td>${contractData.studentStationeryFee || '0'}</td>
+            <td style="font-size: 10px; padding: 2px; padding-left: 15px;">Kırtasiye</td>
+            <td style="font-size: 10px; padding: 2px;">${contractData.announcedStationeryFee || '0'}</td>
+            <td style="font-size: 10px; padding: 2px;">${contractData.studentStationeryFee || '0'}</td>
           </tr>
           <tr>
-            <td style="padding-left: 20px;">Etüt Ücreti</td>
-            <td>${contractData.announcedStudyHallFee || '0'}</td>
-            <td>${contractData.studentStudyHallFee || '0'}</td>
+            <td style="font-size: 10px; padding: 2px; padding-left: 15px;">Etüt</td>
+            <td style="font-size: 10px; padding: 2px;">${contractData.announcedStudyHallFee || '0'}</td>
+            <td style="font-size: 10px; padding: 2px;">${contractData.studentStudyHallFee || '0'}</td>
           </tr>
           <tr style="font-weight: bold;">
-            <td>ÜCRETLER TOPLAMI</td>
-            <td>${contractData.announcedTotal || '0'}</td>
-            <td>${contractData.studentTotal || '0'}</td>
+            <td style="font-size: 10px; padding: 2px;">TOPLAM</td>
+            <td style="font-size: 10px; padding: 2px;">${contractData.announcedTotal || '0'}</td>
+            <td style="font-size: 10px; padding: 2px;">${contractData.studentTotal || '0'}</td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <div class="section">
-      <div class="section-title">ÖDEME PLANI</div>
-      <div class="field-row">
-        <div class="field-label">Taksit Başlangıç Tarihi:</div>
-        <div class="field-value">${contractData.installmentStartDate || '___________'}</div>
-      </div>
-      <div class="field-row">
-        <div class="field-label">Peşinat:</div>
-        <div class="field-value">${contractData.downPayment || '___________'}</div>
-      </div>
-      <div class="field-row">
-        <div class="field-label">Taksit Sayısı ve Tutarı:</div>
-        <div class="field-value">${contractData.installmentDetails || '___________'}</div>
-      </div>
-      <div class="field-row">
-        <div class="field-label">Başarı İndirimi Oranı:</div>
-        <div class="field-value">${contractData.achievementDiscountRate || '___________'} ${contractData.achievementDiscountType === 'percentage' ? '%' : ''}</div>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">İNDİRİMLER</div>
-      <div style="display: flex; gap: 20px;">
-        <div style="flex: 1;">
-          <div class="checkbox-section">
-            <div class="checkbox ${contractData.siblingDiscount ? 'checked' : ''}"></div>
-            <span>Kardeş İndirimi</span>
-          </div>
-          <div class="checkbox-section">
-            <div class="checkbox ${contractData.staffChildDiscount ? 'checked' : ''}"></div>
-            <span>Personel Çocuğu İndirimi</span>
-          </div>
-          <div class="checkbox-section">
-            <div class="checkbox ${contractData.corporateDiscount ? 'checked' : ''}"></div>
-            <span>Kurumsal İndirim</span>
-          </div>
-          <div class="checkbox-section">
-            <div class="checkbox ${contractData.martyrVeteranDiscount ? 'checked' : ''}"></div>
-            <span>Şehit/Gazi Çocuğu İndirimi</span>
-          </div>
-          <div class="checkbox-section">
-            <div class="checkbox ${contractData.otherDiscount ? 'checked' : ''}"></div>
-            <span>Diğer İndirimler: ${contractData.otherDiscountDescription || '___________'}</span>
-          </div>
+    <div style="display: flex; gap: 15px; margin-bottom: 10px;">
+      <div style="flex: 1;">
+        <div class="section-title" style="margin-bottom: 5px; font-size: 12px;">ÖDEME PLANI</div>
+        <div class="field-row" style="margin-bottom: 4px;">
+          <div class="field-label" style="min-width: 100px; font-size: 10px;">Taksit Başlangıç:</div>
+          <div class="field-value" style="font-size: 10px;">${contractData.installmentStartDate || '___________'}</div>
         </div>
-        <div style="flex: 1;">
-          <div class="checkbox-section">
-            <div class="checkbox ${contractData.teacherChildDiscount ? 'checked' : ''}"></div>
-            <span>Öğretmen Çocuğu İndirimi</span>
-          </div>
-          <div class="checkbox-section">
-            <div class="checkbox ${contractData.achievementDiscount ? 'checked' : ''}"></div>
-            <span>Başarı İndirimi</span>
-          </div>
+        <div class="field-row" style="margin-bottom: 4px;">
+          <div class="field-label" style="min-width: 100px; font-size: 10px;">Peşinat:</div>
+          <div class="field-value" style="font-size: 10px;">${contractData.downPayment || '___________'}</div>
+        </div>
+        <div class="field-row" style="margin-bottom: 4px;">
+          <div class="field-label" style="min-width: 100px; font-size: 10px;">Taksit Detayı:</div>
+          <div class="field-value" style="font-size: 10px;">${contractData.installmentDetails || '___________'}</div>
+        </div>
+        <div class="field-row" style="margin-bottom: 4px;">
+          <div class="field-label" style="min-width: 100px; font-size: 10px;">Başarı İndirimi:</div>
+          <div class="field-value" style="font-size: 10px;">${contractData.achievementDiscountRate || '___________'} ${contractData.achievementDiscountType === 'percentage' ? '%' : ''}</div>
+        </div>
+      </div>
+      
+      <div style="flex: 1;">
+        <div class="section-title" style="margin-bottom: 5px; font-size: 12px;">İNDİRİMLER</div>
+        <div class="checkbox-section" style="margin-bottom: 3px; font-size: 10px;">
+          <div class="checkbox ${contractData.siblingDiscount ? 'checked' : ''}" style="width: 12px; height: 12px;"></div>
+          <span>Kardeş İndirimi</span>
+        </div>
+        <div class="checkbox-section" style="margin-bottom: 3px; font-size: 10px;">
+          <div class="checkbox ${contractData.staffChildDiscount ? 'checked' : ''}" style="width: 12px; height: 12px;"></div>
+          <span>Personel Çocuğu</span>
+        </div>
+        <div class="checkbox-section" style="margin-bottom: 3px; font-size: 10px;">
+          <div class="checkbox ${contractData.corporateDiscount ? 'checked' : ''}" style="width: 12px; height: 12px;"></div>
+          <span>Kurumsal</span>
+        </div>
+        <div class="checkbox-section" style="margin-bottom: 3px; font-size: 10px;">
+          <div class="checkbox ${contractData.martyrVeteranDiscount ? 'checked' : ''}" style="width: 12px; height: 12px;"></div>
+          <span>Şehit/Gazi</span>
+        </div>
+        <div class="checkbox-section" style="margin-bottom: 3px; font-size: 10px;">
+          <div class="checkbox ${contractData.teacherChildDiscount ? 'checked' : ''}" style="width: 12px; height: 12px;"></div>
+          <span>Öğretmen Çocuğu</span>
+        </div>
+        <div class="checkbox-section" style="margin-bottom: 3px; font-size: 10px;">
+          <div class="checkbox ${contractData.achievementDiscount ? 'checked' : ''}" style="width: 12px; height: 12px;"></div>
+          <span>Başarı İndirimi</span>
         </div>
       </div>
     </div>
 
-    <div class="section">
-      <div class="section-title">İMZA VE TARİH</div>
-      <div class="field-row">
-        <div class="field-label">Tarih:</div>
-        <div class="field-value">${contractData.contractDate || '___________'}</div>
-      </div>
-      <div class="field-row">
-        <div class="field-label">Kaydı Yapan:</div>
-        <div class="field-value">${contractData.registrarName || '___________'}</div>
+    <div class="section" style="margin-bottom: 10px;">
+      <div class="field-row" style="margin-bottom: 4px;">
+        <div class="field-label" style="font-size: 10px;">Diğer İndirimler:</div>
+        <div class="field-value" style="font-size: 10px;">${contractData.otherDiscountDescription || '___________'}</div>
       </div>
     </div>
 
-    <div class="signature-section">
+    <div style="display: flex; gap: 15px; margin-bottom: 10px;">
+      <div style="flex: 1;">
+        <div class="field-row" style="margin-bottom: 4px;">
+          <div class="field-label" style="font-size: 10px;">Tarih:</div>
+          <div class="field-value" style="font-size: 10px;">${contractData.contractDate || '___________'}</div>
+        </div>
+      </div>
+      <div style="flex: 1;">
+        <div class="field-row" style="margin-bottom: 4px;">
+          <div class="field-label" style="font-size: 10px;">Kaydı Yapan:</div>
+          <div class="field-value" style="font-size: 10px;">${contractData.registrarName || '___________'}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="signature-section" style="margin-top: 15px;">
       <div class="signature-box">
-        <div class="signature-line"></div>
-        <div class="signature-label">Veli İmzası</div>
+        <div class="signature-line" style="height: 30px;"></div>
+        <div class="signature-label" style="font-size: 10px;">Veli İmzası</div>
       </div>
       <div class="signature-box">
-        <div class="signature-line"></div>
-        <div class="signature-label">Okul Müdürü İmzası</div>
+        <div class="signature-line" style="height: 30px;"></div>
+        <div class="signature-label" style="font-size: 10px;">Okul Müdürü İmzası</div>
       </div>
     </div>
 
@@ -593,145 +595,134 @@ function generateMainContractHTML(student: { firstName: string; lastName: string
       <div class="contract-title">ŞARTLAR</div>
     </div>
 
-    <div class="terms-section">
-      <ol class="terms-list">
-        <li>Öğrenci eğitimi, kayıtlı olduğu veya nakil yapıldığı okuldaki tüm sınıfların sonuna kadar devam eder. Sözleşme, imzalandığı öğretim yılının 15 Haziran tarihinde sona erer.</li>
-        <li>Öğrenci bir sonraki öğretim yılında okula devam etmek isterse, <strong>Ödeme Bilgileri Bölümünde Öğrenci İçin Belirlenen Öğrenim Ücreti</strong>ne göre artış yapılacaktır.</li>
-        <li>Kurum, bir sonraki yılın eğitim ve öğretim ücretleri ile diğer ücretleri (takviye kursları, yemek, servis, kıyafet, kırtasiye, yurt vb.) Ocak ayından Mayıs ayı sonuna kadar duyurur. Bu duyurularda ödemelerin öğretim yılı başına mı yoksa saat başına mı, nakit mi taksitli mi olduğu ve diğer indirimler belirtilir.</li>
-        <li>Okulun ara sınıflarının eğitim ücretleri, Milli Eğitim Bakanlığı mevzuatına göre belirlenir.</li>
-        <li>Sözleşmesi sona eren velinin fiyatlandırması, yeni kayıt olan öğrenci fiyatı üzerinden yapılır.</li>
-        <li>Kurumun eğitim ve öğretim ücretleri, kurum adına açılan ve valiliğe bildirilen banka hesabına yatırılarak tahsil edilir. Tahsil edilen ücretler e-okul sistemine kaydedilerek velilere sunulur. Ödemeler kredi kartı ile veya anlaşmalı bankaların öğrenci taksit sistemi ile yapılabilir.</li>
-        <li>Kurum, iş takviminde belirtilen süre içinde ücretlerini ödemeyen öğrencilerin kayıtlarını yenilememe hakkını saklı tutar. Veli/vasinin ücret ödememe konusunda ısrar etmesi durumunda, çocuğun kaydı eğitim müfettişlerince yapılan inceleme sonucunda nakil ve yerleştirme komisyonu aracılığıyla uygun resmi okula veya açık liseye nakledilir.</li>
-        <li>Yenileme dönemlerinde kayıtlarını yenilemeyen öğrenciler, e-okul sistemindeki öğrenci ücretleri üzerinden fiyatlandırılır.</li>
-        <li>Bu sözleşme ile kaydı garanti edilen öğrencinin daha önce gizlenen okul disiplin cezası olduğu, aleyhinde adli süreç/soruşturma başlatıldığı, Milli Eğitim Bakanlığı disiplin yönetmeliğine aykırı davranışta bulunduğu (adli dosya açılmasa bile) veya mevcut disiplin cezasının silindiği tespit edilirse bu sözleşme geçersiz sayılır.</li>
-        <li>Öğrencilerin önceki öğretim dönemlerinde sınıf tekrarı yaptığı veya aşırı devamsızlık yaptığı tespit edilirse, Kurucu kayıt sözleşmesini tek taraflı olarak feshedebilir. Öğrenci velisi yazılı olarak bilgilendirilir.</li>
+    <div class="terms-section" style="font-size: 9px; line-height: 1.2;">
+      <ol class="terms-list" style="margin-left: 15px;">
+        <li style="margin-bottom: 3px;">Öğrenci eğitimi, kayıtlı olduğu veya nakil yapıldığı okuldaki tüm sınıfların sonuna kadar devam eder. Sözleşme, imzalandığı öğretim yılının 15 Haziran tarihinde sona erer.</li>
+        <li style="margin-bottom: 3px;">Öğrenci bir sonraki öğretim yılında okula devam etmek isterse, <strong>Ödeme Bilgileri Bölümünde Öğrenci İçin Belirlenen Öğrenim Ücreti</strong>ne göre artış yapılacaktır.</li>
+        <li style="margin-bottom: 3px;">Kurum, bir sonraki yılın eğitim ve öğretim ücretleri ile diğer ücretleri (takviye kursları, yemek, servis, kıyafet, kırtasiye, yurt vb.) Ocak ayından Mayıs ayı sonuna kadar duyurur.</li>
+        <li style="margin-bottom: 3px;">Okulun ara sınıflarının eğitim ücretleri, Milli Eğitim Bakanlığı mevzuatına göre belirlenir.</li>
+        <li style="margin-bottom: 3px;">Sözleşmesi sona eren velinin fiyatlandırması, yeni kayıt olan öğrenci fiyatı üzerinden yapılır.</li>
+        <li style="margin-bottom: 3px;">Kurumun eğitim ve öğretim ücretleri, kurum adına açılan ve valiliğe bildirilen banka hesabına yatırılarak tahsil edilir.</li>
+        <li style="margin-bottom: 3px;">Kurum, iş takviminde belirtilen süre içinde ücretlerini ödemeyen öğrencilerin kayıtlarını yenilememe hakkını saklı tutar.</li>
+        <li style="margin-bottom: 3px;">Yenileme dönemlerinde kayıtlarını yenilemeyen öğrenciler, e-okul sistemindeki öğrenci ücretleri üzerinden fiyatlandırılır.</li>
+        <li style="margin-bottom: 3px;">Bu sözleşme ile kaydı garanti edilen öğrencinin daha önce gizlenen okul disiplin cezası olduğu tespit edilirse bu sözleşme geçersiz sayılır.</li>
+        <li style="margin-bottom: 3px;">Öğrencilerin önceki öğretim dönemlerinde sınıf tekrarı yaptığı veya aşırı devamsızlık yaptığı tespit edilirse, Kurucu kayıt sözleşmesini feshedebilir.</li>
+        <li style="margin-bottom: 3px;">İlk taksit veya iki taksit üst üste zamanında ödenmezse, Kurucu kayıt taahhüt sözleşmesini feshedebilir.</li>
+        <li style="margin-bottom: 3px;">Öğrenim ücreti içinde yemek, servis, kaynak ücretleri ve okul forması bulunmamaktadır.</li>
+        <li style="margin-bottom: 3px;">Öğrenci ücreti içinde yurt içi ve yurt dışı seyahat masrafları bulunmamaktadır.</li>
+        <li style="margin-bottom: 3px;">Öğrenci kayıt olduktan sonra okul kurallarına uymazsa, okul yönetiminin talebi üzerine kayıt sözleşmesi feshedilebilir.</li>
+        <li style="margin-bottom: 3px;">Öğrenci velisi, kurumun mal ve demirbaşlarına verilen zararlardan sorumludur.</li>
+        <li style="margin-bottom: 3px;">Sözleşme imzalayan öğrencinin sözleşme feshi durumunda ödeme şartları: Belirlenen ücretin %10'u ödenir.</li>
+        <li style="margin-bottom: 3px;">KDV oranlarındaki aşağı yönlü değişiklikler öğrenci sözleşmesine yansıtılmayacaktır.</li>
+        <li style="margin-bottom: 3px;">Bu sözleşme 30.06.2026 tarihine kadar geçerlidir.</li>
       </ol>
     </div>
 
-    <div class="page-break"></div>
-
-    <div class="contract-header">
-      <div class="contract-title">ŞARTLAR (DEVAM)</div>
-    </div>
-
-    <div class="terms-section">
-      <ol class="terms-list" start="11">
-        <li>İlk taksit veya iki taksit üst üste zamanında ödenmezse, Kurucu kayıt taahhüt sözleşmesini feshedebilir.</li>
-        <li>Öğrenim ücreti içinde yemek, servis, kaynak ücretleri ve okul forması bulunmamaktadır. Yaz kursları kurumun kararına göre ücretli veya ücretsiz olup, ücretleri eğitim ücreti içinde değildir.</li>
-        <li>Öğrenci ücreti içinde yurt içi (il içi, il dışı) ve yurt dışı seyahat masrafları bulunmamaktadır.</li>
-        <li>Öğrenci kayıt olduktan sonra okul kurallarına uymazsa, okul yönetiminin talebi üzerine kayıt sözleşmesi feshedilebilir ve kayıt başka okula nakledilebilir.</li>
-        <li>Öğrenci velisi, kurumun mal ve demirbaşlarına verilen zararlardan sorumludur. Zararlar fatura ile veliye bildirilir.</li>
-        <li>Sözleşme imzalayan öğrencinin sözleşme feshi durumunda ödeme şartları: Belirlenen ücretin %10'u (Özel Öğretim Kurumları Kanunu 56. madde) ödenir. Öğrenci eğitime başlamışsa, resmi öğrenim ücretinin %10'u artı Milli Eğitim Bakanlığı Yönergesi'ne göre eğitim süresi (dokuz ay) oranında ödeme yapılır. Ödeme yapılmamışsa okula alacak kaydedilir.</li>
-        <li>KDV oranlarındaki aşağı yönlü değişiklikler öğrenci sözleşmesine yansıtılmayacaktır. Vergi veya devlet kaynaklı gelirlerdeki yukarı yönlü değişikliklerin eğitim ücretine eklenme hakkı saklıdır.</li>
-        <li>Bu sözleşme 30.06.2026 tarihine kadar geçerlidir. Bu tarihe kadar sözleşme yenileme işlemi tamamlanmazsa, okul yönetimi öğrenci kaydını iptal etme hakkına sahiptir. Sözleşme bitiş tarihine kadar kayıt yenileme yapılmazsa, "yeni öğrenci" statüsünde tamamen yeni sözleşme yapılacaktır.</li>
-      </ol>
-    </div>
-
-    <div class="signature-section">
+    <div class="signature-section" style="margin-top: 20px;">
       <div class="signature-box">
-        <div class="signature-line"></div>
-        <div class="signature-label"><strong>Okul Kurucusu</strong></div>
-        <div style="margin-top: 10px; font-weight: bold;">ABDULKADİR ERDEM</div>
+        <div class="signature-line" style="height: 30px;"></div>
+        <div class="signature-label" style="font-size: 10px;"><strong>Okul Kurucusu</strong></div>
+        <div style="margin-top: 5px; font-weight: bold; font-size: 10px;">ABDULKADİR ERDEM</div>
       </div>
       <div class="signature-box">
-        <div class="signature-line"></div>
-        <div class="signature-label"><strong>Öğrenci Velisi</strong></div>
+        <div class="signature-line" style="height: 30px;"></div>
+        <div class="signature-label" style="font-size: 10px;"><strong>Öğrenci Velisi</strong></div>
       </div>
     </div>
 
     <div class="page-break"></div>
 
-    <div class="contract-header">
-      <div class="contract-title">ÖDEME TAAHHÜTNAMESİ</div>
+    <div class="contract-header" style="margin-bottom: 15px;">
+      <div class="contract-title" style="font-size: 14px;">ÖDEME TAAHHÜTNAMESİ</div>
     </div>
 
-    <div class="section">
-      <div class="field-row">
-        <div class="field-label">Öğrenci Adı:</div>
-        <div class="field-value">${contractData.contractStudentName || student.firstName + ' ' + student.lastName}</div>
+    <div class="section" style="margin-bottom: 10px;">
+      <div class="field-row" style="margin-bottom: 5px;">
+        <div class="field-label" style="font-size: 10px;">Öğrenci Adı:</div>
+        <div class="field-value" style="font-size: 10px;">${contractData.contractStudentName || student.firstName + ' ' + student.lastName}</div>
       </div>
-      <div class="field-row">
-        <div class="field-label">Veli Adı:</div>
-        <div class="field-value">${contractData.contractParentName || student.parentName}</div>
+      <div class="field-row" style="margin-bottom: 5px;">
+        <div class="field-label" style="font-size: 10px;">Veli Adı:</div>
+        <div class="field-value" style="font-size: 10px;">${contractData.contractParentName || student.parentName}</div>
       </div>
     </div>
 
-    <div class="terms-section">
-      <div class="terms-title">ŞARTLAR:</div>
-      <ol class="terms-list">
-        <li>Yukarıda belirtilen ücretlerin tamamını, belirlenen tarihlerde ödemeyi taahhüt ederim.</li>
-        <li>Ödeme planına uygun olarak taksitlerimi zamanında ödeyeceğim.</li>
-        <li>Geciken ödemeler için belirlenen faiz oranını kabul ediyorum.</li>
-        <li>Bu taahhütname, eğitim öğretim hizmet sözleşmesinin ayrılmaz bir parçasıdır.</li>
+    <div class="terms-section" style="font-size: 9px; margin-bottom: 15px;">
+      <div class="terms-title" style="font-size: 11px;">ŞARTLAR:</div>
+      <ol class="terms-list" style="margin-left: 15px;">
+        <li style="margin-bottom: 3px;">Yukarıda belirtilen ücretlerin tamamını, belirlenen tarihlerde ödemeyi taahhüt ederim.</li>
+        <li style="margin-bottom: 3px;">Ödeme planına uygun olarak taksitlerimi zamanında ödeyeceğim.</li>
+        <li style="margin-bottom: 3px;">Geciken ödemeler için belirlenen faiz oranını kabul ediyorum.</li>
+        <li style="margin-bottom: 3px;">Bu taahhütname, eğitim öğretim hizmet sözleşmesinin ayrılmaz bir parçasıdır.</li>
       </ol>
     </div>
 
-    <div class="signature-section">
+    <div class="signature-section" style="margin-top: 15px; margin-bottom: 20px;">
       <div class="signature-box">
-        <div class="signature-line"></div>
-        <div class="signature-label">Veli İmzası</div>
-      </div>
-      <div class="signature-box">
-        <div class="signature-line"></div>
-        <div class="signature-label">Tarih</div>
-      </div>
-    </div>
-
-    <div class="page-break"></div>
-
-    <div class="contract-header">
-      <div class="contract-title">ÖDEME PLANI TAAHHÜDÜ</div>
-    </div>
-
-    <div class="section">
-      <div class="field-row">
-        <div class="field-label">Öğrenci Adı:</div>
-        <div class="field-value">${contractData.contractStudentName || student.firstName + ' ' + student.lastName}</div>
-      </div>
-      <div class="field-row">
-        <div class="field-label">Veli Adı:</div>
-        <div class="field-value">${contractData.contractParentName || student.parentName}</div>
-      </div>
-    </div>
-
-    <div class="terms-section">
-      <div class="terms-title">ÖDEME PLANI DETAYLARI:</div>
-      <div class="field-row">
-        <div class="field-label">Toplam Ücret:</div>
-        <div class="field-value">${contractData.studentTotal || '___________'} TL</div>
-      </div>
-      <div class="field-row">
-        <div class="field-label">Peşinat:</div>
-        <div class="field-value">${contractData.downPayment || '___________'} TL</div>
-      </div>
-      <div class="field-row">
-        <div class="field-label">Kalan Tutar:</div>
-        <div class="field-value">${contractData.installmentDetails || '___________'}</div>
-      </div>
-      <div class="field-row">
-        <div class="field-label">Taksit Başlangıç Tarihi:</div>
-        <div class="field-value">${contractData.installmentStartDate || '___________'}</div>
-      </div>
-    </div>
-
-    <div class="terms-section">
-      <div class="terms-title">ÖDEME KOŞULLARI:</div>
-      <ol class="terms-list">
-        <li>Peşinat, kayıt sırasında nakit olarak alınacaktır.</li>
-        <li>Taksitler, her ayın belirlenen gününde ödenecektir.</li>
-        <li>Geciken ödemeler için günlük %0.5 faiz uygulanacaktır.</li>
-        <li>Ödeme planına uyulmaması durumunda sözleşme feshedilebilir.</li>
-      </ol>
-    </div>
-
-    <div class="signature-section">
-      <div class="signature-box">
-        <div class="signature-line"></div>
-        <div class="signature-label">Veli İmzası</div>
+        <div class="signature-line" style="height: 25px;"></div>
+        <div class="signature-label" style="font-size: 9px;">Veli İmzası</div>
       </div>
       <div class="signature-box">
-        <div class="signature-line"></div>
-        <div class="signature-label">Tarih</div>
+        <div class="signature-line" style="height: 25px;"></div>
+        <div class="signature-label" style="font-size: 9px;">Tarih</div>
+      </div>
+    </div>
+
+    <div style="border-top: 2px solid #000; margin: 20px 0; padding-top: 15px;">
+      <div class="contract-header" style="margin-bottom: 10px; border-bottom: none; padding-bottom: 5px;">
+        <div class="contract-title" style="font-size: 14px;">ÖDEME PLANI TAAHHÜDÜ</div>
+      </div>
+
+      <div class="section" style="margin-bottom: 10px;">
+        <div class="field-row" style="margin-bottom: 5px;">
+          <div class="field-label" style="font-size: 10px;">Öğrenci Adı:</div>
+          <div class="field-value" style="font-size: 10px;">${contractData.contractStudentName || student.firstName + ' ' + student.lastName}</div>
+        </div>
+        <div class="field-row" style="margin-bottom: 5px;">
+          <div class="field-label" style="font-size: 10px;">Veli Adı:</div>
+          <div class="field-value" style="font-size: 10px;">${contractData.contractParentName || student.parentName}</div>
+        </div>
+      </div>
+
+      <div class="terms-section" style="font-size: 9px; margin-bottom: 10px;">
+        <div class="terms-title" style="font-size: 11px;">ÖDEME PLANI DETAYLARI:</div>
+        <div class="field-row" style="margin-bottom: 4px;">
+          <div class="field-label" style="font-size: 10px;">Toplam Ücret:</div>
+          <div class="field-value" style="font-size: 10px;">${contractData.studentTotal || '___________'} TL</div>
+        </div>
+        <div class="field-row" style="margin-bottom: 4px;">
+          <div class="field-label" style="font-size: 10px;">Peşinat:</div>
+          <div class="field-value" style="font-size: 10px;">${contractData.downPayment || '___________'} TL</div>
+        </div>
+        <div class="field-row" style="margin-bottom: 4px;">
+          <div class="field-label" style="font-size: 10px;">Kalan Tutar:</div>
+          <div class="field-value" style="font-size: 10px;">${contractData.installmentDetails || '___________'}</div>
+        </div>
+        <div class="field-row" style="margin-bottom: 4px;">
+          <div class="field-label" style="font-size: 10px;">Taksit Başlangıç:</div>
+          <div class="field-value" style="font-size: 10px;">${contractData.installmentStartDate || '___________'}</div>
+        </div>
+      </div>
+
+      <div class="terms-section" style="font-size: 9px;">
+        <div class="terms-title" style="font-size: 11px;">ÖDEME KOŞULLARI:</div>
+        <ol class="terms-list" style="margin-left: 15px;">
+          <li style="margin-bottom: 3px;">Peşinat, kayıt sırasında nakit olarak alınacaktır.</li>
+          <li style="margin-bottom: 3px;">Taksitler, her ayın belirlenen gününde ödenecektir.</li>
+          <li style="margin-bottom: 3px;">Geciken ödemeler için günlük %0.5 faiz uygulanacaktır.</li>
+          <li style="margin-bottom: 3px;">Ödeme planına uyulmaması durumunda sözleşme feshedilebilir.</li>
+        </ol>
+      </div>
+
+      <div class="signature-section" style="margin-top: 15px;">
+        <div class="signature-box">
+          <div class="signature-line" style="height: 25px;"></div>
+          <div class="signature-label" style="font-size: 9px;">Veli İmzası</div>
+        </div>
+        <div class="signature-box">
+          <div class="signature-line" style="height: 25px;"></div>
+          <div class="signature-label" style="font-size: 9px;">Tarih</div>
+        </div>
       </div>
     </div>
   `
@@ -740,217 +731,241 @@ function generateMainContractHTML(student: { firstName: string; lastName: string
 function generateOtherContractsHTML(student: { firstName: string; lastName: string; tcNumber: string; grade: string; address: string }, contractTypes: string[], contractData: Record<string, unknown>) {
   let html = ''
   
-  if (contractTypes.includes('uniform')) {
-    html += generateUniformContractHTML(student, contractData)
+  // Forma + Yemek tek sayfada
+  const hasUniform = contractTypes.includes('uniform')
+  const hasMeal = contractTypes.includes('meal')
+  
+  if (hasUniform || hasMeal) {
+    html += '<div class="page-break"></div>'
+    
+    if (hasUniform) {
+      html += generateUniformContractHTML(student, contractData, !hasMeal) // Compact if meal is also present
+    }
+    
+    if (hasMeal) {
+      html += generateMealContractHTML(student, contractData, hasUniform) // Add separator if uniform is present
+    }
   }
   
-  if (contractTypes.includes('meal')) {
-    html += generateMealContractHTML(student, contractData)
-  }
+  // Kitap + Servis tek sayfada
+  const hasBook = contractTypes.includes('book')
+  const hasService = contractTypes.includes('service')
   
-  if (contractTypes.includes('book')) {
-    html += generateBookContractHTML(student, contractData)
-  }
-  
-  if (contractTypes.includes('service')) {
-    html += generateServiceContractHTML(student, contractData)
+  if (hasBook || hasService) {
+    html += '<div class="page-break"></div>'
+    
+    if (hasBook) {
+      html += generateBookContractHTML(student, contractData, !hasService) // Compact if service is also present
+    }
+    
+    if (hasService) {
+      html += generateServiceContractHTML(student, contractData, hasBook) // Add separator if book is present
+    }
   }
   
   return html
 }
 
-function generateUniformContractHTML(student: { firstName: string; lastName: string; tcNumber: string }, contractData: Record<string, unknown>) {
+function generateUniformContractHTML(student: { firstName: string; lastName: string; tcNumber: string }, contractData: Record<string, unknown>, standalone = true) {
   return `
-    <div class="page-break"></div>
+    ${!standalone ? '<div style="border-top: 2px dashed #000; margin: 15px 0; padding-top: 15px;">' : ''}
     
-    <div class="contract-header">
-      <div class="contract-title">FORMA SÖZLEŞMESİ</div>
+    <div class="contract-header" style="margin-bottom: 10px;">
+      <div class="contract-title" style="font-size: 14px;">FORMA SÖZLEŞMESİ</div>
     </div>
 
-    <div class="section">
-      <div class="section-title">ÖĞRENCİ BİLGİLERİ</div>
-      <div class="field-row">
-        <div class="field-label">Ad Soyad:</div>
-        <div class="field-value">${student.firstName} ${student.lastName}</div>
+    <div class="section" style="margin-bottom: 8px;">
+      <div class="section-title" style="font-size: 12px; margin-bottom: 5px;">ÖĞRENCİ BİLGİLERİ</div>
+      <div class="field-row" style="margin-bottom: 4px;">
+        <div class="field-label" style="font-size: 10px;">Ad Soyad:</div>
+        <div class="field-value" style="font-size: 10px;">${student.firstName} ${student.lastName}</div>
       </div>
-      <div class="field-row">
-        <div class="field-label">TC Kimlik No:</div>
-        <div class="field-value">${student.tcNumber}</div>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">FORMA BİLGİLERİ</div>
-      <div class="field-row">
-        <div class="field-label">Forma Bedeni:</div>
-        <div class="field-value">${contractData.uniformSize || '___________'}</div>
-      </div>
-      <div class="field-row">
-        <div class="field-label">Forma Ücreti:</div>
-        <div class="field-value">${contractData.uniformPrice || '___________'} TL</div>
-      </div>
-      <div class="field-row">
-        <div class="field-label">Teslim Tarihi:</div>
-        <div class="field-value">${contractData.uniformDeliveryDate || '___________'}</div>
-      </div>
-      <div class="field-row">
-        <div class="field-label">Teslim Edilecek Formalar:</div>
-        <div class="field-value-large">${Array.isArray(contractData.uniformItems) ? contractData.uniformItems.join(', ') : '___________'}</div>
+      <div class="field-row" style="margin-bottom: 4px;">
+        <div class="field-label" style="font-size: 10px;">TC Kimlik No:</div>
+        <div class="field-value" style="font-size: 10px;">${student.tcNumber}</div>
       </div>
     </div>
 
-    <div class="signature-section">
+    <div class="section" style="margin-bottom: 8px;">
+      <div class="section-title" style="font-size: 12px; margin-bottom: 5px;">FORMA BİLGİLERİ</div>
+      <div class="field-row" style="margin-bottom: 4px;">
+        <div class="field-label" style="font-size: 10px;">Forma Bedeni:</div>
+        <div class="field-value" style="font-size: 10px;">${contractData.uniformSize || '___________'}</div>
+      </div>
+      <div class="field-row" style="margin-bottom: 4px;">
+        <div class="field-label" style="font-size: 10px;">Forma Ücreti:</div>
+        <div class="field-value" style="font-size: 10px;">${contractData.uniformPrice || '___________'} TL</div>
+      </div>
+      <div class="field-row" style="margin-bottom: 4px;">
+        <div class="field-label" style="font-size: 10px;">Teslim Tarihi:</div>
+        <div class="field-value" style="font-size: 10px;">${contractData.uniformDeliveryDate || '___________'}</div>
+      </div>
+      <div class="field-row" style="margin-bottom: 4px;">
+        <div class="field-label" style="font-size: 10px;">Teslim Edilecek:</div>
+        <div class="field-value-large" style="font-size: 10px; min-height: 30px;">${Array.isArray(contractData.uniformItems) ? contractData.uniformItems.join(', ') : '___________'}</div>
+      </div>
+    </div>
+
+    <div class="signature-section" style="margin-top: 10px;">
       <div class="signature-box">
-        <div class="signature-line"></div>
-        <div class="signature-label">Veli İmzası</div>
+        <div class="signature-line" style="height: 25px;"></div>
+        <div class="signature-label" style="font-size: 9px;">Veli İmzası</div>
       </div>
       <div class="signature-box">
-        <div class="signature-line"></div>
-        <div class="signature-label">Okul Müdürü İmzası</div>
+        <div class="signature-line" style="height: 25px;"></div>
+        <div class="signature-label" style="font-size: 9px;">Okul Müdürü İmzası</div>
       </div>
     </div>
+    
+    ${!standalone ? '</div>' : ''}
   `
 }
 
-function generateMealContractHTML(student: { firstName: string; lastName: string; tcNumber: string }, contractData: Record<string, unknown>) {
+function generateMealContractHTML(student: { firstName: string; lastName: string; tcNumber: string }, contractData: Record<string, unknown>, hasSeparator = false) {
   return `
-    <div class="page-break"></div>
+    ${hasSeparator ? '<div style="border-top: 2px dashed #000; margin: 15px 0; padding-top: 15px;">' : ''}
     
-    <div class="contract-header">
-      <div class="contract-title">YEMEK SÖZLEŞMESİ</div>
+    <div class="contract-header" style="margin-bottom: 10px;">
+      <div class="contract-title" style="font-size: 14px;">YEMEK SÖZLEŞMESİ</div>
     </div>
 
-    <div class="section">
-      <div class="section-title">ÖĞRENCİ BİLGİLERİ</div>
-      <div class="field-row">
-        <div class="field-label">Ad Soyad:</div>
-        <div class="field-value">${student.firstName} ${student.lastName}</div>
+    <div class="section" style="margin-bottom: 8px;">
+      <div class="section-title" style="font-size: 12px; margin-bottom: 5px;">ÖĞRENCİ BİLGİLERİ</div>
+      <div class="field-row" style="margin-bottom: 4px;">
+        <div class="field-label" style="font-size: 10px;">Ad Soyad:</div>
+        <div class="field-value" style="font-size: 10px;">${student.firstName} ${student.lastName}</div>
       </div>
-      <div class="field-row">
-        <div class="field-label">TC Kimlik No:</div>
-        <div class="field-value">${student.tcNumber}</div>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">YEMEK BİLGİLERİ</div>
-      <div class="field-row">
-        <div class="field-label">Ödeme Dönemleri:</div>
-        <div class="field-value-large">${Array.isArray(contractData.mealPeriods) ? contractData.mealPeriods.join(', ') : '___________'}</div>
-      </div>
-      <div class="field-row">
-        <div class="field-label">Yemek Ücreti:</div>
-        <div class="field-value">${contractData.mealPrice || '___________'} TL</div>
+      <div class="field-row" style="margin-bottom: 4px;">
+        <div class="field-label" style="font-size: 10px;">TC Kimlik No:</div>
+        <div class="field-value" style="font-size: 10px;">${student.tcNumber}</div>
       </div>
     </div>
 
-    <div class="signature-section">
+    <div class="section" style="margin-bottom: 8px;">
+      <div class="section-title" style="font-size: 12px; margin-bottom: 5px;">YEMEK BİLGİLERİ</div>
+      <div class="field-row" style="margin-bottom: 4px;">
+        <div class="field-label" style="font-size: 10px;">Ödeme Dönemleri:</div>
+        <div class="field-value-large" style="font-size: 10px; min-height: 30px;">${Array.isArray(contractData.mealPeriods) ? contractData.mealPeriods.join(', ') : '___________'}</div>
+      </div>
+      <div class="field-row" style="margin-bottom: 4px;">
+        <div class="field-label" style="font-size: 10px;">Yemek Ücreti:</div>
+        <div class="field-value" style="font-size: 10px;">${contractData.mealPrice || '___________'} TL</div>
+      </div>
+    </div>
+
+    <div class="signature-section" style="margin-top: 10px;">
       <div class="signature-box">
-        <div class="signature-line"></div>
-        <div class="signature-label">Veli İmzası</div>
+        <div class="signature-line" style="height: 25px;"></div>
+        <div class="signature-label" style="font-size: 9px;">Veli İmzası</div>
       </div>
       <div class="signature-box">
-        <div class="signature-line"></div>
-        <div class="signature-label">Okul Müdürü İmzası</div>
+        <div class="signature-line" style="height: 25px;"></div>
+        <div class="signature-label" style="font-size: 9px;">Okul Müdürü İmzası</div>
       </div>
     </div>
+    
+    ${hasSeparator ? '</div>' : ''}
   `
 }
 
-function generateBookContractHTML(student: { firstName: string; lastName: string; tcNumber: string; grade: string }, contractData: Record<string, unknown>) {
+function generateBookContractHTML(student: { firstName: string; lastName: string; tcNumber: string; grade: string }, contractData: Record<string, unknown>, standalone = true) {
   return `
-    <div class="page-break"></div>
+    ${!standalone ? '<div style="border-top: 2px dashed #000; margin: 15px 0; padding-top: 15px;">' : ''}
     
-    <div class="contract-header">
-      <div class="contract-title">KİTAP SÖZLEŞMESİ</div>
+    <div class="contract-header" style="margin-bottom: 10px;">
+      <div class="contract-title" style="font-size: 14px;">KİTAP SÖZLEŞMESİ</div>
     </div>
 
-    <div class="section">
-      <div class="section-title">ÖĞRENCİ BİLGİLERİ</div>
-      <div class="field-row">
-        <div class="field-label">Ad Soyad:</div>
-        <div class="field-value">${student.firstName} ${student.lastName}</div>
+    <div class="section" style="margin-bottom: 8px;">
+      <div class="section-title" style="font-size: 12px; margin-bottom: 5px;">ÖĞRENCİ BİLGİLERİ</div>
+      <div class="field-row" style="margin-bottom: 4px;">
+        <div class="field-label" style="font-size: 10px;">Ad Soyad:</div>
+        <div class="field-value" style="font-size: 10px;">${student.firstName} ${student.lastName}</div>
       </div>
-      <div class="field-row">
-        <div class="field-label">Sınıfı:</div>
-        <div class="field-value">${student.grade}</div>
+      <div class="field-row" style="margin-bottom: 4px;">
+        <div class="field-label" style="font-size: 10px;">Sınıfı:</div>
+        <div class="field-value" style="font-size: 10px;">${student.grade}</div>
       </div>
-      <div class="field-row">
-        <div class="field-label">TC Kimlik No:</div>
-        <div class="field-value">${student.tcNumber}</div>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">KİTAP BİLGİLERİ</div>
-      <div class="field-row">
-        <div class="field-label">Kitap Seti:</div>
-        <div class="field-value">${contractData.bookSet || '___________'}</div>
-      </div>
-      <div class="field-row">
-        <div class="field-label">Teslim Tarihi:</div>
-        <div class="field-value">${contractData.bookDeliveryDate || '___________'}</div>
+      <div class="field-row" style="margin-bottom: 4px;">
+        <div class="field-label" style="font-size: 10px;">TC Kimlik No:</div>
+        <div class="field-value" style="font-size: 10px;">${student.tcNumber}</div>
       </div>
     </div>
 
-    <div class="signature-section">
+    <div class="section" style="margin-bottom: 8px;">
+      <div class="section-title" style="font-size: 12px; margin-bottom: 5px;">KİTAP BİLGİLERİ</div>
+      <div class="field-row" style="margin-bottom: 4px;">
+        <div class="field-label" style="font-size: 10px;">Kitap Seti:</div>
+        <div class="field-value" style="font-size: 10px;">${contractData.bookSet || '___________'}</div>
+      </div>
+      <div class="field-row" style="margin-bottom: 4px;">
+        <div class="field-label" style="font-size: 10px;">Teslim Tarihi:</div>
+        <div class="field-value" style="font-size: 10px;">${contractData.bookDeliveryDate || '___________'}</div>
+      </div>
+    </div>
+
+    <div class="signature-section" style="margin-top: 10px;">
       <div class="signature-box">
-        <div class="signature-line"></div>
-        <div class="signature-label">Veli İmzası</div>
+        <div class="signature-line" style="height: 25px;"></div>
+        <div class="signature-label" style="font-size: 9px;">Veli İmzası</div>
       </div>
       <div class="signature-box">
-        <div class="signature-line"></div>
-        <div class="signature-label">Okul Müdürü İmzası</div>
+        <div class="signature-line" style="height: 25px;"></div>
+        <div class="signature-label" style="font-size: 9px;">Okul Müdürü İmzası</div>
       </div>
     </div>
+    
+    ${!standalone ? '</div>' : ''}
   `
 }
 
-function generateServiceContractHTML(student: { firstName: string; lastName: string; tcNumber: string; address: string }, contractData: Record<string, unknown>) {
+function generateServiceContractHTML(student: { firstName: string; lastName: string; tcNumber: string; address: string }, contractData: Record<string, unknown>, hasSeparator = false) {
   return `
-    <div class="page-break"></div>
+    ${hasSeparator ? '<div style="border-top: 2px dashed #000; margin: 15px 0; padding-top: 15px;">' : ''}
     
-    <div class="contract-header">
-      <div class="contract-title">SERVİS SÖZLEŞMESİ</div>
+    <div class="contract-header" style="margin-bottom: 10px;">
+      <div class="contract-title" style="font-size: 14px;">SERVİS SÖZLEŞMESİ</div>
     </div>
 
-    <div class="section">
-      <div class="section-title">ÖĞRENCİ BİLGİLERİ</div>
-      <div class="field-row">
-        <div class="field-label">Ad Soyad:</div>
-        <div class="field-value">${student.firstName} ${student.lastName}</div>
+    <div class="section" style="margin-bottom: 8px;">
+      <div class="section-title" style="font-size: 12px; margin-bottom: 5px;">ÖĞRENCİ BİLGİLERİ</div>
+      <div class="field-row" style="margin-bottom: 4px;">
+        <div class="field-label" style="font-size: 10px;">Ad Soyad:</div>
+        <div class="field-value" style="font-size: 10px;">${student.firstName} ${student.lastName}</div>
       </div>
-      <div class="field-row">
-        <div class="field-label">TC Kimlik No:</div>
-        <div class="field-value">${student.tcNumber}</div>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">SERVİS BİLGİLERİ</div>
-      <div class="field-row">
-        <div class="field-label">Servis Bölgesi:</div>
-        <div class="field-value">${contractData.serviceRegion || '___________'}</div>
-      </div>
-      <div class="field-row">
-        <div class="field-label">Adres:</div>
-        <div class="field-value-large">${student.address || '___________'}</div>
-      </div>
-      <div class="field-row">
-        <div class="field-label">Servis Ücreti (Dönemlik):</div>
-        <div class="field-value">${contractData.servicePrice || '___________'} TL</div>
+      <div class="field-row" style="margin-bottom: 4px;">
+        <div class="field-label" style="font-size: 10px;">TC Kimlik No:</div>
+        <div class="field-value" style="font-size: 10px;">${student.tcNumber}</div>
       </div>
     </div>
 
-    <div class="signature-section">
+    <div class="section" style="margin-bottom: 8px;">
+      <div class="section-title" style="font-size: 12px; margin-bottom: 5px;">SERVİS BİLGİLERİ</div>
+      <div class="field-row" style="margin-bottom: 4px;">
+        <div class="field-label" style="font-size: 10px;">Servis Bölgesi:</div>
+        <div class="field-value" style="font-size: 10px;">${contractData.serviceRegion || '___________'}</div>
+      </div>
+      <div class="field-row" style="margin-bottom: 4px;">
+        <div class="field-label" style="font-size: 10px;">Adres:</div>
+        <div class="field-value-large" style="font-size: 10px; min-height: 30px;">${student.address || '___________'}</div>
+      </div>
+      <div class="field-row" style="margin-bottom: 4px;">
+        <div class="field-label" style="font-size: 10px;">Servis Ücreti (Dönemlik):</div>
+        <div class="field-value" style="font-size: 10px;">${contractData.servicePrice || '___________'} TL</div>
+      </div>
+    </div>
+
+    <div class="signature-section" style="margin-top: 10px;">
       <div class="signature-box">
-        <div class="signature-line"></div>
-        <div class="signature-label">Veli İmzası</div>
+        <div class="signature-line" style="height: 25px;"></div>
+        <div class="signature-label" style="font-size: 9px;">Veli İmzası</div>
       </div>
       <div class="signature-box">
-        <div class="signature-line"></div>
-        <div class="signature-label">Okul Müdürü İmzası</div>
+        <div class="signature-line" style="height: 25px;"></div>
+        <div class="signature-label" style="font-size: 9px;">Okul Müdürü İmzası</div>
       </div>
     </div>
+    
+    ${hasSeparator ? '</div>' : ''}
   `
 }
