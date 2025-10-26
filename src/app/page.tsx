@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, FileText, Shirt, Utensils, Bus, BookOpen, UserPlus, History, TrendingUp, Calendar, Activity, ArrowRight, Sparkles, Target } from "lucide-react"
+import { Users, FileText, Shirt, Utensils, Bus, BookOpen, UserPlus, TrendingUp, Calendar, Activity, ArrowRight, Sparkles, Target } from "lucide-react"
 import Link from "next/link"
 
 interface DashboardStats {
