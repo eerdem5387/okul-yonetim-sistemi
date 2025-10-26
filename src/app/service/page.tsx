@@ -138,7 +138,7 @@ export default function ServicePage() {
                     const student = students.find(s => s.id === e.target.value)
                     setSelectedStudent(student || null)
                   }}
-                  className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full h-11 px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl text-sm text-gray-900 transition-all duration-200 hover:border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 focus:outline-none cursor-pointer"
                   required
                 >
                   <option value="">Öğrenci seçin...</option>
@@ -182,7 +182,7 @@ export default function ServicePage() {
                       id="serviceRegion"
                       value={contractData.serviceRegion}
                       onChange={(e) => setContractData({ ...contractData, serviceRegion: e.target.value })}
-                      className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full h-11 px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl text-sm text-gray-900 transition-all duration-200 hover:border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 focus:outline-none cursor-pointer"
                     >
                       <option value="">Bölge seçin...</option>
                       <option value="1.bölge">1. Bölge</option>
