@@ -403,7 +403,7 @@ export default function NewRegistrationPage() {
             serviceRegion: "",
             servicePrice: "",
             selectedClubs: []
-          })
+          });
           setOtherContractData({
             uniformSize: "",
             uniformPrice: "",
