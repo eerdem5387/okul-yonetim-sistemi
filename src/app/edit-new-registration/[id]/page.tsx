@@ -105,10 +105,12 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
       }
       
       // Yan sözleşme verilerini state'e ekle
-      setContract(prev => ({
-        ...prev,
-        ...otherContractData
-      }))
+      if (prev) {
+        setContract({
+          ...prev,
+          ...otherContractData
+        })
+      }
       
     } catch (error) {
       console.error("Error fetching contract:", error)
