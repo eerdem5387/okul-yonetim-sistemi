@@ -500,8 +500,7 @@ export default function NewRegistrationPage() {
                     }))
                   }
                 }}
-                className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                size={Math.min(filteredStudents.length + 1, 8)}
+                className="w-full h-11 px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl text-sm text-gray-900 transition-all duration-200 hover:border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 focus:outline-none cursor-pointer"
                 required
               >
                 <option value="">Öğrenci seçin...</option>
