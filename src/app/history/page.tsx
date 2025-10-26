@@ -108,10 +108,36 @@ export default function HistoryPage() {
         booksRes.ok ? booksRes.json() : []
       ])
 
-      const allContracts: Contract[] = [
+      // Tüm sözleşmeleri topla
+      const allContractsRaw: Contract[] = [
         ...(Array.isArray(newRegistrations) ? newRegistrations.map((c: Record<string, unknown>) => ({ ...c, type: "Yeni Kayıt" } as Contract)) : []),
-        ...(Array.isArray(renewals) ? renewals.map((c: Record<string, unknown>) => ({ ...c, type: "Kayıt Yenileme" } as Contract)) : [])
+        ...(Array.isArray(renewals) ? renewals.map((c: Record<string, unknown>) => ({ ...c, type: "Kayıt Yenileme" } as Contract)) : []),
+        ...(Array.isArray(uniforms) ? uniforms.map((c: Record<string, unknown>) => ({ ...c, type: "Forma Sözleşmesi" } as Contract)) : []),
+        ...(Array.isArray(meals) ? meals.map((c: Record<string, unknown>) => ({ ...c, type: "Yemek Sözleşmesi" } as Contract)) : []),
+        ...(Array.isArray(services) ? services.map((c: Record<string, unknown>) => ({ ...c, type: "Servis Sözleşmesi" } as Contract)) : []),
+        ...(Array.isArray(books) ? books.map((c: Record<string, unknown>) => ({ ...c, type: "Kitap Sözleşmesi" } as Contract)) : [])
       ]
+
+      // Akıllı gruplama: Ana sözleşme varsa yan sözleşmeleri gizle
+      const allContracts: Contract[] = []
+      const processedStudents = new Set<string>()
+
+      // Önce ana sözleşmeleri ekle
+      allContractsRaw.forEach(contract => {
+        if (contract.type === "Yeni Kayıt" || contract.type === "Kayıt Yenileme") {
+          allContracts.push(contract)
+          processedStudents.add(contract.student.tcNumber)
+        }
+      })
+
+      // Sonra yan sözleşmeleri ekle (sadece ana sözleşmesi olmayan öğrenciler için)
+      allContractsRaw.forEach(contract => {
+        if (contract.type !== "Yeni Kayıt" && contract.type !== "Kayıt Yenileme") {
+          if (!processedStudents.has(contract.student.tcNumber)) {
+            allContracts.push(contract)
+          }
+        }
+      })
 
       setContracts(allContracts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()))
     } catch (error) {
@@ -382,6 +408,10 @@ export default function HistoryPage() {
                 <option value="all">Tümü</option>
                 <option value="Yeni Kayıt">Yeni Kayıt</option>
                 <option value="Kayıt Yenileme">Kayıt Yenileme</option>
+                <option value="Forma Sözleşmesi">Forma Sözleşmesi</option>
+                <option value="Yemek Sözleşmesi">Yemek Sözleşmesi</option>
+                <option value="Servis Sözleşmesi">Servis Sözleşmesi</option>
+                <option value="Kitap Sözleşmesi">Kitap Sözleşmesi</option>
               </select>
             </div>
             <div>
