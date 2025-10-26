@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { 
@@ -14,8 +15,7 @@ import {
   UserPlus, 
   History,
   Menu,
-  X,
-  Sparkles
+  X
 } from "lucide-react"
 import { useState } from "react"
 
@@ -64,15 +64,21 @@ export function Sidebar() {
         "flex h-full w-72 flex-col sidebar fixed lg:relative z-50 transition-transform duration-300 ease-in-out",
         mobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
-        {/* Header */}
+        {/* Header with Logo */}
         <div className="sidebar-header px-6 py-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
-              <Sparkles className="h-6 w-6 text-white" />
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 flex-shrink-0 bg-white rounded-xl shadow-lg p-2">
+              <Image
+                src="/logo.png"
+                alt="Okul Logosu"
+                fill
+                className="object-contain rounded-lg"
+                priority
+              />
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-white">Okul Yönetim</h1>
-              <p className="text-xs text-blue-100 mt-0.5">Sistemleri</p>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl font-bold text-white truncate">Levent Kolej</h1>
+              <p className="text-xs text-blue-100 mt-0.5">Okul Yönetim Sistemi</p>
             </div>
           </div>
         </div>
