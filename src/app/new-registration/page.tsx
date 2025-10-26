@@ -238,7 +238,13 @@ export default function NewRegistrationPage() {
         // Kulüp listesini yenile
         fetchClubs()
       } else {
-        alert("Kulüp seçimleri kaydedilirken hata oluştu!")
+        const errorData = await response.json()
+        if (errorData.error && errorData.existingClubs) {
+          const clubNames = errorData.existingClubs.map((club: {name: string}) => club.name).join(", ")
+          alert(`⚠️ Bu öğrenci zaten şu kulüplere kayıtlı:\n\n${clubNames}\n\nLütfen farklı kulüpler seçin.`)
+        } else {
+          alert("Kulüp seçimleri kaydedilirken hata oluştu!")
+        }
       }
     } catch (error) {
       console.error("Error saving club selections:", error)
@@ -430,13 +436,22 @@ export default function NewRegistrationPage() {
     if (!selectedStudent) return
 
     try {
+      // Seçili kulüplerin detaylarını al
+      const selectedClubsForPDF = otherContractData.selectedClubs
+        .map(clubId => {
+          const club = clubs.find(c => c.id === clubId)
+          return club ? { id: club.id, name: club.name } : null
+        })
+        .filter((club): club is { id: string; name: string } => club !== null)
+
       const response = await fetch(`/api/pdf/combined/${selectedStudent.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contractTypes: ["new-registration", "uniform", "meal", "book", "service"],
           mainContractData: mainContractData,
-          otherContractData: otherContractData
+          otherContractData: otherContractData,
+          selectedClubs: selectedClubsForPDF.length > 0 ? selectedClubsForPDF : undefined
         })
       })
 

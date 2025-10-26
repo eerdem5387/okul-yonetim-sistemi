@@ -255,14 +255,18 @@ export function generateCombinedContractHTML(data: {
   contractTypes: string[]
   mainContractData: Record<string, unknown>
   otherContractData: Record<string, unknown>
+  selectedClubs?: { id: string; name: string }[]
 }) {
-  const { student, contractTypes, mainContractData, otherContractData } = data
+  const { student, contractTypes, mainContractData, otherContractData, selectedClubs } = data
 
   // Ana sözleşme HTML'i (Eğitim Öğretim Hizmet Sözleşmesi)
   const mainContractHTML = generateMainContractHTML(student, mainContractData)
   
   // Diğer sözleşmeler HTML'i
   const otherContractsHTML = generateOtherContractsHTML(student, contractTypes, otherContractData)
+  
+  // Kulüp seçimleri HTML'i
+  const clubsHTML = selectedClubs && selectedClubs.length > 0 ? generateClubSelectionsHTML(student, selectedClubs) : ''
 
   return `
     <!DOCTYPE html>
@@ -417,6 +421,7 @@ export function generateCombinedContractHTML(data: {
     <body>
         ${mainContractHTML}
         ${otherContractsHTML}
+        ${clubsHTML}
         
         <div class="footer">
             <p>Bu sözleşmeler elektronik ortamda oluşturulmuş olup, yasal geçerliliği vardır.</p>
@@ -971,5 +976,64 @@ function generateServiceContractHTML(student: { firstName: string; lastName: str
     </div>
     
     ${hasSeparator ? '</div>' : ''}
+  `
+}
+
+function generateClubSelectionsHTML(student: { firstName: string; lastName: string; tcNumber: string }, clubs: { id: string; name: string }[]) {
+  const clubsList = clubs.map((club, index) => `
+    <div class="field-row">
+      <div class="field-label">${index + 1}. Kulüp:</div>
+      <div class="field-value">${club.name}</div>
+    </div>
+  `).join('')
+
+  return `
+    <div class="page-break"></div>
+    
+    <div class="contract-header">
+      <div class="contract-title">KULÜP SEÇİM FORMU</div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">ÖĞRENCİ BİLGİLERİ</div>
+      <div class="field-row">
+        <div class="field-label">Ad Soyad:</div>
+        <div class="field-value">${student.firstName} ${student.lastName}</div>
+      </div>
+      <div class="field-row">
+        <div class="field-label">TC Kimlik No:</div>
+        <div class="field-value">${student.tcNumber}</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">SEÇİLEN KULÜPLER</div>
+      ${clubsList}
+    </div>
+
+    <div class="terms-section">
+      <div class="terms-title">BİLGİLENDİRME:</div>
+      <ol class="terms-list">
+        <li>Öğrenci yukarıda belirtilen kulüplere kayıt olmuştur.</li>
+        <li>Kulüp faaliyetleri eğitim-öğretim yılı boyunca devam eder.</li>
+        <li>Öğrenci kulüp faaliyetlerine katılmakla yükümlüdür.</li>
+        <li>Kulüp değişikliği okul yönetiminin onayı ile yapılabilir.</li>
+      </ol>
+    </div>
+
+    <div class="signature-section">
+      <div class="signature-box">
+        <div class="signature-line"></div>
+        <div class="signature-label">Öğrenci İmzası</div>
+      </div>
+      <div class="signature-box">
+        <div class="signature-line"></div>
+        <div class="signature-label">Veli İmzası</div>
+      </div>
+      <div class="signature-box">
+        <div class="signature-line"></div>
+        <div class="signature-label">Okul Müdürü İmzası</div>
+      </div>
+    </div>
   `
 }

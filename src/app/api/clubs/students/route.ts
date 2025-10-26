@@ -10,7 +10,10 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "clubSelections must be an array" }, { status: 400 })
         }
 
-        // Her kulüp seçimi için kapasite kontrolü yap
+        const existingClubs: { name: string }[] = []
+        const fullClubs: { name: string }[] = []
+
+        // Her kulüp seçimi için kontrol yap
         for (const selection of clubSelections) {
             const club = await prisma.club.findUnique({
                 where: { id: selection.clubId },
@@ -19,10 +22,6 @@ export async function POST(request: NextRequest) {
 
             if (!club) {
                 return NextResponse.json({ error: `Club with id ${selection.clubId} not found` }, { status: 404 })
-            }
-
-            if (club.selections.length >= club.capacity) {
-                return NextResponse.json({ error: `Club ${club.name} is at full capacity` }, { status: 400 })
             }
 
             // Öğrencinin zaten bu kulüpte olup olmadığını kontrol et
@@ -34,8 +33,30 @@ export async function POST(request: NextRequest) {
             })
 
             if (existingSelection) {
-                return NextResponse.json({ error: `Student is already in club ${club.name}` }, { status: 400 })
+                existingClubs.push({ name: club.name })
+                continue
             }
+
+            // Kapasite kontrolü
+            if (club.selections.length >= club.capacity) {
+                fullClubs.push({ name: club.name })
+            }
+        }
+
+        // Eğer zaten kayıtlı olduğu kulüpler varsa hata döndür
+        if (existingClubs.length > 0) {
+            return NextResponse.json({ 
+                error: "Student is already registered in some clubs", 
+                existingClubs 
+            }, { status: 400 })
+        }
+
+        // Eğer dolu kulüpler varsa hata döndür
+        if (fullClubs.length > 0) {
+            return NextResponse.json({ 
+                error: "Some clubs are at full capacity", 
+                fullClubs 
+            }, { status: 400 })
         }
 
         // Tüm seçimleri kaydet

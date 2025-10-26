@@ -9,16 +9,29 @@ export async function POST(
     try {
         const params = await context.params
         const body = await request.json()
-        const { contractTypes, mainContractData, otherContractData } = body
+        const { contractTypes, mainContractData, otherContractData, selectedClubs } = body
 
         // Öğrenci bilgilerini al
         const student = await prisma.student.findUnique({
-            where: { id: params.id }
+            where: { id: params.id },
+            include: {
+                clubSelections: {
+                    include: {
+                        club: true
+                    }
+                }
+            }
         })
 
         if (!student) {
             return NextResponse.json({ error: "Student not found" }, { status: 404 })
         }
+
+        // Kulüp seçimlerini hazırla (frontend'den gelen veya veritabanından)
+        const clubsForPDF = selectedClubs || student.clubSelections.map(selection => ({
+            id: selection.club.id,
+            name: selection.club.name
+        }))
 
         // Tüm sözleşmeleri birleştir
         const combinedHTML = generateCombinedContractHTML({
@@ -33,7 +46,8 @@ export async function POST(
             },
             contractTypes,
             mainContractData,
-            otherContractData
+            otherContractData,
+            selectedClubs: clubsForPDF.length > 0 ? clubsForPDF : undefined
         })
 
         const pdf = await generatePDF(combinedHTML)
