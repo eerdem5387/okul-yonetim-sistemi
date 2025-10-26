@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, FileText, Shirt, Utensils, Bus, BookOpen, UserPlus, History, TrendingUp, Calendar, Activity } from "lucide-react"
+import { Users, FileText, Shirt, Utensils, Bus, BookOpen, UserPlus, History, TrendingUp, Calendar, Activity, ArrowRight, Sparkles, Target } from "lucide-react"
 import Link from "next/link"
 
 interface DashboardStats {
@@ -50,15 +50,12 @@ export default function HomePage() {
     try {
       setLoading(true)
       
-      // Öğrenci sayısını al
       const studentsRes = await fetch("/api/students")
       const students = studentsRes.ok ? await studentsRes.json() : []
       
-      // Kulüpleri al
       const clubsRes = await fetch("/api/clubs")
       const clubs = clubsRes.ok ? await clubsRes.json() : []
       
-      // Tüm sözleşmeleri al
       const [newRegRes, renewalRes, uniformRes, mealRes, serviceRes, bookRes] = await Promise.all([
         fetch("/api/new-registrations"),
         fetch("/api/renewals"),
@@ -77,19 +74,16 @@ export default function HomePage() {
         ...(bookRes.ok ? await bookRes.json() : [])
       ]
       
-      // Bugünkü sözleşmeler
       const today = new Date().toISOString().split('T')[0]
       const todayContracts = allContracts.filter(c => 
         c.createdAt && c.createdAt.startsWith(today)
       ).length
       
-      // Bu ayki sözleşmeler
       const thisMonth = new Date().toISOString().slice(0, 7)
       const monthContracts = allContracts.filter(c => 
         c.createdAt && c.createdAt.startsWith(thisMonth)
       ).length
       
-      // Kulüp doluluk ortalaması
       const clubCapacityAverage = clubs.length > 0
         ? clubs.reduce((acc: number, club: { selections?: unknown[]; capacity?: number }) => {
             const percentage = (club.selections?.length || 0) / (club.capacity || 1) * 100
@@ -105,7 +99,6 @@ export default function HomePage() {
         clubCapacityAverage: Math.round(clubCapacityAverage)
       })
       
-      // Son eklenen 5 öğrenci
       if (Array.isArray(students)) {
         const sorted = [...students].sort((a, b) => 
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -113,7 +106,6 @@ export default function HomePage() {
         setRecentStudents(sorted)
       }
       
-      // Son 10 işlem (tüm sözleşmelerden)
       const allContractsWithDetails = allContracts.map((contract: { id: string; studentId: string; type?: string; createdAt: string }) => {
         const student = students.find((s: { id: string; firstName: string; lastName: string }) => s.id === contract.studentId)
         return {
@@ -149,334 +141,348 @@ export default function HomePage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Okul Yönetim Sistemi</h1>
-        <p className="text-gray-600 mt-2">Öğrenci kayıt ve sözleşme yönetim paneli</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6 lg:p-8">
+      {/* Page Header */}
+      <div className="page-header animate-fade-in">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="p-2 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow-lg">
+            <Sparkles className="h-6 w-6 text-white" />
+          </div>
+          <h1 className="page-title">Dashboard</h1>
+        </div>
+        <p className="page-subtitle">Okul yönetim sistemine hoş geldiniz</p>
       </div>
 
-      {/* İstatistik Kartları */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <Card className="card-soft border-0">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center justify-between text-lg">
-              <span>Toplam Öğrenci</span>
-              <Users className="h-8 w-8 icon-blue" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900">
-              {loading ? "..." : stats.totalStudents}
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 animate-slide-in-right">
+        <div className="stat-card group">
+          <div className="flex items-center justify-between mb-4">
+            <div className="stat-card-icon bg-blue-100 group-hover:bg-blue-200 transition-colors">
+              <Users className="h-6 w-6 icon-blue" />
             </div>
-            <p className="text-xs text-gray-500 mt-1">Kayıtlı öğrenci sayısı</p>
-          </CardContent>
-        </Card>
+            <div className="flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
+              <TrendingUp className="h-3 w-3" />
+              <span>Aktif</span>
+            </div>
+          </div>
+          <div className="stat-card-value">
+            {loading ? <div className="spinner" /> : stats.totalStudents}
+          </div>
+          <div className="stat-card-label">Toplam Öğrenci</div>
+          <div className="mt-4 h-1 w-full bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-blue-500 to-indigo-500" style={{width: '75%'}} />
+          </div>
+        </div>
 
-        <Card className="card-soft border-0">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center justify-between text-lg">
-              <span>Bugün</span>
-              <Calendar className="h-8 w-8 icon-green" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900">
-              {loading ? "..." : stats.todayContracts}
+        <div className="stat-card group">
+          <div className="flex items-center justify-between mb-4">
+            <div className="stat-card-icon bg-emerald-100 group-hover:bg-emerald-200 transition-colors">
+              <Calendar className="h-6 w-6 icon-green" />
             </div>
-            <p className="text-xs text-gray-500 mt-1">Bugün oluşturulan sözleşme</p>
-          </CardContent>
-        </Card>
+            <div className="text-xs text-gray-500 font-medium">Bugün</div>
+          </div>
+          <div className="stat-card-value">
+            {loading ? <div className="spinner" /> : stats.todayContracts}
+          </div>
+          <div className="stat-card-label">Yeni Sözleşme</div>
+          <Link href="/history" className="mt-4 text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 hover:gap-2 transition-all">
+            Detayları Gör <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
 
-        <Card className="card-soft border-0">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center justify-between text-lg">
-              <span>Bu Ay</span>
-              <TrendingUp className="h-8 w-8 icon-orange" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900">
-              {loading ? "..." : stats.monthContracts}
+        <div className="stat-card group">
+          <div className="flex items-center justify-between mb-4">
+            <div className="stat-card-icon bg-orange-100 group-hover:bg-orange-200 transition-colors">
+              <FileText className="h-6 w-6 icon-orange" />
             </div>
-            <p className="text-xs text-gray-500 mt-1">Bu ay oluşturulan sözleşme</p>
-          </CardContent>
-        </Card>
+            <div className="text-xs text-gray-500 font-medium">Bu Ay</div>
+          </div>
+          <div className="stat-card-value">
+            {loading ? <div className="spinner" /> : stats.monthContracts}
+          </div>
+          <div className="stat-card-label">Aylık Sözleşme</div>
+          <div className="mt-4 flex items-center gap-2">
+            <div className="h-2 w-2 bg-orange-500 rounded-full animate-pulse" />
+            <span className="text-xs text-gray-500">Aktif dönem</span>
+          </div>
+        </div>
 
-        <Card className="card-soft border-0">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center justify-between text-lg">
-              <span>Kulüpler</span>
-              <Activity className="h-8 w-8 icon-purple" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900">
-              {loading ? "..." : `%${stats.clubCapacityAverage}`}
+        <div className="stat-card group">
+          <div className="flex items-center justify-between mb-4">
+            <div className="stat-card-icon bg-purple-100 group-hover:bg-purple-200 transition-colors">
+              <Target className="h-6 w-6 icon-purple" />
             </div>
-            <p className="text-xs text-gray-500 mt-1">{stats.totalClubs} kulüp - Ortalama doluluk</p>
-          </CardContent>
-        </Card>
+            <div className="text-xs text-gray-500 font-medium">{stats.totalClubs} Kulüp</div>
+          </div>
+          <div className="stat-card-value">
+            {loading ? <div className="spinner" /> : `%${stats.clubCapacityAverage}`}
+          </div>
+          <div className="stat-card-label">Doluluk Oranı</div>
+          <div className="progress-bar mt-4">
+            <div className="progress-fill" style={{width: `${stats.clubCapacityAverage}%`}} />
+          </div>
+        </div>
       </div>
 
-      {/* Son Eklenen Öğrenciler */}
-      <Card className="card-soft border-0 mb-8">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <UserPlus className="h-5 w-5 icon-blue" />
-            Son Eklenen Öğrenciler
-          </CardTitle>
-          <CardDescription>En son eklenen 5 öğrenci</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <p className="text-gray-500">Yükleniyor...</p>
-          ) : recentStudents.length > 0 ? (
-            <div className="space-y-2">
-              {recentStudents.map((student) => (
-                <Link
-                  key={student.id}
-                  href="/students"
-                  className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors"
-                >
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      {student.firstName} {student.lastName}
-                    </p>
-                    <p className="text-sm text-gray-500">{student.grade}</p>
-                  </div>
-                  <span className="text-xs text-gray-400">
-                    {new Date(student.createdAt).toLocaleDateString('tr-TR')}
-                  </span>
-                </Link>
-              ))}
+      {/* Grid Layout for Recent Items */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {/* Recent Students */}
+        <Card className="card-premium animate-fade-in border-0">
+          <CardHeader className="border-b border-gray-100 bg-gradient-to-br from-blue-50 to-indigo-50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <UserPlus className="h-5 w-5 icon-blue" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg gradient-text-blue">Son Eklenen Öğrenciler</CardTitle>
+                  <CardDescription className="text-xs">En son kayıt olan 5 öğrenci</CardDescription>
+                </div>
+              </div>
+              <Link href="/students" className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 hover-scale">
+                Tümü <ArrowRight className="h-3 w-3" />
+              </Link>
             </div>
-          ) : (
-            <p className="text-gray-500">Henüz öğrenci eklenmemiş</p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Son İşlemler Widget */}
-      <Card className="card-soft border-0 mb-8">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5 icon-orange" />
-            Son İşlemler
-          </CardTitle>
-          <CardDescription>Son oluşturulan 10 sözleşme</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <p className="text-gray-500">Yükleniyor...</p>
-          ) : recentActivities.length > 0 ? (
-            <div className="space-y-2">
-              {recentActivities.map((activity) => (
-                <Link
-                  key={activity.id}
-                  href="/history"
-                  className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors border border-gray-100"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
-                    <div>
-                      <p className="font-medium text-gray-900 text-sm">
-                        {activity.contractType}
-                      </p>
-                      <p className="text-xs text-gray-500">{activity.studentName}</p>
+          </CardHeader>
+          <CardContent className="pt-4">
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="spinner" />
+              </div>
+            ) : recentStudents.length > 0 ? (
+              <div className="space-y-2">
+                {recentStudents.map((student, index) => (
+                  <Link
+                    key={student.id}
+                    href="/students"
+                    className="flex items-center justify-between p-3 hover:bg-blue-50 rounded-xl transition-all duration-200 group border border-transparent hover:border-blue-200"
+                    style={{animationDelay: `${index * 50}ms`}}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold shadow-lg">
+                        {student.firstName[0]}{student.lastName[0]}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900 group-hover:text-blue-700 transition-colors">
+                          {student.firstName} {student.lastName}
+                        </p>
+                        <p className="text-xs text-gray-500">{student.grade}</p>
+                      </div>
                     </div>
-                  </div>
-                  <span className="text-xs text-gray-400">
-                    {new Date(activity.createdAt).toLocaleDateString('tr-TR', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </span>
-                </Link>
-              ))}
+                    <div className="text-right">
+                      <span className="badge badge-blue text-[10px]">
+                        {new Date(student.createdAt).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <Users className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                <p>Henüz öğrenci eklenmemiş</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Recent Activities */}
+        <Card className="card-premium animate-fade-in border-0">
+          <CardHeader className="border-b border-gray-100 bg-gradient-to-br from-orange-50 to-pink-50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-100 rounded-lg">
+                  <Activity className="h-5 w-5 icon-orange" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg gradient-text-purple">Son İşlemler</CardTitle>
+                  <CardDescription className="text-xs">En son oluşturulan 10 sözleşme</CardDescription>
+                </div>
+              </div>
+              <Link href="/history" className="text-xs text-orange-600 hover:text-orange-700 font-medium flex items-center gap-1 hover-scale">
+                Tümü <ArrowRight className="h-3 w-3" />
+              </Link>
             </div>
-          ) : (
-            <p className="text-gray-500">Henüz sözleşme oluşturulmamış</p>
-          )}
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent className="pt-4">
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="spinner" />
+              </div>
+            ) : recentActivities.length > 0 ? (
+              <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                {recentActivities.map((activity, index) => (
+                  <Link
+                    key={activity.id}
+                    href="/history"
+                    className="flex items-center justify-between p-3 hover:bg-orange-50 rounded-xl transition-all duration-200 group border border-transparent hover:border-orange-200"
+                    style={{animationDelay: `${index * 50}ms`}}
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="h-2 w-2 bg-gradient-to-r from-orange-500 to-pink-500 rounded-full flex-shrink-0 shadow-lg" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-900 text-sm group-hover:text-orange-700 transition-colors truncate">
+                          {activity.contractType}
+                        </p>
+                        <p className="text-xs text-gray-500 truncate">{activity.studentName}</p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-gray-400 whitespace-nowrap ml-2">
+                      {new Date(activity.createdAt).toLocaleDateString('tr-TR', {
+                        day: '2-digit',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <FileText className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                <p>Henüz sözleşme oluşturulmamış</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">Hızlı İşlemler</h2>
+      {/* Quick Actions */}
+      <div className="section-header animate-fade-in">
+        <Sparkles className="h-6 w-6 text-blue-600" />
+        <h2 className="section-title">Hızlı İşlemler</h2>
+      </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-slide-in-right">
         <Link href="/students">
-          <Card className="card-soft dashboard-card hover:shadow-lg transition-all duration-200 cursor-pointer border-0">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-3 text-lg">
-                <UserPlus className="h-6 w-6 icon-blue" />
-                Öğrenci Yönetimi
-              </CardTitle>
-              <CardDescription className="text-sm">
-                Öğrenci bilgilerini yönetin ve düzenleyin
-              </CardDescription>
+          <div className="dashboard-card relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-600/5 to-indigo-600/5 group-hover:from-blue-600/10 group-hover:to-indigo-600/10 transition-all" />
+            <CardHeader className="relative">
+              <div className="flex items-center justify-between mb-2">
+                <div className="p-3 bg-blue-100 rounded-xl group-hover:scale-110 transition-transform">
+                  <UserPlus className="h-6 w-6 icon-blue" />
+                </div>
+                <ArrowRight className="h-5 w-5 text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
+              </div>
+              <CardTitle className="text-lg font-bold text-gray-900">Öğrenci Yönetimi</CardTitle>
+              <CardDescription className="text-sm">Öğrenci bilgilerini yönetin</CardDescription>
             </CardHeader>
-            <CardContent className="pt-0">
-              <p className="text-sm text-gray-600">
-                Öğrenci ekleyin, düzenleyin ve arama yapın.
-              </p>
-            </CardContent>
-          </Card>
+          </div>
         </Link>
 
         <Link href="/clubs">
-          <Card className="card-soft dashboard-card hover:shadow-lg transition-all duration-200 cursor-pointer border-0">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-3 text-lg">
-                <Users className="h-6 w-6 icon-green" />
-                Kulüp Yönetimi
-              </CardTitle>
-              <CardDescription className="text-sm">
-                Kulüp oluşturma ve öğrenci kulüp seçimlerini yönetin
-              </CardDescription>
+          <div className="dashboard-card relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/5 to-teal-600/5 group-hover:from-emerald-600/10 group-hover:to-teal-600/10 transition-all" />
+            <CardHeader className="relative">
+              <div className="flex items-center justify-between mb-2">
+                <div className="p-3 bg-emerald-100 rounded-xl group-hover:scale-110 transition-transform">
+                  <Users className="h-6 w-6 icon-green" />
+                </div>
+                <ArrowRight className="h-5 w-5 text-gray-400 group-hover:text-emerald-600 group-hover:translate-x-1 transition-all" />
+              </div>
+              <CardTitle className="text-lg font-bold text-gray-900">Kulüp Yönetimi</CardTitle>
+              <CardDescription className="text-sm">Kulüpleri düzenleyin</CardDescription>
             </CardHeader>
-            <CardContent className="pt-0">
-              <p className="text-sm text-gray-600">
-                Yeni kulüpler oluşturun, kontejan belirleyin ve öğrenci seçimlerini takip edin.
-              </p>
-            </CardContent>
-          </Card>
+          </div>
         </Link>
 
         <Link href="/new-registration">
-          <Card className="card-soft dashboard-card hover:shadow-lg transition-all duration-200 cursor-pointer border-0">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-3 text-lg">
-                <FileText className="h-6 w-6 icon-green" />
-                Yeni Kayıt
-              </CardTitle>
-              <CardDescription className="text-sm">
-                Yeni öğrenci kayıt sözleşmelerini oluşturun
-              </CardDescription>
+          <div className="dashboard-card relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-600/5 to-pink-600/5 group-hover:from-purple-600/10 group-hover:to-pink-600/10 transition-all" />
+            <CardHeader className="relative">
+              <div className="flex items-center justify-between mb-2">
+                <div className="p-3 bg-purple-100 rounded-xl group-hover:scale-110 transition-transform">
+                  <FileText className="h-6 w-6 icon-purple" />
+                </div>
+                <ArrowRight className="h-5 w-5 text-gray-400 group-hover:text-purple-600 group-hover:translate-x-1 transition-all" />
+              </div>
+              <CardTitle className="text-lg font-bold text-gray-900">Yeni Kayıt</CardTitle>
+              <CardDescription className="text-sm">Yeni öğrenci kaydı</CardDescription>
             </CardHeader>
-            <CardContent className="pt-0">
-              <p className="text-sm text-gray-600">
-                Yeni öğrenci kayıt sözleşmelerini doldurun ve PDF olarak indirin.
-              </p>
-            </CardContent>
-          </Card>
+          </div>
         </Link>
 
         <Link href="/renewal">
-          <Card className="card-soft dashboard-card hover:shadow-lg transition-all duration-200 cursor-pointer border-0">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-3 text-lg">
-                <FileText className="h-6 w-6 icon-orange" />
-                Kayıt Yenileme
-              </CardTitle>
-              <CardDescription className="text-sm">
-                Mevcut öğrenci kayıt yenileme sözleşmelerini oluşturun
-              </CardDescription>
+          <div className="dashboard-card relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-orange-600/5 to-amber-600/5 group-hover:from-orange-600/10 group-hover:to-amber-600/10 transition-all" />
+            <CardHeader className="relative">
+              <div className="flex items-center justify-between mb-2">
+                <div className="p-3 bg-orange-100 rounded-xl group-hover:scale-110 transition-transform">
+                  <FileText className="h-6 w-6 icon-orange" />
+                </div>
+                <ArrowRight className="h-5 w-5 text-gray-400 group-hover:text-orange-600 group-hover:translate-x-1 transition-all" />
+              </div>
+              <CardTitle className="text-lg font-bold text-gray-900">Kayıt Yenileme</CardTitle>
+              <CardDescription className="text-sm">Kayıt yenileme işlemleri</CardDescription>
             </CardHeader>
-            <CardContent className="pt-0">
-              <p className="text-sm text-gray-600">
-                Kayıt yenileme sözleşmelerini doldurun ve PDF olarak indirin.
-              </p>
-            </CardContent>
-          </Card>
+          </div>
         </Link>
 
         <Link href="/uniform">
-          <Card className="card-soft dashboard-card hover:shadow-lg transition-all duration-200 cursor-pointer border-0">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-3 text-lg">
-                <Shirt className="h-6 w-6 icon-purple" />
-                Forma Sözleşmesi
-              </CardTitle>
-              <CardDescription className="text-sm">
-                Öğrenci forma sözleşmelerini oluşturun
-              </CardDescription>
+          <div className="dashboard-card relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-pink-600/5 to-rose-600/5 group-hover:from-pink-600/10 group-hover:to-rose-600/10 transition-all" />
+            <CardHeader className="relative">
+              <div className="flex items-center justify-between mb-2">
+                <div className="p-3 bg-pink-100 rounded-xl group-hover:scale-110 transition-transform">
+                  <Shirt className="h-6 w-6 icon-pink" />
+                </div>
+                <ArrowRight className="h-5 w-5 text-gray-400 group-hover:text-pink-600 group-hover:translate-x-1 transition-all" />
+              </div>
+              <CardTitle className="text-lg font-bold text-gray-900">Forma Sözleşmesi</CardTitle>
+              <CardDescription className="text-sm">Forma sözleşmeleri</CardDescription>
             </CardHeader>
-            <CardContent className="pt-0">
-              <p className="text-sm text-gray-600">
-                Forma sözleşmelerini doldurun ve PDF olarak indirin.
-              </p>
-            </CardContent>
-          </Card>
+          </div>
         </Link>
 
         <Link href="/meal">
-          <Card className="card-soft dashboard-card hover:shadow-lg transition-all duration-200 cursor-pointer border-0">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-3 text-lg">
-                <Utensils className="h-6 w-6 icon-red" />
-                Yemek Sözleşmesi
-              </CardTitle>
-              <CardDescription className="text-sm">
-                Öğrenci yemek sözleşmelerini oluşturun
-              </CardDescription>
+          <div className="dashboard-card relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-teal-600/5 to-cyan-600/5 group-hover:from-teal-600/10 group-hover:to-cyan-600/10 transition-all" />
+            <CardHeader className="relative">
+              <div className="flex items-center justify-between mb-2">
+                <div className="p-3 bg-teal-100 rounded-xl group-hover:scale-110 transition-transform">
+                  <Utensils className="h-6 w-6 icon-teal" />
+                </div>
+                <ArrowRight className="h-5 w-5 text-gray-400 group-hover:text-teal-600 group-hover:translate-x-1 transition-all" />
+              </div>
+              <CardTitle className="text-lg font-bold text-gray-900">Yemek Sözleşmesi</CardTitle>
+              <CardDescription className="text-sm">Yemek sözleşmeleri</CardDescription>
             </CardHeader>
-            <CardContent className="pt-0">
-              <p className="text-sm text-gray-600">
-                Yemek sözleşmelerini doldurun ve PDF olarak indirin.
-              </p>
-            </CardContent>
-          </Card>
+          </div>
         </Link>
 
         <Link href="/service">
-          <Card className="card-soft dashboard-card hover:shadow-lg transition-all duration-200 cursor-pointer border-0">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-3 text-lg">
-                <Bus className="h-6 w-6 icon-cyan" />
-                Servis Sözleşmesi
-              </CardTitle>
-              <CardDescription className="text-sm">
-                Öğrenci servis sözleşmelerini oluşturun
-              </CardDescription>
+          <div className="dashboard-card relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/5 to-blue-600/5 group-hover:from-indigo-600/10 group-hover:to-blue-600/10 transition-all" />
+            <CardHeader className="relative">
+              <div className="flex items-center justify-between mb-2">
+                <div className="p-3 bg-indigo-100 rounded-xl group-hover:scale-110 transition-transform">
+                  <Bus className="h-6 w-6 text-indigo-600" />
+                </div>
+                <ArrowRight className="h-5 w-5 text-gray-400 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" />
+              </div>
+              <CardTitle className="text-lg font-bold text-gray-900">Servis Sözleşmesi</CardTitle>
+              <CardDescription className="text-sm">Servis sözleşmeleri</CardDescription>
             </CardHeader>
-            <CardContent className="pt-0">
-              <p className="text-sm text-gray-600">
-                Servis sözleşmelerini doldurun ve PDF olarak indirin.
-              </p>
-            </CardContent>
-          </Card>
+          </div>
         </Link>
 
         <Link href="/book">
-          <Card className="card-soft dashboard-card hover:shadow-lg transition-all duration-200 cursor-pointer border-0">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-3 text-lg">
-                <BookOpen className="h-6 w-6 icon-lime" />
-                Kitap Sözleşmesi
-              </CardTitle>
-              <CardDescription className="text-sm">
-                Öğrenci kitap sözleşmelerini oluşturun
-              </CardDescription>
+          <div className="dashboard-card relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-amber-600/5 to-yellow-600/5 group-hover:from-amber-600/10 group-hover:to-yellow-600/10 transition-all" />
+            <CardHeader className="relative">
+              <div className="flex items-center justify-between mb-2">
+                <div className="p-3 bg-amber-100 rounded-xl group-hover:scale-110 transition-transform">
+                  <BookOpen className="h-6 w-6 text-amber-600" />
+                </div>
+                <ArrowRight className="h-5 w-5 text-gray-400 group-hover:text-amber-600 group-hover:translate-x-1 transition-all" />
+              </div>
+              <CardTitle className="text-lg font-bold text-gray-900">Kitap Sözleşmesi</CardTitle>
+              <CardDescription className="text-sm">Kitap sözleşmeleri</CardDescription>
             </CardHeader>
-            <CardContent className="pt-0">
-              <p className="text-sm text-gray-600">
-                Kitap sözleşmelerini doldurun ve PDF olarak indirin.
-              </p>
-            </CardContent>
-          </Card>
+          </div>
         </Link>
-
-        <Link href="/history">
-          <Card className="card-soft dashboard-card hover:shadow-lg transition-all duration-200 cursor-pointer border-0">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-3 text-lg">
-                <History className="h-6 w-6 icon-pink" />
-                Geçmiş Sözleşmeler
-              </CardTitle>
-              <CardDescription className="text-sm">
-                Tüm sözleşmeleri görüntüleyin ve yönetin
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <p className="text-sm text-gray-600">
-                Geçmiş sözleşmeleri görüntüleyin, düzenleyin ve PDF olarak indirin.
-              </p>
-            </CardContent>
-          </Card>
-        </Link>
-        </div>
+      </div>
     </div>
   )
 }

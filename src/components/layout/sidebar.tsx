@@ -1,29 +1,29 @@
 "use client"
 
-import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { 
+  LayoutDashboard, 
   Users, 
-  GraduationCap, 
   FileText, 
   Shirt, 
   Utensils, 
   Bus, 
   BookOpen, 
+  UserPlus, 
   History,
-  UserPlus,
-  Home,
   Menu,
-  X
+  X,
+  Sparkles
 } from "lucide-react"
+import { useState } from "react"
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: Home },
+  { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Öğrenci Yönetimi", href: "/students", icon: UserPlus },
   { name: "Kulüp Yönetimi", href: "/clubs", icon: Users },
-  { name: "Yeni Kayıt", href: "/new-registration", icon: GraduationCap },
+  { name: "Yeni Kayıt", href: "/new-registration", icon: FileText },
   { name: "Kayıt Yenileme", href: "/renewal", icon: FileText },
   { name: "Forma Sözleşmesi", href: "/uniform", icon: Shirt },
   { name: "Yemek Sözleşmesi", href: "/meal", icon: Utensils },
@@ -38,10 +38,10 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobil Hamburger Menü Butonu */}
+      {/* Mobile Menu Button */}
       <button
         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-md bg-white shadow-md hover:bg-gray-100 transition-colors"
+        className="lg:hidden fixed top-4 left-4 z-[60] p-3 rounded-xl bg-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 border border-gray-100"
         aria-label="Menüyü Aç/Kapat"
       >
         {mobileMenuOpen ? (
@@ -51,23 +51,34 @@ export function Sidebar() {
         )}
       </button>
 
-      {/* Mobil Overlay */}
+      {/* Mobile Overlay */}
       {mobileMenuOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+          className="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity duration-300"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
 
-      {/* Sidebar - Desktop & Mobile */}
+      {/* Sidebar */}
       <div className={cn(
-        "flex h-full w-64 flex-col sidebar fixed lg:relative z-40 transition-transform duration-300 ease-in-out",
+        "flex h-full w-72 flex-col sidebar fixed lg:relative z-50 transition-transform duration-300 ease-in-out",
         mobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
-        <div className="flex h-16 items-center px-4 border-b border-gray-200">
-          <h1 className="text-xl font-bold" style={{ color: 'var(--primary-dark)' }}>Okul Yönetim Sistemi</h1>
+        {/* Header */}
+        <div className="sidebar-header px-6 py-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
+              <Sparkles className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-white">Okul Yönetim</h1>
+              <p className="text-xs text-blue-100 mt-0.5">Sistemleri</p>
+            </div>
+          </div>
         </div>
-        <nav className="flex-1 space-y-1 px-2 py-4 overflow-y-auto">
+
+        {/* Navigation */}
+        <nav className="flex-1 space-y-1 px-3 py-6 overflow-y-auto">
           {navigation.map((item) => {
             const isActive = pathname === item.href
             return (
@@ -76,28 +87,44 @@ export function Sidebar() {
                 href={item.href}
                 onClick={() => setMobileMenuOpen(false)}
                 className={cn(
-                  "group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-all duration-200",
-                  isActive
-                    ? "sidebar-nav-item active"
-                    : "sidebar-nav-item"
+                  "sidebar-nav-item group",
+                  isActive && "active"
                 )}
               >
                 <item.icon
                   className={cn(
-                    "mr-3 h-5 w-5 flex-shrink-0",
-                    isActive ? "text-white" : "text-gray-500 group-hover:text-gray-700"
+                    "h-5 w-5 flex-shrink-0 transition-transform duration-200",
+                    isActive ? "text-white" : "text-gray-500 group-hover:text-blue-600"
                   )}
                   aria-hidden="true"
                 />
-                {item.name}
+                <span className="flex-1">{item.name}</span>
+                {isActive && (
+                  <div className="h-2 w-2 bg-white rounded-full shadow-lg animate-pulse" />
+                )}
               </Link>
             )
           })}
         </nav>
-        <div className="px-4 py-3 border-t border-gray-200">
-          <span className="text-xs text-gray-500">
-            © {new Date().getFullYear()} Developed by Yakın Boğaz
-          </span>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-gray-100 bg-gradient-to-br from-gray-50 to-slate-50">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold shadow-lg">
+              <Users className="h-5 w-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900 truncate">Okul Sekreteri</p>
+              <p className="text-xs text-gray-500">Aktif Oturum</p>
+            </div>
+          </div>
+          <div className="text-center pt-3 border-t border-gray-200">
+            <p className="text-xs text-gray-500">
+              © {new Date().getFullYear()} 
+              <span className="font-semibold text-gray-700"> Yakın Boğaz</span>
+            </p>
+            <p className="text-[10px] text-gray-400 mt-1">v1.0.0</p>
+          </div>
         </div>
       </div>
     </>
