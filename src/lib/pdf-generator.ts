@@ -1,6 +1,23 @@
 import puppeteer from 'puppeteer-core'
 import chromium from '@sparticuz/chromium'
 
+// Türkçe karakterleri HTML entity'lere çevir
+function encodeHTMLEntities(text: string): string {
+  const entityMap: Record<string, string> = {
+    'Ç': '&#199;', 'ç': '&#231;',
+    'Ğ': '&#286;', 'ğ': '&#287;',
+    'İ': '&#304;', 'ı': '&#305;',
+    'Ö': '&#214;', 'ö': '&#246;',
+    'Ş': '&#350;', 'ş': '&#351;',
+    'Ü': '&#220;', 'ü': '&#252;',
+    'â': '&#226;', 'Â': '&#194;',
+    'î': '&#238;', 'Î': '&#206;',
+    'û': '&#251;', 'Û': '&#219;'
+  }
+
+  return text.replace(/[ÇçĞğİıÖöŞşÜüâÂîÎûÛ]/g, (char) => entityMap[char] || char)
+}
+
 export async function generatePDF(html: string, options?: { format?: string; margin?: Record<string, string> }) {
   const browser = await puppeteer.launch({
     args: chromium.args,
@@ -10,8 +27,11 @@ export async function generatePDF(html: string, options?: { format?: string; mar
 
   const page = await browser.newPage()
 
-  // HTML'i direkt setContent ile yükle (Türkçe karakter desteği için)
-  await page.setContent(html, { waitUntil: 'networkidle0' })
+  // Türkçe karakterleri HTML entity'lere çevir
+  const encodedHTML = encodeHTMLEntities(html)
+
+  // HTML'i setContent ile yükle
+  await page.setContent(encodedHTML, { waitUntil: 'networkidle0' })
 
   const pdf = await page.pdf({
     format: (options?.format || 'A4') as 'A4',
