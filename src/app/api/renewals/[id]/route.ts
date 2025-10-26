@@ -67,6 +67,26 @@ export async function DELETE(
 ) {
     try {
         const params = await context.params
+
+        // Önce sözleşmeyi bul ve studentId'yi al
+        const renewal = await prisma.renewal.findUnique({
+            where: { id: params.id },
+            select: { studentId: true }
+        })
+
+        if (!renewal) {
+            return NextResponse.json({ error: "Renewal not found" }, { status: 404 })
+        }
+
+        // Öğrencinin tüm yan sözleşmelerini sil (cascade delete)
+        await Promise.all([
+            prisma.uniformContract.deleteMany({ where: { studentId: renewal.studentId } }),
+            prisma.mealContract.deleteMany({ where: { studentId: renewal.studentId } }),
+            prisma.serviceContract.deleteMany({ where: { studentId: renewal.studentId } }),
+            prisma.bookContract.deleteMany({ where: { studentId: renewal.studentId } })
+        ])
+
+        // Ana sözleşmeyi sil
         await prisma.renewal.delete({
             where: { id: params.id }
         })

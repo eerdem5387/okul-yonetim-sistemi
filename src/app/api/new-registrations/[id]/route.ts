@@ -67,6 +67,26 @@ export async function DELETE(
 ) {
     try {
         const params = await context.params
+
+        // Önce sözleşmeyi bul ve studentId'yi al
+        const registration = await prisma.newRegistration.findUnique({
+            where: { id: params.id },
+            select: { studentId: true }
+        })
+
+        if (!registration) {
+            return NextResponse.json({ error: "Registration not found" }, { status: 404 })
+        }
+
+        // Öğrencinin tüm yan sözleşmelerini sil (cascade delete)
+        await Promise.all([
+            prisma.uniformContract.deleteMany({ where: { studentId: registration.studentId } }),
+            prisma.mealContract.deleteMany({ where: { studentId: registration.studentId } }),
+            prisma.serviceContract.deleteMany({ where: { studentId: registration.studentId } }),
+            prisma.bookContract.deleteMany({ where: { studentId: registration.studentId } })
+        ])
+
+        // Ana sözleşmeyi sil
         await prisma.newRegistration.delete({
             where: { id: params.id }
         })
