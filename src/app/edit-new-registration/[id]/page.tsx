@@ -55,11 +55,61 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
 
   const fetchContract = useCallback(async () => {
     try {
-      const response = await fetch(`/api/new-registrations/${contractId}`)
-      if (response.ok) {
-        const data = await response.json()
-        setContract(data.contractData)
+      setLoading(true)
+      
+      // Ana sözleşmeyi çek
+      const mainResponse = await fetch(`/api/new-registrations/${contractId}`)
+      if (!mainResponse.ok) return
+      
+      const mainData = await mainResponse.json()
+      setContract(mainData.contractData)
+      
+      // Öğrenci ID'sini al
+      const studentId = mainData.studentId
+      
+      // Tüm yan sözleşmeleri çek
+      const [uniformRes, mealRes, serviceRes, bookRes] = await Promise.all([
+        fetch(`/api/uniform-contracts?studentId=${studentId}`),
+        fetch(`/api/meal-contracts?studentId=${studentId}`),
+        fetch(`/api/service-contracts?studentId=${studentId}`),
+        fetch(`/api/book-contracts?studentId=${studentId}`)
+      ])
+      
+      const [uniforms, meals, services, books] = await Promise.all([
+        uniformRes.ok ? uniformRes.json() : [],
+        mealRes.ok ? mealRes.json() : [],
+        serviceRes.ok ? serviceRes.json() : [],
+        bookRes.ok ? bookRes.json() : []
+      ])
+      
+      // En son yan sözleşmeleri al
+      const latestUniform = uniforms.length > 0 ? uniforms[0] : null
+      const latestMeal = meals.length > 0 ? meals[0] : null
+      const latestService = services.length > 0 ? services[0] : null
+      const latestBook = books.length > 0 ? books[0] : null
+      
+      // Yan sözleşme verilerini birleştir
+      const otherContractData: Record<string, unknown> = {}
+      
+      if (latestUniform) {
+        Object.assign(otherContractData, latestUniform.contractData as Record<string, unknown>)
       }
+      if (latestMeal) {
+        Object.assign(otherContractData, latestMeal.contractData as Record<string, unknown>)
+      }
+      if (latestService) {
+        Object.assign(otherContractData, latestService.contractData as Record<string, unknown>)
+      }
+      if (latestBook) {
+        Object.assign(otherContractData, latestBook.contractData as Record<string, unknown>)
+      }
+      
+      // Yan sözleşme verilerini state'e ekle
+      setContract(prev => ({
+        ...prev,
+        ...otherContractData
+      }))
+      
     } catch (error) {
       console.error("Error fetching contract:", error)
     } finally {
