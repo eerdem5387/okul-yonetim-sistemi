@@ -418,7 +418,6 @@ export default function NewRegistrationPage() {
             selectedClubs: []
           });
           alert("Form temizlendi. Yeni kayıt yapabilirsiniz.");
-        }
       } else {
         alert("Bazı sözleşmeler kaydedilirken hata oluştu!");
       }
