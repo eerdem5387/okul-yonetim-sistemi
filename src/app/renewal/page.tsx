@@ -998,25 +998,64 @@ export default function RenewalPage() {
                 <CardDescription>Öğrenci kulüp seçimi</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 gap-2">
-                  {clubs.map((club) => (
-                    <label key={club.id} className="flex items-center">
-                      <input
-                        type="checkbox"
-                        className="mr-2"
-                        onChange={(e) => {
-                          const currentClubs = otherContractData.selectedClubs || []
-                          if (e.target.checked && currentClubs.length < 3) {
-                            setOtherContractData({ ...otherContractData, selectedClubs: [...currentClubs, club.id] })
-                          } else if (!e.target.checked) {
-                            setOtherContractData({ ...otherContractData, selectedClubs: currentClubs.filter(c => c !== club.id) })
-                          }
-                        }}
-                        disabled={otherContractData.selectedClubs?.length >= 3 && !otherContractData.selectedClubs?.includes(club.id)}
-                      />
-                      {club.name}
-                    </label>
-                  ))}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {clubs.map((club: any) => {
+                    const isSelected = otherContractData.selectedClubs?.includes(club.id)
+                    const currentSelections = club.selections?.length || 0
+                    const capacity = club.capacity || 0
+                    const isFull = currentSelections >= capacity
+                    const capacityPercentage = (currentSelections / capacity) * 100
+                    
+                    return (
+                      <label 
+                        key={club.id} 
+                        className={`flex items-center justify-between p-3 border rounded-lg transition-all ${
+                          isFull && !isSelected 
+                            ? 'bg-gray-100 border-gray-300 cursor-not-allowed' 
+                            : isSelected
+                            ? 'bg-blue-50 border-blue-500'
+                            : 'hover:bg-gray-50 border-gray-200 cursor-pointer'
+                        }`}
+                      >
+                        <div className="flex items-center flex-1">
+                          <input
+                            type="checkbox"
+                            className="mr-3"
+                            checked={isSelected}
+                            onChange={(e) => {
+                              const currentClubs = otherContractData.selectedClubs || []
+                              if (e.target.checked && currentClubs.length < 3) {
+                                setOtherContractData({ ...otherContractData, selectedClubs: [...currentClubs, club.id] })
+                              } else if (!e.target.checked) {
+                                setOtherContractData({ ...otherContractData, selectedClubs: currentClubs.filter(c => c !== club.id) })
+                              }
+                            }}
+                            disabled={(otherContractData.selectedClubs?.length >= 3 && !isSelected) || (isFull && !isSelected)}
+                          />
+                          <div className="flex-1">
+                            <span className={`font-medium ${isFull && !isSelected ? 'text-gray-400' : 'text-gray-900'}`}>
+                              {club.name}
+                            </span>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-xs text-gray-500">
+                                {currentSelections}/{capacity}
+                              </span>
+                              {isFull && !isSelected && (
+                                <span className="text-xs px-2 py-0.5 bg-red-100 text-red-700 rounded-full font-medium">
+                                  DOLU
+                                </span>
+                              )}
+                              {capacityPercentage >= 80 && capacityPercentage < 100 && (
+                                <span className="text-xs px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full font-medium">
+                                  AZ YER
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </label>
+                    )
+                  })}
                 </div>
                 {otherContractData.selectedClubs?.length > 0 && (
                   <div className="text-sm text-gray-600 mt-2">
