@@ -25,6 +25,9 @@ export default function HistoryPage() {
   const [filteredContracts, setFilteredContracts] = useState<Contract[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState("all")
+  const [dateFilter, setDateFilter] = useState("all")
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
   const [selectedContracts, setSelectedContracts] = useState<Set<string>>(new Set())
   const [selectAll, setSelectAll] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
@@ -49,9 +52,37 @@ export default function HistoryPage() {
       filtered = filtered.filter(contract => contract.type === filterType)
     }
 
+    // Tarih filtresi
+    if (dateFilter !== "all") {
+      const now = new Date()
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      
+      filtered = filtered.filter(contract => {
+        const contractDate = new Date(contract.createdAt)
+        const contractDay = new Date(contractDate.getFullYear(), contractDate.getMonth(), contractDate.getDate())
+        
+        if (dateFilter === "today") {
+          return contractDay.getTime() === today.getTime()
+        } else if (dateFilter === "week") {
+          const weekAgo = new Date(today)
+          weekAgo.setDate(weekAgo.getDate() - 7)
+          return contractDay >= weekAgo
+        } else if (dateFilter === "month") {
+          return contractDate.getMonth() === now.getMonth() && contractDate.getFullYear() === now.getFullYear()
+        } else if (dateFilter === "year") {
+          return contractDate.getFullYear() === now.getFullYear()
+        } else if (dateFilter === "custom" && startDate && endDate) {
+          const start = new Date(startDate)
+          const end = new Date(endDate)
+          return contractDay >= start && contractDay <= end
+        }
+        return true
+      })
+    }
+
     setFilteredContracts(filtered)
     setCurrentPage(1) // Filtreleme yapıldığında sayfa 1'e dön
-  }, [contracts, searchTerm, filterType])
+  }, [contracts, searchTerm, filterType, dateFilter, startDate, endDate])
 
   useEffect(() => {
     filterContracts()
@@ -264,6 +295,43 @@ export default function HistoryPage() {
     }
   }
 
+  const handleBulkPDFDownload = async () => {
+    if (selectedContracts.size === 0) return
+
+    const confirmed = confirm(`${selectedContracts.size} sözleşmenin PDF'ini indirmek istiyor musunuz?`)
+    if (!confirmed) return
+
+    try {
+      const selectedContractsList = contracts.filter(c => selectedContracts.has(c.id))
+      let successCount = 0
+      let failureCount = 0
+
+      // Her sözleşme için sırayla PDF indir
+      for (const contract of selectedContractsList) {
+        try {
+          await handleDownloadPDF(contract)
+          successCount++
+          // Her indirme arasında küçük bir gecikme
+          await new Promise(resolve => setTimeout(resolve, 500))
+        } catch (error) {
+          console.error(`Error downloading PDF for contract ${contract.id}:`, error)
+          failureCount++
+        }
+      }
+
+      if (failureCount === 0) {
+        alert(`${successCount} PDF başarıyla indirildi!`)
+      } else if (successCount === 0) {
+        alert("Hiçbir PDF indirilemedi. Lütfen tekrar deneyin.")
+      } else {
+        alert(`${successCount} PDF indirildi, ${failureCount} PDF indirilemedi.`)
+      }
+    } catch (error) {
+      console.error("Error bulk downloading PDFs:", error)
+      alert("PDF'ler indirilirken bir hata oluştu.")
+    }
+  }
+
   // Sayfalama hesaplamaları
   const totalPages = Math.ceil(filteredContracts.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
@@ -293,7 +361,7 @@ export default function HistoryPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div>
               <Label htmlFor="search">Arama</Label>
               <div className="relative">
@@ -324,7 +392,46 @@ export default function HistoryPage() {
                 <option value="Kitap Sözleşmesi">Kitap Sözleşmesi</option>
               </select>
             </div>
+            <div>
+              <Label htmlFor="dateFilter">Tarih Filtresi</Label>
+              <select
+                id="dateFilter"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="w-full h-10 px-3 py-2 border border-input bg-background rounded-md text-sm"
+              >
+                <option value="all">Tüm Tarihler</option>
+                <option value="today">Bugün</option>
+                <option value="week">Bu Hafta</option>
+                <option value="month">Bu Ay</option>
+                <option value="year">Bu Yıl</option>
+                <option value="custom">Özel Tarih Aralığı</option>
+              </select>
+            </div>
           </div>
+          
+          {dateFilter === "custom" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <Label htmlFor="startDate">Başlangıç Tarihi</Label>
+                <Input
+                  id="startDate"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="endDate">Bitiş Tarihi</Label>
+                <Input
+                  id="endDate"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
           
           {/* Toplu İşlemler */}
           <div className="flex items-center gap-4 pt-4 border-t">
@@ -338,14 +445,24 @@ export default function HistoryPage() {
             </Button>
             
             {selectedContracts.size > 0 && (
-              <Button
-                onClick={handleBulkDelete}
-                variant="destructive"
-                size="sm"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Seçilenleri Sil ({selectedContracts.size})
-              </Button>
+              <>
+                <Button
+                  onClick={handleBulkPDFDownload}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Seçilenleri İndir ({selectedContracts.size})
+                </Button>
+                <Button
+                  onClick={handleBulkDelete}
+                  variant="destructive"
+                  size="sm"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Seçilenleri Sil ({selectedContracts.size})
+                </Button>
+              </>
             )}
           </div>
         </CardContent>
