@@ -350,7 +350,7 @@ export default function NewRegistrationPage() {
       const allSuccessful = responses.every(response => response.ok)
       
       if (allSuccessful) {
-        alert("Sözleşme başarıyla kaydedildi!")
+        alert("Sözleşme başarıyla kaydedildi!");
         
         // Formu temizle
         setSelectedStudent(null)
