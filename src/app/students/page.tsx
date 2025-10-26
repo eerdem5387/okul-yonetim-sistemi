@@ -38,7 +38,6 @@ export default function StudentsPage() {
     birthDate: "",
     grade: "",
     phone: "",
-    email: "",
     address: "",
     parentName: "",
     parentPhone: "",
@@ -47,6 +46,8 @@ export default function StudentsPage() {
     parent2Phone: "",
     parent2Email: ""
   })
+
+  const gradeOptions = ["5. Sınıf", "6. Sınıf", "7. Sınıf", "8. Sınıf", "9. Sınıf", "10. Sınıf", "11. Sınıf", "12. Sınıf"]
 
   const fetchStudents = useCallback(async () => {
     try {
@@ -105,7 +106,6 @@ export default function StudentsPage() {
           birthDate: "",
           grade: "",
           phone: "",
-          email: "",
           address: "",
           parentName: "",
           parentPhone: "",
@@ -132,7 +132,6 @@ export default function StudentsPage() {
       birthDate: student.birthDate,
       grade: student.grade,
       phone: student.phone || "",
-      email: student.email || "",
       address: student.address,
       parentName: student.parentName,
       parentPhone: student.parentPhone,
@@ -219,30 +218,51 @@ export default function StudentsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="tcNumber">TC Kimlik No *</Label>
+                  <Label htmlFor="tcNumber">TC Kimlik No * <span className="text-xs text-gray-500">(11 haneli)</span></Label>
                   <Input
                     id="tcNumber"
                     value={formData.tcNumber}
-                    onChange={(e) => setFormData({ ...formData, tcNumber: e.target.value })}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '').slice(0, 11)
+                      setFormData({ ...formData, tcNumber: value })
+                    }}
+                    maxLength={11}
+                    placeholder="12345678901"
                     required
                   />
                 </div>
                 <div>
                   <Label htmlFor="grade">Sınıfı *</Label>
-                  <Input
+                  <select
                     id="grade"
                     value={formData.grade}
                     onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
-                    placeholder="Örn: 9. Sınıf"
+                    className="w-full h-10 px-3 py-2 border border-input bg-background rounded-md text-sm focus:ring-2 focus:ring-blue-500"
                     required
-                  />
+                  >
+                    <option value="">Sınıf seçin...</option>
+                    {gradeOptions.map((grade) => (
+                      <option key={grade} value={grade}>{grade}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
               <div>
-                <Label htmlFor="birthDate">Doğum Tarihi *</Label>
+                <div className="flex justify-between items-center mb-1">
+                  <Label htmlFor="birthDate">Doğum Tarihi *</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setFormData({ ...formData, birthDate: new Date().toISOString().split('T')[0] })}
+                    className="text-xs"
+                  >
+                    Bugün
+                  </Button>
+                </div>
                 <Input
                   id="birthDate"
                   type="date"
@@ -262,24 +282,18 @@ export default function StudentsPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="phone">Öğrenci Telefon</Label>
-                  <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="email">Öğrenci E-posta</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  />
-                </div>
+              <div>
+                <Label htmlFor="phone">Öğrenci Telefon <span className="text-xs text-gray-500">(5XX XXX XX XX)</span></Label>
+                <Input
+                  id="phone"
+                  value={formData.phone}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '').slice(0, 10)
+                    setFormData({ ...formData, phone: value })
+                  }}
+                  maxLength={10}
+                  placeholder="5XXXXXXXXX"
+                />
               </div>
 
               <div className="border-t pt-4">
@@ -317,7 +331,23 @@ export default function StudentsPage() {
               </div>
 
               <div className="border-t pt-4">
-                <h3 className="text-lg font-semibold mb-4">2. Veli Bilgileri (İsteğe Bağlı)</h3>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold">2. Veli Bilgileri (İsteğe Bağlı)</h3>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setFormData({ 
+                      ...formData, 
+                      parent2Name: formData.parentName,
+                      parent2Phone: formData.parentPhone,
+                      parent2Email: formData.parentEmail
+                    })}
+                    className="text-xs"
+                  >
+                    1. Veli Bilgilerini Kopyala
+                  </Button>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="parent2Name">2. Veli Ad Soyad</Label>
@@ -362,7 +392,6 @@ export default function StudentsPage() {
                     birthDate: "",
                     grade: "",
                     phone: "",
-                    email: "",
                     address: "",
                     parentName: "",
                     parentPhone: "",
@@ -419,7 +448,9 @@ export default function StudentsPage() {
                       {student.parentName}
                     </td>
                     <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {student.parentPhone}
+                      <a href={`tel:${student.parentPhone}`} className="text-blue-600 hover:underline">
+                        {student.parentPhone}
+                      </a>
                     </td>
                     <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
