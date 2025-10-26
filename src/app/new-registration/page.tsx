@@ -350,74 +350,7 @@ export default function NewRegistrationPage() {
       const allSuccessful = responses.every(response => response.ok)
       
       if (allSuccessful) {
-        alert("Sözleşme başarıyla kaydedildi!");
-        
-        // Formu temizle
-        setSelectedStudent(null);
-        setMainContractData({
-            studentName: "",
-            studentClass: "",
-            studentTC: "",
-            studentBirthDate: "",
-            schoolLicenseNo: "",
-            contractNo: "",
-            registrationResponsible: "",
-            registrationDate: "",
-            contractStudentName: "",
-            contractParentName: "",
-            announcedTuitionFee: "",
-            announcedClothingFee: "",
-            announcedCourseFee: "",
-            announcedMealFee: "",
-            announcedServiceFee: "",
-            announcedBookFee: "",
-            announcedStationeryFee: "",
-            announcedStudyHallFee: "",
-            announcedTotal: "",
-            studentTuitionFee: "",
-            studentClothingFee: "",
-            studentCourseFee: "",
-            studentMealFee: "",
-            studentServiceFee: "",
-            studentBookFee: "",
-            studentStationeryFee: "",
-            studentStudyHallFee: "",
-            studentTotal: "",
-            installmentStartDate: "",
-            downPayment: "",
-            installmentDetails: "",
-            achievementDiscountRate: "",
-            achievementDiscountType: "none",
-            siblingDiscount: false,
-            staffChildDiscount: false,
-            corporateDiscount: false,
-            martyrVeteranDiscount: false,
-            teacherChildDiscount: false,
-            achievementDiscount: false,
-            otherDiscount: false,
-            otherDiscountDescription: "",
-            parentSignature: "",
-            contractDate: "",
-            registrarName: "",
-            registrarSignature: "",
-            serviceRegion: "",
-            servicePrice: "",
-            selectedClubs: []
-          });
-          setOtherContractData({
-            uniformSize: "",
-            uniformPrice: "",
-            uniformDeliveryDate: "",
-            uniformItems: [],
-            mealPeriods: [],
-            mealPrice: "",
-            bookSet: "",
-            bookDeliveryDate: "",
-            serviceRegion: "",
-            servicePrice: "",
-            selectedClubs: []
-          });
-          alert("Form temizlendi. Yeni kayıt yapabilirsiniz.");
+        alert("Sözleşme başarıyla kaydedildi! Artık PDF indirebilirsiniz.");
       } else {
         alert("Bazı sözleşmeler kaydedilirken hata oluştu!");
       }

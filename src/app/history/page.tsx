@@ -165,11 +165,11 @@ export default function HistoryPage() {
       const contractSlug = getContractTypeSlug(contract.type)
       
       // Yeni Kayıt ve Kayıt Yenileme için combined endpoint kullan
-      let endpoint = `/api/pdf/${contractSlug}/${contract.id}`
+      let endpoint = `/api/pdf/${contractSlug}/${contract.studentId}`
       let requestBody = null
       
       if (contract.type === "Yeni Kayıt" || contract.type === "Kayıt Yenileme") {
-        endpoint = `/api/pdf/combined/${contract.id}`
+        endpoint = `/api/pdf/combined/${contract.studentId}`
         requestBody = {
           contractTypes: [contractSlug],
           mainContractData: contract.contractData,
