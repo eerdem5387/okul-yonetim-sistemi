@@ -364,40 +364,139 @@ export default function NewRegistrationPage() {
     if (!selectedStudent) return
 
     try {
-      // Seçili kulüplerin detaylarını al
-      const selectedClubsForPDF = otherContractData.selectedClubs
-        .map(clubId => {
-          const club = clubs.find(c => c.id === clubId)
-          return club ? { id: club.id, name: club.name } : null
-        })
-        .filter((club): club is { id: string; name: string } => club !== null)
+      // Önce sözleşmeleri kaydet
+      const contracts = [
+        {
+          type: "new-registration",
+          data: {
+            studentId: selectedStudent.id,
+            contractData: {
+              ...mainContractData,
+              studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
+              studentClass: selectedStudent.grade,
+              studentTC: selectedStudent.tcNumber,
+              studentBirthDate: selectedStudent.birthDate,
+              contractStudentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
+              contractParentName: selectedStudent.parentName,
+              address: selectedStudent.address
+            },
+            selectedClubs: mainContractData.selectedClubs
+          }
+        },
+        {
+          type: "uniform",
+          data: {
+            studentId: selectedStudent.id,
+            contractData: {
+              studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
+              tcNumber: selectedStudent.tcNumber,
+              uniformSize: otherContractData.uniformSize,
+              uniformPrice: otherContractData.uniformPrice,
+              deliveryDate: otherContractData.uniformDeliveryDate,
+              uniformItems: otherContractData.uniformItems
+            }
+          }
+        },
+        {
+          type: "meal",
+          data: {
+            studentId: selectedStudent.id,
+            contractData: {
+              studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
+              tcNumber: selectedStudent.tcNumber,
+              mealPeriods: otherContractData.mealPeriods,
+              mealPrice: otherContractData.mealPrice
+            }
+          }
+        },
+        {
+          type: "book",
+          data: {
+            studentId: selectedStudent.id,
+            contractData: {
+              studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
+              tcNumber: selectedStudent.tcNumber,
+              bookSet: otherContractData.bookSet,
+              deliveryDate: otherContractData.bookDeliveryDate
+            }
+          }
+        },
+        {
+          type: "service",
+          data: {
+            studentId: selectedStudent.id,
+            contractData: {
+              studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
+              tcNumber: selectedStudent.tcNumber,
+              serviceRegion: otherContractData.serviceRegion,
+              servicePrice: otherContractData.servicePrice,
+              address: selectedStudent.address
+            }
+          }
+        }
+      ]
 
-      const response = await fetch(`/api/pdf/combined/${selectedStudent.id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contractTypes: ["new-registration", "uniform", "meal", "book", "service"],
-          mainContractData: mainContractData,
-          otherContractData: otherContractData,
-          selectedClubs: selectedClubsForPDF.length > 0 ? selectedClubsForPDF : undefined
+      // Tüm sözleşmeleri kaydet
+      const responses = await Promise.all(
+        contracts.map(contract => {
+          const endpoint = contract.type === "new-registration" 
+            ? "/api/new-registrations" 
+            : `/api/${contract.type}-contracts`
+          
+          return fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(contract.data)
+          })
         })
-      })
+      )
 
-      if (response.ok) {
-        const blob = await response.blob()
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement("a")
-        a.href = url
-        a.download = `tum-sozlesmeler-${selectedStudent.firstName}-${selectedStudent.lastName}.pdf`
-        document.body.appendChild(a)
-        a.click()
-        window.URL.revokeObjectURL(url)
-        document.body.removeChild(a)
+      const allSuccessful = responses.every(response => response.ok)
+      
+      if (allSuccessful) {
+        // Ana sözleşme ID'sini al
+        const mainContractResponse = await responses[0].json()
+        const contractId = mainContractResponse.id
+
+        // Seçili kulüplerin detaylarını al
+        const selectedClubsForPDF = otherContractData.selectedClubs
+          .map(clubId => {
+            const club = clubs.find(c => c.id === clubId)
+            return club ? { id: club.id, name: club.name } : null
+          })
+          .filter((club): club is { id: string; name: string } => club !== null)
+
+        // PDF'i indir
+        const pdfResponse = await fetch(`/api/pdf/combined/${contractId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contractTypes: ["new-registration", "uniform", "meal", "book", "service"],
+            mainContractData: mainContractData,
+            otherContractData: otherContractData,
+            selectedClubs: selectedClubsForPDF.length > 0 ? selectedClubsForPDF : undefined
+          })
+        })
+
+        if (pdfResponse.ok) {
+          const blob = await pdfResponse.blob()
+          const url = window.URL.createObjectURL(blob)
+          const a = document.createElement("a")
+          a.href = url
+          a.download = `tum-sozlesmeler-${selectedStudent.firstName}-${selectedStudent.lastName}.pdf`
+          document.body.appendChild(a)
+          a.click()
+          window.URL.revokeObjectURL(url)
+          document.body.removeChild(a)
+        } else {
+          alert("PDF oluşturulurken hata oluştu!")
+        }
       } else {
-        alert("PDF oluşturulurken hata oluştu!")
+        alert("Sözleşmeler kaydedilirken hata oluştu!")
       }
     } catch (error) {
       console.error("Error downloading PDF:", error)
+      alert("PDF indirilirken hata oluştu!")
     }
   }
 
