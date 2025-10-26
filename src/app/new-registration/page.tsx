@@ -420,11 +420,11 @@ export default function NewRegistrationPage() {
           alert("Form temizlendi. Yeni kayıt yapabilirsiniz.");
         }
       } else {
-        alert("Bazı sözleşmeler kaydedilirken hata oluştu!")
+        alert("Bazı sözleşmeler kaydedilirken hata oluştu!");
       }
     } catch (error) {
-      console.error("Error saving contracts:", error)
-      alert("Sözleşmeler kaydedilirken hata oluştu!")
+      console.error("Error saving contracts:", error);
+      alert("Sözleşmeler kaydedilirken hata oluştu!");
     }
   }
 
