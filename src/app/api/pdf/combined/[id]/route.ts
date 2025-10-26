@@ -11,17 +11,49 @@ export async function POST(
         const body = await request.json()
         const { contractTypes, mainContractData, otherContractData, selectedClubs } = body
 
-        // Öğrenci bilgilerini al
-        const student = await prisma.student.findUnique({
+        // Önce sözleşmeyi bul, sonra öğrenciyi al
+        const contract = await prisma.newRegistration.findUnique({
             where: { id: params.id },
             include: {
-                clubSelections: {
+                student: {
                     include: {
-                        club: true
+                        clubSelections: {
+                            include: {
+                                club: true
+                            }
+                        }
                     }
                 }
             }
         })
+
+        let student = null
+        
+        if (!contract) {
+            // Renewal sözleşmesi olabilir
+            const renewalContract = await prisma.renewal.findUnique({
+                where: { id: params.id },
+                include: {
+                    student: {
+                        include: {
+                            clubSelections: {
+                                include: {
+                                    club: true
+                                }
+                            }
+                        }
+                    }
+                }
+            })
+            
+            if (!renewalContract) {
+                return NextResponse.json({ error: "Contract not found" }, { status: 404 })
+            }
+            
+            student = renewalContract.student
+        } else {
+            student = contract.student
+        }
 
         if (!student) {
             return NextResponse.json({ error: "Student not found" }, { status: 404 })
