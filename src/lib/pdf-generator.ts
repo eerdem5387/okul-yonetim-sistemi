@@ -9,12 +9,9 @@ export async function generatePDF(html: string, options?: { format?: string; mar
   })
 
   const page = await browser.newPage()
-  
-  // HTML'i base64 olarak encode et ve data URL olarak kullan
-  const base64Html = Buffer.from(html, 'utf-8').toString('base64')
-  const dataUrl = `data:text/html;charset=utf-8;base64,${base64Html}`
-  
-  await page.goto(dataUrl, { waitUntil: 'networkidle0' })
+
+  // HTML'i direkt setContent ile yükle (Türkçe karakter desteği için)
+  await page.setContent(html, { waitUntil: 'networkidle0' })
 
   const pdf = await page.pdf({
     format: (options?.format || 'A4') as 'A4',
@@ -261,10 +258,10 @@ export function generateCombinedContractHTML(data: {
 
   // Ana sözleşme HTML'i (Eğitim Öğretim Hizmet Sözleşmesi)
   const mainContractHTML = generateMainContractHTML(student, mainContractData)
-  
+
   // Diğer sözleşmeler HTML'i
   const otherContractsHTML = generateOtherContractsHTML(student, contractTypes, otherContractData)
-  
+
   // Kulüp seçimleri HTML'i
   const clubsHTML = selectedClubs && selectedClubs.length > 0 ? generateClubSelectionsHTML(student, selectedClubs) : ''
 
@@ -739,39 +736,39 @@ function generateMainContractHTML(student: { firstName: string; lastName: string
 
 function generateOtherContractsHTML(student: { firstName: string; lastName: string; tcNumber: string; grade: string; address: string }, contractTypes: string[], contractData: Record<string, unknown>) {
   let html = ''
-  
+
   // Forma + Yemek tek sayfada
   const hasUniform = contractTypes.includes('uniform')
   const hasMeal = contractTypes.includes('meal')
-  
+
   if (hasUniform || hasMeal) {
     html += '<div class="page-break"></div>'
-    
+
     if (hasUniform) {
       html += generateUniformContractHTML(student, contractData, !hasMeal) // Compact if meal is also present
     }
-    
+
     if (hasMeal) {
       html += generateMealContractHTML(student, contractData, hasUniform) // Add separator if uniform is present
     }
   }
-  
+
   // Kitap + Servis tek sayfada
   const hasBook = contractTypes.includes('book')
   const hasService = contractTypes.includes('service')
-  
+
   if (hasBook || hasService) {
     html += '<div class="page-break"></div>'
-    
+
     if (hasBook) {
       html += generateBookContractHTML(student, contractData, !hasService) // Compact if service is also present
     }
-    
+
     if (hasService) {
       html += generateServiceContractHTML(student, contractData, hasBook) // Add separator if book is present
     }
   }
-  
+
   return html
 }
 
