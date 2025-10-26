@@ -1,14 +1,224 @@
+"use client"
+
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, FileText, Shirt, Utensils, Bus, BookOpen, UserPlus, History } from "lucide-react"
+import { Users, FileText, Shirt, Utensils, Bus, BookOpen, UserPlus, History, TrendingUp, Calendar, Activity } from "lucide-react"
 import Link from "next/link"
 
+interface DashboardStats {
+  totalStudents: number
+  todayContracts: number
+  monthContracts: number
+  totalClubs: number
+  clubCapacityAverage: number
+}
+
+interface RecentStudent {
+  id: string
+  firstName: string
+  lastName: string
+  grade: string
+  createdAt: string
+}
+
 export default function HomePage() {
+  const [stats, setStats] = useState<DashboardStats>({
+    totalStudents: 0,
+    todayContracts: 0,
+    monthContracts: 0,
+    totalClubs: 0,
+    clubCapacityAverage: 0
+  })
+  const [recentStudents, setRecentStudents] = useState<RecentStudent[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchDashboardData()
+  }, [])
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true)
+      
+      // Öğrenci sayısını al
+      const studentsRes = await fetch("/api/students")
+      const students = studentsRes.ok ? await studentsRes.json() : []
+      
+      // Kulüpleri al
+      const clubsRes = await fetch("/api/clubs")
+      const clubs = clubsRes.ok ? await clubsRes.json() : []
+      
+      // Tüm sözleşmeleri al
+      const [newRegRes, renewalRes, uniformRes, mealRes, serviceRes, bookRes] = await Promise.all([
+        fetch("/api/new-registrations"),
+        fetch("/api/renewals"),
+        fetch("/api/uniform-contracts"),
+        fetch("/api/meal-contracts"),
+        fetch("/api/service-contracts"),
+        fetch("/api/book-contracts")
+      ])
+      
+      const allContracts = [
+        ...(newRegRes.ok ? await newRegRes.json() : []),
+        ...(renewalRes.ok ? await renewalRes.json() : []),
+        ...(uniformRes.ok ? await uniformRes.json() : []),
+        ...(mealRes.ok ? await mealRes.json() : []),
+        ...(serviceRes.ok ? await serviceRes.json() : []),
+        ...(bookRes.ok ? await bookRes.json() : [])
+      ]
+      
+      // Bugünkü sözleşmeler
+      const today = new Date().toISOString().split('T')[0]
+      const todayContracts = allContracts.filter(c => 
+        c.createdAt && c.createdAt.startsWith(today)
+      ).length
+      
+      // Bu ayki sözleşmeler
+      const thisMonth = new Date().toISOString().slice(0, 7)
+      const monthContracts = allContracts.filter(c => 
+        c.createdAt && c.createdAt.startsWith(thisMonth)
+      ).length
+      
+      // Kulüp doluluk ortalaması
+      const clubCapacityAverage = clubs.length > 0
+        ? clubs.reduce((acc: number, club: any) => {
+            const percentage = (club.selections?.length || 0) / (club.capacity || 1) * 100
+            return acc + percentage
+          }, 0) / clubs.length
+        : 0
+      
+      setStats({
+        totalStudents: Array.isArray(students) ? students.length : 0,
+        todayContracts,
+        monthContracts,
+        totalClubs: Array.isArray(clubs) ? clubs.length : 0,
+        clubCapacityAverage: Math.round(clubCapacityAverage)
+      })
+      
+      // Son eklenen 5 öğrenci
+      if (Array.isArray(students)) {
+        const sorted = [...students].sort((a, b) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        ).slice(0, 5)
+        setRecentStudents(sorted)
+      }
+      
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="p-6">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Okul Yönetim Sistemi</h1>
         <p className="text-gray-600 mt-2">Öğrenci kayıt ve sözleşme yönetim paneli</p>
       </div>
+
+      {/* İstatistik Kartları */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <Card className="card-soft border-0">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center justify-between text-lg">
+              <span>Toplam Öğrenci</span>
+              <Users className="h-8 w-8 icon-blue" />
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-gray-900">
+              {loading ? "..." : stats.totalStudents}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Kayıtlı öğrenci sayısı</p>
+          </CardContent>
+        </Card>
+
+        <Card className="card-soft border-0">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center justify-between text-lg">
+              <span>Bugün</span>
+              <Calendar className="h-8 w-8 icon-green" />
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-gray-900">
+              {loading ? "..." : stats.todayContracts}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Bugün oluşturulan sözleşme</p>
+          </CardContent>
+        </Card>
+
+        <Card className="card-soft border-0">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center justify-between text-lg">
+              <span>Bu Ay</span>
+              <TrendingUp className="h-8 w-8 icon-orange" />
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-gray-900">
+              {loading ? "..." : stats.monthContracts}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Bu ay oluşturulan sözleşme</p>
+          </CardContent>
+        </Card>
+
+        <Card className="card-soft border-0">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center justify-between text-lg">
+              <span>Kulüpler</span>
+              <Activity className="h-8 w-8 icon-purple" />
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-gray-900">
+              {loading ? "..." : `%${stats.clubCapacityAverage}`}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">{stats.totalClubs} kulüp - Ortalama doluluk</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Son Eklenen Öğrenciler */}
+      <Card className="card-soft border-0 mb-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <UserPlus className="h-5 w-5 icon-blue" />
+            Son Eklenen Öğrenciler
+          </CardTitle>
+          <CardDescription>En son eklenen 5 öğrenci</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <p className="text-gray-500">Yükleniyor...</p>
+          ) : recentStudents.length > 0 ? (
+            <div className="space-y-2">
+              {recentStudents.map((student) => (
+                <Link
+                  key={student.id}
+                  href="/students"
+                  className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors"
+                >
+                  <div>
+                    <p className="font-medium text-gray-900">
+                      {student.firstName} {student.lastName}
+                    </p>
+                    <p className="text-sm text-gray-500">{student.grade}</p>
+                  </div>
+                  <span className="text-xs text-gray-400">
+                    {new Date(student.createdAt).toLocaleDateString('tr-TR')}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500">Henüz öğrenci eklenmemiş</p>
+          )}
+        </CardContent>
+      </Card>
+
+      <h2 className="text-xl font-semibold text-gray-900 mb-4">Hızlı İşlemler</h2>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
         <Link href="/students">
@@ -181,7 +391,7 @@ export default function HomePage() {
             </CardContent>
           </Card>
         </Link>
-      </div>
+        </div>
     </div>
   )
 }
