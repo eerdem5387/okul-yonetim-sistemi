@@ -21,6 +21,14 @@ interface RecentStudent {
   createdAt: string
 }
 
+interface RecentActivity {
+  id: string
+  type: string
+  studentName: string
+  createdAt: string
+  contractType: string
+}
+
 export default function HomePage() {
   const [stats, setStats] = useState<DashboardStats>({
     totalStudents: 0,
@@ -30,6 +38,7 @@ export default function HomePage() {
     clubCapacityAverage: 0
   })
   const [recentStudents, setRecentStudents] = useState<RecentStudent[]>([])
+  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -103,11 +112,39 @@ export default function HomePage() {
         setRecentStudents(sorted)
       }
       
+      // Son 10 işlem (tüm sözleşmelerden)
+      const allContractsWithDetails = allContracts.map((contract: any) => {
+        const student = students.find((s: any) => s.id === contract.studentId)
+        return {
+          id: contract.id,
+          type: contract.type || "unknown",
+          studentName: student ? `${student.firstName} ${student.lastName}` : "Bilinmeyen Öğrenci",
+          createdAt: contract.createdAt,
+          contractType: getContractTypeDisplay(contract.type)
+        }
+      }).sort((a: any, b: any) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      ).slice(0, 10)
+      
+      setRecentActivities(allContractsWithDetails)
+      
     } catch (error) {
       console.error("Error fetching dashboard data:", error)
     } finally {
       setLoading(false)
     }
+  }
+
+  const getContractTypeDisplay = (type: string) => {
+    const typeMap: Record<string, string> = {
+      "new-registration": "Yeni Kayıt",
+      "renewal": "Kayıt Yenileme",
+      "uniform": "Forma Sözleşmesi",
+      "meal": "Yemek Sözleşmesi",
+      "service": "Servis Sözleşmesi",
+      "book": "Kitap Sözleşmesi"
+    }
+    return typeMap[type] || type
   }
 
   return (
@@ -214,6 +251,53 @@ export default function HomePage() {
             </div>
           ) : (
             <p className="text-gray-500">Henüz öğrenci eklenmemiş</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Son İşlemler Widget */}
+      <Card className="card-soft border-0 mb-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="h-5 w-5 icon-orange" />
+            Son İşlemler
+          </CardTitle>
+          <CardDescription>Son oluşturulan 10 sözleşme</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <p className="text-gray-500">Yükleniyor...</p>
+          ) : recentActivities.length > 0 ? (
+            <div className="space-y-2">
+              {recentActivities.map((activity) => (
+                <Link
+                  key={activity.id}
+                  href="/history"
+                  className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors border border-gray-100"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+                    <div>
+                      <p className="font-medium text-gray-900 text-sm">
+                        {activity.contractType}
+                      </p>
+                      <p className="text-xs text-gray-500">{activity.studentName}</p>
+                    </div>
+                  </div>
+                  <span className="text-xs text-gray-400">
+                    {new Date(activity.createdAt).toLocaleDateString('tr-TR', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500">Henüz sözleşme oluşturulmamış</p>
           )}
         </CardContent>
       </Card>

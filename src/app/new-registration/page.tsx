@@ -27,6 +27,8 @@ export default function NewRegistrationPage() {
   const [students, setStudents] = useState<Student[]>([])
   const [clubs, setClubs] = useState<{id: string, name: string}[]>([])
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
+  const [studentSearchTerm, setStudentSearchTerm] = useState("")
+  const [filteredStudents, setFilteredStudents] = useState<Student[]>([])
 
   // Ana Sözleşme Form Verileri
   const [mainContractData, setMainContractData] = useState<{
@@ -200,6 +202,20 @@ export default function NewRegistrationPage() {
     fetchStudents()
     fetchClubs()
   }, [fetchStudents, fetchClubs])
+
+  // Öğrenci arama filtresi
+  useEffect(() => {
+    if (studentSearchTerm.trim() === "") {
+      setFilteredStudents(students)
+    } else {
+      const filtered = students.filter(student =>
+        `${student.firstName} ${student.lastName}`.toLowerCase().includes(studentSearchTerm.toLowerCase()) ||
+        student.tcNumber.includes(studentSearchTerm) ||
+        student.grade.toLowerCase().includes(studentSearchTerm.toLowerCase())
+      )
+      setFilteredStudents(filtered)
+    }
+  }, [studentSearchTerm, students])
 
   const handleSaveClubSelections = async () => {
     if (!selectedStudent || !otherContractData.selectedClubs?.length) return
@@ -454,7 +470,14 @@ export default function NewRegistrationPage() {
           </CardHeader>
           <CardContent>
             <div className="mb-6">
-              <Label htmlFor="studentSelect">Öğrenci Seçin *</Label>
+              <Label htmlFor="studentSearch">Öğrenci Ara ve Seçin *</Label>
+              <Input
+                id="studentSearch"
+                placeholder="Öğrenci adı, TC veya sınıf ara..."
+                value={studentSearchTerm}
+                onChange={(e) => setStudentSearchTerm(e.target.value)}
+                className="mb-2"
+              />
               <select
                 id="studentSelect"
                 value={selectedStudent?.id || ""}
@@ -474,15 +497,19 @@ export default function NewRegistrationPage() {
                   }
                 }}
                 className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                size={Math.min(filteredStudents.length + 1, 8)}
                 required
               >
                 <option value="">Öğrenci seçin...</option>
-                {students.map((student) => (
+                {filteredStudents.map((student) => (
                   <option key={student.id} value={student.id}>
                     {student.firstName} {student.lastName} - {student.tcNumber} - {student.grade}
                   </option>
                 ))}
               </select>
+              {filteredStudents.length === 0 && studentSearchTerm && (
+                <p className="text-sm text-gray-500 mt-2">Arama kriterlerinize uygun öğrenci bulunamadı.</p>
+              )}
               {!students.length && (
                 <p className="text-sm text-gray-500 mt-1">
                   Önce <a href="/students" className="text-blue-600 hover:underline">Öğrenci Yönetimi</a> sayfasından öğrenci ekleyin.
