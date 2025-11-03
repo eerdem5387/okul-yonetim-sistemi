@@ -115,6 +115,14 @@ export async function POST(
             name: selection.club.name
         }))
 
+        // Hangi sözleşmeler PDF'e dahil edilecek?
+        const derivedTypes: string[] = []
+        if (uniformContract) derivedTypes.push('uniform')
+        if (mealContract) derivedTypes.push('meal')
+        if (serviceContract) derivedTypes.push('service')
+        if (bookContract) derivedTypes.push('book')
+        const typesForPdf = Array.isArray(contractTypes) && contractTypes.length > 0 ? contractTypes : derivedTypes
+
         // Tüm sözleşmeleri birleştir
         const combinedHTML = generateCombinedContractHTML({
             student: {
@@ -135,7 +143,7 @@ export async function POST(
                 fatherAddress: student.fatherAddress,
                 fatherOccupation: student.fatherOccupation
             },
-            contractTypes: ["new-registration", "uniform", "meal", "service", "book"],
+            contractTypes: typesForPdf,
             mainContractData,
             otherContractData: finalOtherContractData,
             selectedClubs: clubsForPDF.length > 0 ? clubsForPDF : undefined
