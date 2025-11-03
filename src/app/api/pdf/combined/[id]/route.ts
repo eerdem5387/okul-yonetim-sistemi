@@ -124,7 +124,16 @@ export async function POST(
                 grade: student.grade,
                 address: student.address,
                 birthDate: student.birthDate.toISOString().split('T')[0], // Date'i string'e çevir
-                parentName: student.parentName
+                motherName: student.motherName,
+                motherTc: student.motherTc,
+                motherPhone: student.motherPhone,
+                motherAddress: student.motherAddress,
+                motherOccupation: student.motherOccupation,
+                fatherName: student.fatherName,
+                fatherTc: student.fatherTc,
+                fatherPhone: student.fatherPhone,
+                fatherAddress: student.fatherAddress,
+                fatherOccupation: student.fatherOccupation
             },
             contractTypes: ["new-registration", "uniform", "meal", "service", "book"],
             mainContractData,
