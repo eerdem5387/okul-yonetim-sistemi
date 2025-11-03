@@ -206,10 +206,30 @@ export default function StudentsPage() {
             />
           </div>
         </div>
+        <div className="flex items-center gap-2">
+        <Button type="button" variant="outline" onClick={async () => {
+          try {
+            const res = await fetch('/api/students/export')
+            if (!res.ok) throw new Error('Export failed')
+            const blob = await res.blob()
+            const url = window.URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = 'ogrenciler.xlsx'
+            document.body.appendChild(a)
+            a.click()
+            window.URL.revokeObjectURL(url)
+            document.body.removeChild(a)
+          } catch (e) {
+            console.error('Export error:', e)
+            alert('Excel dışa aktarım başarısız oldu')
+          }
+        }}>Excel’e Aktar</Button>
         <Button onClick={() => setShowForm(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Yeni Öğrenci Ekle
         </Button>
+        </div>
       </div>
 
       {showForm && (
