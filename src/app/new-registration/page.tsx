@@ -273,7 +273,7 @@ export default function NewRegistrationPage() {
               studentClass: selectedStudent.grade,
               studentBirthDate: selectedStudent.birthDate,
               contractStudentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
-              contractParentName: selectedStudent.parentName
+              contractParentName: ""
             }
           }
         },
