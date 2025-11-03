@@ -66,7 +66,7 @@ export default function NewRegistrationPage() {
     studentTotal: string
     installmentStartDate: string
     downPayment: string
-    installmentDetails: string
+    installments: { month: string; label: string; amount: string }[]
     achievementDiscountRate: string
     achievementDiscountType: string
     siblingDiscount: boolean
@@ -124,7 +124,7 @@ export default function NewRegistrationPage() {
     // Ödeme Planı
     installmentStartDate: "",
     downPayment: "",
-    installmentDetails: "",
+    installments: [],
     achievementDiscountRate: "",
     achievementDiscountType: "none", // "none" or "percentage"
     
@@ -849,14 +849,61 @@ export default function NewRegistrationPage() {
                           placeholder="0"
                         />
                       </div>
-                      <div>
-                        <Label htmlFor="installmentDetails">Taksit Sayısı ve Tutarı</Label>
-                        <Input
-                          id="installmentDetails"
-                          value={mainContractData.installmentDetails}
-                          onChange={(e) => setMainContractData({ ...mainContractData, installmentDetails: e.target.value })}
-                          placeholder="Örn: 10 taksit x 5000 TL"
-                        />
+                      
+                      {/* Aylık Taksitler */}
+                      <div className="col-span-2">
+                        <Label>Taksit Ayları ve Tutarları</Label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-2">
+                          {(() => {
+                            const year = new Date().getFullYear()
+                            const monthsTR = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"]
+                            return monthsTR.map((name, idx) => {
+                              const m = String(idx + 1).padStart(2, '0')
+                              const month = `${year}-${m}`
+                              const label = `${name} ${year}`
+                              const selected = mainContractData.installments.find(i => i.month === month)
+                              return (
+                                <div key={month} className="flex items-center justify-between gap-2 p-2 border rounded-md">
+                                  <label className="flex items-center gap-2">
+                                    <input
+                                      type="checkbox"
+                                      checked={!!selected}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setMainContractData({
+                                            ...mainContractData,
+                                            installments: [...mainContractData.installments, { month, label, amount: "" }]
+                                          })
+                                        } else {
+                                          setMainContractData({
+                                            ...mainContractData,
+                                            installments: mainContractData.installments.filter(i => i.month !== month)
+                                          })
+                                        }
+                                      }}
+                                    />
+                                    <span>{label}</span>
+                                  </label>
+                                  <Input
+                                    placeholder="0"
+                                    value={selected?.amount || ""}
+                                    onChange={(e) => {
+                                      const val = e.target.value
+                                      setMainContractData({
+                                        ...mainContractData,
+                                        installments: selected
+                                          ? mainContractData.installments.map(i => i.month === month ? { ...i, amount: val } : i)
+                                          : [...mainContractData.installments, { month, label, amount: val }]
+                                      })
+                                    }}
+                                    className="w-32"
+                                    disabled={!selected}
+                                  />
+                                </div>
+                              )
+                            })
+                          })()}
+                        </div>
                       </div>
                       <div>
                         <Label htmlFor="achievementDiscountRate">Başarı İndirimi Oranı</Label>

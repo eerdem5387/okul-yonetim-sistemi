@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import type { Student } from "@prisma/client"
 
 export async function GET() {
     try {
-        const students = await prisma.student.findMany({ orderBy: { createdAt: "desc" } })
+        const students: Student[] = await prisma.student.findMany({ orderBy: { createdAt: "desc" } })
 
         // Dynamic import to keep edge/server compatibility
         const XLSX = await import("xlsx")
@@ -17,16 +18,16 @@ export async function GET() {
             "Öğrenci Telefon": s.phone || "",
             "Öğrenci E-posta": s.email || "",
             "Öğrenci Adres": s.address,
-            "Anne Ad Soyad": (s as any).motherName || "",
-            "Anne TC": (s as any).motherTc || "",
-            "Anne Telefon": (s as any).motherPhone || "",
-            "Anne Adres": (s as any).motherAddress || "",
-            "Anne Meslek": (s as any).motherOccupation || "",
-            "Baba Ad Soyad": (s as any).fatherName || "",
-            "Baba TC": (s as any).fatherTc || "",
-            "Baba Telefon": (s as any).fatherPhone || "",
-            "Baba Adres": (s as any).fatherAddress || "",
-            "Baba Meslek": (s as any).fatherOccupation || "",
+            "Anne Ad Soyad": s.motherName || "",
+            "Anne TC": s.motherTc || "",
+            "Anne Telefon": s.motherPhone || "",
+            "Anne Adres": s.motherAddress || "",
+            "Anne Meslek": s.motherOccupation || "",
+            "Baba Ad Soyad": s.fatherName || "",
+            "Baba TC": s.fatherTc || "",
+            "Baba Telefon": s.fatherPhone || "",
+            "Baba Adres": s.fatherAddress || "",
+            "Baba Meslek": s.fatherOccupation || "",
             "Oluşturma": s.createdAt.toISOString(),
             "Güncelleme": s.updatedAt.toISOString(),
         }))
