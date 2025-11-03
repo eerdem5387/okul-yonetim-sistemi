@@ -167,6 +167,7 @@ export default function NewRegistrationPage() {
     bookDeliveryDate: "",
     
     // Servis Sözleşmesi
+    usesService: false as boolean,
     serviceRegion: "",
     servicePrice: "",
     
@@ -315,7 +316,7 @@ export default function NewRegistrationPage() {
             }
           }
         },
-        {
+        ...(otherContractData.usesService ? [{
           type: "service",
           data: {
             studentId: selectedStudent.id,
@@ -327,7 +328,7 @@ export default function NewRegistrationPage() {
               address: selectedStudent.address
             }
           }
-        }
+        }] : [])
       ]
 
       // Tüm sözleşmeleri kaydet
@@ -475,7 +476,13 @@ export default function NewRegistrationPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            contractTypes: ["new-registration", "uniform", "meal", "book", "service"],
+            contractTypes: [
+              "new-registration",
+              "uniform",
+              "meal",
+              "book",
+              ...(otherContractData.usesService ? ["service"] : [])
+            ],
             mainContractData: mainContractData,
             otherContractData: otherContractData,
             selectedClubs: selectedClubsForPDF.length > 0 ? selectedClubsForPDF : undefined
@@ -1182,8 +1189,20 @@ export default function NewRegistrationPage() {
             {/* Servis Sözleşmesi */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-red-600">Servis Sözleşmesi</CardTitle>
-                <CardDescription>Öğrenci servis sözleşmesi</CardDescription>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <CardTitle className="text-red-600">Servis Sözleşmesi</CardTitle>
+                    <CardDescription>Öğrenci servis sözleşmesi</CardDescription>
+                  </div>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={otherContractData.usesService}
+                      onChange={(e) => setOtherContractData({ ...otherContractData, usesService: e.target.checked })}
+                    />
+                    Öğrenci Servis Kullanacaktır.
+                  </label>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -1193,6 +1212,8 @@ export default function NewRegistrationPage() {
                       id="contractDate"
                       type="date"
                       defaultValue={new Date().toISOString().split('T')[0]}
+                      disabled={!otherContractData.usesService}
+                      className={!otherContractData.usesService ? "bg-gray-100" : undefined}
                     />
                   </div>
                   <div>
@@ -1202,6 +1223,7 @@ export default function NewRegistrationPage() {
                       value={otherContractData.serviceRegion}
                       onChange={(e) => setOtherContractData({ ...otherContractData, serviceRegion: e.target.value })}
                       className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      disabled={!otherContractData.usesService}
                     >
                       <option value="">Bölge seçin...</option>
                       <option value="1.bölge">1. Bölge</option>
@@ -1231,6 +1253,7 @@ export default function NewRegistrationPage() {
                       value={otherContractData.servicePrice}
                       onChange={(e) => setOtherContractData({ ...otherContractData, servicePrice: e.target.value })}
                       placeholder="Örn: 800"
+                      disabled={!otherContractData.usesService}
                     />
                   </div>
                 </div>

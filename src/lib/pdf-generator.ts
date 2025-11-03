@@ -761,6 +761,7 @@ function generateMainContractHTML(student: { firstName: string; lastName: string
       </div>
     </div>
 
+    <div class="page-break"></div>
     <div style="border-top: 2px solid #000; margin: 20px 0; padding-top: 15px;">
       <div class="contract-header" style="border-bottom: none; padding-bottom: 5px;">
         <div class="contract-title">ÖDEME PLANI TAAHHÜDÜ</div>

@@ -112,6 +112,7 @@ export default function RenewalPage() {
     bookDeliveryDate: "",
     
     // Servis Sözleşmesi
+    usesService: false as boolean,
     serviceRegion: "",
     servicePrice: "",
     
@@ -246,7 +247,7 @@ export default function RenewalPage() {
             }
           }
         },
-        {
+        ...(otherContractData.usesService ? [{
           type: "service",
           data: {
             studentId: selectedStudent.id,
@@ -258,7 +259,7 @@ export default function RenewalPage() {
               address: selectedStudent.address
             }
           }
-        }
+        }] : [])
       ]
 
       // Tüm sözleşmeleri kaydet
@@ -311,7 +312,13 @@ export default function RenewalPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          contractTypes: ["renewal", "uniform", "meal", "book", "service"],
+          contractTypes: [
+            "renewal",
+            "uniform",
+            "meal",
+            "book",
+            ...(otherContractData.usesService ? ["service"] : [])
+          ],
           mainContractData: mainContractData,
           otherContractData: otherContractData,
           selectedClubs: selectedClubsForPDF.length > 0 ? selectedClubsForPDF : undefined
@@ -1004,8 +1011,20 @@ export default function RenewalPage() {
             {/* Servis Sözleşmesi */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-red-600">Servis Sözleşmesi</CardTitle>
-                <CardDescription>Öğrenci servis sözleşmesi</CardDescription>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <CardTitle className="text-red-600">Servis Sözleşmesi</CardTitle>
+                    <CardDescription>Öğrenci servis sözleşmesi</CardDescription>
+                  </div>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={otherContractData.usesService}
+                      onChange={(e) => setOtherContractData({ ...otherContractData, usesService: e.target.checked })}
+                    />
+                    Öğrenci Servis Kullanacaktır.
+                  </label>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -1015,6 +1034,8 @@ export default function RenewalPage() {
                       id="contractDate"
                       type="date"
                       defaultValue={new Date().toISOString().split('T')[0]}
+                      disabled={!otherContractData.usesService}
+                      className={!otherContractData.usesService ? "bg-gray-100" : undefined}
                     />
                   </div>
                   <div>
@@ -1024,6 +1045,7 @@ export default function RenewalPage() {
                       value={otherContractData.serviceRegion}
                       onChange={(e) => setOtherContractData({ ...otherContractData, serviceRegion: e.target.value })}
                       className="w-full h-11 px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl text-sm text-gray-900 transition-all duration-200 hover:border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 focus:outline-none cursor-pointer"
+                      disabled={!otherContractData.usesService}
                     >
                       <option value="">Bölge seçin...</option>
                       <option value="1.bölge">1. Bölge</option>
@@ -1053,6 +1075,7 @@ export default function RenewalPage() {
                       value={otherContractData.servicePrice}
                       onChange={(e) => setOtherContractData({ ...otherContractData, servicePrice: e.target.value })}
                       placeholder="Örn: 800"
+                      disabled={!otherContractData.usesService}
                     />
                   </div>
                 </div>
