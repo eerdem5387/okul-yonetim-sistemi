@@ -17,12 +17,16 @@ interface Student {
   phone?: string
   email?: string
   address: string
-  parentName: string
-  parentPhone: string
-  parentEmail: string
-  parent2Name?: string
-  parent2Phone?: string
-  parent2Email?: string
+  motherName: string
+  motherTc: string
+  motherPhone: string
+  motherAddress: string
+  motherOccupation: string
+  fatherName: string
+  fatherTc: string
+  fatherPhone: string
+  fatherAddress: string
+  fatherOccupation: string
 }
 
 export default function StudentsPage() {
@@ -39,12 +43,16 @@ export default function StudentsPage() {
     grade: "",
     phone: "",
     address: "",
-    parentName: "",
-    parentPhone: "",
-    parentEmail: "",
-    parent2Name: "",
-    parent2Phone: "",
-    parent2Email: ""
+    motherName: "",
+    motherTc: "",
+    motherPhone: "",
+    motherAddress: "",
+    motherOccupation: "",
+    fatherName: "",
+    fatherTc: "",
+    fatherPhone: "",
+    fatherAddress: "",
+    fatherOccupation: ""
   })
 
   const gradeOptions = ["5. Sınıf", "6. Sınıf", "7. Sınıf", "8. Sınıf", "9. Sınıf", "10. Sınıf", "11. Sınıf", "12. Sınıf"]
@@ -107,12 +115,16 @@ export default function StudentsPage() {
           grade: "",
           phone: "",
           address: "",
-          parentName: "",
-          parentPhone: "",
-          parentEmail: "",
-          parent2Name: "",
-          parent2Phone: "",
-          parent2Email: ""
+          motherName: "",
+          motherTc: "",
+          motherPhone: "",
+          motherAddress: "",
+          motherOccupation: "",
+          fatherName: "",
+          fatherTc: "",
+          fatherPhone: "",
+          fatherAddress: "",
+          fatherOccupation: ""
         })
         alert(editingStudent ? "Öğrenci başarıyla güncellendi!" : "Öğrenci başarıyla eklendi!")
       } else {
@@ -133,12 +145,16 @@ export default function StudentsPage() {
       grade: student.grade,
       phone: student.phone || "",
       address: student.address,
-      parentName: student.parentName,
-      parentPhone: student.parentPhone,
-      parentEmail: student.parentEmail,
-      parent2Name: student.parent2Name || "",
-      parent2Phone: student.parent2Phone || "",
-      parent2Email: student.parent2Email || ""
+      motherName: student.motherName,
+      motherTc: student.motherTc,
+      motherPhone: student.motherPhone,
+      motherAddress: student.motherAddress,
+      motherOccupation: student.motherOccupation,
+      fatherName: student.fatherName,
+      fatherTc: student.fatherTc,
+      fatherPhone: student.fatherPhone,
+      fatherAddress: student.fatherAddress,
+      fatherOccupation: student.fatherOccupation
     })
     setShowForm(true)
   }
@@ -165,8 +181,17 @@ export default function StudentsPage() {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Öğrenci Yönetimi</h1>
-        <p className="text-gray-600 mt-2">Öğrenci bilgilerini ekleyin, düzenleyin ve yönetin</p>
+        <div className="flex items-end justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Öğrenci Yönetimi</h1>
+            <p className="text-gray-600 mt-2">Öğrenci bilgilerini ekleyin, düzenleyin ve yönetin</p>
+          </div>
+          <div className="mb-1">
+            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 text-sm font-medium">
+              Toplam Öğrenci: <span className="font-semibold">{students.length}</span>
+            </span>
+          </div>
+        </div>
       </div>
 
       <div className="mb-6 flex justify-between items-center">
@@ -297,34 +322,61 @@ export default function StudentsPage() {
               </div>
 
               <div className="border-t pt-4">
-                <h3 className="text-lg font-semibold mb-4">1. Veli Bilgileri *</h3>
+                <h3 className="text-lg font-semibold mb-4">Öğrenci Anne Bilgileri *</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="parentName">1. Veli Ad Soyad *</Label>
+                    <Label htmlFor="motherName">Ad Soyad *</Label>
                     <Input
-                      id="parentName"
-                      value={formData.parentName}
-                      onChange={(e) => setFormData({ ...formData, parentName: e.target.value })}
+                      id="motherName"
+                      value={formData.motherName}
+                      onChange={(e) => setFormData({ ...formData, motherName: e.target.value })}
                       required
                     />
                   </div>
                   <div>
-                    <Label htmlFor="parentPhone">1. Veli Telefon *</Label>
+                    <Label htmlFor="motherTc">TC * <span className="text-xs text-gray-500">(11 haneli)</span></Label>
                     <Input
-                      id="parentPhone"
-                      value={formData.parentPhone}
-                      onChange={(e) => setFormData({ ...formData, parentPhone: e.target.value })}
+                      id="motherTc"
+                      value={formData.motherTc}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 11)
+                        setFormData({ ...formData, motherTc: value })
+                      }}
+                      maxLength={11}
+                      placeholder="12345678901"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="motherPhone">Telefon * <span className="text-xs text-gray-500">(5XX XXX XX XX)</span></Label>
+                    <Input
+                      id="motherPhone"
+                      value={formData.motherPhone}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 10)
+                        setFormData({ ...formData, motherPhone: value })
+                      }}
+                      maxLength={10}
+                      placeholder="5XXXXXXXXX"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="motherOccupation">Meslek *</Label>
+                    <Input
+                      id="motherOccupation"
+                      value={formData.motherOccupation}
+                      onChange={(e) => setFormData({ ...formData, motherOccupation: e.target.value })}
                       required
                     />
                   </div>
                 </div>
                 <div className="mt-4">
-                  <Label htmlFor="parentEmail">1. Veli E-posta *</Label>
+                  <Label htmlFor="motherAddress">Adres *</Label>
                   <Input
-                    id="parentEmail"
-                    type="email"
-                    value={formData.parentEmail}
-                    onChange={(e) => setFormData({ ...formData, parentEmail: e.target.value })}
+                    id="motherAddress"
+                    value={formData.motherAddress}
+                    onChange={(e) => setFormData({ ...formData, motherAddress: e.target.value })}
                     required
                   />
                 </div>
@@ -332,47 +384,79 @@ export default function StudentsPage() {
 
               <div className="border-t pt-4">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold">2. Veli Bilgileri (İsteğe Bağlı)</h3>
+                  <h3 className="text-lg font-semibold">Öğrenci Baba Bilgileri *</h3>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     onClick={() => setFormData({ 
-                      ...formData, 
-                      parent2Name: formData.parentName,
-                      parent2Phone: formData.parentPhone,
-                      parent2Email: formData.parentEmail
+                      ...formData,
+                      fatherName: formData.motherName,
+                      fatherTc: formData.motherTc,
+                      fatherPhone: formData.motherPhone,
+                      fatherAddress: formData.motherAddress,
+                      fatherOccupation: formData.motherOccupation
                     })}
                     className="text-xs"
                   >
-                    1. Veli Bilgilerini Kopyala
+                    Anne Bilgilerini Kopyala
                   </Button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="parent2Name">2. Veli Ad Soyad</Label>
+                    <Label htmlFor="fatherName">Ad Soyad *</Label>
                     <Input
-                      id="parent2Name"
-                      value={formData.parent2Name}
-                      onChange={(e) => setFormData({ ...formData, parent2Name: e.target.value })}
+                      id="fatherName"
+                      value={formData.fatherName}
+                      onChange={(e) => setFormData({ ...formData, fatherName: e.target.value })}
+                      required
                     />
                   </div>
                   <div>
-                    <Label htmlFor="parent2Phone">2. Veli Telefon</Label>
+                    <Label htmlFor="fatherTc">TC * <span className="text-xs text-gray-500">(11 haneli)</span></Label>
                     <Input
-                      id="parent2Phone"
-                      value={formData.parent2Phone}
-                      onChange={(e) => setFormData({ ...formData, parent2Phone: e.target.value })}
+                      id="fatherTc"
+                      value={formData.fatherTc}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 11)
+                        setFormData({ ...formData, fatherTc: value })
+                      }}
+                      maxLength={11}
+                      placeholder="12345678901"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="fatherPhone">Telefon * <span className="text-xs text-gray-500">(5XX XXX XX XX)</span></Label>
+                    <Input
+                      id="fatherPhone"
+                      value={formData.fatherPhone}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 10)
+                        setFormData({ ...formData, fatherPhone: value })
+                      }}
+                      maxLength={10}
+                      placeholder="5XXXXXXXXX"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="fatherOccupation">Meslek *</Label>
+                    <Input
+                      id="fatherOccupation"
+                      value={formData.fatherOccupation}
+                      onChange={(e) => setFormData({ ...formData, fatherOccupation: e.target.value })}
+                      required
                     />
                   </div>
                 </div>
                 <div className="mt-4">
-                  <Label htmlFor="parent2Email">2. Veli E-posta</Label>
+                  <Label htmlFor="fatherAddress">Adres *</Label>
                   <Input
-                    id="parent2Email"
-                    type="email"
-                    value={formData.parent2Email}
-                    onChange={(e) => setFormData({ ...formData, parent2Email: e.target.value })}
+                    id="fatherAddress"
+                    value={formData.fatherAddress}
+                    onChange={(e) => setFormData({ ...formData, fatherAddress: e.target.value })}
+                    required
                   />
                 </div>
               </div>
@@ -393,12 +477,16 @@ export default function StudentsPage() {
                     grade: "",
                     phone: "",
                     address: "",
-                    parentName: "",
-                    parentPhone: "",
-                    parentEmail: "",
-                    parent2Name: "",
-                    parent2Phone: "",
-                    parent2Email: ""
+                    motherName: "",
+                    motherTc: "",
+                    motherPhone: "",
+                    motherAddress: "",
+                    motherOccupation: "",
+                    fatherName: "",
+                    fatherTc: "",
+                    fatherPhone: "",
+                    fatherAddress: "",
+                    fatherOccupation: ""
                   })
                 }}>
                   İptal
@@ -419,8 +507,10 @@ export default function StudentsPage() {
                   <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TC</th>
                   <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sınıf</th>
                   <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Adres</th>
-                  <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">1. Veli</th>
-                  <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Telefon</th>
+                  <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Anne</th>
+                  <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Anne Tel</th>
+                  <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Baba</th>
+                  <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Baba Tel</th>
                   <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">İşlemler</th>
                 </tr>
               </thead>
@@ -445,11 +535,19 @@ export default function StudentsPage() {
                       {student.address}
                     </td>
                     <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {student.parentName}
+                      {student.motherName}
                     </td>
                     <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <a href={`tel:${student.parentPhone}`} className="text-blue-600 hover:underline">
-                        {student.parentPhone}
+                      <a href={`tel:${student.motherPhone}`} className="text-blue-600 hover:underline">
+                        {student.motherPhone}
+                      </a>
+                    </td>
+                    <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {student.fatherName}
+                    </td>
+                    <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <a href={`tel:${student.fatherPhone}`} className="text-blue-600 hover:underline">
+                        {student.fatherPhone}
                       </a>
                     </td>
                     <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm font-medium">

@@ -15,12 +15,16 @@ interface Student {
   grade: string
   address: string
   birthDate: string
-  parentName: string
-  parentPhone: string
-  parentEmail: string
-  parent2Name?: string
-  parent2Phone?: string
-  parent2Email?: string
+  motherName: string
+  motherTc: string
+  motherPhone: string
+  motherAddress: string
+  motherOccupation: string
+  fatherName: string
+  fatherTc: string
+  fatherPhone: string
+  fatherAddress: string
+  fatherOccupation: string
 }
 
 export default function RenewalPage() {
@@ -363,7 +367,7 @@ export default function RenewalPage() {
                       studentClass: student.grade,
                       studentBirthDate: student.birthDate,
                       contractStudentName: `${student.firstName} ${student.lastName}`,
-                      contractParentName: student.parentName
+                      contractParentName: ""
                     }))
                   }
                 }}
@@ -391,8 +395,22 @@ export default function RenewalPage() {
                 <p><strong>TC Kimlik No:</strong> {selectedStudent.tcNumber}</p>
                 <p><strong>Sınıf:</strong> {selectedStudent.grade}</p>
                 <p><strong>Adres:</strong> {selectedStudent.address}</p>
-                <p><strong>1. Veli:</strong> {selectedStudent.parentName} ({selectedStudent.parentPhone})</p>
-                {selectedStudent.parent2Name && <p><strong>2. Veli:</strong> {selectedStudent.parent2Name} ({selectedStudent.parent2Phone})</p>}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                  <div>
+                    <h4 className="font-medium">Öğrenci Anne Bilgileri</h4>
+                    <p className="text-sm text-gray-600">{selectedStudent.motherName} • TC: {selectedStudent.motherTc}</p>
+                    <p className="text-sm text-gray-600">Tel: {selectedStudent.motherPhone}</p>
+                    <p className="text-sm text-gray-600">Adres: {selectedStudent.motherAddress}</p>
+                    <p className="text-sm text-gray-600">Meslek: {selectedStudent.motherOccupation}</p>
+                  </div>
+                  <div>
+                    <h4 className="font-medium">Öğrenci Baba Bilgileri</h4>
+                    <p className="text-sm text-gray-600">{selectedStudent.fatherName} • TC: {selectedStudent.fatherTc}</p>
+                    <p className="text-sm text-gray-600">Tel: {selectedStudent.fatherPhone}</p>
+                    <p className="text-sm text-gray-600">Adres: {selectedStudent.fatherAddress}</p>
+                    <p className="text-sm text-gray-600">Meslek: {selectedStudent.fatherOccupation}</p>
+                  </div>
+                </div>
               </div>
             )}
           </CardContent>

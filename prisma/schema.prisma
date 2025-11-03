@@ -20,12 +20,19 @@ model Student {
   phone       String?
   email       String?
   address     String   // Adres (zorunlu)
-  parentName  String   // 1. Veli Ad Soyad (zorunlu)
-  parentPhone String   // 1. Veli Telefon (zorunlu)
-  parentEmail String   // 1. Veli E-posta (zorunlu)
-  parent2Name String? // 2. Veli Ad Soyad (zorunlu değil)
-  parent2Phone String? // 2. Veli Telefon (zorunlu değil)
-  parent2Email String? // 2. Veli E-posta (zorunlu değil)
+  // Anne Bilgileri (Zorunlu)
+  motherName        String
+  motherTc          String
+  motherPhone       String
+  motherAddress     String
+  motherOccupation  String
+
+  // Baba Bilgileri (Zorunlu)
+  fatherName        String
+  fatherTc          String
+  fatherPhone       String
+  fatherAddress     String
+  fatherOccupation  String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @default(now())
 

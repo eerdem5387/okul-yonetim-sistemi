@@ -47,6 +47,59 @@ export async function generatePDF(html: string, options?: { format?: string; mar
   return pdf
 }
 
+// TL format helper (binlik ayraçlı)
+function formatTL(value: unknown): string {
+  const num = typeof value === 'string' ? Number(value) : (typeof value === 'number' ? value : NaN)
+  if (!isFinite(num)) return '___________'
+  return new Intl.NumberFormat('tr-TR').format(num)
+}
+
+// YYYY-MM → Türkçe "Ay YYYY"
+function monthLabelTR(yyyyMm: string): string {
+  if (!/^\d{4}-\d{2}$/.test(yyyyMm)) return yyyyMm || ''
+  const [y, m] = yyyyMm.split('-').map(Number)
+  const months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
+  const idx = Math.max(1, Math.min(12, m)) - 1
+  return `${months[idx]} ${y}`
+}
+
+// Installments table renderer
+function renderInstallmentsTable(installments: unknown): string {
+  if (!Array.isArray(installments) || installments.length === 0) return ''
+  type Item = { month?: string; label?: string; amount?: unknown }
+  const items: Item[] = installments as Item[]
+  const rows = items.map((it) => {
+    const label = it.label || (it.month ? monthLabelTR(it.month) : '')
+    return `
+      <tr>
+        <td>${label || '—'}</td>
+        <td>${formatTL(it.amount)} TL</td>
+      </tr>
+    `
+  }).join('')
+  const total = items.reduce((acc, it) => {
+    const n = typeof it.amount === 'string' ? Number(it.amount) : (typeof it.amount === 'number' ? it.amount : 0)
+    return acc + (isFinite(n) ? n : 0)
+  }, 0)
+  return `
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Ay</th>
+          <th>Tutar (TL)</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+        <tr style="font-weight:bold;">
+          <td>Toplam Taksit Tutarı</td>
+          <td>${formatTL(total)} TL</td>
+        </tr>
+      </tbody>
+    </table>
+  `
+}
+
 export function generateContractHTML(contractData: Record<string, unknown>, contractType: string) {
   const currentDate = new Date().toLocaleDateString('tr-TR')
 
@@ -268,7 +321,7 @@ function generateContractSpecificFields(contractData: Record<string, unknown>, c
 }
 
 export function generateCombinedContractHTML(data: {
-  student: { firstName: string; lastName: string; tcNumber: string; grade: string; address: string; birthDate: string; parentName: string }
+  student: { firstName: string; lastName: string; tcNumber: string; grade: string; address: string; birthDate: string; motherName: string; motherTc: string; motherPhone: string; motherAddress: string; motherOccupation: string; fatherName: string; fatherTc: string; fatherPhone: string; fatherAddress: string; fatherOccupation: string }
   contractTypes: string[]
   mainContractData: Record<string, unknown>
   otherContractData: Record<string, unknown>
@@ -448,7 +501,7 @@ export function generateCombinedContractHTML(data: {
   `
 }
 
-function generateMainContractHTML(student: { firstName: string; lastName: string; tcNumber: string; grade: string; address: string; birthDate: string; parentName: string }, contractData: Record<string, unknown>) {
+function generateMainContractHTML(student: { firstName: string; lastName: string; tcNumber: string; grade: string; address: string; birthDate: string; motherName: string; motherTc: string; motherPhone: string; motherAddress: string; motherOccupation: string; fatherName: string; fatherTc: string; fatherPhone: string; fatherAddress: string; fatherOccupation: string }, contractData: Record<string, unknown>) {
   return `
     <div class="contract-header">
       <div class="contract-title">EĞİTİM ÖĞRETİM HİZMET SÖZLEŞMESİ</div>
@@ -667,9 +720,23 @@ function generateMainContractHTML(student: { firstName: string; lastName: string
         <div class="field-label">Öğrenci Adı:</div>
         <div class="field-value">${contractData.contractStudentName || student.firstName + ' ' + student.lastName}</div>
       </div>
-      <div class="field-row">
-        <div class="field-label">Veli Adı:</div>
-        <div class="field-value">${contractData.contractParentName || student.parentName}</div>
+      <div style="display:flex; gap: 20px;">
+        <div style="flex:1;">
+          <div class="section-title" style="text-decoration:none; margin-bottom:6px;">Öğrenci Anne Bilgileri</div>
+          <div class="field-row"><div class="field-label">Ad Soyad:</div><div class="field-value">${student.motherName || ''}</div></div>
+          <div class="field-row"><div class="field-label">TC:</div><div class="field-value">${student.motherTc || ''}</div></div>
+          <div class="field-row"><div class="field-label">Telefon:</div><div class="field-value">${student.motherPhone || ''}</div></div>
+          <div class="field-row"><div class="field-label">Adres:</div><div class="field-value">${student.motherAddress || ''}</div></div>
+          <div class="field-row"><div class="field-label">Meslek:</div><div class="field-value">${student.motherOccupation || ''}</div></div>
+        </div>
+        <div style="flex:1;">
+          <div class="section-title" style="text-decoration:none; margin-bottom:6px;">Öğrenci Baba Bilgileri</div>
+          <div class="field-row"><div class="field-label">Ad Soyad:</div><div class="field-value">${student.fatherName || ''}</div></div>
+          <div class="field-row"><div class="field-label">TC:</div><div class="field-value">${student.fatherTc || ''}</div></div>
+          <div class="field-row"><div class="field-label">Telefon:</div><div class="field-value">${student.fatherPhone || ''}</div></div>
+          <div class="field-row"><div class="field-label">Adres:</div><div class="field-value">${student.fatherAddress || ''}</div></div>
+          <div class="field-row"><div class="field-label">Meslek:</div><div class="field-value">${student.fatherOccupation || ''}</div></div>
+        </div>
       </div>
     </div>
 
@@ -704,9 +771,19 @@ function generateMainContractHTML(student: { firstName: string; lastName: string
           <div class="field-label">Öğrenci Adı:</div>
           <div class="field-value">${contractData.contractStudentName || student.firstName + ' ' + student.lastName}</div>
         </div>
-        <div class="field-row">
-          <div class="field-label">Veli Adı:</div>
-          <div class="field-value">${contractData.contractParentName || student.parentName}</div>
+        <div style="display:flex; gap: 20px;">
+          <div style="flex:1;">
+            <div class="section-title" style="text-decoration:none; margin-bottom:6px;">Öğrenci Anne Bilgileri</div>
+            <div class="field-row"><div class="field-label">Ad Soyad:</div><div class="field-value">${student.motherName || ''}</div></div>
+            <div class="field-row"><div class="field-label">TC:</div><div class="field-value">${student.motherTc || ''}</div></div>
+            <div class="field-row"><div class="field-label">Telefon:</div><div class="field-value">${student.motherPhone || ''}</div></div>
+          </div>
+          <div style="flex:1;">
+            <div class="section-title" style="text-decoration:none; margin-bottom:6px;">Öğrenci Baba Bilgileri</div>
+            <div class="field-row"><div class="field-label">Ad Soyad:</div><div class="field-value">${student.fatherName || ''}</div></div>
+            <div class="field-row"><div class="field-label">TC:</div><div class="field-value">${student.fatherTc || ''}</div></div>
+            <div class="field-row"><div class="field-label">Telefon:</div><div class="field-value">${student.fatherPhone || ''}</div></div>
+          </div>
         </div>
       </div>
 
@@ -714,20 +791,17 @@ function generateMainContractHTML(student: { firstName: string; lastName: string
         <div class="terms-title">ÖDEME PLANI DETAYLARI:</div>
         <div class="field-row">
           <div class="field-label">Toplam Ücret:</div>
-          <div class="field-value">${contractData.studentTotal || '___________'} TL</div>
+          <div class="field-value">${formatTL(contractData.studentTotal)} TL</div>
         </div>
         <div class="field-row">
           <div class="field-label">Peşinat:</div>
-          <div class="field-value">${contractData.downPayment || '___________'} TL</div>
-        </div>
-        <div class="field-row">
-          <div class="field-label">Kalan Tutar:</div>
-          <div class="field-value">${contractData.installmentDetails || '___________'}</div>
+          <div class="field-value">${formatTL(contractData.downPayment)} TL</div>
         </div>
         <div class="field-row">
           <div class="field-label">Taksit Başlangıç:</div>
           <div class="field-value">${contractData.installmentStartDate || '___________'}</div>
         </div>
+        ${renderInstallmentsTable(contractData.installments)}
       </div>
 
       <div class="terms-section">

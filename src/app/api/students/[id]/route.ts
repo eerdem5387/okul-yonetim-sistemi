@@ -30,8 +30,9 @@ export async function PUT(
         const params = await context.params
         const body = await request.json()
         const { 
-            firstName, lastName, tcNumber, birthDate, grade, phone, email, address, 
-            parentName, parentPhone, parentEmail, parent2Name, parent2Phone, parent2Email 
+            firstName, lastName, tcNumber, birthDate, grade, phone, email, address,
+            motherName, motherTc, motherPhone, motherAddress, motherOccupation,
+            fatherName, fatherTc, fatherPhone, fatherAddress, fatherOccupation
         } = body
 
         const student = await prisma.student.update({
@@ -45,12 +46,16 @@ export async function PUT(
                 phone,
                 email,
                 address,
-                parentName,
-                parentPhone,
-                parentEmail,
-                parent2Name,
-                parent2Phone,
-                parent2Email
+                motherName,
+                motherTc,
+                motherPhone,
+                motherAddress,
+                motherOccupation,
+                fatherName,
+                fatherTc,
+                fatherPhone,
+                fatherAddress,
+                fatherOccupation
             }
         })
 

@@ -20,8 +20,9 @@ export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
         const { 
-            firstName, lastName, tcNumber, birthDate, grade, phone, email, address, 
-            parentName, parentPhone, parentEmail, parent2Name, parent2Phone, parent2Email 
+            firstName, lastName, tcNumber, birthDate, grade, phone, email, address,
+            motherName, motherTc, motherPhone, motherAddress, motherOccupation,
+            fatherName, fatherTc, fatherPhone, fatherAddress, fatherOccupation
         } = body
 
         const student = await prisma.student.create({
@@ -34,12 +35,16 @@ export async function POST(request: NextRequest) {
                 phone,
                 email,
                 address,
-                parentName,
-                parentPhone,
-                parentEmail,
-                parent2Name,
-                parent2Phone,
-                parent2Email
+                motherName,
+                motherTc,
+                motherPhone,
+                motherAddress,
+                motherOccupation,
+                fatherName,
+                fatherTc,
+                fatherPhone,
+                fatherAddress,
+                fatherOccupation
             }
         })
 
