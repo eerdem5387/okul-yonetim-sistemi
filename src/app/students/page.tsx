@@ -322,19 +322,18 @@ export default function StudentsPage() {
               </div>
 
               <div className="border-t pt-4">
-                <h3 className="text-lg font-semibold mb-4">Öğrenci Anne Bilgileri *</h3>
+                <h3 className="text-lg font-semibold mb-4">Öğrenci Anne Bilgileri</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="motherName">Ad Soyad *</Label>
+                    <Label htmlFor="motherName">Ad Soyad</Label>
                     <Input
                       id="motherName"
                       value={formData.motherName}
                       onChange={(e) => setFormData({ ...formData, motherName: e.target.value })}
-                      required
                     />
                   </div>
                   <div>
-                    <Label htmlFor="motherTc">TC * <span className="text-xs text-gray-500">(11 haneli)</span></Label>
+                    <Label htmlFor="motherTc">TC <span className="text-xs text-gray-500">(11 haneli)</span></Label>
                     <Input
                       id="motherTc"
                       value={formData.motherTc}
@@ -344,11 +343,10 @@ export default function StudentsPage() {
                       }}
                       maxLength={11}
                       placeholder="12345678901"
-                      required
                     />
                   </div>
                   <div>
-                    <Label htmlFor="motherPhone">Telefon * <span className="text-xs text-gray-500">(5XX XXX XX XX)</span></Label>
+                    <Label htmlFor="motherPhone">Telefon <span className="text-xs text-gray-500">(5XX XXX XX XX)</span></Label>
                     <Input
                       id="motherPhone"
                       value={formData.motherPhone}
@@ -358,33 +356,30 @@ export default function StudentsPage() {
                       }}
                       maxLength={10}
                       placeholder="5XXXXXXXXX"
-                      required
                     />
                   </div>
                   <div>
-                    <Label htmlFor="motherOccupation">Meslek *</Label>
+                    <Label htmlFor="motherOccupation">Meslek</Label>
                     <Input
                       id="motherOccupation"
                       value={formData.motherOccupation}
                       onChange={(e) => setFormData({ ...formData, motherOccupation: e.target.value })}
-                      required
                     />
                   </div>
                 </div>
                 <div className="mt-4">
-                  <Label htmlFor="motherAddress">Adres *</Label>
+                  <Label htmlFor="motherAddress">Adres</Label>
                   <Input
                     id="motherAddress"
                     value={formData.motherAddress}
                     onChange={(e) => setFormData({ ...formData, motherAddress: e.target.value })}
-                    required
                   />
                 </div>
               </div>
 
               <div className="border-t pt-4">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold">Öğrenci Baba Bilgileri *</h3>
+                  <h3 className="text-lg font-semibold">Öğrenci Baba Bilgileri</h3>
                   <Button
                     type="button"
                     variant="outline"
@@ -404,16 +399,15 @@ export default function StudentsPage() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="fatherName">Ad Soyad *</Label>
+                    <Label htmlFor="fatherName">Ad Soyad</Label>
                     <Input
                       id="fatherName"
                       value={formData.fatherName}
                       onChange={(e) => setFormData({ ...formData, fatherName: e.target.value })}
-                      required
                     />
                   </div>
                   <div>
-                    <Label htmlFor="fatherTc">TC * <span className="text-xs text-gray-500">(11 haneli)</span></Label>
+                    <Label htmlFor="fatherTc">TC <span className="text-xs text-gray-500">(11 haneli)</span></Label>
                     <Input
                       id="fatherTc"
                       value={formData.fatherTc}
@@ -423,11 +417,10 @@ export default function StudentsPage() {
                       }}
                       maxLength={11}
                       placeholder="12345678901"
-                      required
                     />
                   </div>
                   <div>
-                    <Label htmlFor="fatherPhone">Telefon * <span className="text-xs text-gray-500">(5XX XXX XX XX)</span></Label>
+                    <Label htmlFor="fatherPhone">Telefon <span className="text-xs text-gray-500">(5XX XXX XX XX)</span></Label>
                     <Input
                       id="fatherPhone"
                       value={formData.fatherPhone}
@@ -437,26 +430,23 @@ export default function StudentsPage() {
                       }}
                       maxLength={10}
                       placeholder="5XXXXXXXXX"
-                      required
                     />
                   </div>
                   <div>
-                    <Label htmlFor="fatherOccupation">Meslek *</Label>
+                    <Label htmlFor="fatherOccupation">Meslek</Label>
                     <Input
                       id="fatherOccupation"
                       value={formData.fatherOccupation}
                       onChange={(e) => setFormData({ ...formData, fatherOccupation: e.target.value })}
-                      required
                     />
                   </div>
                 </div>
                 <div className="mt-4">
-                  <Label htmlFor="fatherAddress">Adres *</Label>
+                  <Label htmlFor="fatherAddress">Adres</Label>
                   <Input
                     id="fatherAddress"
                     value={formData.fatherAddress}
                     onChange={(e) => setFormData({ ...formData, fatherAddress: e.target.value })}
-                    required
                   />
                 </div>
               </div>
