@@ -7,18 +7,34 @@ export async function GET(request: NextRequest) {
         const page = parseInt(searchParams.get('page') || '1')
         const limit = parseInt(searchParams.get('limit') || '10')
         const search = searchParams.get('search') || ''
+        const grade = searchParams.get('grade') || ''
         
         const skip = (page - 1) * limit
 
+        // Arama ve sınıf filtresi
+        const whereConditions: any[] = []
+        
         // Arama filtresi
-        const where = search ? {
-            OR: [
-                { firstName: { contains: search, mode: 'insensitive' as const } },
-                { lastName: { contains: search, mode: 'insensitive' as const } },
-                { tcNumber: { contains: search } },
-                { grade: { contains: search, mode: 'insensitive' as const } }
-            ]
-        } : {}
+        if (search) {
+            whereConditions.push({
+                OR: [
+                    { firstName: { contains: search, mode: 'insensitive' as const } },
+                    { lastName: { contains: search, mode: 'insensitive' as const } },
+                    { tcNumber: { contains: search } },
+                    { grade: { contains: search, mode: 'insensitive' as const } }
+                ]
+            })
+        }
+        
+        // Sınıf filtresi
+        if (grade) {
+            whereConditions.push({ grade: { equals: grade, mode: 'insensitive' as const } })
+        } else {
+            // Varsayılan olarak mezunları hariç tut (sadece "Mezun" filtresi seçildiğinde görünsünler)
+            whereConditions.push({ grade: { not: { equals: "Mezun", mode: 'insensitive' as const } } })
+        }
+        
+        const where = whereConditions.length > 0 ? { AND: whereConditions } : {}
 
         // Toplam kayıt sayısı (arama varsa filtrelenmiş, yoksa tümü)
         const total = await prisma.student.count({ where })
@@ -52,7 +68,7 @@ export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
         const { 
-            firstName, lastName, tcNumber, birthDate, grade, phone, email, address,
+            firstName, lastName, tcNumber, birthDate, grade, address,
             motherName, motherTc, motherPhone, motherAddress, motherOccupation,
             fatherName, fatherTc, fatherPhone, fatherAddress, fatherOccupation
         } = body
@@ -64,8 +80,6 @@ export async function POST(request: NextRequest) {
                 tcNumber,
                 birthDate: new Date(birthDate),
                 grade,
-                phone,
-                email,
                 address,
                 motherName,
                 motherTc,

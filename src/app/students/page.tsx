@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Save, Plus, Edit, Trash2, Search, X } from "lucide-react"
+import { Save, Plus, Edit, Trash2, Search, X, ArrowUp } from "lucide-react"
 
 interface Student {
   id: string
@@ -14,8 +14,6 @@ interface Student {
   tcNumber: string
   birthDate: string
   grade: string
-  phone?: string
-  email?: string
   address: string
   motherName: string
   motherTc: string
@@ -35,6 +33,7 @@ export default function StudentsPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [totalStudents, setTotalStudents] = useState(0)
   const [searchTerm, setSearchTerm] = useState("")
+  const [selectedGrade, setSelectedGrade] = useState("")
   const [showForm, setShowForm] = useState(false)
   const [editingStudent, setEditingStudent] = useState<Student | null>(null)
   const [formData, setFormData] = useState({
@@ -43,7 +42,6 @@ export default function StudentsPage() {
     tcNumber: "",
     birthDate: "",
     grade: "",
-    phone: "",
     address: "",
     motherName: "",
     motherTc: "",
@@ -57,9 +55,9 @@ export default function StudentsPage() {
     fatherOccupation: ""
   })
 
-  const gradeOptions = ["5. Sınıf", "6. Sınıf", "7. Sınıf", "8. Sınıf", "9. Sınıf", "10. Sınıf", "11. Sınıf", "12. Sınıf"]
+  const gradeOptions = ["5. Sınıf", "6. Sınıf", "7. Sınıf", "8. Sınıf", "9. Sınıf", "10. Sınıf", "11. Sınıf", "12. Sınıf", "Mezun"]
 
-  const fetchStudents = useCallback(async (page: number = 1, search: string = "") => {
+  const fetchStudents = useCallback(async (page: number = 1, search: string = "", grade: string = "") => {
     try {
       const params = new URLSearchParams({
         page: page.toString(),
@@ -67,6 +65,9 @@ export default function StudentsPage() {
       })
       if (search.trim()) {
         params.append("search", search.trim())
+      }
+      if (grade.trim()) {
+        params.append("grade", grade.trim())
       }
       
       const response = await fetch(`/api/students?${params.toString()}`)
@@ -95,23 +96,21 @@ export default function StudentsPage() {
 
   // İlk yükleme
   useEffect(() => {
-    fetchStudents(1, "")
+    fetchStudents(1, "", selectedGrade)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Arama yapıldığında ilk sayfaya dön
+  // Arama veya sınıf filtresi değiştiğinde ilk sayfaya dön
   useEffect(() => {
-    if (searchTerm.trim()) {
-      setCurrentPage(1)
-      fetchStudents(1, searchTerm)
-    }
-  }, [searchTerm, fetchStudents])
+    setCurrentPage(1)
+    fetchStudents(1, searchTerm, selectedGrade)
+  }, [searchTerm, selectedGrade, fetchStudents])
 
   // Sayfa değiştiğinde
   useEffect(() => {
     if (currentPage > 0) {
-      fetchStudents(currentPage, searchTerm)
+      fetchStudents(currentPage, searchTerm, selectedGrade)
     }
-  }, [currentPage, fetchStudents])
+  }, [currentPage, fetchStudents, searchTerm, selectedGrade])
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -138,7 +137,6 @@ export default function StudentsPage() {
           tcNumber: "",
           birthDate: "",
           grade: "",
-          phone: "",
           address: "",
           motherName: "",
           motherTc: "",
@@ -153,7 +151,7 @@ export default function StudentsPage() {
         })
         alert(editingStudent ? "Öğrenci başarıyla güncellendi!" : "Öğrenci başarıyla eklendi!")
         // Listeyi yenile
-        fetchStudents(currentPage, searchTerm)
+        fetchStudents(currentPage, searchTerm, selectedGrade)
       } else {
         alert(editingStudent ? "Öğrenci güncellenirken hata oluştu!" : "Öğrenci eklenirken hata oluştu!")
       }
@@ -182,7 +180,6 @@ export default function StudentsPage() {
       tcNumber: student.tcNumber,
       birthDate: birthDateFormatted,
       grade: student.grade,
-      phone: student.phone || "",
       address: student.address,
       motherName: student.motherName,
       motherTc: student.motherTc,
@@ -206,13 +203,36 @@ export default function StudentsPage() {
         })
 
         if (response.ok) {
-          fetchStudents(currentPage, searchTerm)
+          fetchStudents(currentPage, searchTerm, selectedGrade)
           alert("Öğrenci başarıyla silindi!")
         } else {
           alert("Öğrenci silinirken hata oluştu!")
         }
       } catch (error) {
         console.error("Error deleting student:", error)
+      }
+    }
+  }
+
+  const handlePromoteAll = async () => {
+    if (confirm("Tüm öğrencileri bir üst sınıfa yükseltmek istediğinizden emin misiniz? Bu işlem geri alınamaz!")) {
+      try {
+        const response = await fetch("/api/students/promote-all", {
+          method: "POST",
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          alert(data.message || "Öğrenciler başarıyla yükseltildi!")
+          // Listeyi yenile
+          fetchStudents(currentPage, searchTerm, selectedGrade)
+        } else {
+          const errorData = await response.json()
+          alert(errorData.error || "Öğrenciler yükseltilirken hata oluştu!")
+        }
+      } catch (error) {
+        console.error("Error promoting students:", error)
+        alert("Öğrenciler yükseltilirken hata oluştu!")
       }
     }
   }
@@ -227,15 +247,23 @@ export default function StudentsPage() {
           </div>
           <div className="mb-1">
             <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 text-sm font-medium">
-              Toplam Öğrenci: <span className="font-semibold">{totalStudents}</span>
+              {selectedGrade ? (
+                <>
+                  <span className="font-semibold">{selectedGrade}</span> Öğrenci Sayısı: <span className="font-semibold">{totalStudents}</span>
+                </>
+              ) : (
+                <>
+                  Toplam Öğrenci: <span className="font-semibold">{totalStudents}</span>
+                </>
+              )}
             </span>
           </div>
         </div>
       </div>
 
-      <div className="mb-6 flex justify-between items-center">
-        <div className="flex-1 max-w-md">
-          <div className="relative">
+      <div className="mb-6 flex justify-between items-center gap-4 flex-wrap">
+        <div className="flex-1 flex gap-2 items-center min-w-[300px]">
+          <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
               placeholder="Öğrenci ara (ad, soyad, TC, sınıf)..."
@@ -244,8 +272,26 @@ export default function StudentsPage() {
               className="pl-10"
             />
           </div>
+          <div className="flex-shrink-0">
+            <select
+              value={selectedGrade}
+              onChange={(e) => setSelectedGrade(e.target.value)}
+              className="h-10 px-3 py-2 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Tüm Sınıflar</option>
+              {gradeOptions.map((grade) => (
+                <option key={grade} value={grade}>
+                  {grade}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
         <div className="flex items-center gap-2">
+        <Button type="button" variant="outline" onClick={handlePromoteAll}>
+          <ArrowUp className="h-4 w-4 mr-2" />
+          Sınıf Yükselt
+        </Button>
         <Button type="button" variant="outline" onClick={async () => {
           try {
             const res = await fetch('/api/students/export')
@@ -284,7 +330,6 @@ export default function StudentsPage() {
               tcNumber: "",
               birthDate: "",
               grade: "",
-              phone: "",
               address: "",
               motherName: "",
               motherTc: "",
@@ -324,7 +369,6 @@ export default function StudentsPage() {
                       tcNumber: "",
                       birthDate: "",
                       grade: "",
-                      phone: "",
                       address: "",
                       motherName: "",
                       motherTc: "",
@@ -418,20 +462,6 @@ export default function StudentsPage() {
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   required
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="phone">Öğrenci Telefon <span className="text-xs text-gray-500">(5XX XXX XX XX)</span></Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, '').slice(0, 10)
-                    setFormData({ ...formData, phone: value })
-                  }}
-                  maxLength={10}
-                  placeholder="5XXXXXXXXX"
                 />
               </div>
 
@@ -579,7 +609,6 @@ export default function StudentsPage() {
                     tcNumber: "",
                     birthDate: "",
                     grade: "",
-                    phone: "",
                     address: "",
                     motherName: "",
                     motherTc: "",
@@ -683,9 +712,9 @@ export default function StudentsPage() {
         <div className="mt-6 flex items-center justify-between">
           <div className="text-sm text-gray-700">
             Sayfa <span className="font-medium">{currentPage}</span> / <span className="font-medium">{totalPages}</span>
-            {searchTerm && (
+            {(searchTerm || selectedGrade) && (
               <span className="ml-2 text-gray-500">
-                (Arama sonuçları: {totalStudents} öğrenci)
+                ({searchTerm && selectedGrade ? 'Arama ve Filtre' : searchTerm ? 'Arama' : 'Filtre'} sonuçları: {totalStudents} öğrenci)
               </span>
             )}
           </div>

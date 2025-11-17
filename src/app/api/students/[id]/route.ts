@@ -30,7 +30,7 @@ export async function PUT(
         const params = await context.params
         const body = await request.json()
         const { 
-            firstName, lastName, tcNumber, birthDate, grade, phone, email, address,
+            firstName, lastName, tcNumber, birthDate, grade, address,
             motherName, motherTc, motherPhone, motherAddress, motherOccupation,
             fatherName, fatherTc, fatherPhone, fatherAddress, fatherOccupation
         } = body
@@ -43,8 +43,6 @@ export async function PUT(
                 tcNumber,
                 birthDate: new Date(birthDate),
                 grade,
-                phone,
-                email,
                 address,
                 motherName,
                 motherTc,
