@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
         const skip = (page - 1) * limit
 
         // Arama ve sınıf filtresi
-        const whereConditions: any[] = []
+        const whereConditions: Array<Record<string, unknown>> = []
         
         // Arama filtresi
         if (search) {
