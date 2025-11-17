@@ -36,6 +36,7 @@ export default function StudentsPage() {
   const [selectedGrade, setSelectedGrade] = useState("")
   const [showForm, setShowForm] = useState(false)
   const [editingStudent, setEditingStudent] = useState<Student | null>(null)
+  const [confirmPromote, setConfirmPromote] = useState(false)
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -215,25 +216,24 @@ export default function StudentsPage() {
   }
 
   const handlePromoteAll = async () => {
-    if (confirm("Tüm öğrencileri bir üst sınıfa yükseltmek istediğinizden emin misiniz? Bu işlem geri alınamaz!")) {
-      try {
-        const response = await fetch("/api/students/promote-all", {
-          method: "POST",
-        })
+    try {
+      const response = await fetch("/api/students/promote-all", {
+        method: "POST",
+      })
 
-        if (response.ok) {
-          const data = await response.json()
-          alert(data.message || "Öğrenciler başarıyla yükseltildi!")
-          // Listeyi yenile
-          fetchStudents(currentPage, searchTerm, selectedGrade)
-        } else {
-          const errorData = await response.json()
-          alert(errorData.error || "Öğrenciler yükseltilirken hata oluştu!")
-        }
-      } catch (error) {
-        console.error("Error promoting students:", error)
-        alert("Öğrenciler yükseltilirken hata oluştu!")
+      if (response.ok) {
+        const data = await response.json()
+        alert(data.message || "Öğrenciler başarıyla yükseltildi!")
+        fetchStudents(currentPage, searchTerm, selectedGrade)
+      } else {
+        const errorData = await response.json()
+        alert(errorData.error || "Öğrenciler yükseltilirken hata oluştu!")
       }
+    } catch (error) {
+      console.error("Error promoting students:", error)
+      alert("Öğrenciler yükseltilirken hata oluştu!")
+    } finally {
+      setConfirmPromote(false)
     }
   }
 
@@ -288,10 +288,22 @@ export default function StudentsPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-        <Button type="button" variant="outline" onClick={handlePromoteAll}>
-          <ArrowUp className="h-4 w-4 mr-2" />
-          Sınıf Yükselt
-        </Button>
+        {confirmPromote ? (
+          <>
+            <Button type="button" variant="destructive" onClick={handlePromoteAll}>
+              <ArrowUp className="h-4 w-4 mr-2" />
+              Eminim, Yükselt
+            </Button>
+            <Button type="button" variant="outline" onClick={() => setConfirmPromote(false)}>
+              İptal
+            </Button>
+          </>
+        ) : (
+          <Button type="button" variant="outline" onClick={() => setConfirmPromote(true)}>
+            <ArrowUp className="h-4 w-4 mr-2" />
+            Sınıf Yükselt
+          </Button>
+        )}
         <Button type="button" variant="outline" onClick={async () => {
           try {
             const res = await fetch('/api/students/export')
