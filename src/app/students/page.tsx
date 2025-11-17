@@ -58,6 +58,15 @@ export default function StudentsPage() {
 
   const gradeOptions = ["5. Sınıf", "6. Sınıf", "7. Sınıf", "8. Sınıf", "9. Sınıf", "10. Sınıf", "11. Sınıf", "12. Sınıf", "Mezun"]
 
+  // Her kelimenin ilk harfini büyük, diğerlerini küçük yapan fonksiyon
+  const capitalizeWords = (text: string): string => {
+    return text
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
+  }
+
   const fetchStudents = useCallback(async (page: number = 1, search: string = "", grade: string = "") => {
     try {
       const params = new URLSearchParams({
@@ -407,7 +416,7 @@ export default function StudentsPage() {
                   <Input
                     id="firstName"
                     value={formData.firstName}
-                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, firstName: capitalizeWords(e.target.value) })}
                     required
                   />
                 </div>
@@ -416,7 +425,7 @@ export default function StudentsPage() {
                   <Input
                     id="lastName"
                     value={formData.lastName}
-                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, lastName: capitalizeWords(e.target.value) })}
                     required
                   />
                 </div>
@@ -485,7 +494,7 @@ export default function StudentsPage() {
                     <Input
                       id="motherName"
                       value={formData.motherName}
-                      onChange={(e) => setFormData({ ...formData, motherName: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, motherName: capitalizeWords(e.target.value) })}
                     />
                   </div>
                   <div>
@@ -559,7 +568,7 @@ export default function StudentsPage() {
                     <Input
                       id="fatherName"
                       value={formData.fatherName}
-                      onChange={(e) => setFormData({ ...formData, fatherName: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, fatherName: capitalizeWords(e.target.value) })}
                     />
                   </div>
                   <div>
