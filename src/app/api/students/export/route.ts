@@ -15,8 +15,6 @@ export async function GET() {
             "TC": s.tcNumber,
             "Doğum Tarihi": s.birthDate.toISOString().split("T")[0],
             "Sınıf": s.grade,
-            "Öğrenci Telefon": s.phone || "",
-            "Öğrenci E-posta": s.email || "",
             "Öğrenci Adres": s.address,
             "Anne Ad Soyad": s.motherName || "",
             "Anne TC": s.motherTc || "",
