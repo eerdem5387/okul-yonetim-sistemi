@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Save, Plus, Edit, Trash2, Search } from "lucide-react"
+import { Save, Plus, Edit, Trash2, Search, X } from "lucide-react"
 
 interface Student {
   id: string
@@ -137,11 +137,23 @@ export default function StudentsPage() {
 
   const handleEdit = (student: Student) => {
     setEditingStudent(student)
+    // Doğum tarihini YYYY-MM-DD formatına çevir
+    let birthDateFormatted = ""
+    if (student.birthDate) {
+      try {
+        const date = new Date(student.birthDate)
+        if (!isNaN(date.getTime())) {
+          birthDateFormatted = date.toISOString().split('T')[0]
+        }
+      } catch (e) {
+        console.error("Date parse error:", e)
+      }
+    }
     setFormData({
       firstName: student.firstName,
       lastName: student.lastName,
       tcNumber: student.tcNumber,
-      birthDate: student.birthDate,
+      birthDate: birthDateFormatted,
       grade: student.grade,
       phone: student.phone || "",
       address: student.address,
@@ -232,14 +244,78 @@ export default function StudentsPage() {
         </div>
       </div>
 
+      {/* Modal Overlay */}
       {showForm && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>{editingStudent ? "Öğrenci Düzenle" : "Yeni Öğrenci Ekle"}</CardTitle>
-            <CardDescription>
-              {editingStudent ? "Öğrenci bilgilerini güncelleyin" : "Yeni öğrenci bilgilerini girin"}
-            </CardDescription>
-          </CardHeader>
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" 
+          onClick={() => {
+            setShowForm(false)
+            setEditingStudent(null)
+            setFormData({
+              firstName: "",
+              lastName: "",
+              tcNumber: "",
+              birthDate: "",
+              grade: "",
+              phone: "",
+              address: "",
+              motherName: "",
+              motherTc: "",
+              motherPhone: "",
+              motherAddress: "",
+              motherOccupation: "",
+              fatherName: "",
+              fatherTc: "",
+              fatherPhone: "",
+              fatherAddress: "",
+              fatherOccupation: ""
+            })
+          }}
+        >
+          <Card 
+            className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white shadow-2xl" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>{editingStudent ? "Öğrenci Düzenle" : "Yeni Öğrenci Ekle"}</CardTitle>
+                  <CardDescription>
+                    {editingStudent ? "Öğrenci bilgilerini güncelleyin" : "Yeni öğrenci bilgilerini girin"}
+                  </CardDescription>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setShowForm(false)
+                    setEditingStudent(null)
+                    setFormData({
+                      firstName: "",
+                      lastName: "",
+                      tcNumber: "",
+                      birthDate: "",
+                      grade: "",
+                      phone: "",
+                      address: "",
+                      motherName: "",
+                      motherTc: "",
+                      motherPhone: "",
+                      motherAddress: "",
+                      motherOccupation: "",
+                      fatherName: "",
+                      fatherTc: "",
+                      fatherPhone: "",
+                      fatherAddress: "",
+                      fatherOccupation: ""
+                    })
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -496,6 +572,7 @@ export default function StudentsPage() {
             </form>
           </CardContent>
         </Card>
+        </div>
       )}
 
       <Card>
