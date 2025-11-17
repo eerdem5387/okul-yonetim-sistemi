@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
             whereConditions.push({ grade: { equals: grade, mode: 'insensitive' as const } })
         } else {
             // Varsayılan olarak mezunları hariç tut (sadece "Mezun" filtresi seçildiğinde görünsünler)
-            whereConditions.push({ grade: { not: { equals: "Mezun", mode: 'insensitive' as const } } })
+            whereConditions.push({ NOT: { grade: { equals: "Mezun", mode: 'insensitive' as const } } })
         }
         
         const where = whereConditions.length > 0 ? { AND: whereConditions } : {}
