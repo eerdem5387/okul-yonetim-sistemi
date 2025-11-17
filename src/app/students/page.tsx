@@ -298,15 +298,6 @@ export default function StudentsPage() {
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <Label htmlFor="birthDate">Doğum Tarihi *</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setFormData({ ...formData, birthDate: new Date().toISOString().split('T')[0] })}
-                    className="text-xs"
-                  >
-                    Bugün
-                  </Button>
                 </div>
                 <Input
                   id="birthDate"
