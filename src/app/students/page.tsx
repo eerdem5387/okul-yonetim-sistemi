@@ -31,7 +31,9 @@ interface Student {
 
 export default function StudentsPage() {
   const [students, setStudents] = useState<Student[]>([])
-  const [filteredStudents, setFilteredStudents] = useState<Student[]>([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalStudents, setTotalStudents] = useState(0)
   const [searchTerm, setSearchTerm] = useState("")
   const [showForm, setShowForm] = useState(false)
   const [editingStudent, setEditingStudent] = useState<Student | null>(null)
@@ -57,37 +59,60 @@ export default function StudentsPage() {
 
   const gradeOptions = ["5. Sınıf", "6. Sınıf", "7. Sınıf", "8. Sınıf", "9. Sınıf", "10. Sınıf", "11. Sınıf", "12. Sınıf"]
 
-  const fetchStudents = useCallback(async () => {
+  const fetchStudents = useCallback(async (page: number = 1, search: string = "") => {
     try {
-      const response = await fetch("/api/students")
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: "10"
+      })
+      if (search.trim()) {
+        params.append("search", search.trim())
+      }
+      
+      const response = await fetch(`/api/students?${params.toString()}`)
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
       const data = await response.json()
-      setStudents(Array.isArray(data) ? data : [])
+      
+      if (data.students && data.pagination) {
+        setStudents(data.students)
+        setTotalPages(data.pagination.totalPages)
+        setTotalStudents(data.pagination.total)
+      } else {
+        // Fallback: eski format (array)
+        setStudents(Array.isArray(data) ? data : [])
+        setTotalPages(1)
+        setTotalStudents(Array.isArray(data) ? data.length : 0)
+      }
     } catch (error) {
       console.error("Error fetching students:", error)
       setStudents([])
+      setTotalPages(1)
+      setTotalStudents(0)
     }
   }, [])
 
+  // İlk yükleme
   useEffect(() => {
-    fetchStudents()
-  }, [fetchStudents])
+    fetchStudents(1, "")
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Arama yapıldığında ilk sayfaya dön
   useEffect(() => {
-    if (searchTerm) {
-      const filtered = students.filter(student =>
-        student.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.tcNumber.includes(searchTerm) ||
-        student.grade.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-      setFilteredStudents(filtered)
-    } else {
-      setFilteredStudents(students)
+    if (searchTerm.trim()) {
+      setCurrentPage(1)
+      fetchStudents(1, searchTerm)
     }
-  }, [searchTerm, students])
+  }, [searchTerm, fetchStudents])
+
+  // Sayfa değiştiğinde
+  useEffect(() => {
+    if (currentPage > 0) {
+      fetchStudents(currentPage, searchTerm)
+    }
+  }, [currentPage, fetchStudents])
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -127,6 +152,8 @@ export default function StudentsPage() {
           fatherOccupation: ""
         })
         alert(editingStudent ? "Öğrenci başarıyla güncellendi!" : "Öğrenci başarıyla eklendi!")
+        // Listeyi yenile
+        fetchStudents(currentPage, searchTerm)
       } else {
         alert(editingStudent ? "Öğrenci güncellenirken hata oluştu!" : "Öğrenci eklenirken hata oluştu!")
       }
@@ -179,7 +206,7 @@ export default function StudentsPage() {
         })
 
         if (response.ok) {
-          fetchStudents()
+          fetchStudents(currentPage, searchTerm)
           alert("Öğrenci başarıyla silindi!")
         } else {
           alert("Öğrenci silinirken hata oluştu!")
@@ -200,7 +227,7 @@ export default function StudentsPage() {
           </div>
           <div className="mb-1">
             <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 text-sm font-medium">
-              Toplam Öğrenci: <span className="font-semibold">{students.length}</span>
+              Toplam Öğrenci: <span className="font-semibold">{totalStudents}</span>
             </span>
           </div>
         </div>
@@ -593,7 +620,7 @@ export default function StudentsPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredStudents.map((student) => (
+                {students.map((student) => (
                   <tr key={student.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleEdit(student)}>
                     <td className="px-3 lg:px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
@@ -642,7 +669,7 @@ export default function StudentsPage() {
                 ))}
               </tbody>
             </table>
-            {filteredStudents.length === 0 && (
+            {students.length === 0 && (
               <div className="text-center py-8 text-gray-500">
                 {searchTerm ? "Arama kriterlerinize uygun öğrenci bulunamadı." : "Henüz öğrenci eklenmemiş."}
               </div>
@@ -650,6 +677,38 @@ export default function StudentsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-6 flex items-center justify-between">
+          <div className="text-sm text-gray-700">
+            Sayfa <span className="font-medium">{currentPage}</span> / <span className="font-medium">{totalPages}</span>
+            {searchTerm && (
+              <span className="ml-2 text-gray-500">
+                (Arama sonuçları: {totalStudents} öğrenci)
+              </span>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+            >
+              Önceki
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+            >
+              Sonraki
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,15 +1,47 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
+        const { searchParams } = new URL(request.url)
+        const page = parseInt(searchParams.get('page') || '1')
+        const limit = parseInt(searchParams.get('limit') || '10')
+        const search = searchParams.get('search') || ''
+        
+        const skip = (page - 1) * limit
+
+        // Arama filtresi
+        const where = search ? {
+            OR: [
+                { firstName: { contains: search, mode: 'insensitive' as const } },
+                { lastName: { contains: search, mode: 'insensitive' as const } },
+                { tcNumber: { contains: search } },
+                { grade: { contains: search, mode: 'insensitive' as const } }
+            ]
+        } : {}
+
+        // Toplam kayıt sayısı (arama varsa filtrelenmiş, yoksa tümü)
+        const total = await prisma.student.count({ where })
+
+        // Öğrencileri çek (pagination + arama)
         const students = await prisma.student.findMany({
+            where,
             orderBy: {
                 createdAt: "desc"
-            }
+            },
+            skip,
+            take: limit
         })
 
-        return NextResponse.json(students)
+        return NextResponse.json({
+            students,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit)
+            }
+        })
     } catch (error) {
         console.error("Error fetching students:", error)
         return NextResponse.json({ error: "Failed to fetch students" }, { status: 500 })
