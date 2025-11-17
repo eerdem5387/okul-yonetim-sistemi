@@ -15,7 +15,7 @@ export async function POST() {
             "9. Sınıf": "10. Sınıf",
             "10. Sınıf": "11. Sınıf",
             "11. Sınıf": "12. Sınıf",
-            "12. Sınıf": "Mezun" // 12. sınıf mezun olur
+            "12. Sınıf": "Mezun" // 12. sınıf mezun olur.
         }
 
         let updatedCount = 0
