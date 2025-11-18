@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Search, Check, X, LogOut, AlertCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
 
@@ -32,7 +31,6 @@ export default function ParentPage() {
   const [selectedClubs, setSelectedClubs] = useState<string[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([])
-  const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
 
@@ -90,8 +88,10 @@ export default function ParentPage() {
       const response = await fetch(`/api/clubs/students?studentId=${studentId}`)
       if (response.ok) {
         const data = await response.json()
-        const clubIds = Array.isArray(data) 
-          ? data.map((c: { clubId?: string; club?: { id: string } }) => c.clubId || c.club?.id).filter(Boolean)
+        const clubIds: string[] = Array.isArray(data) 
+          ? data
+              .map((c: { clubId?: string; club?: { id: string } }) => c.clubId || c.club?.id)
+              .filter((id): id is string => typeof id === 'string' && id !== '')
           : []
         setSelectedClubs(clubIds)
       }
@@ -115,8 +115,6 @@ export default function ParentPage() {
       // Kapasite kontrolü - seçili olan diğer kulüplerin de kontejanını hesaba kat
       const club = clubs.find(c => c.id === clubId)
       if (club) {
-        // Diğer seçili kulüplerin kontejanını da kontrol et
-        const otherSelectedClubs = selectedClubs.map(id => clubs.find(c => c.id === id)).filter(Boolean)
         const currentSelections = (club.selections?.length || 0)
         
         // Eğer bu kulüp zaten doluysa
