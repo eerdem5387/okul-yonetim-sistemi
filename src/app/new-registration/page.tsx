@@ -177,12 +177,21 @@ export default function NewRegistrationPage() {
 
   const fetchStudents = useCallback(async () => {
     try {
-      const response = await fetch("/api/students")
+      // Sözleşme ekranlarında tüm öğrencileri (mezunlar hariç) çekmek için,
+      // pagination'ı yüksek bir limit ile kullanıyoruz.
+      const response = await fetch("/api/students?limit=1000")
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
       const data = await response.json()
-      setStudents(Array.isArray(data) ? data : [])
+
+      if (Array.isArray(data)) {
+        setStudents(data as Student[])
+      } else if (data.students) {
+        setStudents(data.students as Student[])
+      } else {
+        setStudents([])
+      }
     } catch (error) {
       console.error("Error fetching students:", error)
       setStudents([])
