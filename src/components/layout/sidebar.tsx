@@ -4,6 +4,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
 import { 
   LayoutDashboard, 
   Users, 
@@ -15,9 +16,11 @@ import {
   UserPlus, 
   History,
   Menu,
-  X
+  X,
+  LogOut
 } from "lucide-react"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -34,7 +37,15 @@ const navigation = [
 
 export function Sidebar() {
   const pathname = usePathname()
+  const router = useRouter()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  const handleLogout = () => {
+    localStorage.removeItem("auth_role")
+    localStorage.removeItem("auth_token")
+    router.push("/login")
+    router.refresh()
+  }
 
   return (
     <>
@@ -124,6 +135,14 @@ export function Sidebar() {
               <p className="text-xs text-gray-500">Aktif Oturum</p>
             </div>
           </div>
+          <Button
+            variant="outline"
+            className="w-full mb-3"
+            onClick={handleLogout}
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Çıkış Yap
+          </Button>
           <div className="text-center pt-3 border-t border-gray-200">
             <p className="text-xs text-gray-500">
               © {new Date().getFullYear()} 

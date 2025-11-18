@@ -50,8 +50,9 @@ export default function HomePage() {
     try {
       setLoading(true)
       
-      const studentsRes = await fetch("/api/students")
-      const students = studentsRes.ok ? await studentsRes.json() : []
+      const studentsRes = await fetch("/api/students?limit=1000")
+      const studentsData = studentsRes.ok ? await studentsRes.json() : {}
+      const students = Array.isArray(studentsData) ? studentsData : (studentsData.students || [])
       
       const clubsRes = await fetch("/api/clubs")
       const clubs = clubsRes.ok ? await clubsRes.json() : []

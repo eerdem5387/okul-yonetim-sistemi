@@ -120,6 +120,21 @@ export default function RenewalPage() {
     selectedClubs: [] as string[]
   })
 
+  const formatDate = (date: string | Date | null | undefined) => {
+    if (!date) return ""
+    try {
+      const parsed = new Date(date)
+      if (!isNaN(parsed.getTime())) {
+        return parsed.toISOString().split("T")[0]
+      }
+      const stringDate = typeof date === "string" ? date : ""
+      return stringDate.includes("T") ? stringDate.split("T")[0] : stringDate
+    } catch {
+      const stringDate = typeof date === "string" ? date : ""
+      return stringDate.includes("T") ? stringDate.split("T")[0] : stringDate
+    }
+  }
+
   const fetchStudents = useCallback(async () => {
     try {
       // Kayıt yenileme ekranında tüm öğrencileri (mezunlar hariç) çekmek için
@@ -212,7 +227,7 @@ export default function RenewalPage() {
               studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
               studentTC: selectedStudent.tcNumber,
               studentClass: selectedStudent.grade,
-              studentBirthDate: selectedStudent.birthDate,
+              studentBirthDate: formatDate(selectedStudent.birthDate),
               contractStudentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
               contractParentName: ""
             }
@@ -376,12 +391,13 @@ export default function RenewalPage() {
                   const student = students.find(s => s.id === e.target.value)
                   setSelectedStudent(student || null)
                   if (student) {
+                    const formattedBirthDate = formatDate(student.birthDate)
                     setMainContractData(prev => ({
                       ...prev,
                       studentName: `${student.firstName} ${student.lastName}`,
                       studentTC: student.tcNumber,
                       studentClass: student.grade,
-                      studentBirthDate: student.birthDate,
+                      studentBirthDate: formattedBirthDate,
                       contractStudentName: `${student.firstName} ${student.lastName}`,
                       contractParentName: ""
                     }))

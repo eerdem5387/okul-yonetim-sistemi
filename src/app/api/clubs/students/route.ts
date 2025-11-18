@@ -1,6 +1,27 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
+export async function GET(request: NextRequest) {
+    try {
+        const { searchParams } = new URL(request.url)
+        const studentId = searchParams.get('studentId')
+
+        if (!studentId) {
+            return NextResponse.json({ error: "studentId is required" }, { status: 400 })
+        }
+
+        const selections = await prisma.clubSelection.findMany({
+            where: { studentId },
+            include: { club: true }
+        })
+
+        return NextResponse.json(selections)
+    } catch (error) {
+        console.error("Error fetching student clubs:", error)
+        return NextResponse.json({ error: "Failed to fetch student clubs" }, { status: 500 })
+    }
+}
+
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
@@ -13,12 +34,18 @@ export async function POST(request: NextRequest) {
         const existingClubs: { name: string }[] = []
         const fullClubs: { name: string }[] = []
 
+        // Önce tüm kulüpleri ve mevcut seçimleri çek
+        const clubIds = clubSelections.map((s: { clubId: string }) => s.clubId)
+        const clubs = await prisma.club.findMany({
+            where: { id: { in: clubIds } },
+            include: { selections: true }
+        })
+
+        const clubMap = new Map(clubs.map(club => [club.id, club]))
+
         // Her kulüp seçimi için kontrol yap
         for (const selection of clubSelections) {
-            const club = await prisma.club.findUnique({
-                where: { id: selection.clubId },
-                include: { selections: true }
-            })
+            const club = clubMap.get(selection.clubId)
 
             if (!club) {
                 return NextResponse.json({ error: `Club with id ${selection.clubId} not found` }, { status: 404 })
@@ -37,8 +64,16 @@ export async function POST(request: NextRequest) {
                 continue
             }
 
-            // Kapasite kontrolü
-            if (club.selections.length >= club.capacity) {
+            // Kapasite kontrolü - aynı istekteki aynı kulüp için yapılan seçimleri de hesaba kat
+            // (Aynı öğrenci aynı kulübe birden fazla kez kayıt olamaz, ama farklı öğrenciler olabilir)
+            const sameClubInRequest = clubSelections.filter(
+                (s: { clubId: string }) => s.clubId === selection.clubId
+            ).length
+            
+            // Mevcut seçimler + bu istekteki yeni seçimler
+            const totalSelections = club.selections.length + sameClubInRequest
+            
+            if (totalSelections > club.capacity) {
                 fullClubs.push({ name: club.name })
             }
         }
