@@ -148,6 +148,12 @@ export default function ParentPage() {
   }
 
   const handleSubmit = async () => {
+    if (!selectedStudent) {
+      alert("Lütfen bir öğrenci seçin!")
+      setShowConfirmModal(false)
+      return
+    }
+
     setShowConfirmModal(false)
     setSubmitting(true)
     try {
