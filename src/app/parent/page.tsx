@@ -70,7 +70,6 @@ export default function ParentPage() {
     } else {
       const filtered = students.filter(student =>
         `${student.firstName} ${student.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.tcNumber.includes(searchTerm) ||
         student.grade.toLowerCase().includes(searchTerm.toLowerCase())
       )
       setFilteredStudents(filtered)
@@ -235,46 +234,55 @@ export default function ParentPage() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  placeholder="Öğrenci ara (ad, soyad, TC, sınıf)..."
+                  placeholder="Öğrenci ara (ad, soyad, sınıf)..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
                 />
               </div>
 
-              <div className="border rounded-lg max-h-64 sm:max-h-96 overflow-y-auto custom-scrollbar">
-                {filteredStudents.length > 0 ? (
-                  <div className="divide-y">
-                    {filteredStudents.map((student) => (
-                      <button
-                        key={student.id}
-                        onClick={() => handleStudentSelect(student)}
-                        className={`w-full p-3 sm:p-4 text-left hover:bg-blue-50 active:bg-blue-100 transition-colors touch-manipulation ${
-                          selectedStudent?.id === student.id ? "bg-blue-100 border-l-4 border-blue-600" : ""
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-gray-900 text-sm sm:text-base truncate">
-                              {student.firstName} {student.lastName}
-                            </p>
-                            <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
-                              {student.grade} • TC: {student.tcNumber}
-                            </p>
+              {searchTerm.trim() === "" ? (
+                <div className="border rounded-lg p-6 sm:p-8 text-center text-gray-500 bg-gray-50">
+                  <Search className="h-8 w-8 sm:h-10 sm:w-10 mx-auto mb-3 text-gray-400" />
+                  <p className="text-sm sm:text-base font-medium mb-1">Öğrenci Arama</p>
+                  <p className="text-xs sm:text-sm">Kulüp seçimi yapmak için öğrencinizi arayın</p>
+                </div>
+              ) : (
+                <div className="border rounded-lg max-h-64 sm:max-h-96 overflow-y-auto custom-scrollbar">
+                  {filteredStudents.length > 0 ? (
+                    <div className="divide-y">
+                      {filteredStudents.map((student) => (
+                        <button
+                          key={student.id}
+                          onClick={() => handleStudentSelect(student)}
+                          className={`w-full p-3 sm:p-4 text-left hover:bg-blue-50 active:bg-blue-100 transition-colors touch-manipulation ${
+                            selectedStudent?.id === student.id ? "bg-blue-100 border-l-4 border-blue-600" : ""
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-gray-900 text-sm sm:text-base truncate">
+                                {student.firstName} {student.lastName}
+                              </p>
+                              <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+                                {student.grade}
+                              </p>
+                            </div>
+                            {selectedStudent?.id === student.id && (
+                              <Check className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 flex-shrink-0" />
+                            )}
                           </div>
-                          {selectedStudent?.id === student.id && (
-                            <Check className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 flex-shrink-0" />
-                          )}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-6 sm:p-8 text-center text-gray-500">
-                    <p className="text-sm sm:text-base">Öğrenci bulunamadı</p>
-                  </div>
-                )}
-              </div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-6 sm:p-8 text-center text-gray-500">
+                      <p className="text-sm sm:text-base font-medium mb-1">Öğrenci bulunamadı</p>
+                      <p className="text-xs sm:text-sm">Arama kriterlerinizi değiştirip tekrar deneyin</p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {selectedStudent && (
                 <div className="p-3 sm:p-4 bg-blue-50 rounded-lg border border-blue-200">
@@ -317,7 +325,7 @@ export default function ParentPage() {
                             key={club.id}
                             className={`relative group transition-all duration-300 ${
                               isFull && !isSelected
-                                ? "opacity-30 blur-[2px] pointer-events-none"
+                                ? "opacity-70 pointer-events-none"
                                 : "opacity-100"
                             }`}
                           >
