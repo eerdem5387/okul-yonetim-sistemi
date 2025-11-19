@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Plus, Edit, Trash2, Users, Eye } from "lucide-react"
+import { Plus, Edit, Trash2, Users, Eye, Download } from "lucide-react"
 
 interface Club {
   id: string
@@ -104,6 +104,41 @@ export default function ClubsPage() {
     }
   }
 
+  const handleExport = async () => {
+    try {
+      const response = await fetch("/api/clubs/export")
+      
+      if (!response.ok) {
+        throw new Error("Export failed")
+      }
+
+      // Blob olarak indir
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      
+      // Content-Disposition header'ından dosya adını al
+      const contentDisposition = response.headers.get("Content-Disposition")
+      let filename = "kulup-listesi.xlsx"
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/)
+        if (filenameMatch) {
+          filename = filenameMatch[1]
+        }
+      }
+      
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error) {
+      console.error("Error exporting clubs:", error)
+      alert("Kulüp listesi indirilirken hata oluştu!")
+    }
+  }
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
@@ -111,10 +146,16 @@ export default function ClubsPage() {
           <h1 className="text-3xl font-bold text-gray-900">Kulüp Yönetimi</h1>
           <p className="text-gray-600 mt-2">Kulüpleri oluşturun ve öğrenci seçimlerini yönetin</p>
         </div>
-        <Button onClick={() => setShowForm(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Yeni Kulüp
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExport}>
+            <Download className="h-4 w-4 mr-2" />
+            Kulüpleri İndir
+          </Button>
+          <Button onClick={() => setShowForm(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Yeni Kulüp
+          </Button>
+        </div>
       </div>
 
       {showForm && (
