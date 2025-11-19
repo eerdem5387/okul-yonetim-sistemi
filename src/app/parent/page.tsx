@@ -80,16 +80,20 @@ export default function ParentPage() {
   }, [selectedStudent, fetchClubs])
 
   useEffect(() => {
-    if (searchTerm.trim() === "") {
-      setFilteredStudents(students)
-    } else {
-      const filtered = students.filter(student =>
-        `${student.firstName} ${student.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.grade.toLowerCase().includes(searchTerm.toLowerCase())
-      )
+    if (searchTerm.length === 11) {
+      const filtered = students.filter(student => student.tcNumber === searchTerm)
       setFilteredStudents(filtered)
+    } else {
+      setFilteredStudents([])
     }
   }, [searchTerm, students])
+
+  const handleTcSearchChange = (value: string) => {
+    const numericValue = value.replace(/\D/g, "")
+    if (numericValue.length <= 11) {
+      setSearchTerm(numericValue)
+    }
+  }
 
   const handleStudentSelect = (student: Student) => {
     setSelectedStudent(student)
@@ -287,18 +291,25 @@ export default function ParentPage() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  placeholder="Öğrenci ara (ad, soyad, sınıf)..."
+                  placeholder="TC Kimlik No (11 hane)"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => handleTcSearchChange(e.target.value)}
                   className="pl-10"
+                  maxLength={11}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                 />
               </div>
 
-              {searchTerm.trim() === "" ? (
+              {searchTerm.length < 11 ? (
                 <div className="border rounded-lg p-6 sm:p-8 text-center text-gray-500 bg-gray-50">
                   <Search className="h-8 w-8 sm:h-10 sm:w-10 mx-auto mb-3 text-gray-400" />
-                  <p className="text-sm sm:text-base font-medium mb-1">Öğrenci Arama</p>
-                  <p className="text-xs sm:text-sm">Kulüp seçimi yapmak için öğrencinizi arayın</p>
+                  <p className="text-sm sm:text-base font-medium mb-1">TC Kimlik Numarası Girişi</p>
+                  {searchTerm.length === 0 ? (
+                    <p className="text-xs sm:text-sm">Öğrencinizi bulmak için 11 haneli TC kimlik numarasını girin.</p>
+                  ) : (
+                    <p className="text-xs sm:text-sm">{11 - searchTerm.length} hane daha girmeniz gerekiyor.</p>
+                  )}
                 </div>
               ) : (
                 <div className="border rounded-lg max-h-64 sm:max-h-96 overflow-y-auto custom-scrollbar">
@@ -331,7 +342,7 @@ export default function ParentPage() {
                   ) : (
                     <div className="p-6 sm:p-8 text-center text-gray-500">
                       <p className="text-sm sm:text-base font-medium mb-1">Öğrenci bulunamadı</p>
-                      <p className="text-xs sm:text-sm">Arama kriterlerinizi değiştirip tekrar deneyin</p>
+                      <p className="text-xs sm:text-sm">TC kimlik numarasını kontrol ederek tekrar deneyin</p>
                     </div>
                   )}
                 </div>
