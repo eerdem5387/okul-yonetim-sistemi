@@ -19,13 +19,30 @@ export default function RootLayout({
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    if (typeof window === "undefined") return
+
     // Client-side'da auth kontrolü
-    const role = localStorage.getItem("auth_role")
-    setAuthRole(role)
+    const storedRole = localStorage.getItem("auth_role")
+    let normalizedRole: "student_affairs" | "parent" | null = null
+
+    if (storedRole === "student_affairs" || storedRole === "parent") {
+      normalizedRole = storedRole
+    } else if (storedRole) {
+      // Eski veya geçersiz roller için localStorage temizle
+      localStorage.removeItem("auth_role")
+      localStorage.removeItem("auth_token")
+    }
+
+    setAuthRole(normalizedRole)
     setIsLoading(false)
 
-    // Login sayfası değilse ve auth yoksa login'e yönlendir
-    if (pathname !== "/login" && pathname !== "/parent" && !role) {
+    // Login sayfası değilse ve Öğrenci İşleri rolü yoksa login'e yönlendir
+    if (pathname !== "/login" && pathname !== "/parent" && normalizedRole !== "student_affairs") {
+      router.push("/login")
+    }
+
+    // Parent sayfasına sadece parent rolü erişebilsin
+    if (pathname === "/parent" && normalizedRole !== "parent") {
       router.push("/login")
     }
   }, [pathname, router])
