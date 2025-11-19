@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search, Check, X, LogOut, AlertCircle } from "lucide-react"
+import { Search, Check, X, LogOut, AlertCircle, FileText } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 interface Student {
@@ -33,6 +33,7 @@ export default function ParentPage() {
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
 
   const fetchStudents = useCallback(async () => {
     try {
@@ -53,6 +54,7 @@ export default function ParentPage() {
       if (!response.ok) throw new Error("Failed to fetch clubs")
       const data = await response.json()
       setClubs(Array.isArray(data) ? data : [])
+      setLastUpdate(new Date())
     } catch (error) {
       console.error("Error fetching clubs:", error)
       setClubs([])
@@ -63,6 +65,19 @@ export default function ParentPage() {
     fetchStudents()
     fetchClubs()
   }, [fetchStudents, fetchClubs])
+
+  // Otomatik veri yenileme - Her 10 saniyede bir kulüp kontenjanlarını güncelle
+  useEffect(() => {
+    // Eğer bir öğrenci seçiliyse, düzenli olarak kulüp verilerini güncelle
+    if (selectedStudent) {
+      const intervalId = setInterval(() => {
+        fetchClubs() // Kulüp kontenjanlarını yenile
+        fetchStudentClubs(selectedStudent.id) // Öğrencinin mevcut seçimlerini yenile
+      }, 10000) // 10 saniye
+
+      return () => clearInterval(intervalId)
+    }
+  }, [selectedStudent, fetchClubs])
 
   useEffect(() => {
     if (searchTerm.trim() === "") {
@@ -100,7 +115,7 @@ export default function ParentPage() {
     }
   }
 
-  const handleClubToggle = (clubId: string) => {
+  const handleClubToggle = async (clubId: string) => {
     if (selectedClubs.includes(clubId)) {
       // Seçimi kaldır
       setSelectedClubs(selectedClubs.filter(id => id !== clubId))
@@ -111,6 +126,9 @@ export default function ParentPage() {
         return
       }
       
+      // Seçim yapmadan önce GÜNCEL verileri çek (race condition önlemi)
+      await fetchClubs()
+      
       // Kapasite kontrolü - seçili olan diğer kulüplerin de kontejanını hesaba kat
       const club = clubs.find(c => c.id === clubId)
       if (club) {
@@ -118,7 +136,7 @@ export default function ParentPage() {
         
         // Eğer bu kulüp zaten doluysa
         if (currentSelections >= club.capacity) {
-          alert(`❌ ${club.name} kulübünün kontenjanı doludur!`)
+          alert(`❌ ${club.name} kulübünün kontenjanı dolmuştur!\n\nVeriler güncellendi, lütfen başka bir kulüp seçin.`)
           return
         }
       }
@@ -127,20 +145,38 @@ export default function ParentPage() {
     }
   }
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!selectedStudent) {
       alert("Lütfen bir öğrenci seçin!")
-      return
-    }
-
-    if (selectedClubs.length === 0) {
-      alert("Lütfen en az bir kulüp seçin!")
       return
     }
 
     if (selectedClubs.length > 3) {
       alert("Maksimum 3 kulüp seçebilirsiniz!")
       return
+    }
+
+    // Onaylamadan önce son bir kez GÜNCEL verileri çek
+    await fetchClubs()
+    
+    // Seçili kulüplerin hala uygun olup olmadığını kontrol et
+    if (selectedClubs.length > 0) {
+      const invalidClubs: string[] = []
+      
+      for (const clubId of selectedClubs) {
+        const club = clubs.find(c => c.id === clubId)
+        if (club && club.selections && club.selections.length >= club.capacity) {
+          invalidClubs.push(club.name)
+        }
+      }
+      
+      if (invalidClubs.length > 0) {
+        alert(`⚠️ Uyarı!\n\nŞu kulüplerin kontenjanı dolmuştur:\n${invalidClubs.join(", ")}\n\nLütfen bu kulüpleri çıkarıp başka kulüpler seçin.`)
+        // Dolu olan kulüpleri seçimlerden otomatik çıkar
+        const validClubIds = selectedClubs.filter(id => !invalidClubs.includes(clubs.find(c => c.id === id)?.name || ""))
+        setSelectedClubs(validClubIds)
+        return
+      }
     }
 
     setShowConfirmModal(true)
@@ -160,6 +196,7 @@ export default function ParentPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          studentId: selectedStudent.id,
           clubSelections: selectedClubs.map(clubId => ({
             clubId,
             studentId: selectedStudent.id
@@ -172,16 +209,17 @@ export default function ParentPage() {
         await fetchClubs()
         await fetchStudentClubs(selectedStudent.id)
         
-        alert("Kulüp seçimleri başarıyla kaydedildi!")
+        if (selectedClubs.length === 0) {
+          alert("✅ Öğrenci tüm kulüplerden başarıyla çıkarıldı!")
+        } else {
+          alert("✅ Kulüp seçimleri başarıyla güncellendi!")
+        }
         setSelectedClubs([])
         setSelectedStudent(null)
         setSearchTerm("")
       } else {
         const errorData = await response.json()
-        if (errorData.error && errorData.existingClubs) {
-          const clubNames = errorData.existingClubs.map((club: { name: string }) => club.name).join(", ")
-          alert(`⚠️ Bu öğrenci zaten şu kulüplere kayıtlı:\n\n${clubNames}\n\nLütfen farklı kulüpler seçin.`)
-        } else if (errorData.error && errorData.fullClubs) {
+        if (errorData.error && errorData.fullClubs) {
           const clubNames = errorData.fullClubs.map((club: { name: string }) => club.name).join(", ")
           alert(`⚠️ Şu kulüplerin kontenjanı dolmuş:\n\n${clubNames}\n\nLütfen farklı kulüpler seçin.`)
         } else {
@@ -202,6 +240,11 @@ export default function ParentPage() {
     router.refresh()
   }
 
+  const handleViewClubProgram = () => {
+    // PDF'i yeni sekmede aç
+    window.open("/kulup-programi.pdf", "_blank")
+  }
+
   return (
     <div className="min-h-screen p-3 sm:p-4 md:p-6">
       <div className="max-w-6xl mx-auto">
@@ -212,14 +255,24 @@ export default function ParentPage() {
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Veli Paneli</h1>
               <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">Öğrenci seçin ve kulüp tercihlerinizi yapın</p>
             </div>
-            <Button 
-              variant="outline" 
-              onClick={handleLogout}
-              className="w-full sm:w-auto h-10 sm:h-11 text-sm sm:text-base"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Çıkış Yap
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
+              <Button 
+                variant="outline" 
+                onClick={handleViewClubProgram}
+                className="w-full sm:w-auto h-10 sm:h-11 text-sm sm:text-base bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-700"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Kulüp Programı
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={handleLogout}
+                className="w-full sm:w-auto h-10 sm:h-11 text-sm sm:text-base"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Çıkış Yap
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -298,10 +351,22 @@ export default function ParentPage() {
           {/* Kulüp Seçimi */}
           <Card className="shadow-lg">
             <CardHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4">
-              <CardTitle className="text-lg sm:text-xl">Kulüp Seçimi</CardTitle>
-              <CardDescription className="text-xs sm:text-sm">
-                Maksimum 3 kulüp seçebilirsiniz ({selectedClubs.length}/3)
-              </CardDescription>
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1">
+                  <CardTitle className="text-lg sm:text-xl">Kulüp Seçimi</CardTitle>
+                  <CardDescription className="text-xs sm:text-sm mt-1">
+                    Maksimum 3 kulüp seçebilirsiniz ({selectedClubs.length}/3)
+                  </CardDescription>
+                </div>
+                {selectedStudent && (
+                  <div className="flex items-center gap-1.5 px-2 py-1 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                    <span className="text-[10px] sm:text-xs text-green-700 font-medium whitespace-nowrap">
+                      Otomatik güncelleniyor
+                    </span>
+                  </div>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6 pb-4 sm:pb-6">
               {!selectedStudent ? (
@@ -476,7 +541,7 @@ export default function ParentPage() {
 
                   <Button
                     onClick={handleConfirm}
-                    disabled={!selectedStudent || selectedClubs.length === 0 || submitting}
+                    disabled={!selectedStudent || submitting}
                     className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-4 sm:py-6 text-base sm:text-lg shadow-lg active:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
                   >
                     {submitting ? (
@@ -487,7 +552,9 @@ export default function ParentPage() {
                     ) : (
                       <span className="flex items-center justify-center gap-2">
                         <Check className="h-5 w-5" />
-                        Onayla ({selectedClubs.length} kulüp)
+                        {selectedClubs.length === 0 
+                          ? "Tüm Kulüplerden Çıkar" 
+                          : `Onayla (${selectedClubs.length} kulüp)`}
                       </span>
                     )}
                   </Button>
@@ -523,9 +590,13 @@ export default function ParentPage() {
                   <AlertCircle className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                 </div>
               </div>
-              <CardTitle className="text-xl sm:text-2xl text-center">Seçimleri Onayla</CardTitle>
+              <CardTitle className="text-xl sm:text-2xl text-center">
+                {selectedClubs.length === 0 ? "Kulüplerden Çıkar" : "Seçimleri Onayla"}
+              </CardTitle>
               <CardDescription className="text-center mt-1 sm:mt-2 text-sm sm:text-base">
-                Seçimlerinizi onaylıyor musunuz?
+                {selectedClubs.length === 0 
+                  ? "Öğrenciyi tüm kulüplerden çıkarmak istediğinize emin misiniz?" 
+                  : "Seçimlerinizi onaylıyor musunuz?"}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6 pb-4 sm:pb-6">
@@ -538,7 +609,7 @@ export default function ParentPage() {
                 </div>
               )}
 
-              {selectedClubs.length > 0 && (
+              {selectedClubs.length > 0 ? (
                 <div className="p-3 sm:p-4 bg-green-50 rounded-lg border border-green-200">
                   <p className="text-xs sm:text-sm font-semibold text-green-900 mb-1.5 sm:mb-2">Seçilen Kulüpler:</p>
                   <div className="space-y-1 sm:space-y-1.5">
@@ -552,6 +623,13 @@ export default function ParentPage() {
                       ) : null
                     })}
                   </div>
+                </div>
+              ) : (
+                <div className="p-3 sm:p-4 bg-red-50 rounded-lg border border-red-200">
+                  <p className="text-xs sm:text-sm font-semibold text-red-900 mb-1 sm:mb-2">⚠️ Uyarı:</p>
+                  <p className="text-sm sm:text-base text-red-700">
+                    Öğrenci tüm kulüplerden çıkarılacaktır.
+                  </p>
                 </div>
               )}
 
