@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 
 // Basit authentication - Production'da daha güvenli bir yapı kullanılmalı
-const STUDENT_AFFAIRS_USERNAME = process.env.STUDENT_AFFAIRS_USERNAME || "admin"
-const STUDENT_AFFAIRS_PASSWORD = process.env.STUDENT_AFFAIRS_PASSWORD || "admin123"
+const STUDENT_AFFAIRS_USERNAME = process.env.STUDENT_AFFAIRS_USERNAME || "leventyonetim"
+const STUDENT_AFFAIRS_PASSWORD = process.env.STUDENT_AFFAIRS_PASSWORD || "QAZWSX90"
 
 export async function POST(request: NextRequest) {
     try {

@@ -30,7 +30,17 @@ export async function GET() {
         const XLSX = await import("xlsx")
 
         // Ana veri sheet'i için satırlar oluştur
-        const mainRows: any[] = []
+        interface MainRow {
+            "Kulüp Adı": string
+            "Kulüp Açıklama": string
+            "Kontejan": number | string
+            "Kayıtlı Öğrenci": number | string
+            "Doluluk Oranı": string
+            "Öğrenci Adı": string
+            "Öğrenci Soyadı": string
+            "Sınıf": string
+        }
+        const mainRows: MainRow[] = []
         
         clubs.forEach((club) => {
             if (club.selections.length === 0) {

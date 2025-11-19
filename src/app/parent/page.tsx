@@ -33,7 +33,6 @@ export default function ParentPage() {
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
-  const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
 
   const fetchStudents = useCallback(async () => {
     try {
@@ -54,7 +53,6 @@ export default function ParentPage() {
       if (!response.ok) throw new Error("Failed to fetch clubs")
       const data = await response.json()
       setClubs(Array.isArray(data) ? data : [])
-      setLastUpdate(new Date())
     } catch (error) {
       console.error("Error fetching clubs:", error)
       setClubs([])
