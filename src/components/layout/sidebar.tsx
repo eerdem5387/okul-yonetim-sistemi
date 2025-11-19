@@ -131,7 +131,7 @@ export function Sidebar() {
               <Users className="h-5 w-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 truncate">Okul Sekreteri</p>
+              <p className="text-sm font-semibold text-gray-900 truncate">Öğrenci İşleri</p>
               <p className="text-xs text-gray-500">Aktif Oturum</p>
             </div>
           </div>

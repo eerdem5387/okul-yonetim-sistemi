@@ -78,8 +78,8 @@ export default function RootLayout({
     )
   }
 
-  // Sekreter için normal layout (sidebar ile)
-  if (authRole === "secretary") {
+  // Öğrenci İşleri için normal layout (sidebar ile)
+  if (authRole === "student_affairs") {
     return (
       <html lang="tr">
         <head>

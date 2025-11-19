@@ -15,7 +15,7 @@ export default function LoginPage() {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
-  const handleSecretaryLogin = async (e: React.FormEvent) => {
+  const handleStudentAffairsLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     setLoading(true)
@@ -24,12 +24,12 @@ export default function LoginPage() {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password, role: "secretary" })
+        body: JSON.stringify({ username, password, role: "student_affairs" })
       })
 
       if (response.ok) {
         const data = await response.json()
-        localStorage.setItem("auth_role", "secretary")
+        localStorage.setItem("auth_role", "student_affairs")
         localStorage.setItem("auth_token", data.token || "authenticated")
         router.push("/")
         router.refresh()
@@ -64,8 +64,8 @@ export default function LoginPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-6 pb-6 sm:pb-8">
-          {/* Sekreter Girişi */}
-          <form onSubmit={handleSecretaryLogin} className="space-y-4">
+          {/* Öğrenci İşleri Girişi */}
+          <form onSubmit={handleStudentAffairsLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="username">Kullanıcı Adı</Label>
               <Input
@@ -96,7 +96,7 @@ export default function LoginPage() {
             )}
             <Button type="submit" className="w-full h-11 sm:h-12 text-sm sm:text-base" disabled={loading}>
               <LogIn className="h-4 w-4 mr-2" />
-              {loading ? "Giriş yapılıyor..." : "Sekreter Olarak Giriş Yap"}
+              {loading ? "Giriş yapılıyor..." : "Öğrenci İşleri Olarak Giriş Yap"}
             </Button>
           </form>
 

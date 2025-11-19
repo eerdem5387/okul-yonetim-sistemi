@@ -1,20 +1,20 @@
 import { NextRequest, NextResponse } from "next/server"
 
 // Basit authentication - Production'da daha güvenli bir yapı kullanılmalı
-const SECRETARY_USERNAME = process.env.SECRETARY_USERNAME || "admin"
-const SECRETARY_PASSWORD = process.env.SECRETARY_PASSWORD || "admin123"
+const STUDENT_AFFAIRS_USERNAME = process.env.STUDENT_AFFAIRS_USERNAME || "admin"
+const STUDENT_AFFAIRS_PASSWORD = process.env.STUDENT_AFFAIRS_PASSWORD || "admin123"
 
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
         const { username, password, role } = body
 
-        if (role === "secretary") {
-            if (username === SECRETARY_USERNAME && password === SECRETARY_PASSWORD) {
+        if (role === "student_affairs") {
+            if (username === STUDENT_AFFAIRS_USERNAME && password === STUDENT_AFFAIRS_PASSWORD) {
                 return NextResponse.json({
                     success: true,
-                    token: "secretary_token_" + Date.now(),
-                    role: "secretary"
+                    token: "student_affairs_token_" + Date.now(),
+                    role: "student_affairs"
                 })
             } else {
                 return NextResponse.json(
