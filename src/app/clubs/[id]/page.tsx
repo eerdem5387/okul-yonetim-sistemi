@@ -95,7 +95,7 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
       filtered = filtered.filter(student =>
         student.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         student.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.tcNumber.includes(searchTerm)
+        `${student.firstName} ${student.lastName}`.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
 
