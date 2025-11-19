@@ -67,10 +67,12 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
 
   const fetchStudents = useCallback(async () => {
     try {
-      const response = await fetch("/api/students")
+      const response = await fetch("/api/students?limit=1000")
       if (response.ok) {
         const data = await response.json()
-        setAllStudents(Array.isArray(data) ? data : [])
+        // API pagination döndürüyorsa students array'ini al
+        const studentsList = Array.isArray(data) ? data : (data.students || [])
+        setAllStudents(studentsList)
       }
     } catch (error) {
       console.error("Error fetching students:", error)
@@ -91,12 +93,25 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
     const clubStudentIds = club.selections.map(selection => selection.student.id)
     let filtered = allStudents.filter(student => !clubStudentIds.includes(student.id))
 
-    if (searchTerm) {
-      filtered = filtered.filter(student =>
-        student.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        `${student.firstName} ${student.lastName}`.toLowerCase().includes(searchTerm.toLowerCase())
-      )
+    if (searchTerm && searchTerm.trim()) {
+      // Arama terimini normalize et (trim, lowercase, boşlukları düzenle)
+      const normalizedSearch = searchTerm.trim().toLowerCase().replace(/\s+/g, ' ')
+      
+      filtered = filtered.filter(student => {
+        // Öğrenci adı ve soyadını normalize et
+        const normalizedFirstName = (student.firstName || '').toLowerCase().trim()
+        const normalizedLastName = (student.lastName || '').toLowerCase().trim()
+        const normalizedFullName = `${normalizedFirstName} ${normalizedLastName}`.trim()
+        
+        // Arama terimini ad, soyad veya tam isim içinde ara
+        return (
+          normalizedFirstName.includes(normalizedSearch) ||
+          normalizedLastName.includes(normalizedSearch) ||
+          normalizedFullName.includes(normalizedSearch) ||
+          // Ters sırada da ara (soyad ad)
+          `${normalizedLastName} ${normalizedFirstName}`.trim().includes(normalizedSearch)
+        )
+      })
     }
 
     setFilteredStudents(filtered)
