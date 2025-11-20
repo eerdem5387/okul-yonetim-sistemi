@@ -89,6 +89,38 @@ export async function GET() {
             }
         })
 
+        // Kulüp-Öğrenci Listesi sheet'i oluştur (basit format)
+        interface ClubStudentRow {
+            "Kulüp Adı": string
+            "Öğrenci Adı": string
+            "Öğrenci Soyadı": string
+            "Sınıf": string
+        }
+        const clubStudentRows: ClubStudentRow[] = []
+        
+        clubs.forEach((club) => {
+            if (club.selections.length === 0) {
+                // Öğrencisi olmayan kulüpler için boş satır
+                clubStudentRows.push({
+                    "Kulüp Adı": club.name,
+                    "Öğrenci Adı": "",
+                    "Öğrenci Soyadı": "",
+                    "Sınıf": ""
+                })
+            } else {
+                // Her öğrenci için ayrı satır
+                club.selections.forEach((selection) => {
+                    const student = selection.student
+                    clubStudentRows.push({
+                        "Kulüp Adı": club.name,
+                        "Öğrenci Adı": student.firstName,
+                        "Öğrenci Soyadı": student.lastName,
+                        "Sınıf": student.grade
+                    })
+                })
+            }
+        })
+
         // Workbook oluştur
         const wb = XLSX.utils.book_new()
         
@@ -123,8 +155,21 @@ export async function GET() {
         ]
         summaryWs['!cols'] = summaryColWidths
         
-        // Sheet'leri workbook'a ekle (önce özet, sonra detay)
+        // Kulüp-Öğrenci Listesi sheet'i
+        const clubStudentWs = XLSX.utils.json_to_sheet(clubStudentRows)
+        
+        // Kulüp-Öğrenci kolon genişliklerini ayarla
+        const clubStudentColWidths = [
+            { wch: 25 }, // Kulüp Adı
+            { wch: 15 }, // Öğrenci Adı
+            { wch: 15 }, // Öğrenci Soyadı
+            { wch: 10 }  // Sınıf
+        ]
+        clubStudentWs['!cols'] = clubStudentColWidths
+        
+        // Sheet'leri workbook'a ekle (önce özet, sonra kulüp-öğrenci listesi, sonra detay)
         XLSX.utils.book_append_sheet(wb, summaryWs, "Özet")
+        XLSX.utils.book_append_sheet(wb, clubStudentWs, "Kulüp-Öğrenci Listesi")
         XLSX.utils.book_append_sheet(wb, mainWs, "Kulüp Detayları")
         
         // Excel dosyasını oluştur
