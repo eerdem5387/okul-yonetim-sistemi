@@ -95,17 +95,12 @@ export async function GET() {
         
         // Pivot format için 2D array oluştur
         // İlk satır: Kulüp isimleri (başlık)
-        const pivotData: (string | null)[][] = []
-        const headerRow: (string | null)[] = []
-        
-        clubs.forEach((club) => {
-            headerRow.push(club.name)
-        })
-        pivotData.push(headerRow)
+        const headerRow: string[] = clubs.map((club) => club.name)
+        const pivotData: string[][] = [headerRow]
         
         // Her satır için öğrenci bilgilerini ekle
         for (let rowIndex = 0; rowIndex < maxStudents; rowIndex++) {
-            const studentRow: (string | null)[] = []
+            const studentRow: string[] = []
             
             clubs.forEach((club) => {
                 if (club.selections[rowIndex]) {
@@ -114,26 +109,11 @@ export async function GET() {
                     studentRow.push(`${student.firstName} ${student.lastName} (${student.grade})`)
                 } else {
                     // Bu kulüpte bu satırda öğrenci yok
-                    studentRow.push(null)
+                    studentRow.push("")
                 }
             })
             
             pivotData.push(studentRow)
-        }
-        
-        // XLSX için uygun formata çevir (her satır bir object olmalı)
-        const clubStudentRows: any[] = []
-        if (pivotData.length > 0) {
-            // Header row'u atla, sadece data row'larını ekle
-            for (let i = 1; i < pivotData.length; i++) {
-                const row: any = {}
-                pivotData[0].forEach((clubName, colIndex) => {
-                    if (clubName) {
-                        row[clubName as string] = pivotData[i][colIndex] || ""
-                    }
-                })
-                clubStudentRows.push(row)
-            }
         }
 
         // Workbook oluştur
@@ -188,7 +168,7 @@ export async function GET() {
         
         try {
             XLSX.utils.book_append_sheet(wb, clubStudentWs, "Kulüp-Öğrenci Listesi")
-            console.log("Kulüp-Öğrenci Listesi sheet eklendi, satır sayısı:", clubStudentRows.length)
+            console.log("Kulüp-Öğrenci Listesi sheet eklendi, satır sayısı:", pivotData.length - 1)
         } catch (e) {
             console.error("Kulüp-Öğrenci Listesi sheet eklenirken hata:", e)
         }
