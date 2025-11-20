@@ -70,7 +70,8 @@ export default function ParentPage() {
     if (selectedStudent) {
       const intervalId = setInterval(() => {
         fetchClubs() // Kulüp kontenjanlarını yenile
-        fetchStudentClubs(selectedStudent.id) // Öğrencinin mevcut seçimlerini yenile
+        // Otomatik yenileme sırasında mevcut seçimleri koru (henüz onaylanmamış seçimler kaybolmasın)
+        fetchStudentClubs(selectedStudent.id, true) // preserveCurrentSelections = true
       }, 10000) // 10 saniye
 
       return () => clearInterval(intervalId)
@@ -99,21 +100,35 @@ export default function ParentPage() {
     fetchStudentClubs(student.id)
   }
 
-  const fetchStudentClubs = async (studentId: string) => {
+  const fetchStudentClubs = async (studentId: string, preserveCurrentSelections: boolean = false) => {
     try {
       const response = await fetch(`/api/clubs/students?studentId=${studentId}`)
       if (response.ok) {
         const data = await response.json()
-        const clubIds: string[] = Array.isArray(data) 
+        const dbClubIds: string[] = Array.isArray(data) 
           ? data
               .map((c: { clubId?: string; club?: { id: string } }) => c.clubId || c.club?.id)
               .filter((id): id is string => typeof id === 'string' && id !== '')
           : []
-        setSelectedClubs(clubIds)
+        
+        if (preserveCurrentSelections) {
+          // Otomatik yenileme sırasında: Mevcut seçimleri koru, sadece veritabanındaki seçimleri ekle
+          // (Kullanıcı henüz onaylamadan yaptığı seçimler kaybolmasın)
+          setSelectedClubs(prevSelected => {
+            // Veritabanındaki seçimler + mevcut seçimler (birleşim)
+            const combined = [...new Set([...dbClubIds, ...prevSelected])]
+            return combined
+          })
+        } else {
+          // Öğrenci seçildiğinde: Veritabanındaki seçimleri yükle
+          setSelectedClubs(dbClubIds)
+        }
       }
     } catch (error) {
       console.error("Error fetching student clubs:", error)
-      setSelectedClubs([])
+      if (!preserveCurrentSelections) {
+        setSelectedClubs([])
+      }
     }
   }
 
