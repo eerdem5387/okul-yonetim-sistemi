@@ -142,6 +142,19 @@ export async function GET() {
         
         // Özet sheet'i
         const summaryWs = XLSX.utils.json_to_sheet(summaryRows)
+
+        // Aynı sheet içerisinde Kulüp-Öğrenci Listesi tablosunu da göster
+        const summaryTableHeight = summaryRows.length + 1 // header + data
+        const secondTableTitleRow = summaryTableHeight + 2 // bir boş satır bırak
+        const secondTableDataStartRow = secondTableTitleRow + 1
+
+        // Başlık ekle
+        XLSX.utils.sheet_add_aoa(summaryWs, [["Kulüp-Öğrenci Listesi"]], { origin: `A${secondTableTitleRow}` })
+        // Tabloyu ekle (başlık satırı dahil)
+        XLSX.utils.sheet_add_json(summaryWs, clubStudentRows, {
+            origin: `A${secondTableDataStartRow}`,
+            skipHeader: false
+        })
         
         // Özet kolon genişliklerini ayarla
         const summaryColWidths = [
