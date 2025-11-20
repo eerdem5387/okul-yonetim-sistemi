@@ -89,37 +89,52 @@ export async function GET() {
             }
         })
 
-        // Kulüp-Öğrenci Listesi sheet'i oluştur (basit format)
-        interface ClubStudentRow {
-            "Kulüp Adı": string
-            "Öğrenci Adı": string
-            "Öğrenci Soyadı": string
-            "Sınıf": string
-        }
-        const clubStudentRows: ClubStudentRow[] = []
+        // Kulüp-Öğrenci Listesi sheet'i oluştur (pivot format: kulüpler yatay, öğrenciler dikey)
+        // En uzun öğrenci listesini bul
+        const maxStudents = Math.max(...clubs.map(club => club.selections.length), 0)
+        
+        // Pivot format için 2D array oluştur
+        // İlk satır: Kulüp isimleri (başlık)
+        const pivotData: (string | null)[][] = []
+        const headerRow: (string | null)[] = []
         
         clubs.forEach((club) => {
-            if (club.selections.length === 0) {
-                // Öğrencisi olmayan kulüpler için boş satır
-                clubStudentRows.push({
-                    "Kulüp Adı": club.name,
-                    "Öğrenci Adı": "",
-                    "Öğrenci Soyadı": "",
-                    "Sınıf": ""
-                })
-            } else {
-                // Her öğrenci için ayrı satır
-                club.selections.forEach((selection) => {
-                    const student = selection.student
-                    clubStudentRows.push({
-                        "Kulüp Adı": club.name,
-                        "Öğrenci Adı": student.firstName,
-                        "Öğrenci Soyadı": student.lastName,
-                        "Sınıf": student.grade
-                    })
-                })
-            }
+            headerRow.push(club.name)
         })
+        pivotData.push(headerRow)
+        
+        // Her satır için öğrenci bilgilerini ekle
+        for (let rowIndex = 0; rowIndex < maxStudents; rowIndex++) {
+            const studentRow: (string | null)[] = []
+            
+            clubs.forEach((club) => {
+                if (club.selections[rowIndex]) {
+                    const student = club.selections[rowIndex].student
+                    // Öğrenci adı, soyadı ve sınıfı birleştir
+                    studentRow.push(`${student.firstName} ${student.lastName} (${student.grade})`)
+                } else {
+                    // Bu kulüpte bu satırda öğrenci yok
+                    studentRow.push(null)
+                }
+            })
+            
+            pivotData.push(studentRow)
+        }
+        
+        // XLSX için uygun formata çevir (her satır bir object olmalı)
+        const clubStudentRows: any[] = []
+        if (pivotData.length > 0) {
+            // Header row'u atla, sadece data row'larını ekle
+            for (let i = 1; i < pivotData.length; i++) {
+                const row: any = {}
+                pivotData[0].forEach((clubName, colIndex) => {
+                    if (clubName) {
+                        row[clubName as string] = pivotData[i][colIndex] || ""
+                    }
+                })
+                clubStudentRows.push(row)
+            }
+        }
 
         // Workbook oluştur
         const wb = XLSX.utils.book_new()
@@ -142,19 +157,6 @@ export async function GET() {
         
         // Özet sheet'i
         const summaryWs = XLSX.utils.json_to_sheet(summaryRows)
-
-        // Aynı sheet içerisinde Kulüp-Öğrenci Listesi tablosunu da göster
-        const summaryTableHeight = summaryRows.length + 1 // header + data
-        const secondTableTitleRow = summaryTableHeight + 2 // bir boş satır bırak
-        const secondTableDataStartRow = secondTableTitleRow + 1
-
-        // Başlık ekle
-        XLSX.utils.sheet_add_aoa(summaryWs, [["Kulüp-Öğrenci Listesi"]], { origin: `A${secondTableTitleRow}` })
-        // Tabloyu ekle (başlık satırı dahil)
-        XLSX.utils.sheet_add_json(summaryWs, clubStudentRows, {
-            origin: `A${secondTableDataStartRow}`,
-            skipHeader: false
-        })
         
         // Özet kolon genişliklerini ayarla
         const summaryColWidths = [
@@ -168,16 +170,12 @@ export async function GET() {
         ]
         summaryWs['!cols'] = summaryColWidths
         
-        // Kulüp-Öğrenci Listesi sheet'i
-        const clubStudentWs = XLSX.utils.json_to_sheet(clubStudentRows)
+        // Kulüp-Öğrenci Listesi sheet'i (pivot format)
+        // Önce 2D array formatında sheet oluştur
+        const clubStudentWs = XLSX.utils.aoa_to_sheet(pivotData)
         
-        // Kulüp-Öğrenci kolon genişliklerini ayarla
-        const clubStudentColWidths = [
-            { wch: 25 }, // Kulüp Adı
-            { wch: 15 }, // Öğrenci Adı
-            { wch: 15 }, // Öğrenci Soyadı
-            { wch: 10 }  // Sınıf
-        ]
+        // Kulüp-Öğrenci kolon genişliklerini dinamik olarak ayarla (her kulüp için bir kolon)
+        const clubStudentColWidths = clubs.map(() => ({ wch: 25 })) // Her kulüp için 25 karakter genişlik
         clubStudentWs['!cols'] = clubStudentColWidths
         
         // Sheet'leri workbook'a ekle (önce özet, sonra kulüp-öğrenci listesi, sonra detay)
