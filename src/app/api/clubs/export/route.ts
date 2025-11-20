@@ -168,12 +168,30 @@ export async function GET() {
         clubStudentWs['!cols'] = clubStudentColWidths
         
         // Sheet'leri workbook'a ekle (önce özet, sonra kulüp-öğrenci listesi, sonra detay)
-        XLSX.utils.book_append_sheet(wb, summaryWs, "Özet")
-        XLSX.utils.book_append_sheet(wb, clubStudentWs, "Kulüp-Öğrenci Listesi")
-        XLSX.utils.book_append_sheet(wb, mainWs, "Kulüp Detayları")
+        try {
+            XLSX.utils.book_append_sheet(wb, summaryWs, "Özet")
+            console.log("Özet sheet eklendi")
+        } catch (e) {
+            console.error("Özet sheet eklenirken hata:", e)
+        }
+        
+        try {
+            XLSX.utils.book_append_sheet(wb, clubStudentWs, "Kulüp-Öğrenci Listesi")
+            console.log("Kulüp-Öğrenci Listesi sheet eklendi, satır sayısı:", clubStudentRows.length)
+        } catch (e) {
+            console.error("Kulüp-Öğrenci Listesi sheet eklenirken hata:", e)
+        }
+        
+        try {
+            XLSX.utils.book_append_sheet(wb, mainWs, "Kulüp Detayları")
+            console.log("Kulüp Detayları sheet eklendi")
+        } catch (e) {
+            console.error("Kulüp Detayları sheet eklenirken hata:", e)
+        }
         
         // Excel dosyasını oluştur
         const wbout: Uint8Array = XLSX.write(wb, { type: "array", bookType: "xlsx" }) as unknown as Uint8Array
+        console.log("Excel dosyası oluşturuldu, sheet sayısı:", wb.SheetNames.length)
 
         // Tarih formatıyla dosya adı oluştur
         const date = new Date()
