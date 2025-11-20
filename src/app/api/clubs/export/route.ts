@@ -158,19 +158,19 @@ export async function GET() {
         const clubStudentColWidths = clubs.map(() => ({ wch: 25 })) // Her kulüp için 25 karakter genişlik
         clubStudentWs['!cols'] = clubStudentColWidths
         
-        // Sheet'leri workbook'a ekle (önce özet, sonra kulüp-öğrenci listesi, sonra detay)
+        // Sheet'leri workbook'a ekle (önce kulüp-öğrenci tablosu - varsayılan görünüm, sonra özet ve detay)
+        try {
+            XLSX.utils.book_append_sheet(wb, clubStudentWs, "Kulüp Öğrenci Tablosu")
+            console.log("Kulüp Öğrenci Tablosu sheet eklendi, satır sayısı:", pivotData.length - 1)
+        } catch (e) {
+            console.error("Kulüp-Öğrenci Listesi sheet eklenirken hata:", e)
+        }
+        
         try {
             XLSX.utils.book_append_sheet(wb, summaryWs, "Özet")
             console.log("Özet sheet eklendi")
         } catch (e) {
             console.error("Özet sheet eklenirken hata:", e)
-        }
-        
-        try {
-            XLSX.utils.book_append_sheet(wb, clubStudentWs, "Kulüp-Öğrenci Listesi")
-            console.log("Kulüp-Öğrenci Listesi sheet eklendi, satır sayısı:", pivotData.length - 1)
-        } catch (e) {
-            console.error("Kulüp-Öğrenci Listesi sheet eklenirken hata:", e)
         }
         
         try {
