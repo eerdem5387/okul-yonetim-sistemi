@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { 
   Search, Eye, Calendar, User, Mail, Phone, School, GraduationCap, 
-  Briefcase, X, Download, Filter, ChevronDown, ChevronUp, 
+  Briefcase, X, Filter, ChevronDown, ChevronUp, 
   FileSpreadsheet, Users, TrendingUp, Clock, RefreshCw, CheckCircle2, Trash2
 } from "lucide-react"
 
@@ -178,6 +178,7 @@ export default function BasvurularPage() {
       selectedBabaMeslek, 
       selectedAnneMeslek
     )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, fetchBasvurular])
 
   const handleSearch = () => {

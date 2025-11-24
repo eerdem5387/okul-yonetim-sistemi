@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma"
 /**
  * Sync endpoint - Başvuru sistemindeki tüm başvuruları çekip senkronize eder
  */
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     const webhookSecret = process.env.WEBHOOK_SECRET
     const basvuruSistemiUrl = process.env.BASVURU_SISTEMI_URL || 'https://basvuru-sistemi.vercel.app'
