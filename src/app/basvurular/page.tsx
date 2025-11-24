@@ -62,7 +62,21 @@ export default function BasvurularPage() {
   const [selectedOkul, setSelectedOkul] = useState("")
   const [selectedBabaMeslek, setSelectedBabaMeslek] = useState("")
   const [selectedAnneMeslek, setSelectedAnneMeslek] = useState("")
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
   const [showFilters, setShowFilters] = useState(false)
+  
+  // İstatistikler
+  const [stats, setStats] = useState({
+    total: 0,
+    today: 0,
+    thisWeek: 0,
+    thisMonth: 0,
+    sinifStats: {} as Record<string, number>,
+    topOkullar: [] as Array<{ okul: string; count: number }>,
+    topBabaMeslekler: [] as Array<{ meslek: string; count: number }>,
+    topAnneMeslekler: [] as Array<{ meslek: string; count: number }>,
+  })
 
   // Benzersiz değerler (filtreleme için)
   const uniqueOkullar = useMemo(() => {
@@ -80,21 +94,22 @@ export default function BasvurularPage() {
     return Array.from(new Set(meslekler)).sort()
   }, [allBasvurular])
 
-  // İstatistikler
-  const stats = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0]
-    const todayCount = allBasvurular.filter(b => b.createdAt.startsWith(today)).length
-    const thisWeek = new Date()
-    thisWeek.setDate(thisWeek.getDate() - 7)
-    const weekCount = allBasvurular.filter(b => new Date(b.createdAt) >= thisWeek).length
-    
-    return {
-      total: allBasvurular.length,
-      today: todayCount,
-      thisWeek: weekCount,
-      filtered: filteredCount
+  // İstatistikleri çek
+  const fetchStats = useCallback(async () => {
+    try {
+      const params = new URLSearchParams()
+      if (startDate) params.append("startDate", startDate)
+      if (endDate) params.append("endDate", endDate)
+      
+      const response = await fetch(`/api/basvurular/stats?${params.toString()}`)
+      if (response.ok) {
+        const data = await response.json()
+        setStats(data)
+      }
+    } catch (error) {
+      console.error("Error fetching stats:", error)
     }
-  }, [allBasvurular, filteredCount])
+  }, [startDate, endDate])
 
   const fetchBasvurular = useCallback(async (
     page: number = 1, 
@@ -102,7 +117,9 @@ export default function BasvurularPage() {
     sinif: string = "",
     okul: string = "",
     babaMeslek: string = "",
-    anneMeslek: string = ""
+    anneMeslek: string = "",
+    startDateParam: string = "",
+    endDateParam: string = ""
   ) => {
     try {
       setLoading(true)
@@ -124,6 +141,12 @@ export default function BasvurularPage() {
       }
       if (anneMeslek) {
         params.append("anneMeslek", anneMeslek)
+      }
+      if (startDateParam) {
+        params.append("startDate", startDateParam)
+      }
+      if (endDateParam) {
+        params.append("endDate", endDateParam)
       }
       
       const response = await fetch(`/api/basvurular?${params.toString()}`)
@@ -167,7 +190,8 @@ export default function BasvurularPage() {
 
   useEffect(() => {
     fetchAllBasvurular()
-  }, [fetchAllBasvurular])
+    fetchStats()
+  }, [fetchAllBasvurular, fetchStats])
 
   useEffect(() => {
     fetchBasvurular(
@@ -176,10 +200,13 @@ export default function BasvurularPage() {
       selectedSinif, 
       selectedOkul, 
       selectedBabaMeslek, 
-      selectedAnneMeslek
+      selectedAnneMeslek,
+      startDate,
+      endDate
     )
+    fetchStats()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, fetchBasvurular])
+  }, [currentPage, fetchBasvurular, startDate, endDate])
 
   const handleSearch = () => {
     setCurrentPage(1)
@@ -189,20 +216,40 @@ export default function BasvurularPage() {
       selectedSinif, 
       selectedOkul, 
       selectedBabaMeslek, 
-      selectedAnneMeslek
+      selectedAnneMeslek,
+      startDate,
+      endDate
     )
+    fetchStats()
   }
 
-  const handleFilterChange = () => {
+  const handleFilterChange = (
+    newSinif?: string, 
+    newOkul?: string, 
+    newBabaMeslek?: string, 
+    newAnneMeslek?: string,
+    newStartDate?: string,
+    newEndDate?: string
+  ) => {
     setCurrentPage(1)
+    const sinifToUse = newSinif !== undefined ? newSinif : selectedSinif
+    const okulToUse = newOkul !== undefined ? newOkul : selectedOkul
+    const babaMeslekToUse = newBabaMeslek !== undefined ? newBabaMeslek : selectedBabaMeslek
+    const anneMeslekToUse = newAnneMeslek !== undefined ? newAnneMeslek : selectedAnneMeslek
+    const startDateToUse = newStartDate !== undefined ? newStartDate : startDate
+    const endDateToUse = newEndDate !== undefined ? newEndDate : endDate
+    
     fetchBasvurular(
       1, 
       searchTerm, 
-      selectedSinif, 
-      selectedOkul, 
-      selectedBabaMeslek, 
-      selectedAnneMeslek
+      sinifToUse, 
+      okulToUse, 
+      babaMeslekToUse, 
+      anneMeslekToUse,
+      startDateToUse,
+      endDateToUse
     )
+    fetchStats()
   }
 
   const clearFilters = () => {
@@ -211,11 +258,14 @@ export default function BasvurularPage() {
     setSelectedOkul("")
     setSelectedBabaMeslek("")
     setSelectedAnneMeslek("")
+    setStartDate("")
+    setEndDate("")
     setCurrentPage(1)
-    fetchBasvurular(1, "", "", "", "", "")
+    fetchBasvurular(1, "", "", "", "", "", "", "")
+    fetchStats()
   }
 
-  const hasActiveFilters = searchTerm || selectedSinif || selectedOkul || selectedBabaMeslek || selectedAnneMeslek
+  const hasActiveFilters = searchTerm || selectedSinif || selectedOkul || selectedBabaMeslek || selectedAnneMeslek || startDate || endDate
 
   const handleExport = async () => {
     try {
@@ -235,6 +285,12 @@ export default function BasvurularPage() {
       }
       if (selectedAnneMeslek) {
         params.append("anneMeslek", selectedAnneMeslek)
+      }
+      if (startDate) {
+        params.append("startDate", startDate)
+      }
+      if (endDate) {
+        params.append("endDate", endDate)
       }
 
       const response = await fetch(`/api/basvurular/export?${params.toString()}`)
@@ -284,9 +340,12 @@ export default function BasvurularPage() {
         selectedSinif, 
         selectedOkul, 
         selectedBabaMeslek, 
-        selectedAnneMeslek
+        selectedAnneMeslek,
+        startDate,
+        endDate
       )
       await fetchAllBasvurular()
+      await fetchStats()
       
       // 5 saniye sonra sync result'ı kaldır
       setTimeout(() => {
@@ -329,9 +388,12 @@ export default function BasvurularPage() {
         selectedSinif, 
         selectedOkul, 
         selectedBabaMeslek, 
-        selectedAnneMeslek
+        selectedAnneMeslek,
+        startDate,
+        endDate
       )
       await fetchAllBasvurular()
+      await fetchStats()
     } catch (error) {
       console.error("Error deleting:", error)
       alert("Başvuru silinirken bir hata oluştu")
@@ -364,9 +426,12 @@ export default function BasvurularPage() {
         selectedSinif, 
         selectedOkul, 
         selectedBabaMeslek, 
-        selectedAnneMeslek
+        selectedAnneMeslek,
+        startDate,
+        endDate
       )
       await fetchAllBasvurular()
+      await fetchStats()
     } catch (error) {
       console.error("Error deleting test basvurular:", error)
       alert("Test başvuruları silinirken bir hata oluştu")
@@ -506,14 +571,69 @@ export default function BasvurularPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-100 text-sm font-medium mb-1">Filtrelenmiş</p>
-                <p className="text-3xl font-bold">{stats.filtered}</p>
+                <p className="text-purple-100 text-sm font-medium mb-1">Bu Ay</p>
+                <p className="text-3xl font-bold">{stats.thisMonth}</p>
               </div>
-              <Filter className="h-10 w-10 text-purple-200" />
+              <TrendingUp className="h-10 w-10 text-purple-200" />
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Filtrelenmiş Sonuç Sayısı */}
+      {hasActiveFilters && (
+        <Card className="mb-6 border-0 shadow-lg bg-gradient-to-r from-indigo-50 to-blue-50 border-l-4 border-indigo-500">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Filter className="h-5 w-5 text-indigo-600" />
+                <div>
+                  <p className="font-semibold text-indigo-900">
+                    Filtrelenmiş Sonuç: <span className="text-2xl">{filteredCount}</span> başvuru
+                  </p>
+                  {selectedSinif && (
+                    <p className="text-sm text-indigo-700 mt-1">
+                      {selectedSinif} için toplam: {stats.sinifStats[selectedSinif] || 0} başvuru
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Sınıf Bazında İstatistikler */}
+      {Object.keys(stats.sinifStats).length > 0 && (
+        <Card className="mb-6 border-0 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <GraduationCap className="h-5 w-5 text-blue-600" />
+              Sınıf Bazında Başvurular
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+              {siniflar.map((sinif) => {
+                const count = stats.sinifStats[sinif] || 0
+                return (
+                  <div
+                    key={sinif}
+                    className={`p-3 rounded-lg border-2 transition-all ${
+                      selectedSinif === sinif
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                    }`}
+                  >
+                    <p className="text-xs text-gray-600 mb-1">{sinif}</p>
+                    <p className="text-2xl font-bold text-gray-900">{count}</p>
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Search and Filters */}
       <Card className="mb-6 border-0 shadow-lg">
@@ -563,7 +683,7 @@ export default function BasvurularPage() {
 
             {/* Filters Panel */}
             {showFilters && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-gray-200">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-4 border-t border-gray-200">
                 <div>
                   <Label className="text-sm font-medium text-gray-700 mb-2 block">
                     <GraduationCap className="h-4 w-4 inline mr-1" />
@@ -572,8 +692,9 @@ export default function BasvurularPage() {
                   <select
                     value={selectedSinif}
                     onChange={(e) => {
-                      setSelectedSinif(e.target.value)
-                      handleFilterChange()
+                      const newValue = e.target.value
+                      setSelectedSinif(newValue)
+                      handleFilterChange(newValue)
                     }}
                     className="w-full h-10 px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
@@ -594,8 +715,9 @@ export default function BasvurularPage() {
                   <select
                     value={selectedOkul}
                     onChange={(e) => {
-                      setSelectedOkul(e.target.value)
-                      handleFilterChange()
+                      const newValue = e.target.value
+                      setSelectedOkul(newValue)
+                      handleFilterChange(undefined, newValue)
                     }}
                     className="w-full h-10 px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
@@ -616,8 +738,9 @@ export default function BasvurularPage() {
                   <select
                     value={selectedBabaMeslek}
                     onChange={(e) => {
-                      setSelectedBabaMeslek(e.target.value)
-                      handleFilterChange()
+                      const newValue = e.target.value
+                      setSelectedBabaMeslek(newValue)
+                      handleFilterChange(undefined, undefined, newValue)
                     }}
                     className="w-full h-10 px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
@@ -638,8 +761,9 @@ export default function BasvurularPage() {
                   <select
                     value={selectedAnneMeslek}
                     onChange={(e) => {
-                      setSelectedAnneMeslek(e.target.value)
-                      handleFilterChange()
+                      const newValue = e.target.value
+                      setSelectedAnneMeslek(newValue)
+                      handleFilterChange(undefined, undefined, undefined, newValue)
                     }}
                     className="w-full h-10 px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
@@ -650,6 +774,40 @@ export default function BasvurularPage() {
                       </option>
                     ))}
                   </select>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                    <Calendar className="h-4 w-4 inline mr-1" />
+                    Başlangıç Tarihi
+                  </Label>
+                  <Input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => {
+                      const newValue = e.target.value
+                      setStartDate(newValue)
+                      handleFilterChange(undefined, undefined, undefined, undefined, newValue)
+                    }}
+                    className="w-full h-10"
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                    <Calendar className="h-4 w-4 inline mr-1" />
+                    Bitiş Tarihi
+                  </Label>
+                  <Input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => {
+                      const newValue = e.target.value
+                      setEndDate(newValue)
+                      handleFilterChange(undefined, undefined, undefined, undefined, undefined, newValue)
+                    }}
+                    className="w-full h-10"
+                  />
                 </div>
               </div>
             )}
@@ -663,7 +821,7 @@ export default function BasvurularPage() {
                     <button
                       onClick={() => {
                         setSelectedSinif("")
-                        handleFilterChange()
+                        handleFilterChange("")
                       }}
                       className="hover:text-blue-900"
                     >
@@ -677,7 +835,7 @@ export default function BasvurularPage() {
                     <button
                       onClick={() => {
                         setSelectedOkul("")
-                        handleFilterChange()
+                        handleFilterChange(undefined, "")
                       }}
                       className="hover:text-green-900"
                     >
@@ -691,7 +849,7 @@ export default function BasvurularPage() {
                     <button
                       onClick={() => {
                         setSelectedBabaMeslek("")
-                        handleFilterChange()
+                        handleFilterChange(undefined, undefined, "")
                       }}
                       className="hover:text-purple-900"
                     >
@@ -705,9 +863,37 @@ export default function BasvurularPage() {
                     <button
                       onClick={() => {
                         setSelectedAnneMeslek("")
-                        handleFilterChange()
+                        handleFilterChange(undefined, undefined, undefined, "")
                       }}
                       className="hover:text-pink-900"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
+                {startDate && (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-teal-100 text-teal-700 rounded-full text-sm">
+                    Başlangıç: {new Date(startDate).toLocaleDateString('tr-TR')}
+                    <button
+                      onClick={() => {
+                        setStartDate("")
+                        handleFilterChange(undefined, undefined, undefined, undefined, "")
+                      }}
+                      className="hover:text-teal-900"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
+                {endDate && (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-teal-100 text-teal-700 rounded-full text-sm">
+                    Bitiş: {new Date(endDate).toLocaleDateString('tr-TR')}
+                    <button
+                      onClick={() => {
+                        setEndDate("")
+                        handleFilterChange(undefined, undefined, undefined, undefined, undefined, "")
+                      }}
+                      className="hover:text-teal-900"
                     >
                       <X className="h-3 w-3" />
                     </button>

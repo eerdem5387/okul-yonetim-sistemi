@@ -11,6 +11,8 @@ export async function GET(request: NextRequest) {
     const okul = searchParams.get('okul') || ''
     const babaMeslek = searchParams.get('babaMeslek') || ''
     const anneMeslek = searchParams.get('anneMeslek') || ''
+    const startDate = searchParams.get('startDate') || ''
+    const endDate = searchParams.get('endDate') || ''
     
     const skip = (page - 1) * limit
 
@@ -49,6 +51,20 @@ export async function GET(request: NextRequest) {
     // Anne meslek filtresi
     if (anneMeslek) {
       whereConditions.push({ anneMeslek: { contains: anneMeslek, mode: 'insensitive' as const } })
+    }
+    
+    // Tarih filtresi
+    if (startDate || endDate) {
+      const dateFilter: Record<string, unknown> = {}
+      if (startDate) {
+        dateFilter.gte = new Date(startDate)
+      }
+      if (endDate) {
+        const endDateTime = new Date(endDate)
+        endDateTime.setHours(23, 59, 59, 999) // Günün sonuna kadar
+        dateFilter.lte = endDateTime
+      }
+      whereConditions.push({ createdAt: dateFilter })
     }
     
     const where = whereConditions.length > 0 ? { AND: whereConditions } : {}
