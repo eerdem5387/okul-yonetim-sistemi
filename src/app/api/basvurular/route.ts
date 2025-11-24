@@ -7,12 +7,17 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
     const search = searchParams.get('search') || ''
+    const sinif = searchParams.get('sinif') || ''
+    const okul = searchParams.get('okul') || ''
+    const babaMeslek = searchParams.get('babaMeslek') || ''
+    const anneMeslek = searchParams.get('anneMeslek') || ''
     
     const skip = (page - 1) * limit
 
-    // Arama filtresi
+    // Arama ve filtreleme koşulları
     const whereConditions: Array<Record<string, unknown>> = []
     
+    // Arama filtresi
     if (search) {
       whereConditions.push({
         OR: [
@@ -24,6 +29,26 @@ export async function GET(request: NextRequest) {
           { anneAdSoyad: { contains: search, mode: 'insensitive' as const } },
         ]
       })
+    }
+    
+    // Sınıf filtresi
+    if (sinif) {
+      whereConditions.push({ ogrenciSinifi: { equals: sinif, mode: 'insensitive' as const } })
+    }
+    
+    // Okul filtresi
+    if (okul) {
+      whereConditions.push({ okul: { contains: okul, mode: 'insensitive' as const } })
+    }
+    
+    // Baba meslek filtresi
+    if (babaMeslek) {
+      whereConditions.push({ babaMeslek: { contains: babaMeslek, mode: 'insensitive' as const } })
+    }
+    
+    // Anne meslek filtresi
+    if (anneMeslek) {
+      whereConditions.push({ anneMeslek: { contains: anneMeslek, mode: 'insensitive' as const } })
     }
     
     const where = whereConditions.length > 0 ? { AND: whereConditions } : {}
