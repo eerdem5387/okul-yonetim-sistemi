@@ -25,9 +25,9 @@ import { useRouter } from "next/navigation"
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Bursluluk Başvuruları", href: "/basvurular", icon: ClipboardList },
   { name: "Öğrenci Yönetimi", href: "/students", icon: UserPlus },
   { name: "Kulüp Yönetimi", href: "/clubs", icon: Users },
-  { name: "Başvurular", href: "/basvurular", icon: ClipboardList },
   { name: "Yeni Kayıt", href: "/new-registration", icon: FileText },
   { name: "Kayıt Yenileme", href: "/renewal", icon: FileText },
   { name: "Forma Sözleşmesi", href: "/uniform", icon: Shirt },
