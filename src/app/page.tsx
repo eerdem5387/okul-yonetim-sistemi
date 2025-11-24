@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, FileText, Shirt, Utensils, Bus, BookOpen, UserPlus, TrendingUp, Calendar, Activity, ArrowRight, Sparkles, Target } from "lucide-react"
+import { Users, FileText, Shirt, Utensils, Bus, BookOpen, UserPlus, TrendingUp, Calendar, Activity, ArrowRight, Sparkles, Target, ClipboardList } from "lucide-react"
 import Link from "next/link"
 
 interface DashboardStats {
@@ -368,6 +368,22 @@ export default function HomePage() {
               </div>
               <CardTitle className="text-lg font-bold text-gray-900">Öğrenci Yönetimi</CardTitle>
               <CardDescription className="text-sm">Öğrenci bilgilerini yönetin</CardDescription>
+            </CardHeader>
+          </div>
+        </Link>
+
+        <Link href="/basvurular">
+          <div className="dashboard-card relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-cyan-600/5 to-blue-600/5 group-hover:from-cyan-600/10 group-hover:to-blue-600/10 transition-all" />
+            <CardHeader className="relative">
+              <div className="flex items-center justify-between mb-2">
+                <div className="p-3 bg-cyan-100 rounded-xl group-hover:scale-110 transition-transform">
+                  <ClipboardList className="h-6 w-6 text-cyan-600" />
+                </div>
+                <ArrowRight className="h-5 w-5 text-gray-400 group-hover:text-cyan-600 group-hover:translate-x-1 transition-all" />
+              </div>
+              <CardTitle className="text-lg font-bold text-gray-900">Başvurular</CardTitle>
+              <CardDescription className="text-sm">Bursluluk sınavı başvuruları</CardDescription>
             </CardHeader>
           </div>
         </Link>
