@@ -100,12 +100,13 @@ export async function GET(request: NextRequest) {
     
     XLSX.utils.book_append_sheet(wb, ws, "Başvurular")
     
-    const wbout: Uint8Array = XLSX.write(wb, { type: "array", bookType: "xlsx" }) as unknown as Uint8Array
+    const wbout = XLSX.write(wb, { type: "array", bookType: "xlsx" })
+    const buffer = Buffer.from(wbout)
     
     const dateStr = new Date().toISOString().split('T')[0]
     const filename = `basvurular_${dateStr}.xlsx`
 
-    return new NextResponse(wbout, {
+    return new NextResponse(buffer, {
       status: 200,
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
