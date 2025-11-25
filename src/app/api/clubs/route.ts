@@ -6,11 +6,15 @@ export async function GET() {
         const clubs = await prisma.club.findMany({
             include: {
                 selections: {
-                    include: {
+                    select: {
+                        id: true,
+                        studentId: true,
                         student: {
                             select: {
+                                id: true,
                                 firstName: true,
-                                lastName: true
+                                lastName: true,
+                                grade: true
                             }
                         }
                     }
