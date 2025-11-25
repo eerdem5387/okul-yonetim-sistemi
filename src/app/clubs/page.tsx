@@ -337,7 +337,7 @@ export default function ClubsPage() {
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Aktif Öğrenciler</p>
+                <p className="text-sm text-gray-500">Toplam Kulüp Seçim Sayısı</p>
                 <p className="text-3xl font-bold text-gray-900 mt-1">{totalSelections}</p>
               </div>
               <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600">
