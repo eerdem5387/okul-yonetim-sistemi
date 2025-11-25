@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20')
     const search = searchParams.get('search') || ''
     const sinif = searchParams.get('sinif') || ''
+    const sube = searchParams.get('sube') || ''
     const okul = searchParams.get('okul') || ''
     const babaMeslek = searchParams.get('babaMeslek') || ''
     const anneMeslek = searchParams.get('anneMeslek') || ''
@@ -36,6 +37,11 @@ export async function GET(request: NextRequest) {
     // Sınıf filtresi
     if (sinif) {
       whereConditions.push({ ogrenciSinifi: { equals: sinif, mode: 'insensitive' as const } })
+    }
+    
+    // Şube filtresi
+    if (sube) {
+      whereConditions.push({ ogrenciSube: { equals: sube, mode: 'insensitive' as const } })
     }
     
     // Okul filtresi

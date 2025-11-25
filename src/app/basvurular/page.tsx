@@ -18,13 +18,14 @@ interface Basvuru {
   ogrenciTc: string
   okul: string
   ogrenciSinifi: string
+  ogrenciSube: string
   babaAdSoyad: string
   babaMeslek: string
-  babaIsAdresi: string | null
+  babaIsAdresi: string
   babaCepTel: string
   anneAdSoyad: string
   anneMeslek: string
-  anneIsAdresi: string | null
+  anneIsAdresi: string
   anneCepTel: string
   email: string
   createdAt: string
@@ -961,7 +962,9 @@ export default function BasvurularPage() {
                         </div>
                         <div className="flex items-center gap-2 text-sm">
                           <GraduationCap className="h-4 w-4 text-indigo-600 flex-shrink-0" />
-                          <span className="text-gray-700">{basvuru.ogrenciSinifi}</span>
+                          <span className="text-gray-700">
+                            {basvuru.ogrenciSinifi} · {basvuru.ogrenciSube} Şubesi
+                          </span>
                         </div>
                         <div className="flex items-center gap-2 text-sm">
                           <Mail className="h-4 w-4 text-green-600 flex-shrink-0" />
@@ -1087,8 +1090,10 @@ export default function BasvurularPage() {
                       <p className="font-semibold">{selectedBasvuru.okul}</p>
                     </div>
                     <div>
-                      <Label className="text-gray-500 text-sm">Sınıf</Label>
-                      <p className="font-semibold">{selectedBasvuru.ogrenciSinifi}</p>
+                      <Label className="text-gray-500 text-sm">Sınıf / Şube</Label>
+                      <p className="font-semibold">
+                        {selectedBasvuru.ogrenciSinifi} · {selectedBasvuru.ogrenciSube} Şubesi
+                      </p>
                     </div>
                   </div>
                 </div>

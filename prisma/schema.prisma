@@ -174,13 +174,14 @@ model Basvuru {
   ogrenciTc        String
   okul             String
   ogrenciSinifi    String
+  ogrenciSube      String   @default("Belirtilmedi")
   babaAdSoyad      String
   babaMeslek       String
-  babaIsAdresi     String?
+  babaIsAdresi     String   @default("")
   babaCepTel       String
   anneAdSoyad      String
   anneMeslek       String
-  anneIsAdresi     String?
+  anneIsAdresi     String   @default("")
   anneCepTel       String
   email            String
   createdAt        DateTime @default(now())

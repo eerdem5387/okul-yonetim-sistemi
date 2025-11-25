@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search') || ''
     const sinif = searchParams.get('sinif') || ''
+    const sube = searchParams.get('sube') || ''
     const okul = searchParams.get('okul') || ''
     const babaMeslek = searchParams.get('babaMeslek') || ''
     const anneMeslek = searchParams.get('anneMeslek') || ''
@@ -30,6 +31,10 @@ export async function GET(request: NextRequest) {
     
     if (sinif) {
       whereConditions.push({ ogrenciSinifi: { equals: sinif, mode: 'insensitive' as const } })
+    }
+    
+    if (sube) {
+      whereConditions.push({ ogrenciSube: { equals: sube, mode: 'insensitive' as const } })
     }
     
     if (okul) {
@@ -77,6 +82,7 @@ export async function GET(request: NextRequest) {
       "TC Kimlik No": basvuru.ogrenciTc,
       "Okul": basvuru.okul,
       "Sınıf": basvuru.ogrenciSinifi,
+      "Şube": basvuru.ogrenciSube,
       "Baba Ad Soyad": basvuru.babaAdSoyad,
       "Baba Meslek": basvuru.babaMeslek,
       "Baba İş Adresi": basvuru.babaIsAdresi || "",
@@ -100,6 +106,7 @@ export async function GET(request: NextRequest) {
       { wch: 12 },  // TC Kimlik No
       { wch: 50 },  // Okul
       { wch: 10 },  // Sınıf
+      { wch: 8 },   // Şube
       { wch: 25 },  // Baba Ad Soyad
       { wch: 30 },  // Baba Meslek
       { wch: 40 },  // Baba İş Adresi
