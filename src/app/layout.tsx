@@ -36,8 +36,22 @@ export default function RootLayout({
     setAuthRole(normalizedRole)
     setIsLoading(false)
 
+    // IB Viewer sayfaları için özel kontrol
+    if (pathname?.startsWith("/ib-viewer")) {
+      if (pathname === "/ib-viewer/login") {
+        // Login sayfasına herkes erişebilir
+        return
+      }
+      // IB Viewer sayfasına sadece token ile erişilebilir
+      const ibToken = localStorage.getItem("ib_viewer_token")
+      if (!ibToken) {
+        router.push("/ib-viewer/login")
+        return
+      }
+    }
+
     // Login sayfası değilse ve Öğrenci İşleri rolü yoksa login'e yönlendir
-    if (pathname !== "/login" && pathname !== "/parent" && normalizedRole !== "student_affairs") {
+    if (pathname !== "/login" && pathname !== "/parent" && !pathname?.startsWith("/ib-viewer") && normalizedRole !== "student_affairs") {
       router.push("/login")
     }
 
@@ -54,6 +68,22 @@ export default function RootLayout({
         <head>
           <title>Okul Yönetim Sistemi - Giriş</title>
           <meta name="description" content="Öğrenci kayıt ve sözleşme yönetim sistemi" />
+          <link rel="icon" href="/logo.png" type="image/png" />
+        </head>
+        <body className={inter.className}>
+          {children}
+        </body>
+      </html>
+    )
+  }
+
+  // IB Viewer sayfaları için özel layout (sidebar yok)
+  if (pathname?.startsWith("/ib-viewer")) {
+    return (
+      <html lang="tr">
+        <head>
+          <title>IB Program Görüntüleme - Okul Yönetim Sistemi</title>
+          <meta name="description" content="IB programı öğrenci faaliyet görüntüleme" />
           <link rel="icon" href="/logo.png" type="image/png" />
         </head>
         <body className={inter.className}>

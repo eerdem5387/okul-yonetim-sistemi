@@ -44,6 +44,7 @@ model Student {
   mealContracts      MealContract[]
   serviceContracts   ServiceContract[]
   bookContracts      BookContract[]
+  activities         Activity[]
 
   @@map("students")
 }
@@ -193,4 +194,72 @@ model Basvuru {
   @@index([email])
   @@index([createdAt])
   @@map("basvurular")
+}
+
+// IB Programı - Öğrenci Faaliyet Kayıtları
+enum ActivityType {
+  ETKINLIK    // Etkinlik
+  GEZI        // Gezi
+  PROJE       // Proje
+  SINAV       // Sınav
+  YARISMA     // Yarışma
+  SEMINER     // Seminer
+  WORKSHOP    // Workshop
+  SPORT       // Spor
+  SANAT       // Sanat
+  SOSYAL      // Sosyal Sorumluluk
+  DIL         // Dil Faaliyeti
+  BILIM       // Bilim
+  DEGER       // Değerler Eğitimi
+  DIGER       // Diğer
+}
+
+model Activity {
+  id            String       @id @default(cuid())
+  studentId     String
+  type          ActivityType
+  title         String       // Faaliyet başlığı
+  description   String?      // Detaylı açıklama
+  activityDate  DateTime     // Faaliyet tarihi (IMMUTABLE - değiştirilemez)
+  location      String?      // Konum
+  organizer     String?      // Organizatör/Koordinatör
+  duration      Int?         // Süre (dakika)
+  participants  Int?         // Katılımcı sayısı
+  outcome       String?      // Sonuç/Kazanım
+  evidence      String?      // Kanıt (dosya yolu, link vb.)
+  isVerified    Boolean      @default(false) // Doğrulandı mı?
+  verifiedBy    String?      // Doğrulayan kişi
+  verifiedAt    DateTime?    // Doğrulama tarihi
+  notes         String?      // Notlar
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  // Tarih değişikliği koruması için - activityDate asla güncellenemez
+  createdBy     String?      // Oluşturan kullanıcı
+
+  // Relations
+  student       Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([activityDate])
+  @@index([type])
+  @@index([isVerified])
+  @@map("activities")
+}
+
+// IB Programı - Dışarıdan Görüntüleme Yetkisi
+model IBViewer {
+  id            String   @id @default(cuid())
+  username      String   @unique // Özel kullanıcı adı
+  password      String   // Hash'lenmiş şifre (bcrypt)
+  fullName      String   // IB Personeli adı
+  email         String?  // İletişim email
+  organization  String?  // Organizasyon
+  isActive      Boolean  @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([username])
+  @@index([isActive])
+  @@map("ib_viewers")
 }
