@@ -23,7 +23,6 @@ export default function LoginPage() {
 
     try {
       let response: Response
-      let data: any
 
       if (loginType === "student_affairs") {
         // Öğrenci İşleri login
@@ -34,7 +33,7 @@ export default function LoginPage() {
         })
 
         if (response.ok) {
-          data = await response.json()
+          const data: { token?: string } = await response.json()
           localStorage.setItem("auth_role", "student_affairs")
           localStorage.setItem("auth_token", data.token || "authenticated")
           router.push("/")
@@ -50,7 +49,7 @@ export default function LoginPage() {
         })
 
         if (response.ok) {
-          data = await response.json()
+          const data: { token: string; viewer: { id: string; fullName: string } } = await response.json()
           localStorage.setItem("ib_viewer_token", data.token)
           localStorage.setItem("ib_viewer_id", data.viewer.id)
           localStorage.setItem("ib_viewer_name", data.viewer.fullName)
@@ -61,7 +60,7 @@ export default function LoginPage() {
       }
 
       // Hata durumu
-      const errorData = await response.json()
+      const errorData: { error?: string } = await response.json()
       setError(errorData.error || "Kullanıcı adı veya şifre hatalı!")
     } catch (error) {
       console.error("Login error:", error)
