@@ -68,7 +68,21 @@ export async function PUT(
     }
 
     // activityDate asla güncellenemez - body'den gelen activityDate'ı yok say
-    const updateData: any = {
+    const updateData: {
+      type: string
+      title: string
+      description: string | null
+      location: string | null
+      organizer: string | null
+      duration: number | null
+      participants: number | null
+      outcome: string | null
+      evidence: string
+      notes: string | null
+      isVerified?: boolean
+      verifiedBy?: string | null
+      verifiedAt?: Date | null
+    } = {
       type,
       title,
       description,

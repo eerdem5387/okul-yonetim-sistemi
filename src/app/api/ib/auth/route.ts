@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
     const token = `ib_viewer_${viewer.id}_${Date.now()}`
 
     // Şifreyi döndürme
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...safeViewer } = viewer
 
     return NextResponse.json({

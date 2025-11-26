@@ -12,7 +12,14 @@ export async function PUT(
     const body = await request.json()
     const { username, password, fullName, email, organization, isActive } = body
 
-    const updateData: any = {
+    const updateData: {
+      fullName: string
+      email: string | null
+      organization: string | null
+      isActive: boolean
+      username?: string
+      password?: string
+    } = {
       fullName,
       email,
       organization,
@@ -46,6 +53,7 @@ export async function PUT(
     })
 
     // Şifreyi döndürme
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...safeViewer } = viewer
 
     return NextResponse.json(safeViewer)

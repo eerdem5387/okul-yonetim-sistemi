@@ -15,11 +15,9 @@ import {
   CheckCircle,
   XCircle,
   Award,
-  Users,
   BarChart3,
   FileText,
   Settings,
-  Eye,
   X,
   Save,
   Clock,
@@ -185,7 +183,20 @@ export default function ActivitiesPage() {
       const url = editingActivity ? `/api/activities/${editingActivity.id}` : "/api/activities"
       const method = editingActivity ? "PUT" : "POST"
 
-      const payload: any = {
+      const payload: {
+        studentId: string
+        type: ActivityType
+        title: string
+        description: string
+        activityDate?: string
+        location: string
+        organizer: string
+        duration: number | null
+        participants: number | null
+        outcome: string
+        evidence: string
+        notes: string
+      } = {
         ...formData,
         duration: formData.duration ? parseInt(formData.duration) : null,
         participants: formData.participants ? parseInt(formData.participants) : null,
@@ -863,11 +874,23 @@ export default function ActivitiesPage() {
   )
 }
 
+interface IBViewer {
+  id: string
+  username: string
+  fullName: string
+  email: string | null
+  organization: string | null
+  isActive: boolean
+  lastLoginAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 // IB Viewer Management Component
 function IBViewerManagementModal({ onClose }: { onClose: () => void }) {
-  const [viewers, setViewers] = useState<any[]>([])
+  const [viewers, setViewers] = useState<IBViewer[]>([])
   const [showForm, setShowForm] = useState(false)
-  const [editingViewer, setEditingViewer] = useState<any | null>(null)
+  const [editingViewer, setEditingViewer] = useState<IBViewer | null>(null)
   const [formData, setFormData] = useState({
     username: "",
     password: "",

@@ -18,7 +18,6 @@ import {
   CheckCircle,
   MapPin,
   Clock,
-  X,
 } from "lucide-react"
 
 type ActivityType =

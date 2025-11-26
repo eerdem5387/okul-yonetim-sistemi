@@ -13,6 +13,7 @@ export async function GET() {
 
     // Şifreleri döndürme
     const safeViewers = viewers.map((viewer) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password, ...rest } = viewer
       return rest
     })
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Şifreyi döndürme
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...safeViewer } = viewer
 
     return NextResponse.json(safeViewer)
