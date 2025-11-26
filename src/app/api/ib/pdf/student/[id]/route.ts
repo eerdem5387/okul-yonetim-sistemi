@@ -57,7 +57,7 @@ export async function GET(
         birthDate: student.birthDate.toISOString(),
       },
       activities: activities.map((activity) => ({
-        type: activity.type,
+        type: activity.type as string,
         title: activity.title,
         description: activity.description,
         activityDate: activity.activityDate.toISOString(),
@@ -66,7 +66,7 @@ export async function GET(
         duration: activity.duration,
         participants: activity.participants,
         outcome: activity.outcome,
-        evidence: activity.evidence,
+        evidence: activity.evidence || "",
         verifiedAt: activity.verifiedAt?.toISOString() || null,
       })),
       language,
