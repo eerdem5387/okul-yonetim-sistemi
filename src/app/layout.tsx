@@ -68,7 +68,8 @@ export default function RootLayout({
         <head>
           <title>Okul Yönetim Sistemi - Giriş</title>
           <meta name="description" content="Öğrenci kayıt ve sözleşme yönetim sistemi" />
-          <link rel="icon" href="/logo.png" type="image/png" />
+          <link rel="icon" href="/logo.png?v=2" type="image/png" />
+          <link rel="apple-touch-icon" href="/logo.png?v=2" />
         </head>
         <body className={inter.className}>
           {children}
@@ -84,7 +85,8 @@ export default function RootLayout({
         <head>
           <title>IB Program Görüntüleme - Okul Yönetim Sistemi</title>
           <meta name="description" content="IB programı öğrenci faaliyet görüntüleme" />
-          <link rel="icon" href="/logo.png" type="image/png" />
+          <link rel="icon" href="/logo.png?v=2" type="image/png" />
+          <link rel="apple-touch-icon" href="/logo.png?v=2" />
         </head>
         <body className={inter.className}>
           {children}
@@ -100,7 +102,8 @@ export default function RootLayout({
         <head>
           <title>Veli Paneli - Okul Yönetim Sistemi</title>
           <meta name="description" content="Veli öğrenci ve kulüp seçim paneli" />
-          <link rel="icon" href="/logo.png" type="image/png" />
+          <link rel="icon" href="/logo.png?v=2" type="image/png" />
+          <link rel="apple-touch-icon" href="/logo.png?v=2" />
         </head>
         <body className={inter.className}>
           <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -134,7 +137,8 @@ export default function RootLayout({
         <head>
           <title>Okul Yönetim Sistemi</title>
           <meta name="description" content="Öğrenci kayıt ve sözleşme yönetim sistemi" />
-          <link rel="icon" href="/logo.png" type="image/png" />
+          <link rel="icon" href="/logo.png?v=2" type="image/png" />
+          <link rel="apple-touch-icon" href="/logo.png?v=2" />
         </head>
         <body className={inter.className}>
           <div className="flex h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { ActivityType, Prisma } from "@prisma/client"
 
 // GET - Tek faaliyet detayı
 export async function GET(
@@ -68,38 +69,24 @@ export async function PUT(
     }
 
     // activityDate asla güncellenemez - body'den gelen activityDate'ı yok say
-    const updateData: {
-      type: string
-      title: string
-      description: string | null
-      location: string | null
-      organizer: string | null
-      duration: number | null
-      participants: number | null
-      outcome: string | null
-      evidence: string
-      notes: string | null
-      isVerified?: boolean
-      verifiedBy?: string | null
-      verifiedAt?: Date | null
-    } = {
-      type,
+    const updateData: Prisma.ActivityUpdateInput = {
+      type: type as ActivityType,
       title,
-      description,
-      location,
-      organizer,
+      description: description ?? null,
+      location: location ?? null,
+      organizer: organizer ?? null,
       duration: duration ? parseInt(duration) : null,
       participants: participants ? parseInt(participants) : null,
-      outcome,
+      outcome: outcome ?? null,
       evidence,
-      notes,
+      notes: notes ?? null,
     }
 
     // Doğrulama bilgileri
     if (isVerified !== undefined) {
       updateData.isVerified = isVerified
       if (isVerified) {
-        updateData.verifiedBy = verifiedBy
+        updateData.verifiedBy = verifiedBy ?? null
         updateData.verifiedAt = verifiedAt ? new Date(verifiedAt) : new Date()
       } else {
         updateData.verifiedBy = null
