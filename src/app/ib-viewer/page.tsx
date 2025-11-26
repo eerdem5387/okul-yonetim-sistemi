@@ -20,6 +20,8 @@ import {
   Clock,
   Globe,
   FileDown,
+  X,
+  Eye,
 } from "lucide-react"
 
 type ActivityType =
@@ -101,6 +103,11 @@ const translations = {
     language: "Dil",
     turkish: "Türkçe",
     english: "English",
+    date: "Tarih",
+    description: "Açıklama",
+    location: "Konum",
+    duration: "Süre",
+    participants: "Katılımcı Sayısı",
   },
   en: {
     title: "IB Program Viewer",
@@ -135,6 +142,11 @@ const translations = {
     language: "Language",
     turkish: "Türkçe",
     english: "English",
+    date: "Date",
+    description: "Description",
+    location: "Location",
+    duration: "Duration",
+    participants: "Number of Participants",
   },
 }
 
@@ -167,6 +179,7 @@ export default function IBViewerPage() {
   const [viewerName, setViewerName] = useState("")
   const [language, setLanguage] = useState<Language>("tr")
   const [downloadingPDF, setDownloadingPDF] = useState<string | null>(null)
+  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null)
 
   const t = translations[language]
 
@@ -229,7 +242,9 @@ export default function IBViewerPage() {
     localStorage.removeItem("ib_viewer_token")
     localStorage.removeItem("ib_viewer_id")
     localStorage.removeItem("ib_viewer_name")
-    router.push("/ib-viewer/login")
+    localStorage.removeItem("ib_viewer_language")
+    router.push("/login")
+    router.refresh()
   }
 
   const handleLanguageChange = (newLanguage: Language) => {
@@ -575,7 +590,11 @@ export default function IBViewerPage() {
             ) : filteredActivities.length > 0 ? (
               <div className="space-y-4">
                 {filteredActivities.map((activity) => (
-                  <Card key={activity.id} className="card-soft border-0">
+                  <Card 
+                    key={activity.id} 
+                    className="card-soft border-0 cursor-pointer hover:shadow-md transition-shadow"
+                    onClick={() => setSelectedActivity(activity)}
+                  >
                     <CardContent className="p-5">
                       <div className="space-y-4">
                         <div className="flex items-start justify-between">
@@ -599,22 +618,25 @@ export default function IBViewerPage() {
                                 <span className="text-gray-400">•</span>
                                 <span>{activity.student.grade}</span>
                                 <Button
-                                  variant="ghost"
+                                  variant="outline"
                                   size="sm"
-                                  className="ml-2 h-6 px-2 text-xs"
-                                  onClick={() =>
+                                  className="ml-2 h-8 px-3 text-xs"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
                                     handleDownloadStudentPDF(
                                       activity.studentId,
                                       `${activity.student.firstName} ${activity.student.lastName}`
                                     )
-                                  }
+                                  }}
                                   disabled={downloadingPDF === activity.studentId}
+                                  title={t.downloadPDF}
                                 >
                                   {downloadingPDF === activity.studentId ? (
-                                    <FileDown className="h-3 w-3 animate-spin" />
+                                    <FileDown className="h-4 w-4 animate-spin mr-1" />
                                   ) : (
-                                    <FileDown className="h-3 w-3" />
+                                    <FileDown className="h-4 w-4 mr-1" />
                                   )}
+                                  {t.downloadPDF}
                                 </Button>
                               </div>
                               <div className="flex items-center gap-2">
@@ -695,6 +717,232 @@ export default function IBViewerPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Activity Detail Modal */}
+        {selectedActivity && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <Card className="w-full max-w-3xl max-h-[90vh] overflow-y-auto border-0 shadow-2xl">
+              <CardHeader className="flex items-center justify-between border-b">
+                <CardTitle className="flex items-center gap-2">
+                  <Eye className="h-5 w-5 text-blue-600" />
+                  {language === "en" ? "Activity Details" : "Faaliyet Detayları"}
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedActivity(null)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </CardHeader>
+              <CardContent className="p-6 space-y-6">
+                {/* Activity Header */}
+                <div className="flex items-start justify-between pb-4 border-b">
+                  <div className="flex-1">
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">{selectedActivity.title}</h3>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="px-3 py-1 text-sm font-semibold rounded-full bg-blue-100 text-blue-700">
+                        {activityTypeLabels[selectedActivity.type][language]}
+                      </span>
+                      <span className="px-3 py-1 text-sm font-semibold rounded-full bg-emerald-100 text-emerald-700 flex items-center gap-1">
+                        <CheckCircle className="h-3 w-3" />
+                        {t.verified}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Student Info */}
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <Label className="text-xs uppercase tracking-wide text-gray-500 mb-2 block">
+                      {t.student}
+                    </Label>
+                    <p className="text-base font-semibold text-gray-900">
+                      {selectedActivity.student.firstName} {selectedActivity.student.lastName}
+                    </p>
+                    <p className="text-sm text-gray-600">{selectedActivity.student.grade}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs uppercase tracking-wide text-gray-500 mb-2 block">
+                      {t.date}
+                    </Label>
+                    <p className="text-base text-gray-900">{formatDate(selectedActivity.activityDate)}</p>
+                  </div>
+                </div>
+
+                {/* Activity Details Grid */}
+                <div className="grid gap-4 md:grid-cols-2">
+                  {selectedActivity.location && (
+                    <div>
+                      <Label className="text-xs uppercase tracking-wide text-gray-500 mb-2 block">
+                        {t.location}
+                      </Label>
+                      <p className="text-sm text-gray-900 flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        {selectedActivity.location}
+                      </p>
+                    </div>
+                  )}
+                  {selectedActivity.organizer && (
+                    <div>
+                      <Label className="text-xs uppercase tracking-wide text-gray-500 mb-2 block">
+                        {t.organizer}
+                      </Label>
+                      <p className="text-sm text-gray-900 flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        {selectedActivity.organizer}
+                      </p>
+                    </div>
+                  )}
+                  {selectedActivity.duration && (
+                    <div>
+                      <Label className="text-xs uppercase tracking-wide text-gray-500 mb-2 block">
+                        {t.duration}
+                      </Label>
+                      <p className="text-sm text-gray-900 flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        {selectedActivity.duration} {t.minutes}
+                      </p>
+                    </div>
+                  )}
+                  {selectedActivity.participants && (
+                    <div>
+                      <Label className="text-xs uppercase tracking-wide text-gray-500 mb-2 block">
+                        {t.participants}
+                      </Label>
+                      <p className="text-sm text-gray-900">{selectedActivity.participants}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Description */}
+                {selectedActivity.description && (
+                  <div>
+                    <Label className="text-xs uppercase tracking-wide text-gray-500 mb-2 block">
+                      {t.description}
+                    </Label>
+                    <p className="text-sm text-gray-700 bg-gray-50 p-4 rounded-lg">
+                      {selectedActivity.description}
+                    </p>
+                  </div>
+                )}
+
+                {/* Outcome */}
+                {selectedActivity.outcome && (
+                  <div>
+                    <Label className="text-xs uppercase tracking-wide text-gray-500 mb-2 block">
+                      {t.outcome}
+                    </Label>
+                    <p className="text-sm text-gray-700 bg-emerald-50 p-4 rounded-lg border-l-4 border-emerald-500">
+                      {selectedActivity.outcome}
+                    </p>
+                  </div>
+                )}
+
+                {/* Evidence */}
+                {selectedActivity.evidence && (
+                  <div>
+                    <Label className="text-xs uppercase tracking-wide text-gray-500 mb-2 block">
+                      {t.evidence}
+                    </Label>
+                    <div className="space-y-3">
+                      {(() => {
+                        const evidenceUrl = selectedActivity.evidence.trim()
+                        const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
+                        const isImage = imageExtensions.some(ext => evidenceUrl.toLowerCase().includes(ext))
+                        
+                        return (
+                          <>
+                            {isImage ? (
+                              <div className="space-y-2">
+                                <img 
+                                  src={evidenceUrl} 
+                                  alt="Evidence" 
+                                  className="max-w-full h-auto rounded-lg border border-gray-200 shadow-sm"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = 'none'
+                                  }}
+                                />
+                                <a
+                                  href={evidenceUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sm text-blue-600 hover:underline break-all block"
+                                >
+                                  {evidenceUrl}
+                                </a>
+                              </div>
+                            ) : (
+                              <a
+                                href={evidenceUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-blue-600 hover:underline break-all block bg-gray-50 p-3 rounded-lg"
+                              >
+                                {evidenceUrl}
+                              </a>
+                            )}
+                          </>
+                        )
+                      })()}
+                    </div>
+                  </div>
+                )}
+
+                {/* Notes */}
+                {selectedActivity.notes && (
+                  <div>
+                    <Label className="text-xs uppercase tracking-wide text-gray-500 mb-2 block">
+                      {language === "en" ? "Notes" : "Notlar"}
+                    </Label>
+                    <p className="text-sm text-gray-700 bg-yellow-50 p-4 rounded-lg border-l-4 border-yellow-500">
+                      {selectedActivity.notes}
+                    </p>
+                  </div>
+                )}
+
+                {/* Verification Info */}
+                {selectedActivity.verifiedAt && (
+                  <div className="pt-4 border-t">
+                    <p className="text-sm text-gray-600">
+                      <span className="font-semibold">{t.verifiedAt}:</span> {formatDate(selectedActivity.verifiedAt)}
+                      {selectedActivity.verifiedBy && (
+                        <span className="ml-2">• {selectedActivity.verifiedBy}</span>
+                      )}
+                    </p>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex gap-3 pt-4 border-t">
+                  <Button
+                    variant="default"
+                    className="flex-1"
+                    onClick={() =>
+                      handleDownloadStudentPDF(
+                        selectedActivity.studentId,
+                        `${selectedActivity.student.firstName} ${selectedActivity.student.lastName}`
+                      )
+                    }
+                    disabled={downloadingPDF === selectedActivity.studentId}
+                  >
+                    <FileDown className="h-4 w-4 mr-2" />
+                    {downloadingPDF === selectedActivity.studentId
+                      ? (language === "en" ? "Generating..." : "Oluşturuluyor...")
+                      : t.downloadStudentPDF}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedActivity(null)}
+                  >
+                    {language === "en" ? "Close" : "Kapat"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   )

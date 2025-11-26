@@ -1160,6 +1160,7 @@ export function generateIBActivityReportHTML(data: {
     participants: number | null
     outcome: string | null
     evidence: string
+    notes: string | null
     verifiedAt: string | null
   }>
   language: 'tr' | 'en'
@@ -1189,6 +1190,7 @@ export function generateIBActivityReportHTML(data: {
       reportDate: 'Rapor Tarihi',
       minutes: 'dakika',
       verified: 'Doğrulanmış',
+      notes: 'Notlar',
     },
     en: {
       title: 'IB PROGRAM STUDENT ACTIVITY REPORT',
@@ -1211,6 +1213,7 @@ export function generateIBActivityReportHTML(data: {
       reportDate: 'Report Date',
       minutes: 'minutes',
       verified: 'Verified',
+      notes: 'Notes',
     }
   }
 
@@ -1296,8 +1299,28 @@ export function generateIBActivityReportHTML(data: {
         
         ${activity.evidence ? `
         <div style="margin-top: 10px; font-size: 11px;">
-          <span style="color: #666; font-weight: 600;">${t.evidence}:</span>
-          <span style="color: #1976d2; word-break: break-all;">${escapeHTML(activity.evidence)}</span>
+          <div style="color: #666; font-weight: 600; margin-bottom: 5px;">${t.evidence}:</div>
+          ${(() => {
+            const evidenceUrl = activity.evidence.trim()
+            const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
+            const isImage = imageExtensions.some(ext => evidenceUrl.toLowerCase().includes(ext))
+            
+            if (isImage) {
+              return `<div style="margin-top: 5px;">
+                <img src="${escapeHTML(evidenceUrl)}" alt="Evidence" style="max-width: 100%; max-height: 300px; border: 1px solid #e0e0e0; border-radius: 4px; display: block; margin: 5px 0;" />
+                <a href="${escapeHTML(evidenceUrl)}" target="_blank" style="color: #1976d2; text-decoration: underline; font-size: 10px; display: inline-block; margin-top: 5px;">${escapeHTML(evidenceUrl)}</a>
+              </div>`
+            } else {
+              return `<a href="${escapeHTML(evidenceUrl)}" target="_blank" style="color: #1976d2; word-break: break-all; text-decoration: underline;">${escapeHTML(evidenceUrl)}</a>`
+            }
+          })()}
+        </div>
+        ` : ''}
+        
+        ${activity.notes ? `
+        <div style="margin-top: 10px; padding: 8px; background-color: #fff3cd; border-radius: 3px; border-left: 3px solid #ffc107;">
+          <div style="font-size: 10px; color: #666; font-weight: 600; margin-bottom: 5px;">${t.notes}:</div>
+          <div style="font-size: 11px; color: #333; line-height: 1.5;">${escapeHTML(activity.notes)}</div>
         </div>
         ` : ''}
         
@@ -1378,8 +1401,9 @@ export function generateIBActivityReportHTML(data: {
           padding-top: 15px;
           border-top: 1px solid #e0e0e0;
           text-align: right;
-          font-size: 10px;
-          color: #666;
+          font-size: 14px;
+          font-weight: 600;
+          color: #333;
         }
       </style>
     </head>

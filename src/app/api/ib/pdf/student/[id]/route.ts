@@ -71,6 +71,7 @@ export async function GET(
         participants: activity.participants,
         outcome: activity.outcome,
         evidence: activity.evidence || "",
+        notes: activity.notes,
         verifiedAt: activity.verifiedAt?.toISOString() || null,
       })),
       language,

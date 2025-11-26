@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { LogIn, Award, Lock } from "lucide-react"
+import { LogIn, Award, Lock, ArrowLeft } from "lucide-react"
 
 export default function IBViewerLoginPage() {
   const router = useRouter()
@@ -103,7 +103,16 @@ export default function IBViewerLoginPage() {
               {loading ? "Giriş yapılıyor..." : "Giriş Yap"}
             </Button>
           </form>
-          <div className="mt-6 pt-6 border-t border-gray-200">
+          <div className="mt-6 pt-6 border-t border-gray-200 space-y-4">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => router.push("/login")}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Ana Giriş Sayfasına Dön
+            </Button>
             <p className="text-xs text-center text-gray-500">
               Bu sayfa sadece yetkili IB personeli için tasarlanmıştır.
               <br />

@@ -45,7 +45,8 @@ export default function RootLayout({
       // IB Viewer sayfasına sadece token ile erişilebilir
       const ibToken = localStorage.getItem("ib_viewer_token")
       if (!ibToken) {
-        router.push("/ib-viewer/login")
+        // Token yoksa ana login sayfasına yönlendir
+        router.push("/login")
         return
       }
     }
