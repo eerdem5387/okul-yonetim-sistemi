@@ -284,6 +284,39 @@ export default function IBViewerPage() {
     }
   }
 
+  const handleDownloadActivityPDF = async (activityId: string, activityTitle: string, studentName: string) => {
+    try {
+      setDownloadingPDF(activityId)
+      const token = localStorage.getItem("ib_viewer_token")
+      const url = `/api/ib/pdf/activity/${activityId}?lang=${language}&token=${token}`
+      
+      const response = await fetch(url)
+      if (!response.ok) {
+        throw new Error("Failed to download PDF")
+      }
+
+      const blob = await response.blob()
+      const downloadUrl = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = downloadUrl
+      // Sanitize file name
+      const sanitizedTitle = activityTitle.replace(/[^a-zA-Z0-9-_]/g, "-").replace(/\s+/g, "-")
+      const sanitizedName = studentName.replace(/[^a-zA-Z0-9-_]/g, "-").replace(/\s+/g, "-")
+      link.download = language === "en"
+        ? `ib-activity-${sanitizedTitle}-${sanitizedName}.pdf`
+        : `ib-faaliyet-${sanitizedTitle}-${sanitizedName}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(downloadUrl)
+    } catch (error) {
+      console.error("Error downloading activity PDF:", error)
+      alert(language === "en" ? "Failed to download PDF" : "PDF indirme başarısız")
+    } finally {
+      setDownloadingPDF(null)
+    }
+  }
+
   const filteredActivities = useMemo(() => {
     return activities.filter((activity) => {
       if (searchTerm) {
@@ -623,15 +656,16 @@ export default function IBViewerPage() {
                                   className="ml-2 h-8 px-3 text-xs"
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    handleDownloadStudentPDF(
-                                      activity.studentId,
+                                    handleDownloadActivityPDF(
+                                      activity.id,
+                                      activity.title,
                                       `${activity.student.firstName} ${activity.student.lastName}`
                                     )
                                   }}
-                                  disabled={downloadingPDF === activity.studentId}
-                                  title={t.downloadPDF}
+                                  disabled={downloadingPDF === activity.id}
+                                  title={language === "en" ? "Download this activity PDF" : "Bu faaliyeti PDF olarak indir"}
                                 >
-                                  {downloadingPDF === activity.studentId ? (
+                                  {downloadingPDF === activity.id ? (
                                     <FileDown className="h-4 w-4 animate-spin mr-1" />
                                   ) : (
                                     <FileDown className="h-4 w-4 mr-1" />
@@ -920,17 +954,18 @@ export default function IBViewerPage() {
                     variant="default"
                     className="flex-1"
                     onClick={() =>
-                      handleDownloadStudentPDF(
-                        selectedActivity.studentId,
+                      handleDownloadActivityPDF(
+                        selectedActivity.id,
+                        selectedActivity.title,
                         `${selectedActivity.student.firstName} ${selectedActivity.student.lastName}`
                       )
                     }
-                    disabled={downloadingPDF === selectedActivity.studentId}
+                    disabled={downloadingPDF === selectedActivity.id}
                   >
                     <FileDown className="h-4 w-4 mr-2" />
-                    {downloadingPDF === selectedActivity.studentId
+                    {downloadingPDF === selectedActivity.id
                       ? (language === "en" ? "Generating..." : "Oluşturuluyor...")
-                      : t.downloadStudentPDF}
+                      : t.downloadPDF}
                   </Button>
                   <Button
                     variant="outline"
