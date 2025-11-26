@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { LogIn, User } from "lucide-react"
+import { LogIn, User, Award } from "lucide-react"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -14,29 +14,55 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [loginType, setLoginType] = useState<"student_affairs" | "ib_viewer">("student_affairs")
 
-  const handleStudentAffairsLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     setLoading(true)
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password, role: "student_affairs" })
-      })
+      let response: Response
+      let data: any
 
-      if (response.ok) {
-        const data = await response.json()
-        localStorage.setItem("auth_role", "student_affairs")
-        localStorage.setItem("auth_token", data.token || "authenticated")
-        router.push("/")
-        router.refresh()
+      if (loginType === "student_affairs") {
+        // Öğrenci İşleri login
+        response = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password, role: "student_affairs" })
+        })
+
+        if (response.ok) {
+          data = await response.json()
+          localStorage.setItem("auth_role", "student_affairs")
+          localStorage.setItem("auth_token", data.token || "authenticated")
+          router.push("/")
+          router.refresh()
+          return
+        }
       } else {
-        const errorData = await response.json()
-        setError(errorData.error || "Kullanıcı adı veya şifre hatalı!")
+        // IB Viewer login
+        response = await fetch("/api/ib/auth", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password })
+        })
+
+        if (response.ok) {
+          data = await response.json()
+          localStorage.setItem("ib_viewer_token", data.token)
+          localStorage.setItem("ib_viewer_id", data.viewer.id)
+          localStorage.setItem("ib_viewer_name", data.viewer.fullName)
+          router.push("/ib-viewer")
+          router.refresh()
+          return
+        }
       }
+
+      // Hata durumu
+      const errorData = await response.json()
+      setError(errorData.error || "Kullanıcı adı veya şifre hatalı!")
     } catch (error) {
       console.error("Login error:", error)
       setError("Giriş yapılırken bir hata oluştu!")
@@ -64,8 +90,40 @@ export default function LoginPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-6 pb-6 sm:pb-8">
-          {/* Öğrenci İşleri Girişi */}
-          <form onSubmit={handleStudentAffairsLogin} className="space-y-4">
+          {/* Login Type Selection */}
+          <div className="flex gap-2 mb-4">
+            <Button
+              type="button"
+              variant={loginType === "student_affairs" ? "default" : "outline"}
+              className="flex-1"
+              onClick={() => {
+                setLoginType("student_affairs")
+                setError("")
+                setUsername("")
+                setPassword("")
+              }}
+            >
+              <User className="h-4 w-4 mr-2" />
+              Öğrenci İşleri
+            </Button>
+            <Button
+              type="button"
+              variant={loginType === "ib_viewer" ? "default" : "outline"}
+              className="flex-1"
+              onClick={() => {
+                setLoginType("ib_viewer")
+                setError("")
+                setUsername("")
+                setPassword("")
+              }}
+            >
+              <Award className="h-4 w-4 mr-2" />
+              IB Viewer
+            </Button>
+          </div>
+
+          {/* Login Form */}
+          <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="username">Kullanıcı Adı</Label>
               <Input
@@ -96,7 +154,11 @@ export default function LoginPage() {
             )}
             <Button type="submit" className="w-full h-11 sm:h-12 text-sm sm:text-base" disabled={loading}>
               <LogIn className="h-4 w-4 mr-2" />
-              {loading ? "Giriş yapılıyor..." : "Öğrenci İşleri Olarak Giriş Yap"}
+              {loading
+                ? "Giriş yapılıyor..."
+                : loginType === "student_affairs"
+                  ? "Öğrenci İşleri Olarak Giriş Yap"
+                  : "IB Viewer Olarak Giriş Yap"}
             </Button>
           </form>
 

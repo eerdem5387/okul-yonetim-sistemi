@@ -18,6 +18,8 @@ import {
   CheckCircle,
   MapPin,
   Clock,
+  Globe,
+  FileDown,
 } from "lucide-react"
 
 type ActivityType =
@@ -63,21 +65,94 @@ interface Activity {
   }
 }
 
-const activityTypeLabels: Record<ActivityType, string> = {
-  ETKINLIK: "Etkinlik",
-  GEZI: "Gezi",
-  PROJE: "Proje",
-  SINAV: "Sınav",
-  YARISMA: "Yarışma",
-  SEMINER: "Seminer",
-  WORKSHOP: "Workshop",
-  SPORT: "Spor",
-  SANAT: "Sanat",
-  SOSYAL: "Sosyal Sorumluluk",
-  DIL: "Dil Faaliyeti",
-  BILIM: "Bilim",
-  DEGER: "Değerler Eğitimi",
-  DIGER: "Diğer",
+type Language = "tr" | "en"
+
+const translations = {
+  tr: {
+    title: "IB Program Görüntüleme",
+    welcome: "Hoş geldiniz",
+    logout: "Çıkış Yap",
+    totalActivities: "Toplam Faaliyet",
+    uniqueStudents: "Benzersiz Öğrenci",
+    verifiedRecords: "Doğrulanmış Kayıtlar",
+    filtering: "Filtreleme",
+    filterDescription: "Faaliyetleri öğrenci, tip ve tarihe göre filtreleyin",
+    downloadCSV: "CSV İndir",
+    student: "Öğrenci",
+    allStudents: "Tüm öğrenciler",
+    activityType: "Faaliyet Tipi",
+    allTypes: "Tüm tipler",
+    startDate: "Başlangıç Tarihi",
+    endDate: "Bitiş Tarihi",
+    search: "Ara",
+    searchPlaceholder: "Ara...",
+    verifiedActivities: "Doğrulanmış Faaliyetler",
+    verifiedActivitiesDesc: "Tüm faaliyetler IB programı için doğrulanmış ve onaylanmış kayıtlardır.",
+    loading: "Yükleniyor...",
+    noActivities: "Filtrelere uygun faaliyet bulunamadı",
+    verified: "Doğrulanmış",
+    organizer: "Organizatör",
+    minutes: "dakika",
+    outcome: "Sonuç/Kazanım",
+    evidence: "Kanıt",
+    verifiedAt: "Doğrulandı",
+    downloadPDF: "PDF İndir",
+    downloadStudentPDF: "Öğrenci Raporunu İndir",
+    language: "Dil",
+    turkish: "Türkçe",
+    english: "English",
+  },
+  en: {
+    title: "IB Program Viewer",
+    welcome: "Welcome",
+    logout: "Log Out",
+    totalActivities: "Total Activities",
+    uniqueStudents: "Unique Students",
+    verifiedRecords: "Verified Records",
+    filtering: "Filtering",
+    filterDescription: "Filter activities by student, type, and date",
+    downloadCSV: "Download CSV",
+    student: "Student",
+    allStudents: "All students",
+    activityType: "Activity Type",
+    allTypes: "All types",
+    startDate: "Start Date",
+    endDate: "End Date",
+    search: "Search",
+    searchPlaceholder: "Search...",
+    verifiedActivities: "Verified Activities",
+    verifiedActivitiesDesc: "All activities are verified and approved records for the IB program.",
+    loading: "Loading...",
+    noActivities: "No activities found matching filters",
+    verified: "Verified",
+    organizer: "Organizer",
+    minutes: "minutes",
+    outcome: "Outcome/Achievement",
+    evidence: "Evidence",
+    verifiedAt: "Verified at",
+    downloadPDF: "Download PDF",
+    downloadStudentPDF: "Download Student Report",
+    language: "Language",
+    turkish: "Türkçe",
+    english: "English",
+  },
+}
+
+const activityTypeLabels: Record<ActivityType, { tr: string; en: string }> = {
+  ETKINLIK: { tr: "Etkinlik", en: "Event" },
+  GEZI: { tr: "Gezi", en: "Trip" },
+  PROJE: { tr: "Proje", en: "Project" },
+  SINAV: { tr: "Sınav", en: "Exam" },
+  YARISMA: { tr: "Yarışma", en: "Competition" },
+  SEMINER: { tr: "Seminer", en: "Seminar" },
+  WORKSHOP: { tr: "Workshop", en: "Workshop" },
+  SPORT: { tr: "Spor", en: "Sport" },
+  SANAT: { tr: "Sanat", en: "Art" },
+  SOSYAL: { tr: "Sosyal Sorumluluk", en: "Social Responsibility" },
+  DIL: { tr: "Dil Faaliyeti", en: "Language Activity" },
+  BILIM: { tr: "Bilim", en: "Science" },
+  DEGER: { tr: "Değerler Eğitimi", en: "Values Education" },
+  DIGER: { tr: "Diğer", en: "Other" },
 }
 
 export default function IBViewerPage() {
@@ -90,8 +165,18 @@ export default function IBViewerPage() {
   const [endDate, setEndDate] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
   const [viewerName, setViewerName] = useState("")
+  const [language, setLanguage] = useState<Language>("tr")
+  const [downloadingPDF, setDownloadingPDF] = useState<string | null>(null)
+
+  const t = translations[language]
 
   useEffect(() => {
+    // Load language preference from localStorage
+    const savedLanguage = localStorage.getItem("ib_viewer_language") as Language
+    if (savedLanguage === "tr" || savedLanguage === "en") {
+      setLanguage(savedLanguage)
+    }
+
     // Auth kontrolü
     const token = localStorage.getItem("ib_viewer_token")
     const name = localStorage.getItem("ib_viewer_name")
@@ -147,6 +232,41 @@ export default function IBViewerPage() {
     router.push("/ib-viewer/login")
   }
 
+  const handleLanguageChange = (newLanguage: Language) => {
+    setLanguage(newLanguage)
+    localStorage.setItem("ib_viewer_language", newLanguage)
+  }
+
+  const handleDownloadStudentPDF = async (studentId: string, studentName: string) => {
+    try {
+      setDownloadingPDF(studentId)
+      const token = localStorage.getItem("ib_viewer_token")
+      const url = `/api/ib/pdf/student/${studentId}?lang=${language}&token=${token}`
+      
+      const response = await fetch(url)
+      if (!response.ok) {
+        throw new Error("Failed to download PDF")
+      }
+
+      const blob = await response.blob()
+      const downloadUrl = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = downloadUrl
+      link.download = language === "en"
+        ? `ib-activity-report-${studentName.replace(/\s+/g, "-")}.pdf`
+        : `ib-faaliyet-raporu-${studentName.replace(/\s+/g, "-")}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(downloadUrl)
+    } catch (error) {
+      console.error("Error downloading PDF:", error)
+      alert(language === "en" ? "Failed to download PDF" : "PDF indirme başarısız")
+    } finally {
+      setDownloadingPDF(null)
+    }
+  }
+
   const filteredActivities = useMemo(() => {
     return activities.filter((activity) => {
       if (searchTerm) {
@@ -175,19 +295,29 @@ export default function IBViewerPage() {
         })
       }
     })
-    return Array.from(students.values()).sort((a, b) => a.name.localeCompare(b.name, "tr"))
-  }, [activities])
+    return Array.from(students.values()).sort((a, b) => a.name.localeCompare(b.name, language === "tr" ? "tr" : "en"))
+  }, [activities, language])
 
   const handleExport = () => {
     const csv = [
-      ["Öğrenci Adı", "Sınıf", "Faaliyet Tipi", "Başlık", "Tarih", "Konum", "Organizatör", "Sonuç", "Kanıt"].join(","),
+      [
+        language === "en" ? "Student Name" : "Öğrenci Adı",
+        language === "en" ? "Grade" : "Sınıf",
+        language === "en" ? "Activity Type" : "Faaliyet Tipi",
+        language === "en" ? "Title" : "Başlık",
+        language === "en" ? "Date" : "Tarih",
+        language === "en" ? "Location" : "Konum",
+        language === "en" ? "Organizer" : "Organizatör",
+        language === "en" ? "Outcome" : "Sonuç",
+        language === "en" ? "Evidence" : "Kanıt",
+      ].join(","),
       ...filteredActivities.map((activity) =>
         [
           `"${activity.student.firstName} ${activity.student.lastName}"`,
           activity.student.grade,
-          activityTypeLabels[activity.type],
+          activityTypeLabels[activity.type][language],
           `"${activity.title}"`,
-          new Date(activity.activityDate).toLocaleDateString("tr-TR"),
+          new Date(activity.activityDate).toLocaleDateString(language === "en" ? "en-US" : "tr-TR"),
           activity.location || "",
           activity.organizer || "",
           activity.outcome ? `"${activity.outcome}"` : "",
@@ -200,11 +330,20 @@ export default function IBViewerPage() {
     const link = document.createElement("a")
     const url = URL.createObjectURL(blob)
     link.setAttribute("href", url)
-    link.setAttribute("download", `ib-faaliyetler-${new Date().toISOString().split("T")[0]}.csv`)
+    link.setAttribute("download", `ib-activities-${new Date().toISOString().split("T")[0]}.csv`)
     link.style.visibility = "hidden"
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+  }
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString(language === "en" ? "en-US" : "tr-TR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
   }
 
   return (
@@ -218,14 +357,42 @@ export default function IBViewerPage() {
                 <Award className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">IB Program Görüntüleme</h1>
-                <p className="text-sm text-gray-600">Hoş geldiniz, {viewerName}</p>
+                <h1 className="text-2xl font-bold text-gray-900">{t.title}</h1>
+                <p className="text-sm text-gray-600">
+                  {t.welcome}, {viewerName}
+                </p>
               </div>
             </div>
-            <Button variant="outline" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Çıkış Yap
-            </Button>
+            <div className="flex items-center gap-3">
+              {/* Language Selector */}
+              <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+                <Globe className="h-4 w-4 text-gray-600" />
+                <button
+                  onClick={() => handleLanguageChange("tr")}
+                  className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                    language === "tr"
+                      ? "bg-white text-blue-600 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  TR
+                </button>
+                <button
+                  onClick={() => handleLanguageChange("en")}
+                  className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                    language === "en"
+                      ? "bg-white text-blue-600 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  EN
+                </button>
+              </div>
+              <Button variant="outline" onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-2" />
+                {t.logout}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -237,7 +404,7 @@ export default function IBViewerPage() {
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">Toplam Faaliyet</p>
+                  <p className="text-sm text-gray-500">{t.totalActivities}</p>
                   <p className="text-3xl font-bold text-gray-900 mt-1">{filteredActivities.length}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-blue-50 text-blue-600">
@@ -251,7 +418,7 @@ export default function IBViewerPage() {
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">Benzersiz Öğrenci</p>
+                  <p className="text-sm text-gray-500">{t.uniqueStudents}</p>
                   <p className="text-3xl font-bold text-gray-900 mt-1">{uniqueStudents.length}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600">
@@ -265,7 +432,7 @@ export default function IBViewerPage() {
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">Doğrulanmış Kayıtlar</p>
+                  <p className="text-sm text-gray-500">{t.verifiedRecords}</p>
                   <p className="text-3xl font-bold text-emerald-600 mt-1">
                     {filteredActivities.filter((a) => a.isVerified).length}
                   </p>
@@ -284,25 +451,27 @@ export default function IBViewerPage() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Filter className="h-5 w-5 text-blue-600" />
-                Filtreleme
+                {t.filtering}
               </CardTitle>
-              <CardDescription>Faaliyetleri öğrenci, tip ve tarihe göre filtreleyin</CardDescription>
+              <CardDescription>{t.filterDescription}</CardDescription>
             </div>
-            <Button variant="outline" size="sm" onClick={handleExport}>
-              <Download className="h-4 w-4 mr-2" />
-              CSV İndir
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleExport}>
+                <Download className="h-4 w-4 mr-2" />
+                {t.downloadCSV}
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
               <div>
-                <Label className="text-xs uppercase tracking-wide text-gray-500">Öğrenci</Label>
+                <Label className="text-xs uppercase tracking-wide text-gray-500">{t.student}</Label>
                 <select
                   value={selectedStudent}
                   onChange={(e) => setSelectedStudent(e.target.value)}
                   className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                 >
-                  <option value="">Tüm öğrenciler</option>
+                  <option value="">{t.allStudents}</option>
                   {uniqueStudents.map((student) => (
                     <option key={student.id} value={student.id}>
                       {student.name} - {student.grade}
@@ -312,23 +481,23 @@ export default function IBViewerPage() {
               </div>
 
               <div>
-                <Label className="text-xs uppercase tracking-wide text-gray-500">Faaliyet Tipi</Label>
+                <Label className="text-xs uppercase tracking-wide text-gray-500">{t.activityType}</Label>
                 <select
                   value={selectedType}
                   onChange={(e) => setSelectedType(e.target.value)}
                   className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                 >
-                  <option value="">Tüm tipler</option>
-                  {Object.entries(activityTypeLabels).map(([value, label]) => (
+                  <option value="">{t.allTypes}</option>
+                  {Object.entries(activityTypeLabels).map(([value, labels]) => (
                     <option key={value} value={value}>
-                      {label}
+                      {labels[language]}
                     </option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <Label className="text-xs uppercase tracking-wide text-gray-500">Başlangıç Tarihi</Label>
+                <Label className="text-xs uppercase tracking-wide text-gray-500">{t.startDate}</Label>
                 <Input
                   type="date"
                   value={startDate}
@@ -338,7 +507,7 @@ export default function IBViewerPage() {
               </div>
 
               <div>
-                <Label className="text-xs uppercase tracking-wide text-gray-500">Bitiş Tarihi</Label>
+                <Label className="text-xs uppercase tracking-wide text-gray-500">{t.endDate}</Label>
                 <Input
                   type="date"
                   value={endDate}
@@ -348,13 +517,13 @@ export default function IBViewerPage() {
               </div>
 
               <div>
-                <Label className="text-xs uppercase tracking-wide text-gray-500">Arama</Label>
+                <Label className="text-xs uppercase tracking-wide text-gray-500">{t.search}</Label>
                 <div className="mt-2 relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Ara..."
+                    placeholder={t.searchPlaceholder}
                     className="pl-10"
                   />
                 </div>
@@ -365,15 +534,42 @@ export default function IBViewerPage() {
 
         {/* Activities List */}
         <Card className="border-0 shadow-lg">
-          <CardHeader>
-            <CardTitle>Doğrulanmış Faaliyetler ({filteredActivities.length})</CardTitle>
-            <CardDescription>
-              Tüm faaliyetler IB programı için doğrulanmış ve onaylanmış kayıtlardır.
-            </CardDescription>
+          <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <CardTitle>
+                {t.verifiedActivities} ({filteredActivities.length})
+              </CardTitle>
+              <CardDescription>{t.verifiedActivitiesDesc}</CardDescription>
+            </div>
+            {selectedStudent && (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => {
+                  const student = uniqueStudents.find((s) => s.id === selectedStudent)
+                  if (student) {
+                    handleDownloadStudentPDF(selectedStudent, student.name)
+                  }
+                }}
+                disabled={downloadingPDF === selectedStudent}
+              >
+                {downloadingPDF === selectedStudent ? (
+                  <>
+                    <FileDown className="h-4 w-4 mr-2 animate-spin" />
+                    {language === "en" ? "Generating..." : "Oluşturuluyor..."}
+                  </>
+                ) : (
+                  <>
+                    <FileDown className="h-4 w-4 mr-2" />
+                    {t.downloadStudentPDF}
+                  </>
+                )}
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="text-center py-8 text-gray-500">Yükleniyor...</div>
+              <div className="text-center py-8 text-gray-500">{t.loading}</div>
             ) : filteredActivities.length > 0 ? (
               <div className="space-y-4">
                 {filteredActivities.map((activity) => (
@@ -385,11 +581,11 @@ export default function IBViewerPage() {
                             <div className="flex items-center gap-2 flex-wrap mb-2">
                               <h3 className="text-lg font-bold text-gray-900">{activity.title}</h3>
                               <span className="px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">
-                                {activityTypeLabels[activity.type]}
+                                {activityTypeLabels[activity.type][language]}
                               </span>
                               <span className="px-3 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-700 flex items-center gap-1">
                                 <CheckCircle className="h-3 w-3" />
-                                Doğrulanmış
+                                {t.verified}
                               </span>
                             </div>
                             <div className="space-y-1 text-sm text-gray-600">
@@ -400,14 +596,28 @@ export default function IBViewerPage() {
                                 </span>
                                 <span className="text-gray-400">•</span>
                                 <span>{activity.student.grade}</span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="ml-2 h-6 px-2 text-xs"
+                                  onClick={() =>
+                                    handleDownloadStudentPDF(
+                                      activity.studentId,
+                                      `${activity.student.firstName} ${activity.student.lastName}`
+                                    )
+                                  }
+                                  disabled={downloadingPDF === activity.studentId}
+                                >
+                                  {downloadingPDF === activity.studentId ? (
+                                    <FileDown className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <FileDown className="h-3 w-3" />
+                                  )}
+                                </Button>
                               </div>
                               <div className="flex items-center gap-2">
                                 <Calendar className="h-4 w-4" />
-                                <span>{new Date(activity.activityDate).toLocaleDateString("tr-TR", {
-                                  year: "numeric",
-                                  month: "long",
-                                  day: "numeric",
-                                })}</span>
+                                <span>{formatDate(activity.activityDate)}</span>
                               </div>
                               {activity.location && (
                                 <div className="flex items-center gap-2">
@@ -418,13 +628,17 @@ export default function IBViewerPage() {
                               {activity.organizer && (
                                 <div className="flex items-center gap-2">
                                   <User className="h-4 w-4" />
-                                  <span>Organizatör: {activity.organizer}</span>
+                                  <span>
+                                    {t.organizer}: {activity.organizer}
+                                  </span>
                                 </div>
                               )}
                               {activity.duration && (
                                 <div className="flex items-center gap-2">
                                   <Clock className="h-4 w-4" />
-                                  <span>{activity.duration} dakika</span>
+                                  <span>
+                                    {activity.duration} {t.minutes}
+                                  </span>
                                 </div>
                               )}
                             </div>
@@ -439,14 +653,14 @@ export default function IBViewerPage() {
 
                         {activity.outcome && (
                           <div className="pt-3 border-t border-gray-100">
-                            <p className="text-sm font-semibold text-gray-900 mb-1">Sonuç/Kazanım:</p>
+                            <p className="text-sm font-semibold text-gray-900 mb-1">{t.outcome}:</p>
                             <p className="text-sm text-gray-700">{activity.outcome}</p>
                           </div>
                         )}
 
                         {activity.evidence && (
                           <div className="pt-3 border-t border-gray-100">
-                            <p className="text-sm font-semibold text-gray-900 mb-1">Kanıt:</p>
+                            <p className="text-sm font-semibold text-gray-900 mb-1">{t.evidence}:</p>
                             <a
                               href={activity.evidence}
                               target="_blank"
@@ -461,7 +675,7 @@ export default function IBViewerPage() {
                         {activity.verifiedAt && (
                           <div className="pt-3 border-t border-gray-100">
                             <p className="text-xs text-gray-500">
-                              Doğrulandı: {new Date(activity.verifiedAt).toLocaleDateString("tr-TR")}
+                              {t.verifiedAt}: {formatDate(activity.verifiedAt)}
                               {activity.verifiedBy && ` • ${activity.verifiedBy}`}
                             </p>
                           </div>
@@ -474,7 +688,7 @@ export default function IBViewerPage() {
             ) : (
               <div className="text-center py-8 text-gray-500">
                 <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                <p>Filtrelere uygun faaliyet bulunamadı</p>
+                <p>{t.noActivities}</p>
               </div>
             )}
           </CardContent>
@@ -483,4 +697,3 @@ export default function IBViewerPage() {
     </div>
   )
 }
-

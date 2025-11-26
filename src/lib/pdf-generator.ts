@@ -1129,3 +1129,293 @@ function generateClubSelectionsHTML(student: { firstName: string; lastName: stri
     </div>
   `
 }
+
+// IB Activity Report HTML Generator (Türkçe/İngilizce)
+export function generateIBActivityReportHTML(data: {
+  student: {
+    firstName: string
+    lastName: string
+    grade: string
+    birthDate: string
+  }
+  activities: Array<{
+    type: string
+    title: string
+    description: string | null
+    activityDate: string
+    location: string | null
+    organizer: string | null
+    duration: number | null
+    participants: number | null
+    outcome: string | null
+    evidence: string
+    verifiedAt: string | null
+  }>
+  language: 'tr' | 'en'
+}) {
+  const { student, activities, language } = data
+  const isEnglish = language === 'en'
+
+  const translations = {
+    tr: {
+      title: 'IB PROGRAM ÖĞRENCİ FAALİYET RAPORU',
+      studentInfo: 'ÖĞRENCİ BİLGİLERİ',
+      studentName: 'Ad Soyad',
+      grade: 'Sınıf',
+      birthDate: 'Doğum Tarihi',
+      activities: 'FAALİYETLER',
+      activityType: 'Tip',
+      title: 'Başlık',
+      date: 'Tarih',
+      location: 'Konum',
+      organizer: 'Organizatör',
+      duration: 'Süre',
+      participants: 'Katılımcı Sayısı',
+      description: 'Açıklama',
+      outcome: 'Sonuç/Kazanım',
+      evidence: 'Kanıt',
+      verifiedAt: 'Doğrulanma Tarihi',
+      totalActivities: 'Toplam Faaliyet Sayısı',
+      reportDate: 'Rapor Tarihi',
+      minutes: 'dakika',
+      verified: 'Doğrulanmış',
+      noDescription: 'Açıklama yok',
+      noOutcome: 'Sonuç/Kazanım belirtilmemiş',
+      noLocation: 'Konum belirtilmemiş',
+      noOrganizer: 'Organizatör belirtilmemiş',
+    },
+    en: {
+      title: 'IB PROGRAM STUDENT ACTIVITY REPORT',
+      studentInfo: 'STUDENT INFORMATION',
+      studentName: 'Full Name',
+      grade: 'Grade',
+      birthDate: 'Date of Birth',
+      activities: 'ACTIVITIES',
+      activityType: 'Type',
+      title: 'Title',
+      date: 'Date',
+      location: 'Location',
+      organizer: 'Organizer',
+      duration: 'Duration',
+      participants: 'Number of Participants',
+      description: 'Description',
+      outcome: 'Outcome/Achievement',
+      evidence: 'Evidence',
+      verifiedAt: 'Verification Date',
+      totalActivities: 'Total Number of Activities',
+      reportDate: 'Report Date',
+      minutes: 'minutes',
+      verified: 'Verified',
+      noDescription: 'No description',
+      noOutcome: 'No outcome/achievement specified',
+      noLocation: 'No location specified',
+      noOrganizer: 'No organizer specified',
+    }
+  }
+
+  const t = translations[language]
+
+  const activityTypeLabels: Record<string, { tr: string; en: string }> = {
+    ETKINLIK: { tr: 'Etkinlik', en: 'Event' },
+    GEZI: { tr: 'Gezi', en: 'Trip' },
+    PROJE: { tr: 'Proje', en: 'Project' },
+    SINAV: { tr: 'Sınav', en: 'Exam' },
+    YARISMA: { tr: 'Yarışma', en: 'Competition' },
+    SEMINER: { tr: 'Seminer', en: 'Seminar' },
+    WORKSHOP: { tr: 'Workshop', en: 'Workshop' },
+    SPORT: { tr: 'Spor', en: 'Sport' },
+    SANAT: { tr: 'Sanat', en: 'Art' },
+    SOSYAL: { tr: 'Sosyal Sorumluluk', en: 'Social Responsibility' },
+    DIL: { tr: 'Dil Faaliyeti', en: 'Language Activity' },
+    BILIM: { tr: 'Bilim', en: 'Science' },
+    DEGER: { tr: 'Değerler Eğitimi', en: 'Values Education' },
+    DIGER: { tr: 'Diğer', en: 'Other' },
+  }
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    if (isEnglish) {
+      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    }
+    return date.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' })
+  }
+
+  const activityRows = activities.map((activity, index) => {
+    const typeLabel = activityTypeLabels[activity.type]?.[language] || activity.type
+    return `
+      <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #e0e0e0; border-radius: 5px; page-break-inside: avoid;">
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+          <div>
+            <h3 style="margin: 0; font-size: 14px; font-weight: bold; color: #1a1a1a;">${index + 1}. ${activity.title}</h3>
+            <span style="display: inline-block; margin-top: 5px; padding: 3px 8px; background-color: #e3f2fd; color: #1976d2; border-radius: 3px; font-size: 11px; font-weight: 600;">${typeLabel}</span>
+          </div>
+          <span style="font-size: 11px; color: #666;">${formatDate(activity.activityDate)}</span>
+        </div>
+        
+        <table style="width: 100%; margin-top: 10px; font-size: 11px; border-collapse: collapse;">
+          ${activity.location ? `
+          <tr>
+            <td style="width: 30%; padding: 5px 0; color: #666; font-weight: 600;">${t.location}:</td>
+            <td style="padding: 5px 0; color: #333;">${activity.location}</td>
+          </tr>
+          ` : ''}
+          ${activity.organizer ? `
+          <tr>
+            <td style="width: 30%; padding: 5px 0; color: #666; font-weight: 600;">${t.organizer}:</td>
+            <td style="padding: 5px 0; color: #333;">${activity.organizer}</td>
+          </tr>
+          ` : ''}
+          ${activity.duration ? `
+          <tr>
+            <td style="width: 30%; padding: 5px 0; color: #666; font-weight: 600;">${t.duration}:</td>
+            <td style="padding: 5px 0; color: #333;">${activity.duration} ${t.minutes}</td>
+          </tr>
+          ` : ''}
+          ${activity.participants ? `
+          <tr>
+            <td style="width: 30%; padding: 5px 0; color: #666; font-weight: 600;">${t.participants}:</td>
+            <td style="padding: 5px 0; color: #333;">${activity.participants}</td>
+          </tr>
+          ` : ''}
+        </table>
+        
+        ${activity.description ? `
+        <div style="margin-top: 10px; padding: 8px; background-color: #f5f5f5; border-radius: 3px;">
+          <div style="font-size: 10px; color: #666; font-weight: 600; margin-bottom: 5px;">${t.description}:</div>
+          <div style="font-size: 11px; color: #333; line-height: 1.5;">${activity.description}</div>
+        </div>
+        ` : ''}
+        
+        ${activity.outcome ? `
+        <div style="margin-top: 10px; padding: 8px; background-color: #e8f5e9; border-radius: 3px;">
+          <div style="font-size: 10px; color: #666; font-weight: 600; margin-bottom: 5px;">${t.outcome}:</div>
+          <div style="font-size: 11px; color: #333; line-height: 1.5;">${activity.outcome}</div>
+        </div>
+        ` : ''}
+        
+        ${activity.evidence ? `
+        <div style="margin-top: 10px; font-size: 11px;">
+          <span style="color: #666; font-weight: 600;">${t.evidence}:</span>
+          <span style="color: #1976d2; word-break: break-all;">${activity.evidence}</span>
+        </div>
+        ` : ''}
+        
+        ${activity.verifiedAt ? `
+        <div style="margin-top: 8px; font-size: 10px; color: #4caf50;">
+          <span style="font-weight: 600;">${t.verified}:</span> ${formatDate(activity.verifiedAt)}
+        </div>
+        ` : ''}
+      </div>
+    `
+  }).join('')
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+        body {
+          font-family: 'Arial', 'Helvetica', sans-serif;
+          font-size: 12px;
+          line-height: 1.6;
+          color: #333;
+          padding: 20px;
+        }
+        .header {
+          text-align: center;
+          margin-bottom: 30px;
+          padding-bottom: 20px;
+          border-bottom: 3px solid #1976d2;
+        }
+        .header h1 {
+          font-size: 20px;
+          font-weight: bold;
+          color: #1976d2;
+          margin-bottom: 10px;
+        }
+        .student-info {
+          margin-bottom: 25px;
+          padding: 15px;
+          background-color: #f5f5f5;
+          border-radius: 5px;
+        }
+        .student-info h2 {
+          font-size: 14px;
+          font-weight: bold;
+          margin-bottom: 10px;
+          color: #1a1a1a;
+        }
+        .info-row {
+          display: flex;
+          margin-bottom: 8px;
+          font-size: 11px;
+        }
+        .info-label {
+          width: 150px;
+          font-weight: 600;
+          color: #666;
+        }
+        .info-value {
+          flex: 1;
+          color: #333;
+        }
+        .summary {
+          margin-bottom: 25px;
+          padding: 12px;
+          background-color: #e3f2fd;
+          border-radius: 5px;
+          font-size: 11px;
+        }
+        .footer {
+          margin-top: 30px;
+          padding-top: 15px;
+          border-top: 1px solid #e0e0e0;
+          text-align: right;
+          font-size: 10px;
+          color: #666;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>${t.title}</h1>
+      </div>
+      
+      <div class="student-info">
+        <h2>${t.studentInfo}</h2>
+        <div class="info-row">
+          <div class="info-label">${t.studentName}:</div>
+          <div class="info-value">${student.firstName} ${student.lastName}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">${t.grade}:</div>
+          <div class="info-value">${student.grade}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">${t.birthDate}:</div>
+          <div class="info-value">${formatDate(student.birthDate)}</div>
+        </div>
+      </div>
+      
+      <div class="summary">
+        <strong>${t.totalActivities}:</strong> ${activities.length}
+      </div>
+      
+      <div style="margin-top: 20px;">
+        <h2 style="font-size: 14px; font-weight: bold; margin-bottom: 15px; color: #1a1a1a;">${t.activities}</h2>
+        ${activityRows}
+      </div>
+      
+      <div class="footer">
+        ${t.reportDate}: ${formatDate(new Date().toISOString())}
+      </div>
+    </body>
+    </html>
+  `
+}

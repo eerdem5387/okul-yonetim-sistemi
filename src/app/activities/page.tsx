@@ -480,7 +480,7 @@ export default function ActivitiesPage() {
                 <Award className="h-6 w-6" />
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-3">2024 faaliyetleri</p>
+            <p className="text-xs text-gray-500 mt-3">{new Date().getFullYear()} faaliyetleri</p>
           </CardContent>
         </Card>
       </div>
