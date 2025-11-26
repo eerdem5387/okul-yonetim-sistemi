@@ -208,7 +208,7 @@ export default function IBViewerPage() {
         throw new Error("Failed to fetch activities")
       }
 
-      const data = await response.json()
+      const data: Activity[] = await response.json()
       setActivities(data || [])
     } catch (error) {
       console.error("Error fetching activities:", error)
@@ -252,9 +252,11 @@ export default function IBViewerPage() {
       const downloadUrl = window.URL.createObjectURL(blob)
       const link = document.createElement("a")
       link.href = downloadUrl
+      // Sanitize file name (remove special characters)
+      const sanitizedName = studentName.replace(/[^a-zA-Z0-9-_]/g, "-").replace(/\s+/g, "-")
       link.download = language === "en"
-        ? `ib-activity-report-${studentName.replace(/\s+/g, "-")}.pdf`
-        : `ib-faaliyet-raporu-${studentName.replace(/\s+/g, "-")}.pdf`
+        ? `ib-activity-report-${sanitizedName}.pdf`
+        : `ib-faaliyet-raporu-${sanitizedName}.pdf`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)

@@ -37,6 +37,10 @@ export async function GET(
       return NextResponse.json({ error: "Student not found" }, { status: 404 })
     }
 
+    if (!student.birthDate) {
+      return NextResponse.json({ error: "Student birth date is missing" }, { status: 400 })
+    }
+
     // Fetch verified activities for this student
     const activities = await prisma.activity.findMany({
       where: {
@@ -75,9 +79,14 @@ export async function GET(
     // Generate PDF
     const pdf = await generatePDF(html)
 
+    // Sanitize file name (remove special characters)
+    const sanitizeFileName = (name: string) => name.replace(/[^a-zA-Z0-9-_]/g, "-")
+    const safeFirstName = sanitizeFileName(student.firstName)
+    const safeLastName = sanitizeFileName(student.lastName)
+
     const fileName = language === "en"
-      ? `ib-activity-report-${student.firstName}-${student.lastName}.pdf`
-      : `ib-faaliyet-raporu-${student.firstName}-${student.lastName}.pdf`
+      ? `ib-activity-report-${safeFirstName}-${safeLastName}.pdf`
+      : `ib-faaliyet-raporu-${safeFirstName}-${safeLastName}.pdf`
 
     return new NextResponse(Buffer.from(pdf), {
       headers: {

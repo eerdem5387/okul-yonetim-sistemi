@@ -18,6 +18,17 @@ function encodeHTMLEntities(text: string): string {
   return text.replace(/[ÇçĞğİıÖöŞşÜüâÂîÎûÛ]/g, (char) => entityMap[char] || char)
 }
 
+// HTML escape fonksiyonu (XSS koruması)
+function escapeHTML(text: string | null | undefined): string {
+  if (!text) return ''
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 export async function generatePDF(html: string, options?: { format?: string; margin?: Record<string, string> }) {
   const browser = await puppeteer.launch({
     args: chromium.args,
@@ -1165,7 +1176,6 @@ export function generateIBActivityReportHTML(data: {
       birthDate: 'Doğum Tarihi',
       activities: 'FAALİYETLER',
       activityType: 'Tip',
-      title: 'Başlık',
       date: 'Tarih',
       location: 'Konum',
       organizer: 'Organizatör',
@@ -1179,10 +1189,6 @@ export function generateIBActivityReportHTML(data: {
       reportDate: 'Rapor Tarihi',
       minutes: 'dakika',
       verified: 'Doğrulanmış',
-      noDescription: 'Açıklama yok',
-      noOutcome: 'Sonuç/Kazanım belirtilmemiş',
-      noLocation: 'Konum belirtilmemiş',
-      noOrganizer: 'Organizatör belirtilmemiş',
     },
     en: {
       title: 'IB PROGRAM STUDENT ACTIVITY REPORT',
@@ -1192,7 +1198,6 @@ export function generateIBActivityReportHTML(data: {
       birthDate: 'Date of Birth',
       activities: 'ACTIVITIES',
       activityType: 'Type',
-      title: 'Title',
       date: 'Date',
       location: 'Location',
       organizer: 'Organizer',
@@ -1206,10 +1211,6 @@ export function generateIBActivityReportHTML(data: {
       reportDate: 'Report Date',
       minutes: 'minutes',
       verified: 'Verified',
-      noDescription: 'No description',
-      noOutcome: 'No outcome/achievement specified',
-      noLocation: 'No location specified',
-      noOrganizer: 'No organizer specified',
     }
   }
 
@@ -1246,8 +1247,8 @@ export function generateIBActivityReportHTML(data: {
       <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #e0e0e0; border-radius: 5px; page-break-inside: avoid;">
         <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
           <div>
-            <h3 style="margin: 0; font-size: 14px; font-weight: bold; color: #1a1a1a;">${index + 1}. ${activity.title}</h3>
-            <span style="display: inline-block; margin-top: 5px; padding: 3px 8px; background-color: #e3f2fd; color: #1976d2; border-radius: 3px; font-size: 11px; font-weight: 600;">${typeLabel}</span>
+            <h3 style="margin: 0; font-size: 14px; font-weight: bold; color: #1a1a1a;">${index + 1}. ${escapeHTML(activity.title)}</h3>
+            <span style="display: inline-block; margin-top: 5px; padding: 3px 8px; background-color: #e3f2fd; color: #1976d2; border-radius: 3px; font-size: 11px; font-weight: 600;">${escapeHTML(typeLabel)}</span>
           </div>
           <span style="font-size: 11px; color: #666;">${formatDate(activity.activityDate)}</span>
         </div>
@@ -1256,13 +1257,13 @@ export function generateIBActivityReportHTML(data: {
           ${activity.location ? `
           <tr>
             <td style="width: 30%; padding: 5px 0; color: #666; font-weight: 600;">${t.location}:</td>
-            <td style="padding: 5px 0; color: #333;">${activity.location}</td>
+            <td style="padding: 5px 0; color: #333;">${escapeHTML(activity.location)}</td>
           </tr>
           ` : ''}
           ${activity.organizer ? `
           <tr>
             <td style="width: 30%; padding: 5px 0; color: #666; font-weight: 600;">${t.organizer}:</td>
-            <td style="padding: 5px 0; color: #333;">${activity.organizer}</td>
+            <td style="padding: 5px 0; color: #333;">${escapeHTML(activity.organizer)}</td>
           </tr>
           ` : ''}
           ${activity.duration ? `
@@ -1282,21 +1283,21 @@ export function generateIBActivityReportHTML(data: {
         ${activity.description ? `
         <div style="margin-top: 10px; padding: 8px; background-color: #f5f5f5; border-radius: 3px;">
           <div style="font-size: 10px; color: #666; font-weight: 600; margin-bottom: 5px;">${t.description}:</div>
-          <div style="font-size: 11px; color: #333; line-height: 1.5;">${activity.description}</div>
+          <div style="font-size: 11px; color: #333; line-height: 1.5;">${escapeHTML(activity.description)}</div>
         </div>
         ` : ''}
         
         ${activity.outcome ? `
         <div style="margin-top: 10px; padding: 8px; background-color: #e8f5e9; border-radius: 3px;">
           <div style="font-size: 10px; color: #666; font-weight: 600; margin-bottom: 5px;">${t.outcome}:</div>
-          <div style="font-size: 11px; color: #333; line-height: 1.5;">${activity.outcome}</div>
+          <div style="font-size: 11px; color: #333; line-height: 1.5;">${escapeHTML(activity.outcome)}</div>
         </div>
         ` : ''}
         
         ${activity.evidence ? `
         <div style="margin-top: 10px; font-size: 11px;">
           <span style="color: #666; font-weight: 600;">${t.evidence}:</span>
-          <span style="color: #1976d2; word-break: break-all;">${activity.evidence}</span>
+          <span style="color: #1976d2; word-break: break-all;">${escapeHTML(activity.evidence)}</span>
         </div>
         ` : ''}
         
@@ -1391,11 +1392,11 @@ export function generateIBActivityReportHTML(data: {
         <h2>${t.studentInfo}</h2>
         <div class="info-row">
           <div class="info-label">${t.studentName}:</div>
-          <div class="info-value">${student.firstName} ${student.lastName}</div>
+          <div class="info-value">${escapeHTML(student.firstName)} ${escapeHTML(student.lastName)}</div>
         </div>
         <div class="info-row">
           <div class="info-label">${t.grade}:</div>
-          <div class="info-value">${student.grade}</div>
+          <div class="info-value">${escapeHTML(student.grade)}</div>
         </div>
         <div class="info-row">
           <div class="info-label">${t.birthDate}:</div>
