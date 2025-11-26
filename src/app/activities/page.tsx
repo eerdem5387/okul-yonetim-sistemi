@@ -23,6 +23,9 @@ import {
   Clock,
   MapPin,
   User,
+  Upload,
+  File,
+  Loader2,
 } from "lucide-react"
 
 type ActivityType =
@@ -107,6 +110,12 @@ export default function ActivitiesPage() {
     evidence: "",
     notes: "",
   })
+  const [uploading, setUploading] = useState(false)
+  const [uploadedFile, setUploadedFile] = useState<{
+    name: string
+    url: string
+    size: number
+  } | null>(null)
 
   const activityTypeLabels: Record<ActivityType, string> = {
     ETKINLIK: "Etkinlik",
@@ -179,6 +188,13 @@ export default function ActivitiesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Evidence kontrolü
+    if (!formData.evidence.trim()) {
+      alert("Lütfen bir dosya yükleyin veya kanıt linki girin!")
+      return
+    }
+
     try {
       const url = editingActivity ? `/api/activities/${editingActivity.id}` : "/api/activities"
       const method = editingActivity ? "PUT" : "POST"
@@ -217,6 +233,7 @@ export default function ActivitiesPage() {
         fetchActivities()
         setShowForm(false)
         setEditingActivity(null)
+        setUploadedFile(null)
         setFormData({
           studentId: "",
           type: "ETKINLIK",
@@ -241,6 +258,50 @@ export default function ActivitiesPage() {
     }
   }
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Dosya boyutu kontrolü (10MB)
+    const maxSize = 10 * 1024 * 1024
+    if (file.size > maxSize) {
+      alert("Dosya boyutu 10MB'dan büyük olamaz!")
+      return
+    }
+
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const response = await fetch("/api/activities/upload", {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Dosya yüklenirken hata oluştu")
+      }
+
+      const data = await response.json()
+      setUploadedFile({
+        name: data.fileName,
+        url: data.url,
+        size: data.fileSize,
+      })
+      setFormData((prev) => ({
+        ...prev,
+        evidence: data.url,
+      }))
+    } catch (error) {
+      console.error("Error uploading file:", error)
+      alert(error instanceof Error ? error.message : "Dosya yüklenirken hata oluştu!")
+    } finally {
+      setUploading(false)
+    }
+  }
+
   const handleEdit = (activity: Activity) => {
     setEditingActivity(activity)
     setFormData({
@@ -257,6 +318,16 @@ export default function ActivitiesPage() {
       evidence: activity.evidence || "",
       notes: activity.notes || "",
     })
+    // Eğer evidence bir URL ise, uploadedFile'ı set et
+    if (activity.evidence && activity.evidence.startsWith("http")) {
+      setUploadedFile({
+        name: activity.evidence.split("/").pop() || "Dosya",
+        url: activity.evidence,
+        size: 0,
+      })
+    } else {
+      setUploadedFile(null)
+    }
     setShowForm(true)
   }
 
@@ -339,7 +410,12 @@ export default function ActivitiesPage() {
             <Settings className="h-4 w-4 mr-2" />
             IB Viewer Yönetimi
           </Button>
-          <Button onClick={() => setShowForm(true)}>
+          <Button
+            onClick={() => {
+              setShowForm(true)
+              setUploadedFile(null)
+            }}
+          >
             <Plus className="h-4 w-4 mr-2" />
             Yeni Faaliyet
           </Button>
@@ -809,15 +885,108 @@ export default function ActivitiesPage() {
               </div>
 
               <div>
-                <Label htmlFor="evidence">Kanıt (Dosya yolu, link vb.) *</Label>
-                <Input
-                  id="evidence"
-                  value={formData.evidence}
-                  onChange={(e) => setFormData({ ...formData, evidence: e.target.value })}
-                  required
-                  placeholder="Örn: /uploads/activity-123.pdf veya https://..."
-                  className="mt-2"
-                />
+                <Label htmlFor="evidence">Kanıt *</Label>
+                <div className="mt-2 space-y-3">
+                  {/* Dosya Yükleme */}
+                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-blue-400 transition-colors">
+                    <div className="flex flex-col items-center justify-center space-y-4">
+                      <div className="p-3 rounded-full bg-blue-50">
+                        {uploading ? (
+                          <Loader2 className="h-6 w-6 text-blue-600 animate-spin" />
+                        ) : (
+                          <Upload className="h-6 w-6 text-blue-600" />
+                        )}
+                      </div>
+                      <div className="text-center">
+                        <label
+                          htmlFor="file-upload"
+                          className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          <File className="h-4 w-4" />
+                          {uploading ? "Yükleniyor..." : "Dosya Seç"}
+                        </label>
+                        <input
+                          id="file-upload"
+                          type="file"
+                          className="hidden"
+                          onChange={handleFileUpload}
+                          disabled={uploading}
+                          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.mp4,.mov,.txt"
+                        />
+                      </div>
+                      {uploadedFile && (
+                        <div className="w-full max-w-md">
+                          <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <FileText className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <a
+                                  href={uploadedFile.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sm font-medium text-emerald-900 truncate hover:underline block"
+                                >
+                                  {uploadedFile.name}
+                                </a>
+                                <p className="text-xs text-emerald-600">
+                                  {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setUploadedFile(null)
+                                setFormData((prev) => ({ ...prev, evidence: "" }))
+                              }}
+                              className="text-emerald-600 hover:text-emerald-700"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Manuel URL/Link Girişi */}
+                  <div>
+                    <Label htmlFor="evidence-url" className="text-sm text-gray-600">
+                      Veya link/URL girin
+                    </Label>
+                    <Input
+                      id="evidence-url"
+                      value={formData.evidence}
+                      onChange={(e) => {
+                        setFormData({ ...formData, evidence: e.target.value })
+                        if (e.target.value) {
+                          setUploadedFile(null)
+                        }
+                      }}
+                      placeholder="https://..."
+                      className="mt-1"
+                    />
+                  </div>
+
+                  {/* Bilgilendirme */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-xs font-semibold text-blue-900 mb-2">Desteklenen Dosya Tipleri:</p>
+                    <div className="grid grid-cols-2 gap-1 text-xs text-blue-700">
+                      <div>• PDF (.pdf)</div>
+                      <div>• Word (.doc, .docx)</div>
+                      <div>• Excel (.xls, .xlsx)</div>
+                      <div>• PowerPoint (.ppt, .pptx)</div>
+                      <div>• Resim (.jpg, .png, .gif, .webp)</div>
+                      <div>• Video (.mp4, .mov)</div>
+                      <div>• Metin (.txt)</div>
+                    </div>
+                    <p className="text-xs text-blue-600 mt-2">
+                      <span className="font-semibold">Maksimum dosya boyutu:</span> 10 MB
+                    </p>
+                  </div>
+                </div>
               </div>
 
               <div>
@@ -842,6 +1011,7 @@ export default function ActivitiesPage() {
                   onClick={() => {
                     setShowForm(false)
                     setEditingActivity(null)
+                    setUploadedFile(null)
                     setFormData({
                       studentId: "",
                       type: "ETKINLIK",
