@@ -24,8 +24,12 @@ export default function LoginPage() {
     try {
       let response: Response
 
+      // Debug: loginType'ı kontrol et
+      console.log("Login type:", loginType)
+
       if (loginType === "student_affairs") {
         // Öğrenci İşleri login
+        console.log("Attempting student_affairs login")
         response = await fetch("/api/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -40,8 +44,9 @@ export default function LoginPage() {
           router.refresh()
           return
         }
-      } else {
+      } else if (loginType === "ib_viewer") {
         // IB Viewer login
+        console.log("Attempting IB Viewer login")
         response = await fetch("/api/ib/auth", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -57,6 +62,10 @@ export default function LoginPage() {
           router.refresh()
           return
         }
+      } else {
+        setError("Lütfen bir giriş tipi seçin!")
+        setLoading(false)
+        return
       }
 
       // Hata durumu
@@ -94,8 +103,9 @@ export default function LoginPage() {
             <Button
               type="button"
               variant={loginType === "student_affairs" ? "default" : "outline"}
-              className="flex-1"
+              className={`flex-1 ${loginType === "student_affairs" ? "ring-2 ring-blue-500" : ""}`}
               onClick={() => {
+                console.log("Setting login type to student_affairs")
                 setLoginType("student_affairs")
                 setError("")
                 setUsername("")
@@ -108,8 +118,9 @@ export default function LoginPage() {
             <Button
               type="button"
               variant={loginType === "ib_viewer" ? "default" : "outline"}
-              className="flex-1"
+              className={`flex-1 ${loginType === "ib_viewer" ? "ring-2 ring-blue-500" : ""}`}
               onClick={() => {
+                console.log("Setting login type to ib_viewer")
                 setLoginType("ib_viewer")
                 setError("")
                 setUsername("")
@@ -120,6 +131,13 @@ export default function LoginPage() {
               IB Viewer
             </Button>
           </div>
+          
+          {/* Debug: Show current login type */}
+          {process.env.NODE_ENV === "development" && (
+            <div className="text-xs text-gray-500 mb-2">
+              Seçili tip: {loginType === "student_affairs" ? "Öğrenci İşleri" : "IB Viewer"}
+            </div>
+          )}
 
           {/* Login Form */}
           <form onSubmit={handleLogin} className="space-y-4">
@@ -151,13 +169,28 @@ export default function LoginPage() {
                 {error}
               </div>
             )}
-            <Button type="submit" className="w-full h-11 sm:h-12 text-sm sm:text-base" disabled={loading}>
+            <Button 
+              type="submit" 
+              className="w-full h-11 sm:h-12 text-sm sm:text-base" 
+              disabled={loading}
+              onClick={(e) => {
+                // Double check loginType before submit
+                console.log("Form submit - loginType:", loginType)
+                if (!loginType) {
+                  e.preventDefault()
+                  setError("Lütfen bir giriş tipi seçin!")
+                  return false
+                }
+              }}
+            >
               <LogIn className="h-4 w-4 mr-2" />
               {loading
                 ? "Giriş yapılıyor..."
                 : loginType === "student_affairs"
                   ? "Öğrenci İşleri Olarak Giriş Yap"
-                  : "IB Viewer Olarak Giriş Yap"}
+                  : loginType === "ib_viewer"
+                    ? "IB Viewer Olarak Giriş Yap"
+                    : "Giriş Yap"}
             </Button>
           </form>
 
