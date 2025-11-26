@@ -807,134 +807,166 @@ export default function IBViewerPage() {
 
                 {/* Activity Details Grid */}
                 <div className="grid gap-4 md:grid-cols-2">
-                  {selectedActivity.location && (
-                    <div>
-                      <Label className="text-xs uppercase tracking-wide text-gray-500 mb-2 block">
-                        {t.location}
-                      </Label>
-                      <p className="text-sm text-gray-900 flex items-center gap-2">
-                        <MapPin className="h-4 w-4" />
-                        {selectedActivity.location}
-                      </p>
-                    </div>
-                  )}
-                  {selectedActivity.organizer && (
-                    <div>
-                      <Label className="text-xs uppercase tracking-wide text-gray-500 mb-2 block">
-                        {t.organizer}
-                      </Label>
-                      <p className="text-sm text-gray-900 flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        {selectedActivity.organizer}
-                      </p>
-                    </div>
-                  )}
-                  {selectedActivity.duration && (
-                    <div>
-                      <Label className="text-xs uppercase tracking-wide text-gray-500 mb-2 block">
-                        {t.duration}
-                      </Label>
-                      <p className="text-sm text-gray-900 flex items-center gap-2">
-                        <Clock className="h-4 w-4" />
-                        {selectedActivity.duration} {t.minutes}
-                      </p>
-                    </div>
-                  )}
-                  {selectedActivity.participants && (
-                    <div>
-                      <Label className="text-xs uppercase tracking-wide text-gray-500 mb-2 block">
-                        {t.participants}
-                      </Label>
-                      <p className="text-sm text-gray-900">{selectedActivity.participants}</p>
-                    </div>
-                  )}
+                  <div>
+                    <Label className="text-xs uppercase tracking-wide text-gray-500 mb-2 block">
+                      {t.location}
+                    </Label>
+                    <p className="text-sm text-gray-900 flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      {selectedActivity.location ? (
+                        selectedActivity.location
+                      ) : (
+                        <span className="text-gray-400 italic">
+                          {language === "en" ? "Not specified" : "Belirtilmemiş"}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-xs uppercase tracking-wide text-gray-500 mb-2 block">
+                      {t.organizer}
+                    </Label>
+                    <p className="text-sm text-gray-900 flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      {selectedActivity.organizer ? (
+                        selectedActivity.organizer
+                      ) : (
+                        <span className="text-gray-400 italic">
+                          {language === "en" ? "Not specified" : "Belirtilmemiş"}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-xs uppercase tracking-wide text-gray-500 mb-2 block">
+                      {t.duration}
+                    </Label>
+                    <p className="text-sm text-gray-900 flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      {selectedActivity.duration ? (
+                        `${selectedActivity.duration} ${t.minutes}`
+                      ) : (
+                        <span className="text-gray-400 italic">
+                          {language === "en" ? "Not specified" : "Belirtilmemiş"}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-xs uppercase tracking-wide text-gray-500 mb-2 block">
+                      {t.participants}
+                    </Label>
+                    <p className="text-sm text-gray-900">
+                      {selectedActivity.participants ? (
+                        selectedActivity.participants
+                      ) : (
+                        <span className="text-gray-400 italic">
+                          {language === "en" ? "Not specified" : "Belirtilmemiş"}
+                        </span>
+                      )}
+                    </p>
+                  </div>
                 </div>
 
                 {/* Description */}
-                {selectedActivity.description && (
-                  <div>
-                    <Label className="text-xs uppercase tracking-wide text-gray-500 mb-2 block">
-                      {t.description}
-                    </Label>
-                    <p className="text-sm text-gray-700 bg-gray-50 p-4 rounded-lg">
-                      {selectedActivity.description}
-                    </p>
-                  </div>
-                )}
+                <div>
+                  <Label className="text-xs uppercase tracking-wide text-gray-500 mb-2 block">
+                    {t.description}
+                  </Label>
+                  <p className="text-sm text-gray-700 bg-gray-50 p-4 rounded-lg">
+                    {selectedActivity.description ? (
+                      selectedActivity.description
+                    ) : (
+                      <span className="text-gray-400 italic">
+                        {language === "en" ? "Not specified" : "Belirtilmemiş"}
+                      </span>
+                    )}
+                  </p>
+                </div>
 
                 {/* Outcome */}
-                {selectedActivity.outcome && (
-                  <div>
-                    <Label className="text-xs uppercase tracking-wide text-gray-500 mb-2 block">
-                      {t.outcome}
-                    </Label>
-                    <p className="text-sm text-gray-700 bg-emerald-50 p-4 rounded-lg border-l-4 border-emerald-500">
-                      {selectedActivity.outcome}
-                    </p>
-                  </div>
-                )}
+                <div>
+                  <Label className="text-xs uppercase tracking-wide text-gray-500 mb-2 block">
+                    {t.outcome}
+                  </Label>
+                  <p className="text-sm text-gray-700 bg-emerald-50 p-4 rounded-lg border-l-4 border-emerald-500">
+                    {selectedActivity.outcome ? (
+                      selectedActivity.outcome
+                    ) : (
+                      <span className="text-gray-400 italic">
+                        {language === "en" ? "Not specified" : "Belirtilmemiş"}
+                      </span>
+                    )}
+                  </p>
+                </div>
 
                 {/* Evidence */}
-                {selectedActivity.evidence && (
-                  <div>
-                    <Label className="text-xs uppercase tracking-wide text-gray-500 mb-2 block">
-                      {t.evidence}
-                    </Label>
-                    <div className="space-y-3">
-                      {(() => {
-                        const evidenceUrl = selectedActivity.evidence.trim()
-                        const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
-                        const isImage = imageExtensions.some(ext => evidenceUrl.toLowerCase().includes(ext))
-                        
-                        return (
-                          <>
-                            {isImage ? (
-                              <div className="space-y-2">
-                                <img 
-                                  src={evidenceUrl} 
-                                  alt="Evidence" 
-                                  className="max-w-full h-auto rounded-lg border border-gray-200 shadow-sm"
-                                  onError={(e) => {
-                                    (e.target as HTMLImageElement).style.display = 'none'
-                                  }}
-                                />
-                                <a
-                                  href={evidenceUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-sm text-blue-600 hover:underline break-all block"
-                                >
-                                  {evidenceUrl}
-                                </a>
-                              </div>
-                            ) : (
+                <div>
+                  <Label className="text-xs uppercase tracking-wide text-gray-500 mb-2 block">
+                    {t.evidence}
+                  </Label>
+                  <div className="space-y-3">
+                    {selectedActivity.evidence ? (() => {
+                      const evidenceUrl = selectedActivity.evidence.trim()
+                      const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
+                      const isImage = imageExtensions.some(ext => evidenceUrl.toLowerCase().includes(ext))
+                      
+                      return (
+                        <>
+                          {isImage ? (
+                            <div className="space-y-2">
+                              <img 
+                                src={evidenceUrl} 
+                                alt="Evidence" 
+                                className="max-w-full h-auto rounded-lg border border-gray-200 shadow-sm"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = 'none'
+                                }}
+                              />
                               <a
                                 href={evidenceUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-sm text-blue-600 hover:underline break-all block bg-gray-50 p-3 rounded-lg"
+                                className="text-sm text-blue-600 hover:underline break-all block"
                               >
                                 {evidenceUrl}
                               </a>
-                            )}
-                          </>
-                        )
-                      })()}
-                    </div>
+                            </div>
+                          ) : (
+                            <a
+                              href={evidenceUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-600 hover:underline break-all block bg-gray-50 p-3 rounded-lg"
+                            >
+                              {evidenceUrl}
+                            </a>
+                          )}
+                        </>
+                      )
+                    })() : (
+                      <span className="text-gray-400 italic text-sm">
+                        {language === "en" ? "Not specified" : "Belirtilmemiş"}
+                      </span>
+                    )}
                   </div>
-                )}
+                </div>
 
                 {/* Notes */}
-                {selectedActivity.notes && (
-                  <div>
-                    <Label className="text-xs uppercase tracking-wide text-gray-500 mb-2 block">
-                      {language === "en" ? "Notes" : "Notlar"}
-                    </Label>
-                    <p className="text-sm text-gray-700 bg-yellow-50 p-4 rounded-lg border-l-4 border-yellow-500">
-                      {selectedActivity.notes}
-                    </p>
-                  </div>
-                )}
+                <div>
+                  <Label className="text-xs uppercase tracking-wide text-gray-500 mb-2 block">
+                    {language === "en" ? "Notes" : "Notlar"}
+                  </Label>
+                  <p className="text-sm text-gray-700 bg-yellow-50 p-4 rounded-lg border-l-4 border-yellow-500">
+                    {selectedActivity.notes ? (
+                      selectedActivity.notes
+                    ) : (
+                      <span className="text-gray-400 italic">
+                        {language === "en" ? "Not specified" : "Belirtilmemiş"}
+                      </span>
+                    )}
+                  </p>
+                </div>
 
                 {/* Verification Info */}
                 {selectedActivity.verifiedAt && (

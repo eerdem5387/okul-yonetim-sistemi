@@ -1247,8 +1247,9 @@ export function generateIBActivityReportHTML(data: {
   // Helper function to check if value is empty
   const isEmpty = (value: string | null | undefined): boolean => {
     if (value === null || value === undefined) return true
-    if (typeof value === 'string' && value.trim() === '') return true
-    return false
+    if (typeof value !== 'string') return true
+    const trimmed = String(value).trim()
+    return trimmed === '' || trimmed.length === 0
   }
 
   const activityRows = activities.map((activity, index) => {
@@ -1270,35 +1271,35 @@ export function generateIBActivityReportHTML(data: {
           <table style="width: 100%; margin-top: 10px; font-size: 11px; border-collapse: collapse;">
             <tr>
               <td style="width: 30%; padding: 8px 0; color: #666; font-weight: 600; vertical-align: top;">${t.location}:</td>
-              <td style="padding: 8px 0; color: #333; vertical-align: top;">${!isEmpty(activity.location) ? escapeHTML(activity.location!) : `<span style="color: #999; font-style: italic;">${notSpecified}</span>`}</td>
+              <td style="padding: 8px 0; color: #333; vertical-align: top;">${activity.location && activity.location.trim() !== '' ? escapeHTML(activity.location) : `<span style="color: #999; font-style: italic;">${notSpecified}</span>`}</td>
             </tr>
             <tr>
               <td style="width: 30%; padding: 8px 0; color: #666; font-weight: 600; vertical-align: top;">${t.organizer}:</td>
-              <td style="padding: 8px 0; color: #333; vertical-align: top;">${!isEmpty(activity.organizer) ? escapeHTML(activity.organizer!) : `<span style="color: #999; font-style: italic;">${notSpecified}</span>`}</td>
+              <td style="padding: 8px 0; color: #333; vertical-align: top;">${activity.organizer && activity.organizer.trim() !== '' ? escapeHTML(activity.organizer) : `<span style="color: #999; font-style: italic;">${notSpecified}</span>`}</td>
             </tr>
             <tr>
               <td style="width: 30%; padding: 8px 0; color: #666; font-weight: 600; vertical-align: top;">${t.duration}:</td>
-              <td style="padding: 8px 0; color: #333; vertical-align: top;">${activity.duration ? `${activity.duration} ${t.minutes}` : `<span style="color: #999; font-style: italic;">${notSpecified}</span>`}</td>
+              <td style="padding: 8px 0; color: #333; vertical-align: top;">${activity.duration !== null && activity.duration !== undefined ? `${activity.duration} ${t.minutes}` : `<span style="color: #999; font-style: italic;">${notSpecified}</span>`}</td>
             </tr>
             <tr>
               <td style="width: 30%; padding: 8px 0; color: #666; font-weight: 600; vertical-align: top;">${t.participants}:</td>
-              <td style="padding: 8px 0; color: #333; vertical-align: top;">${activity.participants ? activity.participants : `<span style="color: #999; font-style: italic;">${notSpecified}</span>`}</td>
+              <td style="padding: 8px 0; color: #333; vertical-align: top;">${activity.participants !== null && activity.participants !== undefined ? activity.participants : `<span style="color: #999; font-style: italic;">${notSpecified}</span>`}</td>
             </tr>
           </table>
           
           <div style="margin-top: 15px; padding: 10px; background-color: #f5f5f5; border-radius: 3px; border-left: 3px solid #1976d2;">
             <div style="font-size: 11px; color: #666; font-weight: 600; margin-bottom: 8px;">${t.description}:</div>
-            <div style="font-size: 11px; color: #333; line-height: 1.6; white-space: pre-wrap;">${!isEmpty(activity.description) ? escapeHTML(activity.description!) : `<span style="color: #999; font-style: italic;">${notSpecified}</span>`}</div>
+            <div style="font-size: 11px; color: #333; line-height: 1.6; white-space: pre-wrap;">${activity.description && activity.description.trim() !== '' ? escapeHTML(activity.description) : `<span style="color: #999; font-style: italic;">${notSpecified}</span>`}</div>
           </div>
           
           <div style="margin-top: 10px; padding: 10px; background-color: #e8f5e9; border-radius: 3px; border-left: 3px solid #4caf50;">
             <div style="font-size: 11px; color: #666; font-weight: 600; margin-bottom: 8px;">${t.outcome}:</div>
-            <div style="font-size: 11px; color: #333; line-height: 1.6; white-space: pre-wrap;">${!isEmpty(activity.outcome) ? escapeHTML(activity.outcome!) : `<span style="color: #999; font-style: italic;">${notSpecified}</span>`}</div>
+            <div style="font-size: 11px; color: #333; line-height: 1.6; white-space: pre-wrap;">${activity.outcome && activity.outcome.trim() !== '' ? escapeHTML(activity.outcome) : `<span style="color: #999; font-style: italic;">${notSpecified}</span>`}</div>
           </div>
           
           <div style="margin-top: 10px; padding: 10px; background-color: #fff3cd; border-radius: 3px; border-left: 3px solid #ffc107;">
             <div style="font-size: 11px; color: #666; font-weight: 600; margin-bottom: 8px;">${t.notes}:</div>
-            <div style="font-size: 11px; color: #333; line-height: 1.6; white-space: pre-wrap;">${!isEmpty(activity.notes) ? escapeHTML(activity.notes!) : `<span style="color: #999; font-style: italic;">${notSpecified}</span>`}</div>
+            <div style="font-size: 11px; color: #333; line-height: 1.6; white-space: pre-wrap;">${activity.notes && activity.notes.trim() !== '' ? escapeHTML(activity.notes) : `<span style="color: #999; font-style: italic;">${notSpecified}</span>`}</div>
           </div>
           
           ${activity.verifiedAt ? `
@@ -1319,8 +1320,8 @@ export function generateIBActivityReportHTML(data: {
           <h3 style="margin: 0 0 15px 0; font-size: 16px; font-weight: bold; color: #1a1a1a;">${index + 1}. ${escapeHTML(activity.title)} - ${t.evidence}</h3>
           <div style="padding: 15px; background-color: #fff; border: 1px solid #e0e0e0; border-radius: 3px;">
             <div style="font-size: 11px; color: #666; font-weight: 600; margin-bottom: 10px;">${t.evidence}:</div>
-            ${!isEmpty(activity.evidence) ? (() => {
-              const evidenceUrl = activity.evidence!.trim()
+            ${activity.evidence && activity.evidence.trim() !== '' ? (() => {
+              const evidenceUrl = activity.evidence.trim()
               const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
               const isImage = imageExtensions.some(ext => evidenceUrl.toLowerCase().includes(ext))
               
