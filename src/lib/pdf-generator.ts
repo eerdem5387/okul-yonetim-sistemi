@@ -1246,87 +1246,75 @@ export function generateIBActivityReportHTML(data: {
 
   const activityRows = activities.map((activity, index) => {
     const typeLabel = activityTypeLabels[activity.type]?.[language] || activity.type
+    const notSpecified = language === 'en' ? 'Not specified' : 'Belirtilmemiş'
+    
     return `
-      <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #e0e0e0; border-radius: 5px; page-break-inside: avoid;">
-        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+      <div style="margin-bottom: 25px; padding: 15px; border: 1px solid #e0e0e0; border-radius: 5px; page-break-inside: avoid;">
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
           <div>
-            <h3 style="margin: 0; font-size: 14px; font-weight: bold; color: #1a1a1a;">${index + 1}. ${escapeHTML(activity.title)}</h3>
-            <span style="display: inline-block; margin-top: 5px; padding: 3px 8px; background-color: #e3f2fd; color: #1976d2; border-radius: 3px; font-size: 11px; font-weight: 600;">${escapeHTML(typeLabel)}</span>
+            <h3 style="margin: 0; font-size: 16px; font-weight: bold; color: #1a1a1a;">${index + 1}. ${escapeHTML(activity.title)}</h3>
+            <span style="display: inline-block; margin-top: 5px; padding: 4px 10px; background-color: #e3f2fd; color: #1976d2; border-radius: 3px; font-size: 11px; font-weight: 600;">${escapeHTML(typeLabel)}</span>
           </div>
-          <span style="font-size: 11px; color: #666;">${formatDate(activity.activityDate)}</span>
+          <span style="font-size: 12px; color: #666; font-weight: 600;">${formatDate(activity.activityDate)}</span>
         </div>
         
         <table style="width: 100%; margin-top: 10px; font-size: 11px; border-collapse: collapse;">
-          ${activity.location ? `
           <tr>
-            <td style="width: 30%; padding: 5px 0; color: #666; font-weight: 600;">${t.location}:</td>
-            <td style="padding: 5px 0; color: #333;">${escapeHTML(activity.location)}</td>
+            <td style="width: 30%; padding: 8px 0; color: #666; font-weight: 600; vertical-align: top;">${t.location}:</td>
+            <td style="padding: 8px 0; color: #333; vertical-align: top;">${activity.location ? escapeHTML(activity.location) : `<span style="color: #999; font-style: italic;">${notSpecified}</span>`}</td>
           </tr>
-          ` : ''}
-          ${activity.organizer ? `
           <tr>
-            <td style="width: 30%; padding: 5px 0; color: #666; font-weight: 600;">${t.organizer}:</td>
-            <td style="padding: 5px 0; color: #333;">${escapeHTML(activity.organizer)}</td>
+            <td style="width: 30%; padding: 8px 0; color: #666; font-weight: 600; vertical-align: top;">${t.organizer}:</td>
+            <td style="padding: 8px 0; color: #333; vertical-align: top;">${activity.organizer ? escapeHTML(activity.organizer) : `<span style="color: #999; font-style: italic;">${notSpecified}</span>`}</td>
           </tr>
-          ` : ''}
-          ${activity.duration ? `
           <tr>
-            <td style="width: 30%; padding: 5px 0; color: #666; font-weight: 600;">${t.duration}:</td>
-            <td style="padding: 5px 0; color: #333;">${activity.duration} ${t.minutes}</td>
+            <td style="width: 30%; padding: 8px 0; color: #666; font-weight: 600; vertical-align: top;">${t.duration}:</td>
+            <td style="padding: 8px 0; color: #333; vertical-align: top;">${activity.duration ? `${activity.duration} ${t.minutes}` : `<span style="color: #999; font-style: italic;">${notSpecified}</span>`}</td>
           </tr>
-          ` : ''}
-          ${activity.participants ? `
           <tr>
-            <td style="width: 30%; padding: 5px 0; color: #666; font-weight: 600;">${t.participants}:</td>
-            <td style="padding: 5px 0; color: #333;">${activity.participants}</td>
+            <td style="width: 30%; padding: 8px 0; color: #666; font-weight: 600; vertical-align: top;">${t.participants}:</td>
+            <td style="padding: 8px 0; color: #333; vertical-align: top;">${activity.participants ? activity.participants : `<span style="color: #999; font-style: italic;">${notSpecified}</span>`}</td>
           </tr>
-          ` : ''}
         </table>
         
-        ${activity.description ? `
-        <div style="margin-top: 10px; padding: 8px; background-color: #f5f5f5; border-radius: 3px;">
-          <div style="font-size: 10px; color: #666; font-weight: 600; margin-bottom: 5px;">${t.description}:</div>
-          <div style="font-size: 11px; color: #333; line-height: 1.5;">${escapeHTML(activity.description)}</div>
+        <div style="margin-top: 15px; padding: 10px; background-color: #f5f5f5; border-radius: 3px; border-left: 3px solid #1976d2;">
+          <div style="font-size: 11px; color: #666; font-weight: 600; margin-bottom: 8px;">${t.description}:</div>
+          <div style="font-size: 11px; color: #333; line-height: 1.6; white-space: pre-wrap;">${activity.description ? escapeHTML(activity.description) : `<span style="color: #999; font-style: italic;">${notSpecified}</span>`}</div>
         </div>
-        ` : ''}
         
-        ${activity.outcome ? `
-        <div style="margin-top: 10px; padding: 8px; background-color: #e8f5e9; border-radius: 3px;">
-          <div style="font-size: 10px; color: #666; font-weight: 600; margin-bottom: 5px;">${t.outcome}:</div>
-          <div style="font-size: 11px; color: #333; line-height: 1.5;">${escapeHTML(activity.outcome)}</div>
+        <div style="margin-top: 10px; padding: 10px; background-color: #e8f5e9; border-radius: 3px; border-left: 3px solid #4caf50;">
+          <div style="font-size: 11px; color: #666; font-weight: 600; margin-bottom: 8px;">${t.outcome}:</div>
+          <div style="font-size: 11px; color: #333; line-height: 1.6; white-space: pre-wrap;">${activity.outcome ? escapeHTML(activity.outcome) : `<span style="color: #999; font-style: italic;">${notSpecified}</span>`}</div>
         </div>
-        ` : ''}
         
-        ${activity.evidence ? `
-        <div style="margin-top: 10px; font-size: 11px;">
-          <div style="color: #666; font-weight: 600; margin-bottom: 5px;">${t.evidence}:</div>
-          ${(() => {
+        <div style="margin-top: 10px; padding: 10px; background-color: #fff; border: 1px solid #e0e0e0; border-radius: 3px;">
+          <div style="font-size: 11px; color: #666; font-weight: 600; margin-bottom: 8px;">${t.evidence}:</div>
+          ${activity.evidence ? (() => {
             const evidenceUrl = activity.evidence.trim()
             const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
             const isImage = imageExtensions.some(ext => evidenceUrl.toLowerCase().includes(ext))
             
             if (isImage) {
               return `<div style="margin-top: 5px;">
-                <img src="${escapeHTML(evidenceUrl)}" alt="Evidence" style="max-width: 100%; max-height: 300px; border: 1px solid #e0e0e0; border-radius: 4px; display: block; margin: 5px 0;" />
-                <a href="${escapeHTML(evidenceUrl)}" target="_blank" style="color: #1976d2; text-decoration: underline; font-size: 10px; display: inline-block; margin-top: 5px;">${escapeHTML(evidenceUrl)}</a>
+                <img src="${escapeHTML(evidenceUrl)}" alt="Evidence" style="max-width: 100%; max-height: 400px; border: 1px solid #e0e0e0; border-radius: 4px; display: block; margin: 8px 0;" />
+                <a href="${escapeHTML(evidenceUrl)}" target="_blank" style="color: #1976d2; text-decoration: underline; font-size: 10px; display: inline-block; margin-top: 5px; word-break: break-all;">${escapeHTML(evidenceUrl)}</a>
               </div>`
             } else {
-              return `<a href="${escapeHTML(evidenceUrl)}" target="_blank" style="color: #1976d2; word-break: break-all; text-decoration: underline;">${escapeHTML(evidenceUrl)}</a>`
+              return `<a href="${escapeHTML(evidenceUrl)}" target="_blank" style="color: #1976d2; word-break: break-all; text-decoration: underline; font-size: 11px;">${escapeHTML(evidenceUrl)}</a>`
             }
-          })()}
+          })() : `<span style="color: #999; font-style: italic; font-size: 11px;">${notSpecified}</span>`}
         </div>
-        ` : ''}
         
-        ${activity.notes ? `
-        <div style="margin-top: 10px; padding: 8px; background-color: #fff3cd; border-radius: 3px; border-left: 3px solid #ffc107;">
-          <div style="font-size: 10px; color: #666; font-weight: 600; margin-bottom: 5px;">${t.notes}:</div>
-          <div style="font-size: 11px; color: #333; line-height: 1.5;">${escapeHTML(activity.notes)}</div>
+        <div style="margin-top: 10px; padding: 10px; background-color: #fff3cd; border-radius: 3px; border-left: 3px solid #ffc107;">
+          <div style="font-size: 11px; color: #666; font-weight: 600; margin-bottom: 8px;">${t.notes}:</div>
+          <div style="font-size: 11px; color: #333; line-height: 1.6; white-space: pre-wrap;">${activity.notes ? escapeHTML(activity.notes) : `<span style="color: #999; font-style: italic;">${notSpecified}</span>`}</div>
         </div>
-        ` : ''}
         
         ${activity.verifiedAt ? `
-        <div style="margin-top: 8px; font-size: 10px; color: #4caf50;">
-          <span style="font-weight: 600;">${t.verified}:</span> ${formatDate(activity.verifiedAt)}
+        <div style="margin-top: 10px; padding: 8px; background-color: #e8f5e9; border-radius: 3px;">
+          <div style="font-size: 11px; color: #2e7d32; font-weight: 600;">
+            <span>${t.verified}:</span> ${formatDate(activity.verifiedAt)}
+          </div>
         </div>
         ` : ''}
       </div>
