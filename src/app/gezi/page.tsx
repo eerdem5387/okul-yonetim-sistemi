@@ -85,11 +85,17 @@ export default function GeziPage() {
         throw new Error("İstatistikler alınamadı")
       }
       const result = await response.json()
-      setStats(result.data || stats)
+      setStats(result.data || {
+        totalTrips: 0,
+        activeTrips: 0,
+        upcomingTrips: 0,
+        totalApplications: 0,
+        monthlyApplications: 0,
+      })
     } catch (error) {
       console.error("Error fetching stats:", error)
     }
-  }, [stats])
+  }, [])
 
   useEffect(() => {
     fetchTrips()
