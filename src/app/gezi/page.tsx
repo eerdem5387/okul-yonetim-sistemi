@@ -18,14 +18,7 @@ import {
   CheckCircle2,
   XCircle,
 } from "lucide-react"
-import {
-  getTrips,
-  createTrip,
-  updateTrip,
-  getTripStats,
-  type Trip,
-  type CreateTripData,
-} from "@/lib/geziService"
+import type { Trip, CreateTripData } from "@/lib/geziService"
 import { useRouter } from "next/navigation"
 
 export default function GeziPage() {
@@ -60,17 +53,22 @@ export default function GeziPage() {
   const fetchTrips = useCallback(async () => {
     try {
       setLoading(true)
-      const options: { isActive?: boolean; search?: string } = {}
+      const params = new URLSearchParams()
       if (filterActive === "active") {
-        options.isActive = true
+        params.append("isActive", "true")
       } else if (filterActive === "inactive") {
-        options.isActive = false
+        params.append("isActive", "false")
       }
       if (searchTerm) {
-        options.search = searchTerm
+        params.append("q", searchTerm)
       }
-      const data = await getTrips(options)
-      setTrips(data)
+
+      const response = await fetch(`/api/gezi/trips?${params.toString()}`)
+      if (!response.ok) {
+        throw new Error("Geziler alınamadı")
+      }
+      const result = await response.json()
+      setTrips(result.data || [])
     } catch (error) {
       console.error("Error fetching trips:", error)
       alert("Geziler yüklenirken hata oluştu: " + (error instanceof Error ? error.message : "Bilinmeyen hata"))
@@ -82,12 +80,16 @@ export default function GeziPage() {
 
   const fetchStats = useCallback(async () => {
     try {
-      const data = await getTripStats()
-      setStats(data)
+      const response = await fetch("/api/gezi/trips/stats")
+      if (!response.ok) {
+        throw new Error("İstatistikler alınamadı")
+      }
+      const result = await response.json()
+      setStats(result.data || stats)
     } catch (error) {
       console.error("Error fetching stats:", error)
     }
-  }, [])
+  }, [stats])
 
   useEffect(() => {
     fetchTrips()
@@ -117,9 +119,23 @@ export default function GeziPage() {
       }
 
       if (editingTrip) {
-        await updateTrip(editingTrip.id, formData)
+        const response = await fetch(`/api/gezi/trips/${editingTrip.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData),
+        })
+        if (!response.ok) {
+          throw new Error("Gezi güncellenemedi")
+        }
       } else {
-        await createTrip(formData)
+        const response = await fetch("/api/gezi/trips", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData),
+        })
+        if (!response.ok) {
+          throw new Error("Gezi oluşturulamadı")
+        }
       }
 
       fetchTrips()
@@ -164,7 +180,14 @@ export default function GeziPage() {
 
   const handleToggleActive = async (trip: Trip) => {
     try {
-      await updateTrip(trip.id, { isActive: !trip.isActive })
+      const response = await fetch(`/api/gezi/trips/${trip.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: !trip.isActive }),
+      })
+      if (!response.ok) {
+        throw new Error("Gezi durumu güncellenemedi")
+      }
       fetchTrips()
       fetchStats()
     } catch (error) {

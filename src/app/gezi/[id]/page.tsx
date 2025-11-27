@@ -18,13 +18,7 @@ import {
   GraduationCap,
   Loader2,
 } from "lucide-react"
-import {
-  getTrip,
-  getTripApplications,
-  exportTripApplications,
-  type Trip,
-  type TripApplication,
-} from "@/lib/geziService"
+import type { Trip, TripApplication } from "@/lib/geziService"
 
 export default function GeziDetailPage() {
   const params = useParams()
@@ -44,8 +38,12 @@ export default function GeziDetailPage() {
   const fetchTrip = useCallback(async () => {
     try {
       setLoading(true)
-      const data = await getTrip(tripId)
-      setTrip(data)
+      const response = await fetch(`/api/gezi/trips/${tripId}`)
+      if (!response.ok) {
+        throw new Error("Gezi bulunamadı")
+      }
+      const result = await response.json()
+      setTrip(result.data)
     } catch (error) {
       console.error("Error fetching trip:", error)
       alert("Gezi yüklenirken hata oluştu: " + (error instanceof Error ? error.message : "Bilinmeyen hata"))
@@ -58,12 +56,19 @@ export default function GeziDetailPage() {
   const fetchApplications = useCallback(async () => {
     try {
       setApplicationsLoading(true)
-      const result = await getTripApplications(tripId, {
-        page: currentPage,
-        limit: 20,
-        search: searchTerm || undefined,
-      })
-      setApplications(result.data)
+      const params = new URLSearchParams()
+      params.append("page", String(currentPage))
+      params.append("limit", "20")
+      if (searchTerm) {
+        params.append("q", searchTerm)
+      }
+
+      const response = await fetch(`/api/gezi/trips/${tripId}/applications?${params.toString()}`)
+      if (!response.ok) {
+        throw new Error("Başvurular alınamadı")
+      }
+      const result = await response.json()
+      setApplications(result.data || [])
       if (result.pagination) {
         setTotalPages(result.pagination.totalPages)
         setTotalApplications(result.pagination.total)
@@ -88,7 +93,11 @@ export default function GeziDetailPage() {
   const handleExport = async () => {
     try {
       setExporting(true)
-      const blob = await exportTripApplications(tripId)
+      const response = await fetch(`/api/gezi/trips/${tripId}/applications/export`)
+      if (!response.ok) {
+        throw new Error("Excel export başarısız")
+      }
+      const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
