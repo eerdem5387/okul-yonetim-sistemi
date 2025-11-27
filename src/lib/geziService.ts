@@ -102,10 +102,29 @@ function getHeaders(): HeadersInit {
  */
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: "Bilinmeyen hata" }))
-    throw new Error(error.error || `HTTP ${response.status}: ${response.statusText}`)
+    let errorMessage = `HTTP ${response.status}: ${response.statusText}`
+    try {
+      const contentType = response.headers.get("content-type")
+      if (contentType && contentType.includes("application/json")) {
+        const error = await response.json()
+        errorMessage = error.error || error.message || errorMessage
+      } else {
+        const text = await response.text()
+        if (text) errorMessage = text
+      }
+    } catch (parseError) {
+      // JSON parse hatası, varsayılan mesajı kullan
+      console.error("Error parsing error response:", parseError)
+    }
+    throw new Error(errorMessage)
   }
-  return response.json()
+  
+  try {
+    return await response.json()
+  } catch (jsonError) {
+    console.error("Error parsing JSON response:", jsonError)
+    throw new Error("Geçersiz yanıt formatı")
+  }
 }
 
 /**

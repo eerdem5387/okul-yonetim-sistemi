@@ -6,8 +6,25 @@ type RouteContext = { params: Promise<{ id: string }> }
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params
+    
+    if (!id || typeof id !== "string") {
+      return NextResponse.json(
+        { error: "Geçersiz gezi ID" },
+        { status: 400 }
+      )
+    }
+
     const blob = await exportTripApplications(id)
+    
+    if (!blob || !(blob instanceof Blob)) {
+      throw new Error("Geçersiz Excel dosyası")
+    }
+    
     const buffer = await blob.arrayBuffer()
+
+    if (!buffer || buffer.byteLength === 0) {
+      throw new Error("Boş Excel dosyası")
+    }
 
     return new NextResponse(buffer, {
       status: 200,

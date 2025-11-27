@@ -6,10 +6,21 @@ type RouteContext = { params: Promise<{ id: string }> }
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params
+    
+    if (!id || typeof id !== "string") {
+      return NextResponse.json(
+        { error: "Geçersiz gezi ID" },
+        { status: 400 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
-    const page = Number(searchParams.get("page") ?? "1")
-    const limit = Number(searchParams.get("limit") ?? "20")
-    const search = searchParams.get("q") || undefined
+    const pageParam = searchParams.get("page")
+    const limitParam = searchParams.get("limit")
+    
+    const page = pageParam ? Math.max(1, Math.floor(Number(pageParam)) || 1) : 1
+    const limit = limitParam ? Math.min(100, Math.max(1, Math.floor(Number(limitParam)) || 20)) : 20
+    const search = searchParams.get("q")?.trim() || undefined
 
     const result = await getTripApplications(id, {
       page,
