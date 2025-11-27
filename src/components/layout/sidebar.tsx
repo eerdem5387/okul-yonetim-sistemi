@@ -19,7 +19,8 @@ import {
   X,
   LogOut,
   ClipboardList,
-  Award
+  Award,
+  MapPin
 } from "lucide-react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
@@ -27,6 +28,7 @@ import { useRouter } from "next/navigation"
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Bursluluk Başvuruları", href: "/basvurular", icon: ClipboardList },
+  { name: "Gezi Yönetimi", href: "/gezi", icon: MapPin },
   { name: "Öğrenci Yönetimi", href: "/students", icon: UserPlus },
   { name: "Kulüp Yönetimi", href: "/clubs", icon: Users },
   { name: "IB Faaliyet Yönetimi", href: "/activities", icon: Award },
