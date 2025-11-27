@@ -6,13 +6,7 @@ type RouteContext = { params: Promise<{ id: string }> }
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params
-    const response = await exportTripApplications(id)
-    
-    if (!response.ok) {
-      throw new Error("Excel export başarısız")
-    }
-
-    const blob = await response.blob()
+    const blob = await exportTripApplications(id)
     const buffer = await blob.arrayBuffer()
 
     return new NextResponse(buffer, {
