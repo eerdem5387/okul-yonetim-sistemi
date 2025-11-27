@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
 /**
- * Public endpoint for fetching student list (for gezi-basvuru-sistemi)
+ * Public endpoint for fetching student by TC number (for gezi-basvuru-sistemi)
+ * KVKK gereği sadece TC numarası ile arama yapılabilir
  * Returns only basic student information: id, firstName, lastName, grade
  */
 export async function OPTIONS(request: NextRequest) {
@@ -29,8 +30,7 @@ export async function OPTIONS(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const search = searchParams.get("search")?.trim() || ""
-    const grade = searchParams.get("grade")?.trim() || ""
+    const tcNumber = searchParams.get("tcNumber")?.trim() || ""
 
     const whereConditions: Array<Record<string, unknown>> = []
 
@@ -39,25 +39,19 @@ export async function GET(request: NextRequest) {
       NOT: { grade: { equals: "Mezun", mode: "insensitive" as const } },
     })
 
-    // Search filter
-    if (search) {
-      whereConditions.push({
-        OR: [
-          { firstName: { contains: search, mode: "insensitive" as const } },
-          { lastName: { contains: search, mode: "insensitive" as const } },
-          {
-            AND: [
-              { firstName: { contains: search.split(" ")[0] || "", mode: "insensitive" as const } },
-              { lastName: { contains: search.split(" ")[1] || "", mode: "insensitive" as const } },
-            ],
-          },
-        ],
-      })
-    }
-
-    // Grade filter
-    if (grade) {
-      whereConditions.push({ grade: { equals: grade, mode: "insensitive" as const } })
+    // TC Number filter (KVKK gereği sadece TC ile arama)
+    if (tcNumber) {
+      // TC numarası sadece rakam olmalı ve 11 haneli olmalı
+      const cleanedTc = tcNumber.replace(/\D/g, "") // Sadece rakamları al
+      if (cleanedTc.length === 11) {
+        whereConditions.push({ tcNumber: { equals: cleanedTc } })
+      } else {
+        // Geçersiz TC numarası - boş sonuç döndür
+        return NextResponse.json({ data: [] })
+      }
+    } else {
+      // TC numarası verilmemiş - boş sonuç döndür (KVKK gereği)
+      return NextResponse.json({ data: [] })
     }
 
     const where = whereConditions.length > 0 ? { AND: whereConditions } : {}
@@ -76,7 +70,7 @@ export async function GET(request: NextRequest) {
         { firstName: "asc" },
         { lastName: "asc" },
       ],
-      take: 100, // Limit to 100 results for performance
+      take: 1, // TC numarası unique olduğu için sadece 1 sonuç beklenir
     })
 
     const response = NextResponse.json({
