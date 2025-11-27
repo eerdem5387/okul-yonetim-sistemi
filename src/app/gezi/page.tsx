@@ -10,17 +10,13 @@ import {
   Edit,
   Eye,
   Search,
-  Filter,
   Calendar,
   MapPin,
   Users,
   DollarSign,
-  FileText,
   X,
   CheckCircle2,
   XCircle,
-  TrendingUp,
-  Clock,
 } from "lucide-react"
 import {
   getTrips,

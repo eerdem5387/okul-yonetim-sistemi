@@ -6,7 +6,7 @@
 const GEZI_API_URL = process.env.NEXT_PUBLIC_GEZI_API_URL || process.env.GEZI_API_URL || ""
 const SERVICE_API_SECRET = process.env.SERVICE_API_SECRET || ""
 
-interface Trip {
+export interface Trip {
   id: string
   title: string
   description: string | null
@@ -24,7 +24,7 @@ interface Trip {
   }
 }
 
-interface TripApplication {
+export interface TripApplication {
   id: string
   tripId: string
   ogrenciAdSoyad: string
@@ -37,7 +37,7 @@ interface TripApplication {
   updatedAt: string
 }
 
-interface TripStats {
+export interface TripStats {
   totalTrips: number
   activeTrips: number
   upcomingTrips: number
@@ -45,7 +45,7 @@ interface TripStats {
   monthlyApplications: number
 }
 
-interface CreateTripData {
+export interface CreateTripData {
   title: string
   description?: string | null
   extraNotes?: string | null
@@ -57,7 +57,7 @@ interface CreateTripData {
   isActive?: boolean
 }
 
-interface UpdateTripData {
+export interface UpdateTripData {
   title?: string
   description?: string | null
   extraNotes?: string | null
@@ -69,7 +69,7 @@ interface UpdateTripData {
   isActive?: boolean
 }
 
-interface PaginatedResponse<T> {
+export interface PaginatedResponse<T> {
   data: T[]
   pagination?: {
     page: number

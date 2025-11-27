@@ -13,7 +13,6 @@ import {
   MapPin,
   Users,
   DollarSign,
-  FileText,
   User,
   Phone,
   GraduationCap,
