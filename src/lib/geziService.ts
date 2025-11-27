@@ -6,6 +6,14 @@
 const GEZI_API_URL = process.env.NEXT_PUBLIC_GEZI_API_URL || process.env.GEZI_API_URL || ""
 const SERVICE_API_SECRET = process.env.SERVICE_API_SECRET || ""
 
+if (!GEZI_API_URL) {
+  console.warn("GEZI_API_URL is not configured")
+}
+
+if (!SERVICE_API_SECRET) {
+  console.warn("SERVICE_API_SECRET is not configured - API requests will fail")
+}
+
 export interface Trip {
   id: string
   title: string
