@@ -32,9 +32,44 @@ export async function POST() {
 
     let synced = 0
     let skipped = 0
+    let deleted = 0
     let errors = 0
 
-    // Her başvuruyu işle
+    // 1) Mevcut kayıtları çek ve kaynakta artık olmayanları sil
+    try {
+      const existingBasvurular = await prisma.basvuru.findMany({
+        select: {
+          id: true,
+          externalId: true,
+        },
+      })
+
+      const incomingIds = new Set<string>(
+        basvurular
+          .map((b: any) => b.id)
+          .filter((id: unknown): id is string => typeof id === "string")
+      )
+
+      const toDeleteIds = existingBasvurular
+        .filter((b) => !incomingIds.has(b.externalId))
+        .map((b) => b.id)
+
+      if (toDeleteIds.length > 0) {
+        const deleteResult = await prisma.basvuru.deleteMany({
+          where: {
+            id: {
+              in: toDeleteIds,
+            },
+          },
+        })
+        deleted = deleteResult.count
+      }
+    } catch (cleanupError) {
+      console.error("[Sync] Eski başvurular temizlenirken hata oluştu:", cleanupError)
+      // Temizlik hatası, insert akışını tamamen engellemesin
+    }
+
+    // 2) Her başvuruyu işle (yeni olanları ekle)
     for (const payload of basvurular) {
       try {
         // Aynı externalId ile daha önce kayıt var mı kontrol et
@@ -84,6 +119,7 @@ export async function POST() {
         total: basvurular.length,
         synced,
         skipped,
+        deleted,
         errors
       }
     })
