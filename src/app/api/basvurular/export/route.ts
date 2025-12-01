@@ -83,6 +83,7 @@ export async function GET(request: NextRequest) {
       "Okul": basvuru.okul,
       "Sınıf": basvuru.ogrenciSinifi,
       "Şube": basvuru.ogrenciSube,
+      "Sınav Günü": basvuru.sinavGunu || "Belirtilmedi",
       "Baba Ad Soyad": basvuru.babaAdSoyad,
       "Baba Meslek": basvuru.babaMeslek,
       "Baba İş Adresi": basvuru.babaIsAdresi || "",
@@ -107,6 +108,7 @@ export async function GET(request: NextRequest) {
       { wch: 50 },  // Okul
       { wch: 10 },  // Sınıf
       { wch: 8 },   // Şube
+      { wch: 12 },  // Sınav Günü
       { wch: 25 },  // Baba Ad Soyad
       { wch: 30 },  // Baba Meslek
       { wch: 40 },  // Baba İş Adresi
@@ -141,4 +143,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to export basvurular" }, { status: 500 })
   }
 }
-

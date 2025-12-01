@@ -19,7 +19,7 @@ interface Basvuru {
   okul: string
   ogrenciSinifi: string
   ogrenciSube: string
-   sinavGunu: string
+  sinavGunu: string
   babaAdSoyad: string
   babaMeslek: string
   babaIsAdresi: string
@@ -1094,6 +1094,12 @@ export default function BasvurularPage() {
                       <Label className="text-gray-500 text-sm">Sınıf / Şube</Label>
                       <p className="font-semibold">
                         {selectedBasvuru.ogrenciSinifi} · {selectedBasvuru.ogrenciSube} Şubesi
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-gray-500 text-sm">Sınav Günü</Label>
+                      <p className="font-semibold text-blue-600">
+                        {selectedBasvuru.sinavGunu || "Belirtilmedi"}
                       </p>
                     </div>
                   </div>
