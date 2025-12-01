@@ -30,6 +30,25 @@ export async function POST() {
     const data = await response.json()
     const basvurular = data.basvurular || []
 
+    type IncomingBasvuru = {
+      id: string
+      ogrenciAdSoyad?: string
+      ogrenciTc?: string
+      okul?: string
+      ogrenciSinifi?: string
+      ogrenciSube?: string
+      babaAdSoyad?: string
+      babaMeslek?: string
+      babaIsAdresi?: string
+      babaCepTel?: string
+      anneAdSoyad?: string
+      anneMeslek?: string
+      anneIsAdresi?: string
+      anneCepTel?: string
+      email?: string
+      createdAt?: string
+    }
+
     let synced = 0
     let skipped = 0
     let deleted = 0
@@ -45,9 +64,9 @@ export async function POST() {
       })
 
       const incomingIds = new Set<string>(
-        basvurular
-          .map((b: any) => b.id)
-          .filter((id: unknown): id is string => typeof id === "string")
+        (basvurular as IncomingBasvuru[])
+          .map((b) => b.id)
+          .filter((id): id is string => typeof id === "string")
       )
 
       const toDeleteIds = existingBasvurular
