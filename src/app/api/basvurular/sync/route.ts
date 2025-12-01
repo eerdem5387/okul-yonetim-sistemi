@@ -110,6 +110,7 @@ export async function POST() {
             okul: payload.okul,
             ogrenciSinifi: payload.ogrenciSinifi,
             ogrenciSube: payload.ogrenciSube || "Belirtilmedi",
+            sinavGunu: payload.sinavGunu || "Belirtilmedi",
             babaAdSoyad: payload.babaAdSoyad,
             babaMeslek: payload.babaMeslek,
             babaIsAdresi: payload.babaIsAdresi || "",

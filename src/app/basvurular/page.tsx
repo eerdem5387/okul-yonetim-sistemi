@@ -19,6 +19,7 @@ interface Basvuru {
   okul: string
   ogrenciSinifi: string
   ogrenciSube: string
+   sinavGunu: string
   babaAdSoyad: string
   babaMeslek: string
   babaIsAdresi: string

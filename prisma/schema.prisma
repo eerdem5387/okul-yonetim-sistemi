@@ -176,6 +176,7 @@ model Basvuru {
   okul             String
   ogrenciSinifi    String
   ogrenciSube      String   @default("Belirtilmedi")
+  sinavGunu        String   @default("Belirtilmedi")
   babaAdSoyad      String
   babaMeslek       String
   babaIsAdresi     String   @default("")
