@@ -441,30 +441,33 @@ export default function BasvurularPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6 lg:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-3 sm:p-4 md:p-6 lg:p-8">
       {/* Page Header */}
-      <div className="page-header animate-fade-in mb-6">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <h1 className="page-title">Bursluluk Sınavı Başvuruları</h1>
-            <p className="page-subtitle">Başvuru sisteminden gelen başvurular</p>
+      <div className="page-header animate-fade-in mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+          <div className="flex-shrink-0">
+            <h1 className="page-title text-xl sm:text-2xl lg:text-3xl">Bursluluk Sınavı Başvuruları</h1>
+            <p className="page-subtitle text-xs sm:text-sm">Başvuru sisteminden gelen başvurular</p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
             <Button
               onClick={handleSync}
               disabled={isSyncing}
               variant="outline"
-              className="border-blue-300 text-blue-700 hover:bg-blue-50"
+              size="sm"
+              className="border-blue-300 text-blue-700 hover:bg-blue-50 text-xs sm:text-sm w-full sm:w-auto justify-center"
             >
               {isSyncing ? (
                 <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  Senkronize Ediliyor...
+                  <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-2 animate-spin" />
+                  <span className="hidden sm:inline">Senkronize Ediliyor...</span>
+                  <span className="sm:hidden">Senkronize...</span>
                 </>
               ) : (
                 <>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Geçmiş Başvuruları Senkronize Et
+                  <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
+                  <span className="hidden sm:inline">Geçmiş Başvuruları Senkronize Et</span>
+                  <span className="sm:hidden">Senkronize Et</span>
                 </>
               )}
             </Button>
@@ -476,26 +479,31 @@ export default function BasvurularPage() {
               <Button
                 onClick={handleDeleteTestBasvurular}
                 variant="outline"
-                className="border-red-300 text-red-700 hover:bg-red-50"
+                size="sm"
+                className="border-red-300 text-red-700 hover:bg-red-50 text-xs sm:text-sm w-full sm:w-auto justify-center"
               >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Test Başvurularını Sil
+                <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
+                <span className="hidden sm:inline">Test Başvurularını Sil</span>
+                <span className="sm:hidden">Test Sil</span>
               </Button>
             )}
             <Button
               onClick={handleExport}
               disabled={isExporting || totalBasvurular === 0}
-              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg"
+              size="sm"
+              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg text-xs sm:text-sm w-full sm:w-auto justify-center"
             >
               {isExporting ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                  İndiriliyor...
+                  <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-white mr-2" />
+                  <span className="hidden sm:inline">İndiriliyor...</span>
+                  <span className="sm:hidden">İndiriliyor...</span>
                 </>
               ) : (
                 <>
-                  <FileSpreadsheet className="h-4 w-4 mr-2" />
-                  Excel İndir
+                  <FileSpreadsheet className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
+                  <span className="hidden sm:inline">Excel İndir</span>
+                  <span className="sm:hidden">Excel</span>
                 </>
               )}
             </Button>
@@ -505,14 +513,14 @@ export default function BasvurularPage() {
 
       {/* Sync Result Banner */}
       {syncResult && (
-        <Card className="mb-6 border-0 shadow-lg bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="h-6 w-6 text-green-600" />
-                <div>
-                  <p className="font-semibold text-green-900">Senkronizasyon Tamamlandı!</p>
-                  <p className="text-sm text-green-700">
+        <Card className="mb-4 sm:mb-6 border-0 shadow-lg bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500">
+          <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+            <div className="flex items-start sm:items-center justify-between gap-2">
+              <div className="flex items-start sm:items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                <CheckCircle2 className="h-5 w-5 sm:h-6 sm:w-6 text-green-600 flex-shrink-0 mt-0.5 sm:mt-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-green-900 text-sm sm:text-base">Senkronizasyon Tamamlandı!</p>
+                  <p className="text-xs sm:text-sm text-green-700 break-words">
                     {syncResult.synced} yeni başvuru eklendi, {syncResult.skipped} başvuru zaten mevcuttu
                     {syncResult.errors > 0 && `, ${syncResult.errors} hata oluştu`}
                   </p>
@@ -522,7 +530,7 @@ export default function BasvurularPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setSyncResult(null)}
-                className="text-green-700 hover:text-green-900"
+                className="text-green-700 hover:text-green-900 flex-shrink-0"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -532,51 +540,51 @@ export default function BasvurularPage() {
       )}
 
       {/* İstatistik Kartları */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
         <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white">
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-100 text-sm font-medium mb-1">Toplam Başvuru</p>
-                <p className="text-3xl font-bold">{stats.total}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-blue-100 text-xs sm:text-sm font-medium mb-1 truncate">Toplam Başvuru</p>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold">{stats.total}</p>
               </div>
-              <Users className="h-10 w-10 text-blue-200" />
+              <Users className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 text-blue-200 flex-shrink-0 ml-2" />
             </div>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-lg bg-gradient-to-br from-green-600 to-emerald-600 text-white">
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-green-100 text-sm font-medium mb-1">Bugün</p>
-                <p className="text-3xl font-bold">{stats.today}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-green-100 text-xs sm:text-sm font-medium mb-1 truncate">Bugün</p>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold">{stats.today}</p>
               </div>
-              <Clock className="h-10 w-10 text-green-200" />
+              <Clock className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 text-green-200 flex-shrink-0 ml-2" />
             </div>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-lg bg-gradient-to-br from-orange-600 to-amber-600 text-white">
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-orange-100 text-sm font-medium mb-1">Bu Hafta</p>
-                <p className="text-3xl font-bold">{stats.thisWeek}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-orange-100 text-xs sm:text-sm font-medium mb-1 truncate">Bu Hafta</p>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold">{stats.thisWeek}</p>
               </div>
-              <TrendingUp className="h-10 w-10 text-orange-200" />
+              <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 text-orange-200 flex-shrink-0 ml-2" />
             </div>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-lg bg-gradient-to-br from-purple-600 to-pink-600 text-white">
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-purple-100 text-sm font-medium mb-1">Bu Ay</p>
-                <p className="text-3xl font-bold">{stats.thisMonth}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-purple-100 text-xs sm:text-sm font-medium mb-1 truncate">Bu Ay</p>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold">{stats.thisMonth}</p>
               </div>
-              <TrendingUp className="h-10 w-10 text-purple-200" />
+              <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 text-purple-200 flex-shrink-0 ml-2" />
             </div>
           </CardContent>
         </Card>
@@ -584,21 +592,19 @@ export default function BasvurularPage() {
 
       {/* Filtrelenmiş Sonuç Sayısı */}
       {hasActiveFilters && (
-        <Card className="mb-6 border-0 shadow-lg bg-gradient-to-r from-indigo-50 to-blue-50 border-l-4 border-indigo-500">
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Filter className="h-5 w-5 text-indigo-600" />
-                <div>
-                  <p className="font-semibold text-indigo-900">
-                    Filtrelenmiş Sonuç: <span className="text-2xl">{filteredCount}</span> başvuru
+        <Card className="mb-4 sm:mb-6 border-0 shadow-lg bg-gradient-to-r from-indigo-50 to-blue-50 border-l-4 border-indigo-500">
+          <CardContent className="pt-3 sm:pt-4 pb-3 sm:pb-4">
+            <div className="flex items-start sm:items-center gap-2 sm:gap-3">
+              <Filter className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600 flex-shrink-0 mt-0.5 sm:mt-0" />
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-indigo-900 text-sm sm:text-base">
+                  Filtrelenmiş Sonuç: <span className="text-xl sm:text-2xl">{filteredCount}</span> başvuru
+                </p>
+                {selectedSinif && (
+                  <p className="text-xs sm:text-sm text-indigo-700 mt-1 break-words">
+                    {selectedSinif} için toplam: {stats.sinifStats[selectedSinif] || 0} başvuru
                   </p>
-                  {selectedSinif && (
-                    <p className="text-sm text-indigo-700 mt-1">
-                      {selectedSinif} için toplam: {stats.sinifStats[selectedSinif] || 0} başvuru
-                    </p>
-                  )}
-                </div>
+                )}
               </div>
             </div>
           </CardContent>
@@ -607,28 +613,28 @@ export default function BasvurularPage() {
 
       {/* Sınıf Bazında İstatistikler */}
       {Object.keys(stats.sinifStats).length > 0 && (
-        <Card className="mb-6 border-0 shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <GraduationCap className="h-5 w-5 text-blue-600" />
+        <Card className="mb-4 sm:mb-6 border-0 shadow-lg">
+          <CardHeader className="pb-3 sm:pb-4">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <GraduationCap className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
               Sınıf Bazında Başvurular
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 sm:gap-3">
               {siniflar.map((sinif) => {
                 const count = stats.sinifStats[sinif] || 0
                 return (
                   <div
                     key={sinif}
-                    className={`p-3 rounded-lg border-2 transition-all ${
+                    className={`p-2 sm:p-3 rounded-lg border-2 transition-all ${
                       selectedSinif === sinif
                         ? 'border-blue-500 bg-blue-50'
                         : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
                     }`}
                   >
-                    <p className="text-xs text-gray-600 mb-1">{sinif}</p>
-                    <p className="text-2xl font-bold text-gray-900">{count}</p>
+                    <p className="text-xs text-gray-600 mb-1 truncate">{sinif}</p>
+                    <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">{count}</p>
                   </div>
                 )
               })}
@@ -638,57 +644,61 @@ export default function BasvurularPage() {
       )}
 
       {/* Search and Filters */}
-      <Card className="mb-6 border-0 shadow-lg">
-        <CardContent className="pt-6">
-          <div className="space-y-4">
+      <Card className="mb-4 sm:mb-6 border-0 shadow-lg">
+        <CardContent className="pt-4 sm:pt-6">
+          <div className="space-y-3 sm:space-y-4">
             {/* Search Bar */}
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 sm:h-5 sm:w-5" />
                 <Input
                   type="text"
                   placeholder="Öğrenci adı, TC, email, okul veya veli adı ile ara..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  className="pl-10"
+                  className="pl-9 sm:pl-10 h-9 sm:h-10 text-sm"
                 />
               </div>
-              <Button onClick={handleSearch} className="bg-blue-600 hover:bg-blue-700">
-                <Search className="h-4 w-4 mr-2" />
-                Ara
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setShowFilters(!showFilters)}
-                className={showFilters ? "bg-blue-50 border-blue-300" : ""}
-              >
-                <Filter className="h-4 w-4 mr-2" />
-                Filtreler
-                {showFilters ? (
-                  <ChevronUp className="h-4 w-4 ml-2" />
-                ) : (
-                  <ChevronDown className="h-4 w-4 ml-2" />
-                )}
-              </Button>
-              {hasActiveFilters && (
+              <div className="flex gap-2 sm:gap-3">
+                <Button onClick={handleSearch} size="sm" className="bg-blue-600 hover:bg-blue-700 h-9 sm:h-10 text-xs sm:text-sm flex-1 sm:flex-initial">
+                  <Search className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Ara</span>
+                </Button>
                 <Button
                   variant="outline"
-                  onClick={clearFilters}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  size="sm"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={`h-9 sm:h-10 text-xs sm:text-sm flex-1 sm:flex-initial ${showFilters ? "bg-blue-50 border-blue-300" : ""}`}
                 >
-                  <X className="h-4 w-4 mr-2" />
-                  Temizle
+                  <Filter className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Filtreler</span>
+                  {showFilters ? (
+                    <ChevronUp className="h-3 w-3 sm:h-4 sm:w-4 ml-1 sm:ml-2" />
+                  ) : (
+                    <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4 ml-1 sm:ml-2" />
+                  )}
                 </Button>
-              )}
+                {hasActiveFilters && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 h-9 sm:h-10 text-xs sm:text-sm"
+                  >
+                    <X className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                    <span className="hidden sm:inline">Temizle</span>
+                  </Button>
+                )}
+              </div>
             </div>
 
             {/* Filters Panel */}
             {showFilters && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-4 border-t border-gray-200">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 pt-3 sm:pt-4 border-t border-gray-200">
                 <div>
-                  <Label className="text-sm font-medium text-gray-700 mb-2 block">
-                    <GraduationCap className="h-4 w-4 inline mr-1" />
+                  <Label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2 block">
+                    <GraduationCap className="h-3 w-3 sm:h-4 sm:w-4 inline mr-1" />
                     Sınıf
                   </Label>
                   <select
@@ -698,7 +708,7 @@ export default function BasvurularPage() {
                       setSelectedSinif(newValue)
                       handleFilterChange(newValue)
                     }}
-                    className="w-full h-10 px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full h-9 sm:h-10 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Tüm Sınıflar</option>
                     {siniflar.map((sinif) => (
@@ -710,8 +720,8 @@ export default function BasvurularPage() {
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium text-gray-700 mb-2 block">
-                    <School className="h-4 w-4 inline mr-1" />
+                  <Label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2 block">
+                    <School className="h-3 w-3 sm:h-4 sm:w-4 inline mr-1" />
                     Okul
                   </Label>
                   <select
@@ -721,7 +731,7 @@ export default function BasvurularPage() {
                       setSelectedOkul(newValue)
                       handleFilterChange(undefined, newValue)
                     }}
-                    className="w-full h-10 px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full h-9 sm:h-10 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Tüm Okullar</option>
                     {uniqueOkullar.map((okul) => (
@@ -733,8 +743,8 @@ export default function BasvurularPage() {
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium text-gray-700 mb-2 block">
-                    <Briefcase className="h-4 w-4 inline mr-1" />
+                  <Label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2 block">
+                    <Briefcase className="h-3 w-3 sm:h-4 sm:w-4 inline mr-1" />
                     Baba Meslek
                   </Label>
                   <select
@@ -744,7 +754,7 @@ export default function BasvurularPage() {
                       setSelectedBabaMeslek(newValue)
                       handleFilterChange(undefined, undefined, newValue)
                     }}
-                    className="w-full h-10 px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full h-9 sm:h-10 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Tüm Meslekler</option>
                     {uniqueBabaMeslekler.map((meslek) => (
@@ -756,8 +766,8 @@ export default function BasvurularPage() {
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium text-gray-700 mb-2 block">
-                    <Briefcase className="h-4 w-4 inline mr-1" />
+                  <Label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2 block">
+                    <Briefcase className="h-3 w-3 sm:h-4 sm:w-4 inline mr-1" />
                     Anne Meslek
                   </Label>
                   <select
@@ -767,7 +777,7 @@ export default function BasvurularPage() {
                       setSelectedAnneMeslek(newValue)
                       handleFilterChange(undefined, undefined, undefined, newValue)
                     }}
-                    className="w-full h-10 px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full h-9 sm:h-10 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Tüm Meslekler</option>
                     {uniqueAnneMeslekler.map((meslek) => (
@@ -779,8 +789,8 @@ export default function BasvurularPage() {
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium text-gray-700 mb-2 block">
-                    <Calendar className="h-4 w-4 inline mr-1" />
+                  <Label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2 block">
+                    <Calendar className="h-3 w-3 sm:h-4 sm:w-4 inline mr-1" />
                     Başlangıç Tarihi
                   </Label>
                   <Input
@@ -791,13 +801,13 @@ export default function BasvurularPage() {
                       setStartDate(newValue)
                       handleFilterChange(undefined, undefined, undefined, undefined, newValue)
                     }}
-                    className="w-full h-10"
+                    className="w-full h-9 sm:h-10 text-xs sm:text-sm"
                   />
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium text-gray-700 mb-2 block">
-                    <Calendar className="h-4 w-4 inline mr-1" />
+                  <Label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2 block">
+                    <Calendar className="h-3 w-3 sm:h-4 sm:w-4 inline mr-1" />
                     Bitiş Tarihi
                   </Label>
                   <Input
@@ -808,7 +818,7 @@ export default function BasvurularPage() {
                       setEndDate(newValue)
                       handleFilterChange(undefined, undefined, undefined, undefined, undefined, newValue)
                     }}
-                    className="w-full h-10"
+                    className="w-full h-9 sm:h-10 text-xs sm:text-sm"
                   />
                 </div>
               </div>
@@ -816,88 +826,94 @@ export default function BasvurularPage() {
 
             {/* Active Filters Display */}
             {hasActiveFilters && (
-              <div className="flex flex-wrap gap-2 pt-2">
+              <div className="flex flex-wrap gap-1.5 sm:gap-2 pt-2">
                 {selectedSinif && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
-                    Sınıf: {selectedSinif}
+                  <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-0.5 sm:py-1 bg-blue-100 text-blue-700 rounded-full text-xs sm:text-sm">
+                    <span className="hidden sm:inline">Sınıf: </span>{selectedSinif}
                     <button
                       onClick={() => {
                         setSelectedSinif("")
                         handleFilterChange("")
                       }}
-                      className="hover:text-blue-900"
+                      className="hover:text-blue-900 ml-0.5"
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                     </button>
                   </span>
                 )}
                 {selectedOkul && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
-                    Okul: {selectedOkul.length > 30 ? selectedOkul.substring(0, 30) + '...' : selectedOkul}
+                  <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-0.5 sm:py-1 bg-green-100 text-green-700 rounded-full text-xs sm:text-sm max-w-full">
+                    <span className="hidden sm:inline">Okul: </span>
+                    <span className="truncate max-w-[120px] sm:max-w-none">
+                      {selectedOkul.length > 20 ? selectedOkul.substring(0, 20) + '...' : selectedOkul}
+                    </span>
                     <button
                       onClick={() => {
                         setSelectedOkul("")
                         handleFilterChange(undefined, "")
                       }}
-                      className="hover:text-green-900"
+                      className="hover:text-green-900 ml-0.5 flex-shrink-0"
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                     </button>
                   </span>
                 )}
                 {selectedBabaMeslek && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">
-                    Baba Meslek: {selectedBabaMeslek}
+                  <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-0.5 sm:py-1 bg-purple-100 text-purple-700 rounded-full text-xs sm:text-sm">
+                    <span className="hidden sm:inline">Baba Meslek: </span>{selectedBabaMeslek}
                     <button
                       onClick={() => {
                         setSelectedBabaMeslek("")
                         handleFilterChange(undefined, undefined, "")
                       }}
-                      className="hover:text-purple-900"
+                      className="hover:text-purple-900 ml-0.5"
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                     </button>
                   </span>
                 )}
                 {selectedAnneMeslek && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-pink-100 text-pink-700 rounded-full text-sm">
-                    Anne Meslek: {selectedAnneMeslek}
+                  <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-0.5 sm:py-1 bg-pink-100 text-pink-700 rounded-full text-xs sm:text-sm">
+                    <span className="hidden sm:inline">Anne Meslek: </span>{selectedAnneMeslek}
                     <button
                       onClick={() => {
                         setSelectedAnneMeslek("")
                         handleFilterChange(undefined, undefined, undefined, "")
                       }}
-                      className="hover:text-pink-900"
+                      className="hover:text-pink-900 ml-0.5"
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                     </button>
                   </span>
                 )}
                 {startDate && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-teal-100 text-teal-700 rounded-full text-sm">
-                    Başlangıç: {new Date(startDate).toLocaleDateString('tr-TR')}
+                  <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-0.5 sm:py-1 bg-teal-100 text-teal-700 rounded-full text-xs sm:text-sm">
+                    <span className="hidden sm:inline">Başlangıç: </span>
+                    <span className="sm:hidden">Baş: </span>
+                    {new Date(startDate).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit' })}
                     <button
                       onClick={() => {
                         setStartDate("")
                         handleFilterChange(undefined, undefined, undefined, undefined, "")
                       }}
-                      className="hover:text-teal-900"
+                      className="hover:text-teal-900 ml-0.5"
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                     </button>
                   </span>
                 )}
                 {endDate && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-teal-100 text-teal-700 rounded-full text-sm">
-                    Bitiş: {new Date(endDate).toLocaleDateString('tr-TR')}
+                  <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-0.5 sm:py-1 bg-teal-100 text-teal-700 rounded-full text-xs sm:text-sm">
+                    <span className="hidden sm:inline">Bitiş: </span>
+                    {new Date(endDate).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit' })}
                     <button
                       onClick={() => {
                         setEndDate("")
                         handleFilterChange(undefined, undefined, undefined, undefined, undefined, "")
                       }}
-                      className="hover:text-teal-900"
+                      className="hover:text-teal-900 ml-0.5"
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                     </button>
                   </span>
                 )}
@@ -909,21 +925,22 @@ export default function BasvurularPage() {
 
       {/* Basvurular List */}
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+        <div className="flex items-center justify-center py-12 sm:py-20">
+          <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600" />
         </div>
       ) : basvurular.length === 0 ? (
         <Card className="border-0 shadow-lg">
-          <CardContent className="pt-12 pb-12 text-center">
-            <User className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-            <p className="text-gray-500 text-lg font-medium">
+          <CardContent className="pt-8 sm:pt-12 pb-8 sm:pb-12 text-center">
+            <User className="h-12 w-12 sm:h-16 sm:w-16 mx-auto mb-3 sm:mb-4 text-gray-300" />
+            <p className="text-gray-500 text-base sm:text-lg font-medium px-4">
               {hasActiveFilters ? "Filtreleme kriterlerinize uygun başvuru bulunamadı." : "Henüz başvuru bulunmamaktadır."}
             </p>
             {hasActiveFilters && (
               <Button
                 variant="outline"
                 onClick={clearFilters}
-                className="mt-4"
+                size="sm"
+                className="mt-3 sm:mt-4"
               >
                 Filtreleri Temizle
               </Button>
@@ -932,7 +949,7 @@ export default function BasvurularPage() {
         </Card>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-4 mb-6">
+          <div className="grid grid-cols-1 gap-3 sm:gap-4 mb-4 sm:mb-6">
             {basvurular.map((basvuru, index) => (
               <Card
                 key={basvuru.id}
@@ -940,62 +957,64 @@ export default function BasvurularPage() {
                 onClick={() => setSelectedBasvuru(basvuru)}
                 style={{ animationDelay: `${index * 50}ms` }}
               >
-                <CardContent className="pt-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:scale-110 transition-transform">
+                <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                        <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-lg group-hover:scale-110 transition-transform flex-shrink-0">
                           {basvuru.ogrenciAdSoyad.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                         </div>
-                        <div>
-                          <h3 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-base sm:text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors truncate">
                             {basvuru.ogrenciAdSoyad}
                           </h3>
-                          <p className="text-sm text-gray-500">TC: {basvuru.ogrenciTc}</p>
+                          <p className="text-xs sm:text-sm text-gray-500">TC: {basvuru.ogrenciTc}</p>
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                        <div className="flex items-center gap-2 text-sm">
-                          <School className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mt-3 sm:mt-4">
+                        <div className="flex items-center gap-2 text-xs sm:text-sm min-w-0">
+                          <School className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600 flex-shrink-0" />
                           <span className="text-gray-700 truncate" title={basvuru.okul}>
                             {basvuru.okul}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <GraduationCap className="h-4 w-4 text-indigo-600 flex-shrink-0" />
+                        <div className="flex items-center gap-2 text-xs sm:text-sm">
+                          <GraduationCap className="h-3 w-3 sm:h-4 sm:w-4 text-indigo-600 flex-shrink-0" />
                           <span className="text-gray-700">
                             {basvuru.ogrenciSinifi} · {basvuru.ogrenciSube} Şubesi
                           </span>
                         </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Mail className="h-4 w-4 text-green-600 flex-shrink-0" />
+                        <div className="flex items-center gap-2 text-xs sm:text-sm min-w-0">
+                          <Mail className="h-3 w-3 sm:h-4 sm:w-4 text-green-600 flex-shrink-0" />
                           <span className="text-gray-700 truncate">{basvuru.email}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Calendar className="h-4 w-4 text-orange-600 flex-shrink-0" />
+                        <div className="flex items-center gap-2 text-xs sm:text-sm">
+                          <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-orange-600 flex-shrink-0" />
                           <span className="text-gray-700">
                             {new Date(basvuru.createdAt).toLocaleDateString('tr-TR')}
                           </span>
                         </div>
                       </div>
                     </div>
-                    <div className="flex gap-2 ml-4">
+                    <div className="flex gap-2 sm:ml-4 flex-shrink-0">
                       <Button
                         variant="outline"
+                        size="sm"
                         onClick={(e) => {
                           e.stopPropagation()
                           setSelectedBasvuru(basvuru)
                         }}
-                        className="group-hover:border-blue-300 group-hover:bg-blue-50 transition-colors"
+                        className="group-hover:border-blue-300 group-hover:bg-blue-50 transition-colors text-xs sm:text-sm flex-1 sm:flex-initial"
                       >
-                        <Eye className="h-4 w-4 mr-2" />
-                        Detay
+                        <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                        <span className="hidden sm:inline">Detay</span>
                       </Button>
                       {(basvuru.ogrenciAdSoyad.includes('TEST') || 
                         basvuru.okul === 'Test Okulu' || 
                         basvuru.externalId.startsWith('test-')) && (
                         <Button
                           variant="outline"
+                          size="sm"
                           onClick={(e) => {
                             e.stopPropagation()
                             handleDelete(basvuru.id, basvuru.ogrenciAdSoyad)
@@ -1004,9 +1023,9 @@ export default function BasvurularPage() {
                           className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 hover:border-red-300"
                         >
                           {deletingId === basvuru.id ? (
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600" />
+                            <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-red-600" />
                           ) : (
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                           )}
                         </Button>
                       )}
@@ -1019,21 +1038,25 @@ export default function BasvurularPage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-6">
+            <div className="flex items-center justify-center gap-2 sm:gap-3 mt-4 sm:mt-6">
               <Button
                 variant="outline"
+                size="sm"
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
+                className="text-xs sm:text-sm"
               >
                 Önceki
               </Button>
-              <span className="text-sm text-gray-600 px-4">
+              <span className="text-xs sm:text-sm text-gray-600 px-2 sm:px-4">
                 Sayfa {currentPage} / {totalPages}
               </span>
               <Button
                 variant="outline"
+                size="sm"
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
+                className="text-xs sm:text-sm"
               >
                 Sonraki
               </Button>
@@ -1045,60 +1068,61 @@ export default function BasvurularPage() {
       {/* Detail Modal */}
       {selectedBasvuru && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fade-in"
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-0 sm:p-4 z-50 animate-fade-in"
           onClick={() => setSelectedBasvuru(null)}
         >
           <Card
-            className="max-w-4xl w-full max-h-[90vh] overflow-y-auto border-0 shadow-2xl animate-slide-in"
+            className="max-w-4xl w-full h-full sm:h-auto sm:max-h-[90vh] overflow-y-auto border-0 shadow-2xl animate-slide-in rounded-none sm:rounded-lg"
             onClick={(e) => e.stopPropagation()}
           >
-            <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white sticky top-0 z-10">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-2xl">{selectedBasvuru.ogrenciAdSoyad}</CardTitle>
-                  <CardDescription className="text-blue-100 mt-2">
+            <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white sticky top-0 z-10 px-4 sm:px-6 py-4 sm:py-6">
+              <div className="flex items-start sm:items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <CardTitle className="text-lg sm:text-xl lg:text-2xl break-words">{selectedBasvuru.ogrenciAdSoyad}</CardTitle>
+                  <CardDescription className="text-blue-100 mt-1 sm:mt-2 text-xs sm:text-sm">
                     Başvuru Detayları
                   </CardDescription>
                 </div>
                 <Button
                   variant="outline"
+                  size="sm"
                   onClick={() => setSelectedBasvuru(null)}
-                  className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                  className="bg-white/10 border-white/20 text-white hover:bg-white/20 flex-shrink-0"
                 >
                   <X className="h-4 w-4" />
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="pt-6">
-              <div className="space-y-6">
+            <CardContent className="pt-4 sm:pt-6 px-4 sm:px-6 pb-6 sm:pb-8">
+              <div className="space-y-4 sm:space-y-6">
                 {/* Öğrenci Bilgileri */}
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <User className="h-5 w-5 text-blue-600" />
+                  <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+                    <User className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 flex-shrink-0" />
                     Öğrenci Bilgileri
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                      <Label className="text-gray-500 text-sm">Ad Soyad</Label>
-                      <p className="font-semibold">{selectedBasvuru.ogrenciAdSoyad}</p>
+                      <Label className="text-gray-500 text-xs sm:text-sm">Ad Soyad</Label>
+                      <p className="font-semibold text-sm sm:text-base break-words">{selectedBasvuru.ogrenciAdSoyad}</p>
                     </div>
                     <div>
-                      <Label className="text-gray-500 text-sm">TC Kimlik No</Label>
-                      <p className="font-semibold">{selectedBasvuru.ogrenciTc}</p>
+                      <Label className="text-gray-500 text-xs sm:text-sm">TC Kimlik No</Label>
+                      <p className="font-semibold text-sm sm:text-base">{selectedBasvuru.ogrenciTc}</p>
                     </div>
                     <div>
-                      <Label className="text-gray-500 text-sm">Okul</Label>
-                      <p className="font-semibold">{selectedBasvuru.okul}</p>
+                      <Label className="text-gray-500 text-xs sm:text-sm">Okul</Label>
+                      <p className="font-semibold text-sm sm:text-base break-words">{selectedBasvuru.okul}</p>
                     </div>
                     <div>
-                      <Label className="text-gray-500 text-sm">Sınıf / Şube</Label>
-                      <p className="font-semibold">
+                      <Label className="text-gray-500 text-xs sm:text-sm">Sınıf / Şube</Label>
+                      <p className="font-semibold text-sm sm:text-base">
                         {selectedBasvuru.ogrenciSinifi} · {selectedBasvuru.ogrenciSube} Şubesi
                       </p>
                     </div>
                     <div>
-                      <Label className="text-gray-500 text-sm">Sınav Günü</Label>
-                      <p className="font-semibold text-blue-600">
+                      <Label className="text-gray-500 text-xs sm:text-sm">Sınav Günü</Label>
+                      <p className="font-semibold text-sm sm:text-base text-blue-600">
                         {selectedBasvuru.sinavGunu || "Belirtilmedi"}
                       </p>
                     </div>
@@ -1107,30 +1131,30 @@ export default function BasvurularPage() {
 
                 {/* Baba Bilgileri */}
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <User className="h-5 w-5 text-indigo-600" />
+                  <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+                    <User className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600 flex-shrink-0" />
                     Baba Bilgileri
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                      <Label className="text-gray-500 text-sm">Ad Soyad</Label>
-                      <p className="font-semibold">{selectedBasvuru.babaAdSoyad}</p>
+                      <Label className="text-gray-500 text-xs sm:text-sm">Ad Soyad</Label>
+                      <p className="font-semibold text-sm sm:text-base break-words">{selectedBasvuru.babaAdSoyad}</p>
                     </div>
                     <div>
-                      <Label className="text-gray-500 text-sm">Meslek</Label>
-                      <p className="font-semibold">{selectedBasvuru.babaMeslek}</p>
+                      <Label className="text-gray-500 text-xs sm:text-sm">Meslek</Label>
+                      <p className="font-semibold text-sm sm:text-base break-words">{selectedBasvuru.babaMeslek}</p>
                     </div>
                     <div>
-                      <Label className="text-gray-500 text-sm">Cep Telefonu</Label>
-                      <p className="font-semibold flex items-center gap-2">
-                        <Phone className="h-4 w-4" />
+                      <Label className="text-gray-500 text-xs sm:text-sm">Cep Telefonu</Label>
+                      <p className="font-semibold text-sm sm:text-base flex items-center gap-2">
+                        <Phone className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
                         {formatPhone(selectedBasvuru.babaCepTel)}
                       </p>
                     </div>
                     {selectedBasvuru.babaIsAdresi && (
-                      <div>
-                        <Label className="text-gray-500 text-sm">İş Adresi</Label>
-                        <p className="font-semibold">{selectedBasvuru.babaIsAdresi}</p>
+                      <div className="sm:col-span-2">
+                        <Label className="text-gray-500 text-xs sm:text-sm">İş Adresi</Label>
+                        <p className="font-semibold text-sm sm:text-base break-words">{selectedBasvuru.babaIsAdresi}</p>
                       </div>
                     )}
                   </div>
@@ -1138,30 +1162,30 @@ export default function BasvurularPage() {
 
                 {/* Anne Bilgileri */}
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <User className="h-5 w-5 text-pink-600" />
+                  <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+                    <User className="h-4 w-4 sm:h-5 sm:w-5 text-pink-600 flex-shrink-0" />
                     Anne Bilgileri
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                      <Label className="text-gray-500 text-sm">Ad Soyad</Label>
-                      <p className="font-semibold">{selectedBasvuru.anneAdSoyad}</p>
+                      <Label className="text-gray-500 text-xs sm:text-sm">Ad Soyad</Label>
+                      <p className="font-semibold text-sm sm:text-base break-words">{selectedBasvuru.anneAdSoyad}</p>
                     </div>
                     <div>
-                      <Label className="text-gray-500 text-sm">Meslek</Label>
-                      <p className="font-semibold">{selectedBasvuru.anneMeslek}</p>
+                      <Label className="text-gray-500 text-xs sm:text-sm">Meslek</Label>
+                      <p className="font-semibold text-sm sm:text-base break-words">{selectedBasvuru.anneMeslek}</p>
                     </div>
                     <div>
-                      <Label className="text-gray-500 text-sm">Cep Telefonu</Label>
-                      <p className="font-semibold flex items-center gap-2">
-                        <Phone className="h-4 w-4" />
+                      <Label className="text-gray-500 text-xs sm:text-sm">Cep Telefonu</Label>
+                      <p className="font-semibold text-sm sm:text-base flex items-center gap-2">
+                        <Phone className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
                         {formatPhone(selectedBasvuru.anneCepTel)}
                       </p>
                     </div>
                     {selectedBasvuru.anneIsAdresi && (
-                      <div>
-                        <Label className="text-gray-500 text-sm">İş Adresi</Label>
-                        <p className="font-semibold">{selectedBasvuru.anneIsAdresi}</p>
+                      <div className="sm:col-span-2">
+                        <Label className="text-gray-500 text-xs sm:text-sm">İş Adresi</Label>
+                        <p className="font-semibold text-sm sm:text-base break-words">{selectedBasvuru.anneIsAdresi}</p>
                       </div>
                     )}
                   </div>
@@ -1169,28 +1193,28 @@ export default function BasvurularPage() {
 
                 {/* İletişim Bilgileri */}
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <Mail className="h-5 w-5 text-green-600" />
+                  <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+                    <Mail className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 flex-shrink-0" />
                     İletişim Bilgileri
                   </h3>
                   <div>
-                    <Label className="text-gray-500 text-sm">E-posta</Label>
-                    <p className="font-semibold">{selectedBasvuru.email}</p>
+                    <Label className="text-gray-500 text-xs sm:text-sm">E-posta</Label>
+                    <p className="font-semibold text-sm sm:text-base break-all">{selectedBasvuru.email}</p>
                   </div>
                 </div>
 
                 {/* Tarih Bilgileri */}
-                <div className="pt-4 border-t">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div className="pt-3 sm:pt-4 border-t">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                      <Label className="text-gray-500 text-sm">Başvuru Tarihi</Label>
-                      <p className="font-semibold">
+                      <Label className="text-gray-500 text-xs sm:text-sm">Başvuru Tarihi</Label>
+                      <p className="font-semibold text-xs sm:text-sm">
                         {new Date(selectedBasvuru.createdAt).toLocaleString('tr-TR')}
                       </p>
                     </div>
                     <div>
-                      <Label className="text-gray-500 text-sm">Senkronizasyon Tarihi</Label>
-                      <p className="font-semibold">
+                      <Label className="text-gray-500 text-xs sm:text-sm">Senkronizasyon Tarihi</Label>
+                      <p className="font-semibold text-xs sm:text-sm">
                         {new Date(selectedBasvuru.syncedAt).toLocaleString('tr-TR')}
                       </p>
                     </div>
