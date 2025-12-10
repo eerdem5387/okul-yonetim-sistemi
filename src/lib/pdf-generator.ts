@@ -1244,14 +1244,7 @@ export function generateIBActivityReportHTML(data: {
     return date.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' })
   }
 
-  // Helper function to check if value is empty
-  const isEmpty = (value: string | null | undefined): boolean => {
-    if (value === null || value === undefined) return true
-    if (typeof value !== 'string') return true
-    const trimmed = String(value).trim()
-    return trimmed === '' || trimmed.length === 0
-  }
-
+  
   const activityRows = activities.map((activity, index) => {
     const typeLabel = activityTypeLabels[activity.type]?.[language] || activity.type
     const notSpecified = language === 'en' ? 'Not specified' : 'Belirtilmemiş'

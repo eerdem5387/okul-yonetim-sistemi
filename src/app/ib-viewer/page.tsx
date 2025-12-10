@@ -915,6 +915,7 @@ export default function IBViewerPage() {
                         <>
                           {isImage ? (
                             <div className="space-y-2">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img 
                                 src={evidenceUrl} 
                                 alt="Evidence" 

@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     let payload: unknown
     try {
       payload = await request.json()
-    } catch (jsonError) {
+    } catch {
       return NextResponse.json(
         { error: "Geçersiz JSON formatı" },
         { status: 400 }
