@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { ToastContainer, useToast } from "@/components/ui/toast"
 import {
   Plus,
   Edit,
@@ -15,6 +16,8 @@ import {
   Users,
   Mail,
   Phone,
+  Loader2,
+  Briefcase,
 } from "lucide-react"
 
 type StaffDepartment =
@@ -66,8 +69,11 @@ const departmentLabels: Record<StaffDepartment, string> = {
 }
 
 export default function PersonelPage() {
+  const { toasts, success, error, removeToast } = useToast()
   const [staff, setStaff] = useState<Staff[]>([])
   const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
@@ -123,6 +129,22 @@ export default function PersonelPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Validasyon
+    if (!formData.firstName.trim()) {
+      error("Ad alanı zorunludur!")
+      return
+    }
+    if (!formData.lastName.trim()) {
+      error("Soyad alanı zorunludur!")
+      return
+    }
+    if (!formData.tcNumber || formData.tcNumber.length !== 11) {
+      error("TC Kimlik No 11 haneli olmalıdır!")
+      return
+    }
+
+    setSubmitting(true)
     try {
       const url = editingStaff ? `/api/staff/${editingStaff.id}` : "/api/staff"
       const method = editingStaff ? "PUT" : "POST"
@@ -136,7 +158,13 @@ export default function PersonelPage() {
       })
 
       if (response.ok) {
-        fetchStaff()
+        const isEdit = !!editingStaff
+        success(
+          isEdit
+            ? "Personel başarıyla güncellendi!"
+            : "Personel başarıyla eklendi!"
+        )
+        await fetchStaff()
         setShowForm(false)
         setEditingStaff(null)
         setFormData({
@@ -154,11 +182,13 @@ export default function PersonelPage() {
         })
       } else {
         const errorData = await response.json()
-        alert(errorData.error || "Personel kaydedilirken hata oluştu!")
+        error(errorData.error || "Personel kaydedilirken hata oluştu!")
       }
-    } catch (error) {
-      console.error("Error saving staff:", error)
-      alert("Personel kaydedilirken hata oluştu!")
+    } catch (err) {
+      console.error("Error saving staff:", err)
+      error("Personel kaydedilirken bir hata oluştu!")
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -181,23 +211,37 @@ export default function PersonelPage() {
   }
 
   const handleDelete = async (staffId: string) => {
-    if (!confirm("Bu personeli silmek istediğinizden emin misiniz?")) {
+    const staffMember = staff.find((s) => s.id === staffId)
+    const staffName = staffMember
+      ? `${staffMember.firstName} ${staffMember.lastName}`
+      : ""
+
+    if (
+      !confirm(
+        `"${staffName}" personelini silmek istediğinizden emin misiniz?\n\nBu işlem geri alınamaz.`
+      )
+    ) {
       return
     }
 
+    setDeletingId(staffId)
     try {
       const response = await fetch(`/api/staff/${staffId}`, {
         method: "DELETE",
       })
 
       if (response.ok) {
-        fetchStaff()
+        success("Personel başarıyla silindi!")
+        await fetchStaff()
       } else {
-        alert("Personel silinirken hata oluştu!")
+        const errorData = await response.json()
+        error(errorData.error || "Personel silinirken hata oluştu!")
       }
-    } catch (error) {
-      console.error("Error deleting staff:", error)
-      alert("Personel silinirken hata oluştu!")
+    } catch (err) {
+      console.error("Error deleting staff:", err)
+      error("Personel silinirken bir hata oluştu!")
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -222,7 +266,9 @@ export default function PersonelPage() {
   }, [staff, totalStaff])
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 relative">
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onClose={removeToast} />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div className="flex-1 min-w-0">
@@ -620,9 +666,23 @@ export default function PersonelPage() {
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                  <Button type="submit" size="sm" className="flex-1 sm:flex-initial text-xs sm:text-sm">
-                    <Save className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                    {editingStaff ? "Güncelle" : "Kaydet"}
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={submitting}
+                    className="flex-1 sm:flex-initial text-xs sm:text-sm"
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin" />
+                        Kaydediliyor...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                        {editingStaff ? "Güncelle" : "Kaydet"}
+                      </>
+                    )}
                   </Button>
                   <Button
                     type="button"
@@ -666,12 +726,19 @@ export default function PersonelPage() {
         </CardHeader>
         <CardContent className="px-0 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
           {loading ? (
-            <div className="text-center py-8 sm:py-12 text-gray-500 text-xs sm:text-sm">
-              Yükleniyor...
+            <div className="text-center py-8 sm:py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-2" />
+              <p className="text-gray-500 text-xs sm:text-sm">Yükleniyor...</p>
             </div>
           ) : staff.length === 0 ? (
-            <div className="text-center py-8 sm:py-12 text-gray-500 text-xs sm:text-sm px-4">
-              Henüz personel kaydı bulunmamaktadır.
+            <div className="text-center py-8 sm:py-12 px-4">
+              <Briefcase className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-500 text-xs sm:text-sm font-medium">
+                Henüz personel kaydı bulunmamaktadır.
+              </p>
+              <p className="text-gray-400 text-xs mt-1">
+                Yeni personel eklemek için &quot;Yeni Personel Ekle&quot; butonuna tıklayın.
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -705,25 +772,32 @@ export default function PersonelPage() {
                   {staff.map((staffMember) => (
                     <tr
                       key={staffMember.id}
-                      className="hover:bg-gray-50"
+                      className="hover:bg-gray-50 transition-colors"
                     >
                       <td className="px-2 sm:px-3 lg:px-6 py-2 sm:py-4 whitespace-nowrap">
-                        <div className="text-xs sm:text-sm font-medium text-gray-900">
-                          {staffMember.firstName} {staffMember.lastName}
-                        </div>
-                        <div className="lg:hidden text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1">
-                          TC: {staffMember.tcNumber}
+                        <div className="flex items-center gap-2">
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                            <Users className="h-4 w-4 text-white" />
+                          </div>
+                          <div>
+                            <div className="text-xs sm:text-sm font-semibold text-gray-900">
+                              {staffMember.firstName} {staffMember.lastName}
+                            </div>
+                            <div className="lg:hidden text-[10px] sm:text-xs text-gray-500 mt-0.5">
+                              TC: {staffMember.tcNumber}
+                            </div>
+                          </div>
                         </div>
                       </td>
                       <td className="hidden lg:table-cell px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                         {staffMember.tcNumber}
                       </td>
                       <td className="px-2 sm:px-3 lg:px-6 py-2 sm:py-4">
-                        <span className="text-xs sm:text-sm text-gray-900">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full bg-blue-100 text-blue-800 text-xs sm:text-sm font-medium">
                           {departmentLabels[staffMember.department]}
                         </span>
                         {staffMember.subject && (
-                          <div className="text-[10px] sm:text-xs text-gray-500">
+                          <div className="text-[10px] sm:text-xs text-gray-600 mt-1 font-medium">
                             {staffMember.subject}
                           </div>
                         )}
@@ -774,12 +848,17 @@ export default function PersonelPage() {
                             <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
                           </Button>
                           <Button
-                            variant="outline"
+                            variant="destructive"
                             size="sm"
                             onClick={() => handleDelete(staffMember.id)}
+                            disabled={deletingId === staffMember.id}
                             className="h-7 w-7 sm:h-8 sm:w-8 p-0"
                           >
-                            <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                            {deletingId === staffMember.id ? (
+                              <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                            )}
                           </Button>
                         </div>
                       </td>

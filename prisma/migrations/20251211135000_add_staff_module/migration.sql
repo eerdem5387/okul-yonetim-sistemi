@@ -12,7 +12,6 @@ CREATE TABLE "staff" (
     "department" "StaffDepartment" NOT NULL,
     "position" TEXT,
     "subject" TEXT,
-    "grades" TEXT[] DEFAULT ARRAY[]::TEXT[],
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "hireDate" TIMESTAMP(3),
     "notes" TEXT,

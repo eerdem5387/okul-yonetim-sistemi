@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { ToastContainer, useToast } from "@/components/ui/toast"
 import {
   Plus,
   Edit,
@@ -16,6 +17,9 @@ import {
   Save,
   FileText,
   Users,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
 } from "lucide-react"
 
 interface Student {
@@ -44,9 +48,12 @@ interface ParentMeeting {
 }
 
 export default function VeliGorusmeleriPage() {
+  const { toasts, success, error, removeToast } = useToast()
   const [meetings, setMeetings] = useState<ParentMeeting[]>([])
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editingMeeting, setEditingMeeting] = useState<ParentMeeting | null>(null)
   const [selectedStudentId, setSelectedStudentId] = useState<string>("")
@@ -137,6 +144,22 @@ export default function VeliGorusmeleriPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Validasyon
+    if (!formData.studentId) {
+      error("Lütfen bir öğrenci seçin!")
+      return
+    }
+    if (!formData.notes.trim()) {
+      error("Görüşme notları boş bırakılamaz!")
+      return
+    }
+    if (!formData.meetingDate) {
+      error("Görüşme tarihi seçilmelidir!")
+      return
+    }
+
+    setSubmitting(true)
     try {
       const url = editingMeeting
         ? `/api/parent-meetings/${editingMeeting.id}`
@@ -152,7 +175,13 @@ export default function VeliGorusmeleriPage() {
       })
 
       if (response.ok) {
-        fetchMeetings()
+        const isEdit = !!editingMeeting
+        success(
+          isEdit
+            ? "Görüşme başarıyla güncellendi!"
+            : "Görüşme başarıyla kaydedildi!"
+        )
+        await fetchMeetings()
         setShowForm(false)
         setEditingMeeting(null)
         setFormData({
@@ -162,13 +191,16 @@ export default function VeliGorusmeleriPage() {
           counselorName: "",
         })
         setSelectedStudentId("")
+        setStudentSearchTerm("")
       } else {
         const errorData = await response.json()
-        alert(errorData.error || "Görüşme kaydedilirken hata oluştu!")
+        error(errorData.error || "Görüşme kaydedilirken hata oluştu!")
       }
-    } catch (error) {
-      console.error("Error saving meeting:", error)
-      alert("Görüşme kaydedilirken hata oluştu!")
+    } catch (err) {
+      console.error("Error saving meeting:", err)
+      error("Görüşme kaydedilirken bir hata oluştu!")
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -185,23 +217,37 @@ export default function VeliGorusmeleriPage() {
   }
 
   const handleDelete = async (meetingId: string) => {
-    if (!confirm("Bu görüşmeyi silmek istediğinizden emin misiniz?")) {
+    const meeting = meetings.find((m) => m.id === meetingId)
+    const studentName = meeting
+      ? `${meeting.student.firstName} ${meeting.student.lastName}`
+      : ""
+
+    if (
+      !confirm(
+        `"${studentName}" öğrencisi ile yapılan görüşmeyi silmek istediğinizden emin misiniz?\n\nBu işlem geri alınamaz.`
+      )
+    ) {
       return
     }
 
+    setDeletingId(meetingId)
     try {
       const response = await fetch(`/api/parent-meetings/${meetingId}`, {
         method: "DELETE",
       })
 
       if (response.ok) {
-        fetchMeetings()
+        success("Görüşme başarıyla silindi!")
+        await fetchMeetings()
       } else {
-        alert("Görüşme silinirken hata oluştu!")
+        const errorData = await response.json()
+        error(errorData.error || "Görüşme silinirken hata oluştu!")
       }
-    } catch (error) {
-      console.error("Error deleting meeting:", error)
-      alert("Görüşme silinirken hata oluştu!")
+    } catch (err) {
+      console.error("Error deleting meeting:", err)
+      error("Görüşme silinirken bir hata oluştu!")
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -234,7 +280,9 @@ export default function VeliGorusmeleriPage() {
   }, [meetings, totalMeetings])
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 relative">
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onClose={removeToast} />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div className="flex-1 min-w-0">
@@ -449,9 +497,18 @@ export default function VeliGorusmeleriPage() {
                     </div>
                   )}
                   {selectedStudent && (
-                    <div className="mt-2 p-2 sm:p-3 bg-blue-50 rounded-lg">
+                    <div className="mt-2 p-2 sm:p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-blue-600 flex-shrink-0" />
                       <p className="text-xs sm:text-sm font-medium text-blue-900">
-                        Seçilen Öğrenci: {selectedStudent.firstName} {selectedStudent.lastName} - {selectedStudent.grade}
+                        <span className="font-semibold">Seçilen Öğrenci:</span> {selectedStudent.firstName} {selectedStudent.lastName} - {selectedStudent.grade}
+                      </p>
+                    </div>
+                  )}
+                  {studentSearchTerm && filteredStudents.length === 0 && (
+                    <div className="mt-2 p-2 sm:p-3 bg-yellow-50 rounded-lg border border-yellow-200 flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 text-yellow-600 flex-shrink-0" />
+                      <p className="text-xs sm:text-sm text-yellow-800">
+                        Arama kriterinize uygun öğrenci bulunamadı.
                       </p>
                     </div>
                   )}
@@ -507,9 +564,23 @@ export default function VeliGorusmeleriPage() {
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                  <Button type="submit" size="sm" className="flex-1 sm:flex-initial text-xs sm:text-sm">
-                    <Save className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                    {editingMeeting ? "Güncelle" : "Kaydet"}
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={submitting}
+                    className="flex-1 sm:flex-initial text-xs sm:text-sm"
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin" />
+                        Kaydediliyor...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                        {editingMeeting ? "Güncelle" : "Kaydet"}
+                      </>
+                    )}
                   </Button>
                   <Button
                     type="button"
@@ -548,67 +619,112 @@ export default function VeliGorusmeleriPage() {
         </CardHeader>
         <CardContent className="px-0 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
           {loading ? (
-            <div className="text-center py-8 sm:py-12 text-gray-500 text-xs sm:text-sm">
-              Yükleniyor...
+            <div className="text-center py-8 sm:py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-2" />
+              <p className="text-gray-500 text-xs sm:text-sm">Yükleniyor...</p>
             </div>
           ) : meetings.length === 0 ? (
-            <div className="text-center py-8 sm:py-12 text-gray-500 text-xs sm:text-sm px-4">
-              Henüz görüşme kaydı bulunmamaktadır.
+            <div className="text-center py-8 sm:py-12 px-4">
+              <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-500 text-xs sm:text-sm font-medium">
+                Henüz görüşme kaydı bulunmamaktadır.
+              </p>
+              <p className="text-gray-400 text-xs mt-1">
+                Yeni görüşme eklemek için &quot;Yeni Görüşme Ekle&quot; butonuna tıklayın.
+              </p>
             </div>
           ) : (
-            <div className="space-y-2 sm:space-y-3">
+            <div className="space-y-3 sm:space-y-4">
               {meetings.map((meeting) => (
-                <Card key={meeting.id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-3 sm:p-4">
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 sm:gap-3 mb-2">
-                          <User className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 flex-shrink-0" />
-                          <h3 className="font-semibold text-sm sm:text-base lg:text-lg text-gray-900">
-                            {meeting.student.firstName} {meeting.student.lastName}
-                          </h3>
-                          <span className="text-xs sm:text-sm text-gray-500">
-                            ({meeting.student.grade})
-                          </span>
+                <Card
+                  key={meeting.id}
+                  className="hover:shadow-lg transition-all duration-200 border-l-4 border-l-blue-500"
+                >
+                  <CardContent className="p-4 sm:p-5">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                      <div className="flex-1 min-w-0 space-y-3">
+                        {/* Öğrenci Bilgisi */}
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
+                            <User className="h-5 w-5 text-white" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-bold text-base sm:text-lg text-gray-900 mb-1">
+                              {meeting.student.firstName} {meeting.student.lastName}
+                            </h3>
+                            <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm">
+                              <span className="inline-flex items-center px-2 py-1 rounded-full bg-blue-100 text-blue-800 font-medium">
+                                {meeting.student.grade}
+                              </span>
+                              <span className="text-gray-500">
+                                TC: {meeting.student.tcNumber}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2 text-xs sm:text-sm text-gray-600">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
-                            {new Date(meeting.meetingDate).toLocaleDateString("tr-TR", {
-                              day: "2-digit",
-                              month: "long",
-                              year: "numeric",
-                            })}
+
+                        {/* Görüşme Detayları */}
+                        <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs sm:text-sm">
+                          <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg">
+                            <Calendar className="h-4 w-4 text-gray-600" />
+                            <span className="font-medium text-gray-700">
+                              {new Date(meeting.meetingDate).toLocaleDateString("tr-TR", {
+                                day: "2-digit",
+                                month: "long",
+                                year: "numeric",
+                              })}
+                            </span>
                           </div>
                           {meeting.counselorName && (
-                            <div className="flex items-center gap-1">
-                              <Users className="h-3 w-3 sm:h-4 sm:w-4" />
-                              {meeting.counselorName}
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-50 rounded-lg">
+                              <Users className="h-4 w-4 text-purple-600" />
+                              <span className="font-medium text-purple-700">
+                                {meeting.counselorName}
+                              </span>
                             </div>
                           )}
                         </div>
-                        <p className="text-xs sm:text-sm text-gray-700 whitespace-pre-wrap line-clamp-3">
-                          {meeting.notes}
-                        </p>
+
+                        {/* Görüşme Notları */}
+                        <div className="pt-2 border-t border-gray-100">
+                          <p className="text-xs sm:text-sm text-gray-600 font-medium mb-1.5">
+                            Görüşme Notları:
+                          </p>
+                          <p className="text-sm sm:text-base text-gray-700 whitespace-pre-wrap leading-relaxed">
+                            {meeting.notes}
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex gap-1.5 sm:gap-2 flex-shrink-0">
+
+                      {/* İşlem Butonları */}
+                      <div className="flex sm:flex-col gap-2 flex-shrink-0 sm:pt-0 pt-2 border-t sm:border-t-0 border-gray-100">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => handleEdit(meeting)}
-                          className="text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3"
+                          className="text-xs sm:text-sm h-9 sm:h-10 px-3 sm:px-4 flex-1 sm:flex-initial hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors"
                         >
-                          <Edit className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
-                          <span className="hidden sm:inline">Düzenle</span>
+                          <Edit className="h-4 w-4 mr-1.5" />
+                          <span>Düzenle</span>
                         </Button>
                         <Button
                           variant="destructive"
                           size="sm"
                           onClick={() => handleDelete(meeting.id)}
-                          className="text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3"
+                          disabled={deletingId === meeting.id}
+                          className="text-xs sm:text-sm h-9 sm:h-10 px-3 sm:px-4 flex-1 sm:flex-initial"
                         >
-                          <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
-                          <span className="hidden sm:inline">Sil</span>
+                          {deletingId === meeting.id ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                              <span>Siliniyor...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Trash2 className="h-4 w-4 mr-1.5" />
+                              <span>Sil</span>
+                            </>
+                          )}
                         </Button>
                       </div>
                     </div>
