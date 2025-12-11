@@ -9,7 +9,6 @@ import {
   Calendar,
   TrendingUp,
   AlertTriangle,
-  Loader2,
   Target,
 } from "lucide-react"
 

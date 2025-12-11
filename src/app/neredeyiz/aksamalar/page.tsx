@@ -67,6 +67,7 @@ export default function AksamalarPage() {
 
   useEffect(() => {
     fetchAcademicYears()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
