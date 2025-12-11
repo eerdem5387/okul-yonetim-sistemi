@@ -333,7 +333,7 @@ export default function StudentsPage() {
             alert('Excel dışa aktarım başarısız oldu')
           }
         }} className="flex-1 sm:flex-initial text-xs sm:text-sm">
-          <span className="hidden sm:inline">Excel'e Aktar</span>
+          <span className="hidden sm:inline">Excel&apos;e Aktar</span>
           <span className="sm:hidden">Excel</span>
         </Button>
         <Button onClick={() => setShowForm(true)} size="sm" className="flex-1 sm:flex-initial text-xs sm:text-sm">

@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     const maxSize = 10 * 1024 * 1024 // 10MB
     if (file.size > maxSize) {
       return NextResponse.json(
-        { error: "Dosya boyutu 10MB'dan büyük olamaz" },
+        { error: "Dosya boyutu 10MB&apos;dan büyük olamaz" },
         { status: 400 }
       )
     }

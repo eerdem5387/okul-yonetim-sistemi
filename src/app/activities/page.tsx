@@ -265,7 +265,7 @@ export default function ActivitiesPage() {
     // Dosya boyutu kontrolü (10MB)
     const maxSize = 10 * 1024 * 1024
     if (file.size > maxSize) {
-      alert("Dosya boyutu 10MB'dan büyük olamaz!")
+      alert("Dosya boyutu 10MB&apos;dan büyük olamaz!")
       return
     }
 
@@ -1119,7 +1119,7 @@ function IBViewerManagementModal({ onClose }: { onClose: () => void }) {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Bu IB Viewer'ı silmek istediğinizden emin misiniz?")) return
+    if (!confirm("Bu IB Viewer&apos;ı silmek istediğinizden emin misiniz?")) return
 
     try {
       const response = await fetch(`/api/ib-viewers/${id}`, { method: "DELETE" })

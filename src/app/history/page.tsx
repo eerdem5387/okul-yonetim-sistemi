@@ -322,7 +322,7 @@ export default function HistoryPage() {
   const handleBulkPDFDownload = async () => {
     if (selectedContracts.size === 0) return
 
-    const confirmed = confirm(`${selectedContracts.size} sözleşmenin PDF'ini indirmek istiyor musunuz?`)
+    const confirmed = confirm(`${selectedContracts.size} sözleşmenin PDF&apos;ini indirmek istiyor musunuz?`)
     if (!confirmed) return
 
     try {
@@ -352,7 +352,7 @@ export default function HistoryPage() {
       }
     } catch (error) {
       console.error("Error bulk downloading PDFs:", error)
-      alert("PDF'ler indirilirken bir hata oluştu.")
+      alert("PDF&apos;ler indirilirken bir hata oluştu.")
     }
   }
 
