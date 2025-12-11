@@ -115,13 +115,30 @@ export default function IlerlemeDetayPage() {
   }
 
   const getTopicStatus = (topic: Topic): {
-    status: "PLANLANDI" | "DEVAM_EDIYOR" | "TAMAMLANDI" | "GECIKMELI"
+    status: "PLANLANDI" | "DEVAM_EDIYOR" | "TAMAMLANDI" | "GECIKMELI" | "GECIKMELI_TAMAMLANDI"
     label: string
     color: string
     icon: React.ComponentType<{ className?: string }>
   } => {
     // Progress kaydı varsa ve TAMAMLANDI ise
     if (topic.progress?.[0]?.status === "TAMAMLANDI") {
+      // Gecikmeli tamamlanma kontrolü
+      if (topic.plannedEndDate && topic.progress[0].actualEndDate) {
+        const plannedEnd = new Date(topic.plannedEndDate)
+        plannedEnd.setHours(0, 0, 0, 0)
+        const actualEnd = new Date(topic.progress[0].actualEndDate)
+        actualEnd.setHours(0, 0, 0, 0)
+        
+        if (actualEnd > plannedEnd) {
+          return {
+            status: "GECIKMELI_TAMAMLANDI",
+            label: "Gecikmeli Tamamlandı",
+            color: "bg-orange-100 text-orange-800",
+            icon: AlertTriangle,
+          }
+        }
+      }
+      
       return {
         status: "TAMAMLANDI",
         label: "Tamamlandı",
@@ -174,15 +191,29 @@ export default function IlerlemeDetayPage() {
 
   const getDelayDays = (topic: Topic): number | null => {
     if (!topic.plannedEndDate) return null
-    if (topic.progress?.[0]?.status === "TAMAMLANDI") return null
 
+    const plannedEnd = new Date(topic.plannedEndDate)
+    plannedEnd.setHours(0, 0, 0, 0)
+    
+    // Eğer tamamlandıysa, tamamlama tarihi ile planlanan bitiş tarihini karşılaştır
+    if (topic.progress?.[0]?.status === "TAMAMLANDI" && topic.progress[0].actualEndDate) {
+      const actualEnd = new Date(topic.progress[0].actualEndDate)
+      actualEnd.setHours(0, 0, 0, 0)
+      
+      if (actualEnd > plannedEnd) {
+        const diffTime = actualEnd.getTime() - plannedEnd.getTime()
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+        return diffDays
+      }
+      return null
+    }
+
+    // Tamamlanmadıysa, şu anki tarih ile planlanan bitiş tarihini karşılaştır
     const now = new Date()
     now.setHours(0, 0, 0, 0)
-    const end = new Date(topic.plannedEndDate)
-    end.setHours(0, 0, 0, 0)
 
-    if (now > end) {
-      const diffTime = now.getTime() - end.getTime()
+    if (now > plannedEnd) {
+      const diffTime = now.getTime() - plannedEnd.getTime()
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
       return diffDays
     }
@@ -625,7 +656,7 @@ export default function IlerlemeDetayPage() {
                                       <StatusIcon className="h-3 w-3" />
                                       {topicStatus.label}
                                     </span>
-                                    {delayDays !== null && delayDays > 0 && (
+                                    {delayDays !== null && delayDays > 0 && topicStatus.status !== "GECIKMELI_TAMAMLANDI" && (
                                       <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">
                                         {delayDays} gün gecikme
                                       </span>
@@ -638,9 +669,18 @@ export default function IlerlemeDetayPage() {
                                     </p>
                                   )}
                                   {topic.progress?.[0]?.actualEndDate && (
-                                    <p className="text-xs text-green-600 mt-1">
+                                    <p className={`text-xs mt-1 ${
+                                      getDelayDays(topic) && getDelayDays(topic)! > 0
+                                        ? "text-orange-600 font-medium"
+                                        : "text-green-600"
+                                    }`}>
                                       Tamamlanma:{" "}
                                       {new Date(topic.progress[0].actualEndDate).toLocaleDateString("tr-TR")}
+                                      {getDelayDays(topic) && getDelayDays(topic)! > 0 && (
+                                        <span className="ml-2">
+                                          ({getDelayDays(topic)} gün gecikme)
+                                        </span>
+                                      )}
                                     </p>
                                   )}
                                 </div>
@@ -648,7 +688,7 @@ export default function IlerlemeDetayPage() {
                                   size="sm"
                                   variant="outline"
                                   onClick={() => handleTopicComplete(topic.id)}
-                                  disabled={updatingTopicId === topic.id || topicStatus.status === "TAMAMLANDI"}
+                                  disabled={updatingTopicId === topic.id || topicStatus.status === "TAMAMLANDI" || topicStatus.status === "GECIKMELI_TAMAMLANDI"}
                                   className="text-xs sm:text-sm"
                                 >
                                   {updatingTopicId === topic.id ? (
