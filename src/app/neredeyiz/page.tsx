@@ -16,6 +16,8 @@ import {
   UserPlus,
   AlertCircle,
   ArrowRight,
+  CheckCircle2,
+  Clock,
 } from "lucide-react"
 
 interface AcademicYear {
@@ -328,38 +330,6 @@ export default function NeredeyizPage() {
         </Link>
       </div>
 
-      {/* Akademik Yıl Seçimi */}
-      {academicYears.length > 0 && (
-        <Card>
-          <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
-            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-              <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
-              Akademik Yıl Seçimi
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
-            <div className="flex flex-wrap gap-2">
-              {academicYears.map((year) => (
-                <Button
-                  key={year.id}
-                  variant={activeYear?.id === year.id ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setActiveYear(year)}
-                  className="text-xs sm:text-sm transition-all duration-200 hover:scale-105"
-                >
-                  {year.name}
-                  {year.isActive && (
-                    <span className="ml-2 px-1.5 py-0.5 bg-green-100 text-green-800 rounded text-[10px] font-medium">
-                      Aktif
-                    </span>
-                  )}
-                </Button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Genel İstatistikler */}
       {reportsLoading ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
@@ -375,52 +345,126 @@ export default function NeredeyizPage() {
           ))}
         </div>
       ) : stats ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
-          <Card>
-            <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 lg:pt-6">
-              <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">
-                Tamamlanma Oranı
-              </CardTitle>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          {/* Tamamlanma Oranı */}
+          <Card className="relative overflow-hidden border-2 border-blue-200 hover:border-blue-400 transition-all duration-200 hover:shadow-xl">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-100 rounded-full -mr-16 -mt-16 opacity-50" />
+            <CardHeader className="pb-2 px-4 sm:px-6 pt-4 sm:pt-6 relative z-10">
+              <div className="flex items-center justify-between mb-2">
+                <CardTitle className="text-sm sm:text-base font-semibold text-gray-700">
+                  Tamamlanma Oranı
+                </CardTitle>
+                <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                  <Target className="h-5 w-5 text-blue-600" />
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
-              <div className="text-xl sm:text-2xl font-bold text-blue-600">
+            <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6 relative z-10">
+              <div className="text-3xl sm:text-4xl font-bold text-blue-600 mb-2">
                 %{stats.completionRate}
               </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
+                <div
+                  className="bg-blue-600 h-2.5 rounded-full transition-all duration-500"
+                  style={{ width: `${stats.completionRate}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between text-xs sm:text-sm text-gray-600">
+                <span>{stats.completed} tamamlandı</span>
+                <span>{stats.totalPlanned} toplam</span>
+              </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 lg:pt-6">
-              <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">
-                Tamamlanan
-              </CardTitle>
+
+          {/* Tamamlanan */}
+          <Card className="relative overflow-hidden border-2 border-green-200 hover:border-green-400 transition-all duration-200 hover:shadow-xl">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-green-100 rounded-full -mr-16 -mt-16 opacity-50" />
+            <CardHeader className="pb-2 px-4 sm:px-6 pt-4 sm:pt-6 relative z-10">
+              <div className="flex items-center justify-between mb-2">
+                <CardTitle className="text-sm sm:text-base font-semibold text-gray-700">
+                  Tamamlanan Konular
+                </CardTitle>
+                <div className="h-10 w-10 rounded-lg bg-green-100 flex items-center justify-center">
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
-              <div className="text-xl sm:text-2xl font-bold text-green-600">
+            <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6 relative z-10">
+              <div className="text-3xl sm:text-4xl font-bold text-green-600 mb-2">
                 {stats.completed}
               </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 lg:pt-6">
-              <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">
-                Devam Ediyor
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
-              <div className="text-xl sm:text-2xl font-bold text-yellow-600">
-                {stats.inProgress}
+              <div className="text-xs sm:text-sm text-gray-600 mb-2">
+                {stats.totalPlanned > 0
+                  ? `${Math.round((stats.completed / stats.totalPlanned) * 100)}% tamamlandı`
+                  : "Henüz konu yok"}
+              </div>
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full bg-green-500" />
+                  <span>Başarıyla tamamlandı</span>
+                </div>
               </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 lg:pt-6">
-              <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">
-                Gecikmeli
-              </CardTitle>
+
+          {/* Devam Ediyor */}
+          <Card className="relative overflow-hidden border-2 border-yellow-200 hover:border-yellow-400 transition-all duration-200 hover:shadow-xl">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-100 rounded-full -mr-16 -mt-16 opacity-50" />
+            <CardHeader className="pb-2 px-4 sm:px-6 pt-4 sm:pt-6 relative z-10">
+              <div className="flex items-center justify-between mb-2">
+                <CardTitle className="text-sm sm:text-base font-semibold text-gray-700">
+                  Devam Eden Konular
+                </CardTitle>
+                <div className="h-10 w-10 rounded-lg bg-yellow-100 flex items-center justify-center">
+                  <Clock className="h-5 w-5 text-yellow-600" />
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
-              <div className="text-xl sm:text-2xl font-bold text-red-600">
+            <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6 relative z-10">
+              <div className="text-3xl sm:text-4xl font-bold text-yellow-600 mb-2">
+                {stats.inProgress}
+              </div>
+              <div className="text-xs sm:text-sm text-gray-600 mb-2">
+                {stats.totalPlanned > 0
+                  ? `${Math.round((stats.inProgress / stats.totalPlanned) * 100)}% devam ediyor`
+                  : "Henüz konu yok"}
+              </div>
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                  <span>İşlem devam ediyor</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Gecikmeli */}
+          <Card className="relative overflow-hidden border-2 border-red-200 hover:border-red-400 transition-all duration-200 hover:shadow-xl">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-red-100 rounded-full -mr-16 -mt-16 opacity-50" />
+            <CardHeader className="pb-2 px-4 sm:px-6 pt-4 sm:pt-6 relative z-10">
+              <div className="flex items-center justify-between mb-2">
+                <CardTitle className="text-sm sm:text-base font-semibold text-gray-700">
+                  Gecikmeli Konular
+                </CardTitle>
+                <div className="h-10 w-10 rounded-lg bg-red-100 flex items-center justify-center">
+                  <AlertTriangle className="h-5 w-5 text-red-600" />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6 relative z-10">
+              <div className="text-3xl sm:text-4xl font-bold text-red-600 mb-2">
                 {stats.delayed}
+              </div>
+              <div className="text-xs sm:text-sm text-gray-600 mb-2">
+                {stats.totalPlanned > 0
+                  ? `${Math.round((stats.delayed / stats.totalPlanned) * 100)}% gecikme var`
+                  : "Henüz konu yok"}
+              </div>
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full bg-red-500" />
+                  <span>Dikkat gerekiyor</span>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -453,67 +497,171 @@ export default function NeredeyizPage() {
           </CardHeader>
           <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
             <div className="space-y-3 sm:space-y-4">
-              {progressReport.subjects.map((subject, index) => (
-                <div
-                  key={index}
-                  className="border-l-4 border-l-blue-500 pl-3 sm:pl-4 py-2 bg-gray-50 rounded-r-lg transition-all duration-200 hover:shadow-md hover:bg-gray-100"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-sm sm:text-base text-gray-900">
-                        {subject.subjectName}
-                      </h3>
-                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1 text-xs sm:text-sm text-gray-600">
-                        <span>Toplam: {subject.totalTopics}</span>
-                        <span className="text-green-600">
-                          ✓ {subject.completedTopics}
-                        </span>
-                        <span className="text-yellow-600">
-                          ⏳ {subject.inProgressTopics}
-                        </span>
-                        {subject.delayedTopics > 0 && (
-                          <span className="text-red-600">
-                            ⚠ {subject.delayedTopics} gecikmeli
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 sm:gap-3">
-                      <div className="text-right">
-                        <div className="text-lg sm:text-xl font-bold text-blue-600">
-                          %{subject.completionPercentage}
+              {progressReport.subjects.map((subject, index) => {
+                const plannedCount = subject.plannedTopics || 0
+                const completionRate = subject.totalTopics > 0 
+                  ? Math.round((subject.completedTopics / subject.totalTopics) * 100) 
+                  : 0
+
+                return (
+                  <div
+                    key={index}
+                    className="border-l-4 border-l-blue-500 pl-4 sm:pl-6 py-4 bg-gradient-to-r from-gray-50 to-white rounded-r-lg transition-all duration-200 hover:shadow-lg hover:scale-[1.01]"
+                  >
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                            <BookOpen className="h-5 w-5 text-blue-600" />
+                          </div>
+                          <h3 className="font-bold text-base sm:text-lg text-gray-900 truncate">
+                            {subject.subjectName}
+                          </h3>
                         </div>
-                        <div className="text-[10px] sm:text-xs text-gray-500">
-                          Tamamlanma
+                        
+                        {/* Detaylı İstatistikler */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                          <div className="bg-white rounded-lg p-2 sm:p-3 border border-gray-200">
+                            <div className="text-xs text-gray-500 mb-1">Toplam</div>
+                            <div className="text-lg sm:text-xl font-bold text-gray-900">
+                              {subject.totalTopics}
+                            </div>
+                            <div className="text-[10px] text-gray-400">konu</div>
+                          </div>
+                          <div className="bg-green-50 rounded-lg p-2 sm:p-3 border border-green-200">
+                            <div className="flex items-center gap-1 text-xs text-green-700 mb-1">
+                              <CheckCircle2 className="h-3 w-3" />
+                              Tamamlandı
+                            </div>
+                            <div className="text-lg sm:text-xl font-bold text-green-600">
+                              {subject.completedTopics}
+                            </div>
+                            <div className="text-[10px] text-green-600">
+                              {subject.totalTopics > 0 
+                                ? `${Math.round((subject.completedTopics / subject.totalTopics) * 100)}%`
+                                : "0%"}
+                            </div>
+                          </div>
+                          <div className="bg-yellow-50 rounded-lg p-2 sm:p-3 border border-yellow-200">
+                            <div className="flex items-center gap-1 text-xs text-yellow-700 mb-1">
+                              <Clock className="h-3 w-3" />
+                              Devam Ediyor
+                            </div>
+                            <div className="text-lg sm:text-xl font-bold text-yellow-600">
+                              {subject.inProgressTopics}
+                            </div>
+                            <div className="text-[10px] text-yellow-600">
+                              {subject.totalTopics > 0 
+                                ? `${Math.round((subject.inProgressTopics / subject.totalTopics) * 100)}%`
+                                : "0%"}
+                            </div>
+                          </div>
+                          {subject.delayedTopics > 0 ? (
+                            <div className="bg-red-50 rounded-lg p-2 sm:p-3 border border-red-200">
+                              <div className="flex items-center gap-1 text-xs text-red-700 mb-1">
+                                <AlertTriangle className="h-3 w-3" />
+                                Gecikmeli
+                              </div>
+                              <div className="text-lg sm:text-xl font-bold text-red-600">
+                                {subject.delayedTopics}
+                              </div>
+                              <div className="text-[10px] text-red-600">
+                                {subject.totalTopics > 0 
+                                  ? `${Math.round((subject.delayedTopics / subject.totalTopics) * 100)}%`
+                                  : "0%"}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="bg-gray-50 rounded-lg p-2 sm:p-3 border border-gray-200">
+                              <div className="text-xs text-gray-500 mb-1">Planlandı</div>
+                              <div className="text-lg sm:text-xl font-bold text-gray-600">
+                                {plannedCount}
+                              </div>
+                              <div className="text-[10px] text-gray-500">bekliyor</div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="mt-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs sm:text-sm font-medium text-gray-700">
+                              Genel İlerleme
+                            </span>
+                            <span className="text-xs sm:text-sm font-bold text-blue-600">
+                              %{completionRate}
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500 flex items-center justify-end pr-2"
+                              style={{ width: `${completionRate}%` }}
+                            >
+                              {completionRate > 10 && (
+                                <span className="text-[8px] text-white font-medium">
+                                  %{completionRate}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      <div className="w-16 sm:w-24 h-16 sm:h-24 relative">
-                        <svg className="w-full h-full transform -rotate-90">
-                          <circle
-                            cx="50%"
-                            cy="50%"
-                            r="40%"
-                            stroke="currentColor"
-                            strokeWidth="8"
-                            fill="none"
-                            className="text-gray-200"
-                          />
-                          <circle
-                            cx="50%"
-                            cy="50%"
-                            r="40%"
-                            stroke="currentColor"
-                            strokeWidth="8"
-                            fill="none"
-                            strokeDasharray={`${(subject.completionPercentage / 100) * 251.2} 251.2`}
-                            className="text-blue-600 transition-all"
-                          />
-                        </svg>
+
+                      {/* Circular Progress */}
+                      <div className="flex-shrink-0 flex justify-center lg:justify-end">
+                        <div className="relative w-24 h-24 sm:w-28 sm:h-28">
+                          <svg className="w-full h-full transform -rotate-90">
+                            <circle
+                              cx="50%"
+                              cy="50%"
+                              r="42%"
+                              stroke="currentColor"
+                              strokeWidth="6"
+                              fill="none"
+                              className="text-gray-200"
+                            />
+                            <circle
+                              cx="50%"
+                              cy="50%"
+                              r="42%"
+                              stroke="currentColor"
+                              strokeWidth="6"
+                              fill="none"
+                              strokeDasharray={`${(completionRate / 100) * 264} 264`}
+                              className={`transition-all duration-500 ${
+                                completionRate === 100
+                                  ? "text-green-500"
+                                  : completionRate >= 75
+                                  ? "text-blue-500"
+                                  : completionRate >= 50
+                                  ? "text-yellow-500"
+                                  : "text-orange-500"
+                              }`}
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <div className={`text-xl sm:text-2xl font-bold ${
+                              completionRate === 100
+                                ? "text-green-600"
+                                : completionRate >= 75
+                                ? "text-blue-600"
+                                : completionRate >= 50
+                                ? "text-yellow-600"
+                                : "text-orange-600"
+                            }`}>
+                              %{completionRate}
+                            </div>
+                            <div className="text-[8px] sm:text-[10px] text-gray-500">
+                              Tamamlanma
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </CardContent>
         </Card>
