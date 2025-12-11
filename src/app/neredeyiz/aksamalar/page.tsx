@@ -16,6 +16,10 @@ import {
   Loader2,
   Calendar,
   FileText,
+  Search,
+  Filter,
+  CheckSquare,
+  Square,
 } from "lucide-react"
 
 interface AcademicYear {
@@ -37,6 +41,8 @@ interface Disruption {
 interface Subject {
   id: string
   name: string
+  grade: number
+  section: string | null
 }
 
 const disruptionTypeLabels: Record<string, string> = {
@@ -64,6 +70,12 @@ export default function AksamalarPage() {
     endDate: "",
     affectedSubjects: [] as string[],
   })
+
+  // Filtreleme state'leri
+  const [searchQuery, setSearchQuery] = useState("")
+  const [selectedGrade, setSelectedGrade] = useState<string>("")
+  const [selectedSection, setSelectedSection] = useState<string>("")
+  const [selectedGradeForBulk, setSelectedGradeForBulk] = useState<string>("")
 
   useEffect(() => {
     fetchAcademicYears()
@@ -221,6 +233,59 @@ export default function AksamalarPage() {
     return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
   }
 
+  // Filtrelenmiş dersler
+  const filteredSubjects = subjects.filter((subject) => {
+    const matchesSearch = searchQuery === "" || 
+      subject.name.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesGrade = selectedGrade === "" || subject.grade.toString() === selectedGrade
+    const matchesSection = selectedSection === "" || 
+      (selectedSection === "null" ? subject.section === null : subject.section === selectedSection)
+    
+    return matchesSearch && matchesGrade && matchesSection
+  })
+
+  // Sınıflar listesi (5-12)
+  const grades = Array.from({ length: 8 }, (_, i) => i + 5)
+
+  // Şubeler listesi (filtrelenmiş derslerden)
+  const sections = Array.from(
+    new Set(
+      filteredSubjects
+        .map((s) => s.section)
+        .filter((s): s is string => s !== null)
+        .sort()
+    )
+  )
+
+  // Sınıf bazlı toplu seçim
+  const handleGradeBulkSelect = (grade: string) => {
+    if (!grade) {
+      setSelectedGradeForBulk("")
+      return
+    }
+
+    setSelectedGradeForBulk(grade)
+    const gradeNum = parseInt(grade, 10)
+    const subjectsInGrade = subjects.filter((s) => s.grade === gradeNum)
+    const subjectIds = subjectsInGrade.map((s) => s.id)
+    
+    // Mevcut seçimlere ekle (duplicate'leri önle)
+    const newSelected = Array.from(new Set([...formData.affectedSubjects, ...subjectIds]))
+    setFormData({ ...formData, affectedSubjects: newSelected })
+  }
+
+  // Tümünü seç/seçimi kaldır
+  const handleSelectAll = () => {
+    if (formData.affectedSubjects.length === filteredSubjects.length) {
+      // Tümünü kaldır
+      setFormData({ ...formData, affectedSubjects: [] })
+    } else {
+      // Tümünü seç
+      const allIds = filteredSubjects.map((s) => s.id)
+      setFormData({ ...formData, affectedSubjects: allIds })
+    }
+  }
+
   if (loading) {
     return (
       <div className="p-3 sm:p-4 md:p-6 flex items-center justify-center min-h-[400px]">
@@ -261,6 +326,10 @@ export default function AksamalarPage() {
                 endDate: "",
                 affectedSubjects: [],
               })
+              setSearchQuery("")
+              setSelectedGrade("")
+              setSelectedSection("")
+              setSelectedGradeForBulk("")
             }}
             disabled={!selectedYearId}
             className="text-xs sm:text-sm"
@@ -349,8 +418,25 @@ export default function AksamalarPage() {
                           </div>
                         </div>
                         {disruption.affectedSubjects.length > 0 && (
-                          <div className="mt-2 text-xs sm:text-sm text-gray-600">
-                            Etkilenen Dersler: {disruption.affectedSubjects.length} ders
+                          <div className="mt-2">
+                            <div className="text-xs sm:text-sm text-gray-600 mb-1">
+                              Etkilenen Dersler ({disruption.affectedSubjects.length}):
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {disruption.affectedSubjects.map((subjectId) => {
+                                const subject = subjects.find((s) => s.id === subjectId)
+                                if (!subject) return null
+                                return (
+                                  <span
+                                    key={subjectId}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs font-medium"
+                                  >
+                                    {subject.name} - {subject.grade}. Sınıf
+                                    {subject.section && ` - ${subject.section} Şubesi`}
+                                  </span>
+                                )
+                              })}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -367,6 +453,10 @@ export default function AksamalarPage() {
                               endDate: disruption.endDate.split("T")[0],
                               affectedSubjects: disruption.affectedSubjects,
                             })
+                            setSearchQuery("")
+                            setSelectedGrade("")
+                            setSelectedSection("")
+                            setSelectedGradeForBulk("")
                             setShowForm(true)
                           }}
                           className="text-xs sm:text-sm"
@@ -425,6 +515,10 @@ export default function AksamalarPage() {
                       endDate: "",
                       affectedSubjects: [],
                     })
+                    setSearchQuery("")
+                    setSelectedGrade("")
+                    setSelectedSection("")
+                    setSelectedGradeForBulk("")
                   }}
                 >
                   <X className="h-4 w-4" />
@@ -500,40 +594,158 @@ export default function AksamalarPage() {
                   </div>
                 </div>
                 {subjects.length > 0 && (
-                  <div>
-                    <Label className="text-xs sm:text-sm mb-2 block">
-                      Etkilenen Dersler (Opsiyonel)
-                    </Label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-2">
-                      {subjects.map((subject) => (
-                        <label
-                          key={subject.id}
-                          className="flex items-center gap-2 text-xs sm:text-sm cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={formData.affectedSubjects.includes(subject.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setFormData({
-                                  ...formData,
-                                  affectedSubjects: [...formData.affectedSubjects, subject.id],
-                                })
-                              } else {
-                                setFormData({
-                                  ...formData,
-                                  affectedSubjects: formData.affectedSubjects.filter(
-                                    (id) => id !== subject.id
-                                  ),
-                                })
-                              }
-                            }}
-                            className="h-3 w-3 sm:h-4 sm:w-4"
-                          />
-                          {subject.name}
-                        </label>
-                      ))}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs sm:text-sm">
+                        Etkilenen Dersler (Opsiyonel)
+                      </Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSelectAll}
+                        className="text-xs h-7"
+                      >
+                        {formData.affectedSubjects.length === filteredSubjects.length ? (
+                          <>
+                            <Square className="h-3 w-3 mr-1" />
+                            Tümünü Kaldır
+                          </>
+                        ) : (
+                          <>
+                            <CheckSquare className="h-3 w-3 mr-1" />
+                            Tümünü Seç
+                          </>
+                        )}
+                      </Button>
                     </div>
+
+                    {/* Sınıf Bazlı Toplu Seçim */}
+                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                      <Label className="text-xs sm:text-sm font-medium text-blue-900 mb-2 block">
+                        Sınıf Bazlı Toplu Seçim
+                      </Label>
+                      <select
+                        value={selectedGradeForBulk}
+                        onChange={(e) => handleGradeBulkSelect(e.target.value)}
+                        className="w-full h-9 px-3 py-1 border border-blue-300 bg-white rounded-md text-xs sm:text-sm focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Sınıf seçin...</option>
+                        {grades.map((grade) => (
+                          <option key={grade} value={grade.toString()}>
+                            {grade}. Sınıf - Tüm Dersler
+                          </option>
+                        ))}
+                      </select>
+                      {selectedGradeForBulk && (
+                        <p className="text-xs text-blue-700 mt-2">
+                          {subjects.filter((s) => s.grade === parseInt(selectedGradeForBulk, 10)).length} ders seçildi
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Filtreleme */}
+                    <div className="space-y-2">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Input
+                          type="text"
+                          placeholder="Ders ara..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="pl-10 h-9 text-xs sm:text-sm"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-xs mb-1 block">Sınıf</Label>
+                          <select
+                            value={selectedGrade}
+                            onChange={(e) => {
+                              setSelectedGrade(e.target.value)
+                              setSelectedSection("") // Sınıf değiştiğinde şube filtresini sıfırla
+                            }}
+                            className="w-full h-9 px-2 py-1 border border-gray-300 rounded-md text-xs sm:text-sm focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">Tüm Sınıflar</option>
+                            {grades.map((grade) => (
+                              <option key={grade} value={grade.toString()}>
+                                {grade}. Sınıf
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <Label className="text-xs mb-1 block">Şube</Label>
+                          <select
+                            value={selectedSection}
+                            onChange={(e) => setSelectedSection(e.target.value)}
+                            disabled={selectedGrade === ""}
+                            className="w-full h-9 px-2 py-1 border border-gray-300 rounded-md text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          >
+                            <option value="">Tüm Şubeler</option>
+                            <option value="null">Şube Yok</option>
+                            {sections.map((section) => (
+                              <option key={section} value={section}>
+                                {section} Şubesi
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Ders Listesi */}
+                    <div className="border border-gray-200 rounded-lg p-3 max-h-60 overflow-y-auto bg-gray-50">
+                      {filteredSubjects.length === 0 ? (
+                        <div className="text-center py-4 text-xs text-gray-500">
+                          Filtre kriterlerinize uygun ders bulunamadı
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {filteredSubjects.map((subject) => (
+                            <label
+                              key={subject.id}
+                              className="flex items-start gap-2 text-xs sm:text-sm cursor-pointer hover:bg-white p-2 rounded transition-colors"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={formData.affectedSubjects.includes(subject.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setFormData({
+                                      ...formData,
+                                      affectedSubjects: [...formData.affectedSubjects, subject.id],
+                                    })
+                                  } else {
+                                    setFormData({
+                                      ...formData,
+                                      affectedSubjects: formData.affectedSubjects.filter(
+                                        (id) => id !== subject.id
+                                      ),
+                                    })
+                                  }
+                                }}
+                                className="h-4 w-4 mt-0.5 flex-shrink-0"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-gray-900">{subject.name}</div>
+                                <div className="text-gray-600 text-xs mt-0.5">
+                                  {subject.grade}. Sınıf
+                                  {subject.section && ` - ${subject.section} Şubesi`}
+                                  {!subject.section && " - Şube Yok"}
+                                </div>
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {formData.affectedSubjects.length > 0 && (
+                      <div className="text-xs text-gray-600 bg-green-50 p-2 rounded border border-green-200">
+                        <strong>{formData.affectedSubjects.length}</strong> ders seçildi
+                      </div>
+                    )}
                   </div>
                 )}
                 <div className="flex flex-col sm:flex-row gap-2 pt-2">
@@ -569,6 +781,10 @@ export default function AksamalarPage() {
                         endDate: "",
                         affectedSubjects: [],
                       })
+                      setSearchQuery("")
+                      setSelectedGrade("")
+                      setSelectedSection("")
+                      setSelectedGradeForBulk("")
                     }}
                     className="flex-1 sm:flex-initial text-xs sm:text-sm"
                   >

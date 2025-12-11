@@ -60,7 +60,62 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    return NextResponse.json(progress)
+    // Staff ID'lerini topla
+    const staffIds = new Set<string>()
+    progress.forEach((p) => {
+      if (p.markedBy) staffIds.add(p.markedBy)
+      if (p.approvedBy) staffIds.add(p.approvedBy)
+      if (p.reportedBy) staffIds.add(p.reportedBy)
+    })
+
+    // Staff bilgilerini çek
+    const staffMembers = await prisma.staff.findMany({
+      where: {
+        id: { in: Array.from(staffIds) },
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        department: true,
+      },
+    })
+
+    // Staff bilgilerini map'e çevir
+    const staffMap = new Map(staffMembers.map((s) => [s.id, s]))
+
+    // Progress kayıtlarına Staff bilgilerini ekle
+    const progressWithStaff = progress.map((p) => ({
+      ...p,
+      markedByStaff: p.markedBy ? staffMap.get(p.markedBy) : null,
+      approvedByStaff: p.approvedBy ? staffMap.get(p.approvedBy) : null,
+      reportedByStaff: p.reportedBy ? staffMap.get(p.reportedBy) : null,
+    }))
+
+    // PENDING_APPROVAL durumundaki kayıtlar için topic bilgilerini de dahil et
+    const progressWithTopics = await Promise.all(
+      progressWithStaff.map(async (p) => {
+        if (p.status === "PENDING_APPROVAL" && p.topicId) {
+          const topic = await prisma.topic.findUnique({
+            where: { id: p.topicId },
+            include: {
+              unit: {
+                include: {
+                  subject: true,
+                },
+              },
+            },
+          })
+          return {
+            ...p,
+            topic: topic || p.topic,
+          }
+        }
+        return p
+      })
+    )
+
+    return NextResponse.json(progressWithTopics)
   } catch (error) {
     console.error("Error fetching progress:", error)
     return NextResponse.json(
@@ -82,6 +137,7 @@ export async function POST(request: NextRequest) {
       actualEndDate,
       notes,
       reportedBy,
+      reportedAt,
       markedBy,
     } = body
 
@@ -109,6 +165,7 @@ export async function POST(request: NextRequest) {
           actualEndDate: actualEndDate ? new Date(actualEndDate) : null,
           notes: notes || null,
           reportedBy: reportedBy || null,
+          reportedAt: reportedAt ? new Date(reportedAt) : (reportedBy ? new Date() : null),
           markedBy: markedBy || null,
           markedAt: markedBy ? new Date() : null,
         },
@@ -124,6 +181,7 @@ export async function POST(request: NextRequest) {
           actualEndDate: actualEndDate ? new Date(actualEndDate) : null,
           notes: notes || null,
           reportedBy: reportedBy || null,
+          reportedAt: reportedAt ? new Date(reportedAt) : (reportedBy ? new Date() : null),
           markedBy: markedBy || null,
           markedAt: markedBy ? new Date() : null,
         },

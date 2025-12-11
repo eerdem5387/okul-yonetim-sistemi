@@ -1,25 +1,34 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
-// GET - Tüm dersleri listele
-export async function GET(request: NextRequest) {
-  try {
-    const searchParams = request.nextUrl.searchParams
-    const academicYearId = searchParams.get("academicYearId")
-    const grade = searchParams.get("grade")
-    const section = searchParams.get("section")
+  // GET - Tüm dersleri listele
+  export async function GET(request: NextRequest) {
+    try {
+      const searchParams = request.nextUrl.searchParams
+      const academicYearId = searchParams.get("academicYearId")
+      const grade = searchParams.get("grade")
+      const section = searchParams.get("section")
+      const staffId = searchParams.get("staffId") // Öğretmen ID'si
 
-    const where: Record<string, unknown> = {}
-    
-    if (academicYearId) {
-      where.academicYearId = academicYearId
-    }
-    if (grade) {
-      where.grade = parseInt(grade, 10)
-    }
-    if (section) {
-      where.section = section
-    }
+      const where: Record<string, unknown> = {}
+
+      if (academicYearId) {
+        where.academicYearId = academicYearId
+      }
+      if (grade) {
+        where.grade = parseInt(grade, 10)
+      }
+      if (section) {
+        where.section = section
+      }
+      // Öğretmen ID'si varsa, sadece o öğretmene atanmış dersleri getir
+      if (staffId) {
+        where.assignments = {
+          some: {
+            staffId: staffId,
+          },
+        }
+      }
 
     const subjects = await prisma.subject.findMany({
       where: where as never,

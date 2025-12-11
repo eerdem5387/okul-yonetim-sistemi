@@ -42,6 +42,20 @@ interface Subject {
         status: string
         actualEndDate: string | null
         markedAt: string | null
+        markedBy: string | null
+        approvedBy: string | null
+        markedByStaff: {
+          id: string
+          firstName: string
+          lastName: string
+          department: string
+        } | null
+        approvedByStaff: {
+          id: string
+          firstName: string
+          lastName: string
+          department: string
+        } | null
       }>
     }>
   }>
@@ -57,6 +71,20 @@ interface Topic {
     status: string
     actualEndDate: string | null
     markedAt: string | null
+    markedBy: string | null
+    approvedBy: string | null
+    markedByStaff: {
+      id: string
+      firstName: string
+      lastName: string
+      department: string
+    } | null
+    approvedByStaff: {
+      id: string
+      firstName: string
+      lastName: string
+      department: string
+    } | null
   }>
 }
 
@@ -77,8 +105,19 @@ export default function IlerlemeDetayPage() {
   const [completionDateTopicId, setCompletionDateTopicId] = useState<string | null>(null)
   const [completionDate, setCompletionDate] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  const [staffId, setStaffId] = useState<string | null>(null)
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const role = localStorage.getItem("auth_role")
+      const id = localStorage.getItem("staff_id")
+      
+      // Rehberlik danışmanı veya öğrenci işleri kullanıcısı ise staff ID'yi al
+      if ((role === "counselor" || role === "student_affairs") && id) {
+        setStaffId(id)
+      }
+    }
+
     if (params.id) {
       fetchSubject()
     }
@@ -246,6 +285,7 @@ export default function IlerlemeDetayPage() {
           topicId,
           status: "TAMAMLANDI",
           actualEndDate: new Date().toISOString(),
+          markedBy: staffId || null, // Rehberlik danışmanı veya öğrenci işleri kullanıcısı ise markedBy gönder
         }),
       })
 
@@ -285,6 +325,7 @@ export default function IlerlemeDetayPage() {
             topicId: topic.id,
             status: "TAMAMLANDI",
             actualEndDate: new Date().toISOString(),
+            markedBy: staffId || null, // Rehberlik danışmanı veya öğrenci işleri kullanıcısı ise markedBy gönder
           }),
         })
       }
@@ -312,6 +353,7 @@ export default function IlerlemeDetayPage() {
           topicId: completionDateTopicId,
           status: "TAMAMLANDI",
           actualEndDate: new Date(completionDate).toISOString(),
+          markedBy: staffId || null, // Rehberlik danışmanı veya öğrenci işleri kullanıcısı ise markedBy gönder
         }),
       })
 
@@ -681,6 +723,17 @@ export default function IlerlemeDetayPage() {
                                           ({getDelayDays(topic)} gün gecikme)
                                         </span>
                                       )}
+                                    </p>
+                                  )}
+                                  {/* Rehberlik danışmanı onay bilgisi */}
+                                  {topic.progress?.[0]?.markedByStaff && (
+                                    <p className="text-xs mt-1 text-blue-600 font-medium">
+                                      Rehberlik {topic.progress[0].markedByStaff.firstName} {topic.progress[0].markedByStaff.lastName} bu konunun tamamlandığını bildirmiştir
+                                    </p>
+                                  )}
+                                  {topic.progress?.[0]?.approvedByStaff && !topic.progress[0].markedByStaff && (
+                                    <p className="text-xs mt-1 text-blue-600 font-medium">
+                                      Rehberlik {topic.progress[0].approvedByStaff.firstName} {topic.progress[0].approvedByStaff.lastName} bu konunun tamamlandığını onaylamıştır
                                     </p>
                                   )}
                                 </div>

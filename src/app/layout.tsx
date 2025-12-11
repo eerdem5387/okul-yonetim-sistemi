@@ -23,14 +23,17 @@ export default function RootLayout({
 
     // Client-side'da auth kontrolü
     const storedRole = localStorage.getItem("auth_role")
-    let normalizedRole: "student_affairs" | "parent" | null = null
+    let normalizedRole: "student_affairs" | "parent" | "teacher" | "counselor" | null = null
 
-    if (storedRole === "student_affairs" || storedRole === "parent") {
+    if (storedRole === "student_affairs" || storedRole === "parent" || storedRole === "teacher" || storedRole === "counselor") {
       normalizedRole = storedRole
     } else if (storedRole) {
       // Eski veya geçersiz roller için localStorage temizle
       localStorage.removeItem("auth_role")
       localStorage.removeItem("auth_token")
+      localStorage.removeItem("staff_id")
+      localStorage.removeItem("staff_name")
+      localStorage.removeItem("staff_department")
     }
 
     setAuthRole(normalizedRole)
@@ -51,8 +54,27 @@ export default function RootLayout({
       }
     }
 
-    // Login sayfası değilse ve Öğrenci İşleri rolü yoksa login'e yönlendir
-    if (pathname !== "/login" && pathname !== "/parent" && !pathname?.startsWith("/ib-viewer") && normalizedRole !== "student_affairs") {
+    // Öğretmen sayfaları için kontrol
+    if (pathname?.startsWith("/ogretmen")) {
+      if (normalizedRole !== "teacher") {
+        router.push("/login")
+        return
+      }
+    }
+
+    // Rehberlik sayfaları için kontrol
+    if (pathname?.startsWith("/rehberlik")) {
+      if (normalizedRole !== "counselor") {
+        router.push("/login")
+        return
+      }
+    }
+
+    // Login sayfası değilse ve yetkili rol yoksa login'e yönlendir
+    const allowedPaths = ["/login", "/parent", "/ib-viewer"]
+    const isAllowedPath = allowedPaths.some((p) => pathname?.startsWith(p))
+    
+    if (!isAllowedPath && !normalizedRole) {
       router.push("/login")
     }
 
@@ -138,6 +160,40 @@ export default function RootLayout({
         <head>
           <title>Neredeyiz? - Yıllık Plan Takip Sistemi</title>
           <meta name="description" content="Yıllık plan takip ve ilerleme yönetim sistemi" />
+          <link rel="icon" href="/logo.png?v=2" type="image/png" />
+          <link rel="apple-touch-icon" href="/logo.png?v=2" />
+        </head>
+        <body className={inter.className}>
+          {children}
+        </body>
+      </html>
+    )
+  }
+
+  // Öğretmen sayfaları için özel layout (sidebar yok)
+  if (pathname?.startsWith("/ogretmen")) {
+    return (
+      <html lang="tr">
+        <head>
+          <title>Öğretmen Paneli - Okul Yönetim Sistemi</title>
+          <meta name="description" content="Öğretmen yıllık plan takip paneli" />
+          <link rel="icon" href="/logo.png?v=2" type="image/png" />
+          <link rel="apple-touch-icon" href="/logo.png?v=2" />
+        </head>
+        <body className={inter.className}>
+          {children}
+        </body>
+      </html>
+    )
+  }
+
+  // Rehberlik sayfaları için özel layout (kendi sidebar'ı var)
+  if (pathname?.startsWith("/rehberlik")) {
+    return (
+      <html lang="tr">
+        <head>
+          <title>Rehberlik Paneli - Okul Yönetim Sistemi</title>
+          <meta name="description" content="Rehberlik danışmanı yönetim paneli" />
           <link rel="icon" href="/logo.png?v=2" type="image/png" />
           <link rel="apple-touch-icon" href="/logo.png?v=2" />
         </head>

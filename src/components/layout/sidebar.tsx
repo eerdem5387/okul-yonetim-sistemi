@@ -25,36 +25,56 @@ import {
   Briefcase,
   Target
 } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 
-const navigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "Neredeyiz?", href: "/neredeyiz", icon: Target },
-  { name: "Bursluluk Başvuruları", href: "/basvurular", icon: ClipboardList },
-  { name: "Gezi Yönetimi", href: "/gezi", icon: MapPin },
-  { name: "Öğrenci Yönetimi", href: "/students", icon: UserPlus },
-  { name: "Personel Yönetimi", href: "/personel", icon: Briefcase },
-  { name: "Kulüp Yönetimi", href: "/clubs", icon: Users },
-  { name: "IB Faaliyet Yönetimi", href: "/activities", icon: Award },
-  { name: "Veli Görüşmeleri", href: "/veli-gorusmeleri", icon: MessageSquare },
-  { name: "Yeni Kayıt", href: "/new-registration", icon: FileText },
-  { name: "Kayıt Yenileme", href: "/renewal", icon: FileText },
-  { name: "Forma Sözleşmesi", href: "/uniform", icon: Shirt },
-  { name: "Yemek Sözleşmesi", href: "/meal", icon: Utensils },
-  { name: "Servis Sözleşmesi", href: "/service", icon: Bus },
-  { name: "Kitap Sözleşmesi", href: "/book", icon: BookOpen },
-  { name: "Geçmiş Sözleşmeler", href: "/history", icon: History },
+const allNavigation = [
+  { name: "Dashboard", href: "/", icon: LayoutDashboard, roles: ["student_affairs"] },
+  { name: "Neredeyiz?", href: "/neredeyiz", icon: Target, roles: ["student_affairs", "counselor"] },
+  { name: "Bursluluk Başvuruları", href: "/basvurular", icon: ClipboardList, roles: ["student_affairs"] },
+  { name: "Gezi Yönetimi", href: "/gezi", icon: MapPin, roles: ["student_affairs", "counselor"] },
+  { name: "Öğrenci Yönetimi", href: "/students", icon: UserPlus, roles: ["student_affairs"] },
+  { name: "Personel Yönetimi", href: "/personel", icon: Briefcase, roles: ["student_affairs"] },
+  { name: "Kulüp Yönetimi", href: "/clubs", icon: Users, roles: ["student_affairs", "counselor"] },
+  { name: "IB Faaliyet Yönetimi", href: "/activities", icon: Award, roles: ["student_affairs", "counselor"] },
+  { name: "Veli Görüşmeleri", href: "/veli-gorusmeleri", icon: MessageSquare, roles: ["student_affairs", "counselor"] },
+  { name: "Yeni Kayıt", href: "/new-registration", icon: FileText, roles: ["student_affairs"] },
+  { name: "Kayıt Yenileme", href: "/renewal", icon: FileText, roles: ["student_affairs"] },
+  { name: "Forma Sözleşmesi", href: "/uniform", icon: Shirt, roles: ["student_affairs"] },
+  { name: "Yemek Sözleşmesi", href: "/meal", icon: Utensils, roles: ["student_affairs"] },
+  { name: "Servis Sözleşmesi", href: "/service", icon: Bus, roles: ["student_affairs"] },
+  { name: "Kitap Sözleşmesi", href: "/book", icon: BookOpen, roles: ["student_affairs"] },
+  { name: "Geçmiş Sözleşmeler", href: "/history", icon: History, roles: ["student_affairs"] },
 ]
 
 export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [currentRole, setCurrentRole] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const role = localStorage.getItem("auth_role")
+      setCurrentRole(role)
+    }
+  }, [])
+
+  // Rol bazlı navigation filtreleme
+  const navigation = allNavigation.filter((item) => {
+    if (!currentRole) return false
+    return item.roles.includes(currentRole)
+  })
 
   const handleLogout = () => {
     localStorage.removeItem("auth_role")
     localStorage.removeItem("auth_token")
+    localStorage.removeItem("staff_id")
+    localStorage.removeItem("staff_name")
+    localStorage.removeItem("staff_department")
+    localStorage.removeItem("ib_viewer_token")
+    localStorage.removeItem("ib_viewer_id")
+    localStorage.removeItem("ib_viewer_name")
     router.push("/login")
     router.refresh()
   }

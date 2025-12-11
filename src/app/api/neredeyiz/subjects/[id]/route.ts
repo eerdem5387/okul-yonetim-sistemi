@@ -27,7 +27,11 @@ export async function GET(
                 order: "asc",
               },
               include: {
-                progress: true,
+                progress: {
+                  include: {
+                    topic: true,
+                  },
+                },
                 subTopics: {
                   orderBy: {
                     order: "asc",
@@ -47,7 +51,52 @@ export async function GET(
       )
     }
 
-    return NextResponse.json(subject)
+    // Progress kayıtlarındaki Staff ID'lerini topla
+    const staffIds = new Set<string>()
+    subject.units.forEach((unit) => {
+      unit.topics.forEach((topic) => {
+        topic.progress.forEach((p) => {
+          if (p.markedBy) staffIds.add(p.markedBy)
+          if (p.approvedBy) staffIds.add(p.approvedBy)
+          if (p.reportedBy) staffIds.add(p.reportedBy)
+        })
+      })
+    })
+
+    // Staff bilgilerini çek
+    const staffMembers = await prisma.staff.findMany({
+      where: {
+        id: { in: Array.from(staffIds) },
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        department: true,
+      },
+    })
+
+    // Staff bilgilerini map'e çevir
+    const staffMap = new Map(staffMembers.map((s) => [s.id, s]))
+
+    // Progress kayıtlarına Staff bilgilerini ekle
+    const subjectWithStaff = {
+      ...subject,
+      units: subject.units.map((unit) => ({
+        ...unit,
+        topics: unit.topics.map((topic) => ({
+          ...topic,
+          progress: topic.progress.map((p) => ({
+            ...p,
+            markedByStaff: p.markedBy ? staffMap.get(p.markedBy) : null,
+            approvedByStaff: p.approvedBy ? staffMap.get(p.approvedBy) : null,
+            reportedByStaff: p.reportedBy ? staffMap.get(p.reportedBy) : null,
+          })),
+        })),
+      })),
+    }
+
+    return NextResponse.json(subjectWithStaff)
   } catch (error) {
     console.error("Error fetching subject:", error)
     return NextResponse.json(

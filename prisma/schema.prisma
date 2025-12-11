@@ -287,79 +287,79 @@ model ParentMeeting {
 
 // Personel Yönetimi - Okul Çalışanları
 enum StaffDepartment {
-  OGRETMEN        // Öğretmen
-  OGRENCI_ISLERI  // Öğrenci İşleri
-  MUDUR           // Müdür
+  OGRETMEN // Öğretmen
+  OGRENCI_ISLERI // Öğrenci İşleri
+  MUDUR // Müdür
   MUDUR_YARDIMCISI // Müdür Yardımcısı
-  REHBERLIK       // Rehberlik
-  MUHASEBE        // Muhasebe
-  GUZEL_SANATLAR  // Güzel Sanatlar
-  SPOR            // Spor
-  KUTUPHANE       // Kütüphane
-  TEKNIK          // Teknik Personel
-  TEMIZLIK        // Temizlik
-  GUVENLIK        // Güvenlik
-  DIGER           // Diğer
+  REHBERLIK // Rehberlik
+  MUHASEBE // Muhasebe
+  GUZEL_SANATLAR // Güzel Sanatlar
+  SPOR // Spor
+  KUTUPHANE // Kütüphane
+  TEKNIK // Teknik Personel
+  TEMIZLIK // Temizlik
+  GUVENLIK // Güvenlik
+  DIGER // Diğer
 }
 
 model Staff {
-  id          String         @id @default(cuid())
-  firstName   String
-  lastName    String
-  tcNumber    String         @unique
-  email       String?
-  phone       String?
-  department  StaffDepartment
-  position    String?        // Pozisyon (Müdür, Müdür Yardımcısı, Sınıf Öğretmeni, vs.)
-  subject     String?        // Branş/Ders (öğretmenler için)
-  isActive    Boolean        @default(true)
-  hireDate    DateTime?      // İşe başlama tarihi
-  notes       String?        // Notlar
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id         String          @id @default(cuid())
+  firstName  String
+  lastName   String
+  tcNumber   String          @unique
+  email      String?
+  phone      String?
+  department StaffDepartment
+  position   String? // Pozisyon (Müdür, Müdür Yardımcısı, Sınıf Öğretmeni, vs.)
+  subject    String? // Branş/Ders (öğretmenler için)
+  isActive   Boolean         @default(true)
+  hireDate   DateTime? // İşe başlama tarihi
+  notes      String? // Notlar
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  // Relations
+  subjectAssignments SubjectAssignment[]
 
   @@index([tcNumber])
   @@index([department])
   @@index([isActive])
   @@index([firstName, lastName])
-  
-  // Relations
-  subjectAssignments SubjectAssignment[]
-
   @@map("staff")
 }
 
 // Neredeyiz Modülü - Yıllık Plan Takip Sistemi
 
 enum DisruptionType {
-  PLANLI_OKUL        // Planlı/Okul Kaynaklı (Gezi, tören, veli toplantısı, müfettiş ziyareti)
-  PLANDISI_DOGAL     // Plan Dışı/Doğal (Kar tatili, sel, elektrik kesintisi)
-  OGRETMEN_KAYNAKLI  // Öğretmen Kaynaklı (Hastalık, hizmet içi eğitim)
+  PLANLI_OKUL // Planlı/Okul Kaynaklı (Gezi, tören, veli toplantısı, müfettiş ziyareti)
+  PLANDISI_DOGAL // Plan Dışı/Doğal (Kar tatili, sel, elektrik kesintisi)
+  OGRETMEN_KAYNAKLI // Öğretmen Kaynaklı (Hastalık, hizmet içi eğitim)
 }
 
 enum HolidayType {
-  RESMI_TATIL        // Resmi Tatil (Ulusal ve Dini bayramlar)
-  YARILYIL_TATILI    // Yarıyıl Tatili
-  ARA_TATIL          // Ara Tatil
-  DIGER              // Diğer
+  RESMI_TATIL // Resmi Tatil (Ulusal ve Dini bayramlar)
+  YARILYIL_TATILI // Yarıyıl Tatili
+  ARA_TATIL // Ara Tatil
+  DIGER // Diğer
 }
 
 enum ProgressStatus {
-  PLANLANDI          // Planlandı (henüz başlanmadı)
-  DEVAM_EDIYOR       // Devam Ediyor
-  TAMAMLANDI         // Tamamlandı
-  ERTELENDI          // Ertelendi
+  PLANLANDI // Planlandı (henüz başlanmadı)
+  DEVAM_EDIYOR // Devam Ediyor
+  TAMAMLANDI // Tamamlandı
+  ERTELENDI // Ertelendi
+  PENDING_APPROVAL // Onay Bekliyor (Öğretmen tarafından işaretlendi, onay bekliyor)
 }
 
 // Akademik Yıl
 model AcademicYear {
-  id          String   @id @default(cuid())
-  name        String   // Örn: "2024-2025 Eğitim Öğretim Yılı"
-  startDate   DateTime // Başlangıç tarihi
-  endDate     DateTime // Bitiş tarihi
-  isActive    Boolean  @default(false) // Aktif akademik yıl
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  name      String // Örn: "2024-2025 Eğitim Öğretim Yılı"
+  startDate DateTime // Başlangıç tarihi
+  endDate   DateTime // Bitiş tarihi
+  isActive  Boolean  @default(false) // Aktif akademik yıl
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
   subjects    Subject[]
@@ -373,18 +373,18 @@ model AcademicYear {
 
 // Ders
 model Subject {
-  id            String   @id @default(cuid())
+  id             String   @id @default(cuid())
   academicYearId String
-  name          String   // Örn: "Geometri"
-  code          String?  // Ders kodu
-  grade         Int      // Sınıf: 5, 6, 7, 8, 9, 10, 11, 12
-  section       String?  // Şube: "A", "B", "C", vb. (opsiyonel)
-  description   String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  name           String // Örn: "Geometri"
+  code           String? // Ders kodu
+  grade          Int // Sınıf: 5, 6, 7, 8, 9, 10, 11, 12
+  section        String? // Şube: "A", "B", "C", vb. (opsiyonel)
+  description    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   // Relations
-  academicYear AcademicYear      @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear        @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
   units        Unit[]
   assignments  SubjectAssignment[]
 
@@ -406,7 +406,7 @@ model SubjectAssignment {
 
   // Relations
   subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  staff   Staff  @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  staff   Staff   @relation(fields: [staffId], references: [id], onDelete: Cascade)
 
   @@unique([subjectId, staffId])
   @@index([subjectId])
@@ -418,8 +418,8 @@ model SubjectAssignment {
 model Unit {
   id          String   @id @default(cuid())
   subjectId   String
-  name        String   // Örn: "Üçgenler"
-  order       Int      // Sıralama
+  name        String // Örn: "Üçgenler"
+  order       Int // Sıralama
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -435,18 +435,18 @@ model Unit {
 
 // Konu
 model Topic {
-  id                String   @id @default(cuid())
+  id                String    @id @default(cuid())
   unitId            String
-  name              String   // Örn: "Üçgenin İç Açıları"
-  order             Int      // Sıralama
-  plannedStartWeek  Int?     // Planlanan başlangıç haftası
-  plannedEndWeek    Int?     // Planlanan bitiş haftası
+  name              String // Örn: "Üçgenin İç Açıları"
+  order             Int // Sıralama
+  plannedStartWeek  Int? // Planlanan başlangıç haftası
+  plannedEndWeek    Int? // Planlanan bitiş haftası
   plannedStartDate  DateTime? // Planlanan başlangıç tarihi
   plannedEndDate    DateTime? // Planlanan bitiş tarihi
-  estimatedDuration Int?     // Tahmini süre (gün)
+  estimatedDuration Int? // Tahmini süre (gün)
   description       String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   // Relations
   unit      Unit       @relation(fields: [unitId], references: [id], onDelete: Cascade)
@@ -480,15 +480,15 @@ model SubTopic {
 
 // Tatil
 model Holiday {
-  id          String     @id @default(cuid())
+  id             String      @id @default(cuid())
   academicYearId String
-  name        String     // Örn: "Kurban Bayramı", "Yarıyıl Tatili"
-  type        HolidayType
-  startDate   DateTime
-  endDate     DateTime
-  description String?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  name           String // Örn: "Kurban Bayramı", "Yarıyıl Tatili"
+  type           HolidayType
+  startDate      DateTime
+  endDate        DateTime
+  description    String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
   // Relations
   academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
@@ -501,16 +501,16 @@ model Holiday {
 
 // Aksama
 model Disruption {
-  id          String         @id @default(cuid())
-  academicYearId String
-  type        DisruptionType
-  reason      String         // Aksama sebebi (detaylı açıklama)
-  startDate   DateTime
-  endDate     DateTime
-  affectedSubjects String[]  // Etkilenen dersler (Subject ID'leri)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  createdBy   String?        // Oluşturan kullanıcı
+  id               String         @id @default(cuid())
+  academicYearId   String
+  type             DisruptionType
+  reason           String // Aksama sebebi (detaylı açıklama)
+  startDate        DateTime
+  endDate          DateTime
+  affectedSubjects String[] // Etkilenen dersler (Subject ID'leri)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  createdBy        String? // Oluşturan kullanıcı
 
   // Relations
   academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
@@ -526,13 +526,16 @@ model Progress {
   id              String         @id @default(cuid())
   topicId         String
   status          ProgressStatus @default(PLANLANDI)
-  plannedDate     DateTime?      // Planlanan tarih
-  actualStartDate DateTime?      // Gerçek başlangıç tarihi
-  actualEndDate   DateTime?      // Gerçek bitiş tarihi
-  notes           String?        // Notlar
-  reportedBy      String?        // Bildiren öğretmen (Staff ID)
-  markedBy        String?        // İşaretleyen (Rehberlik Danışmanı)
-  markedAt        DateTime?      // İşaretleme tarihi
+  plannedDate     DateTime? // Planlanan tarih
+  actualStartDate DateTime? // Gerçek başlangıç tarihi
+  actualEndDate   DateTime? // Gerçek bitiş tarihi
+  notes           String? // Notlar
+  reportedBy      String? // Bildiren öğretmen (Staff ID) - "Tamamladım" butonuna basan
+  reportedAt      DateTime? // Öğretmenin işaretleme tarihi
+  markedBy        String? // İşaretleyen (Rehberlik Danışmanı veya Öğrenci İşleri)
+  markedAt        DateTime? // İşaretleme tarihi
+  approvedBy      String? // Onaylayan (Rehberlik Danışmanı veya Öğrenci İşleri Staff ID)
+  approvedAt      DateTime? // Onay tarihi
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
@@ -542,5 +545,7 @@ model Progress {
   @@index([topicId])
   @@index([status])
   @@index([actualEndDate])
+  @@index([reportedBy])
+  @@index([approvedBy])
   @@map("progress")
 }
