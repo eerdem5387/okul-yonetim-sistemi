@@ -21,7 +21,8 @@ import {
   ClipboardList,
   Award,
   MapPin,
-  MessageSquare
+  MessageSquare,
+  Briefcase
 } from "lucide-react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
@@ -31,6 +32,7 @@ const navigation = [
   { name: "Bursluluk Başvuruları", href: "/basvurular", icon: ClipboardList },
   { name: "Gezi Yönetimi", href: "/gezi", icon: MapPin },
   { name: "Öğrenci Yönetimi", href: "/students", icon: UserPlus },
+  { name: "Personel Yönetimi", href: "/personel", icon: Briefcase },
   { name: "Kulüp Yönetimi", href: "/clubs", icon: Users },
   { name: "IB Faaliyet Yönetimi", href: "/activities", icon: Award },
   { name: "Veli Görüşmeleri", href: "/veli-gorusmeleri", icon: MessageSquare },
