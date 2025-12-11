@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
 // GET - Tüm akademik yılları listele
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
     const academicYears = await prisma.academicYear.findMany({
       orderBy: {

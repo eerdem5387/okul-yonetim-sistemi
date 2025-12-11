@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { ToastContainer, useToast } from "@/components/ui/toast"
 import { Skeleton } from "@/components/ui/skeleton"
 import Link from "next/link"
@@ -63,7 +62,6 @@ interface DisruptionReport {
 
 export default function NeredeyizPage() {
   const { toasts, error, removeToast } = useToast()
-  const [academicYears, setAcademicYears] = useState<AcademicYear[]>([])
   const [activeYear, setActiveYear] = useState<AcademicYear | null>(null)
   const [selectedGrade, setSelectedGrade] = useState<string>("")
   const [selectedSection, setSelectedSection] = useState<string>("")
@@ -89,7 +87,6 @@ export default function NeredeyizPage() {
       const response = await fetch("/api/neredeyiz/academic-years")
       if (response.ok) {
         const data = await response.json()
-        setAcademicYears(data)
         const active = data.find((year: AcademicYear) => year.isActive)
         if (active) {
           setActiveYear(active)

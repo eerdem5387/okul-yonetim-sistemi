@@ -17,7 +17,6 @@ import {
   ChevronDown,
   ChevronRight,
   Search,
-  Filter,
   X,
   AlertTriangle,
 } from "lucide-react"
@@ -512,8 +511,6 @@ export default function IlerlemePage() {
     })
   }
 
-  const selectedSubject = subjects.find((s) => s.id === expandedSubjectId)
-
   const expandAll = () => {
     const selectedSubject = subjects.find((s) => s.id === expandedSubjectId)
     if (selectedSubject) {
@@ -555,28 +552,82 @@ export default function IlerlemePage() {
         </div>
       </div>
 
-      {/* Akademik Yıl Seçimi */}
-      <Card>
-        <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
-          <CardTitle className="text-sm sm:text-base">Akademik Yıl</CardTitle>
-        </CardHeader>
-        <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
-          <select
-            value={selectedYearId}
-            onChange={(e) => {
-              setSelectedYearId(e.target.value)
-              setExpandedSubjectId(null)
-            }}
-            className="w-full h-10 px-3 py-2 border border-input bg-background rounded-md text-sm focus:ring-2 focus:ring-blue-500"
-          >
-            {academicYears.map((year) => (
-              <option key={year.id} value={year.id}>
-                {year.name} {year.isActive && "(Aktif)"}
-              </option>
-            ))}
-          </select>
-        </CardContent>
-      </Card>
+      {/* Filtreler */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        <Card>
+          <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:px-6">
+            <CardTitle className="text-sm sm:text-base">Akademik Yıl</CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
+            <select
+              value={selectedYearId}
+              onChange={(e) => {
+                setSelectedYearId(e.target.value)
+                setExpandedSubjectId(null)
+              }}
+              className="w-full h-10 px-3 py-2 border border-input bg-background rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+            >
+              {academicYears.map((year) => (
+                <option key={year.id} value={year.id}>
+                  {year.name} {year.isActive && "(Aktif)"}
+                </option>
+              ))}
+            </select>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:px-6">
+            <CardTitle className="text-sm sm:text-base">Sınıf</CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
+            <select
+              value={selectedGrade}
+              onChange={(e) => {
+                setSelectedGrade(e.target.value)
+                setExpandedSubjectId(null)
+              }}
+              className="w-full h-10 px-3 py-2 border border-input bg-background rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Tüm Sınıflar</option>
+              {[5, 6, 7, 8, 9, 10, 11, 12].map((grade) => (
+                <option key={grade} value={grade}>
+                  {grade}. Sınıf
+                </option>
+              ))}
+            </select>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:px-6">
+            <CardTitle className="text-sm sm:text-base">Şube</CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
+            <select
+              value={selectedSection}
+              onChange={(e) => {
+                setSelectedSection(e.target.value)
+                setExpandedSubjectId(null)
+              }}
+              className="w-full h-10 px-3 py-2 border border-input bg-background rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Tüm Şubeler</option>
+              {Array.from(
+                new Set(
+                  subjects
+                    .map((s) => s.section)
+                    .filter((s): s is string => s !== null && s !== "")
+                )
+              )
+                .sort()
+                .map((section) => (
+                  <option key={section} value={section}>
+                    {section} Şubesi
+                  </option>
+                ))}
+            </select>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Dersler Kutucukları */}
       {subjects.length === 0 ? (
@@ -769,7 +820,6 @@ export default function IlerlemePage() {
               <div className="space-y-2">
                 {filteredUnits.map((stat) => {
                   const isExpanded = expandedUnits.has(stat.unit.id)
-                  const StatusIcon = getTopicStatus(stat.filteredTopics[0] || stat.unit.topics[0]).icon
 
                   return (
                     <div

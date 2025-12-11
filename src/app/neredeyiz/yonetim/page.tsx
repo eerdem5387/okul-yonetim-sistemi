@@ -84,6 +84,8 @@ export default function YonetimPage() {
     name: "",
     code: "",
     academicYearId: "",
+    grade: "",
+    section: "",
   })
 
   useEffect(() => {
@@ -1103,11 +1105,13 @@ export default function YonetimPage() {
                   onClick={() => {
                     setShowSubjectForm(false)
                     setEditingSubject(null)
-                    setSubjectFormData({
-                      name: "",
-                      code: "",
-                      academicYearId: "",
-                    })
+                      setSubjectFormData({
+                        name: "",
+                        code: "",
+                        academicYearId: "",
+                        grade: "",
+                        section: "",
+                      })
                   }}
                 >
                   <X className="h-4 w-4" />
