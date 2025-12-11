@@ -65,6 +65,8 @@ export default function NeredeyizPage() {
   const { toasts, error, removeToast } = useToast()
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([])
   const [activeYear, setActiveYear] = useState<AcademicYear | null>(null)
+  const [selectedGrade, setSelectedGrade] = useState<string>("")
+  const [selectedSection, setSelectedSection] = useState<string>("")
   const [progressReport, setProgressReport] = useState<ProgressReport | null>(null)
   const [disruptionReport, setDisruptionReport] = useState<DisruptionReport | null>(null)
   const [loading, setLoading] = useState(true)
@@ -80,7 +82,7 @@ export default function NeredeyizPage() {
       fetchReports()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeYear])
+  }, [activeYear, selectedGrade, selectedSection])
 
   const fetchAcademicYears = async () => {
     try {
@@ -109,9 +111,15 @@ export default function NeredeyizPage() {
     setReportsLoading(true)
     try {
       // İlerleme raporu
-      const progressResponse = await fetch(
-        `/api/neredeyiz/reports/progress?academicYearId=${activeYear.id}`
-      )
+      let progressUrl = `/api/neredeyiz/reports/progress?academicYearId=${activeYear.id}`
+      if (selectedGrade) {
+        progressUrl += `&grade=${selectedGrade}`
+      }
+      if (selectedSection) {
+        progressUrl += `&section=${selectedSection}`
+      }
+      
+      const progressResponse = await fetch(progressUrl)
       if (progressResponse.ok) {
         const progressData = await progressResponse.json()
         setProgressReport(progressData)
@@ -186,7 +194,7 @@ export default function NeredeyizPage() {
 
       {/* Header */}
       <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
+        <div className="flex items-center gap-3 mb-4">
           <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-lg">
             <Target className="h-6 w-6 text-white" />
           </div>
@@ -197,6 +205,39 @@ export default function NeredeyizPage() {
             <p className="text-gray-600 mt-1 text-sm sm:text-base">
               Yıllık Plan Takip ve İlerleme Yönetim Sistemi
             </p>
+          </div>
+        </div>
+        
+        {/* Filtreler */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          <div>
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+              Sınıf
+            </label>
+            <select
+              value={selectedGrade}
+              onChange={(e) => setSelectedGrade(e.target.value)}
+              className="w-full h-10 px-3 py-2 border border-input bg-background rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Tüm Sınıflar</option>
+              {[5, 6, 7, 8, 9, 10, 11, 12].map((grade) => (
+                <option key={grade} value={grade}>
+                  {grade}. Sınıf
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+              Şube
+            </label>
+            <select
+              value={selectedSection}
+              onChange={(e) => setSelectedSection(e.target.value)}
+              className="w-full h-10 px-3 py-2 border border-input bg-background rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Tüm Şubeler</option>
+            </select>
           </div>
         </div>
       </div>

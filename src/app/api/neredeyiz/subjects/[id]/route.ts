@@ -65,7 +65,7 @@ export async function PUT(
   try {
     const params = await context.params
     const body = await request.json()
-    const { name, code, description } = body
+    const { name, code, grade, section, description } = body
 
     if (!name) {
       return NextResponse.json(
@@ -74,13 +74,45 @@ export async function PUT(
       )
     }
 
+    // Sınıf validasyonu (varsa)
+    let gradeNum: number | undefined
+    if (grade !== undefined) {
+      gradeNum = parseInt(grade, 10)
+      if (isNaN(gradeNum) || gradeNum < 5 || gradeNum > 12) {
+        return NextResponse.json(
+          { error: "Sınıf 5 ile 12 arasında olmalıdır" },
+          { status: 400 }
+        )
+      }
+    }
+
+    // Şube validasyonu (boş string ise null yap)
+    const sectionValue = section !== undefined 
+      ? (section && section.trim() !== "" ? section.trim() : null)
+      : undefined
+
+    const updateData: {
+      name: string
+      code?: string | null
+      grade?: number
+      section?: string | null
+      description?: string | null
+    } = {
+      name: name.trim(),
+      code: code !== undefined ? (code && code.trim() !== "" ? code.trim() : null) : undefined,
+      description: description !== undefined ? (description && description.trim() !== "" ? description.trim() : null) : undefined,
+    }
+
+    if (gradeNum !== undefined) {
+      updateData.grade = gradeNum
+    }
+    if (sectionValue !== undefined) {
+      updateData.section = sectionValue
+    }
+
     const subject = await prisma.subject.update({
       where: { id: params.id },
-      data: {
-        name,
-        code: code || null,
-        description: description || null,
-      },
+      data: updateData,
     })
 
     return NextResponse.json(subject)

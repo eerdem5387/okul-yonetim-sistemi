@@ -7,6 +7,8 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const academicYearId = searchParams.get("academicYearId")
     const subjectId = searchParams.get("subjectId")
+    const grade = searchParams.get("grade")
+    const section = searchParams.get("section")
 
     if (!academicYearId) {
       return NextResponse.json(
@@ -16,11 +18,20 @@ export async function GET(request: NextRequest) {
     }
 
     // Tüm konuları getir
+    const subjectWhere: Record<string, unknown> = {
+      academicYearId,
+    }
+
+    if (grade) {
+      subjectWhere.grade = parseInt(grade, 10)
+    }
+    if (section) {
+      subjectWhere.section = section
+    }
+
     const where: Record<string, unknown> = {
       unit: {
-        subject: {
-          academicYearId,
-        },
+        subject: subjectWhere,
       },
     }
 

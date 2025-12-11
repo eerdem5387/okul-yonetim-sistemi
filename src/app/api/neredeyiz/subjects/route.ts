@@ -6,11 +6,23 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const academicYearId = searchParams.get("academicYearId")
+    const grade = searchParams.get("grade")
+    const section = searchParams.get("section")
 
-    const where = academicYearId ? { academicYearId } : {}
+    const where: Record<string, unknown> = {}
+    
+    if (academicYearId) {
+      where.academicYearId = academicYearId
+    }
+    if (grade) {
+      where.grade = parseInt(grade, 10)
+    }
+    if (section) {
+      where.section = section
+    }
 
     const subjects = await prisma.subject.findMany({
-      where,
+      where: where as never,
       include: {
         academicYear: {
           select: {
@@ -47,7 +59,7 @@ export async function GET(request: NextRequest) {
         },
       },
       orderBy: {
-        name: "asc",
+        grade: "asc",
       },
     })
 
@@ -65,21 +77,35 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { academicYearId, name, code, description } = body
+    const { academicYearId, name, code, grade, section, description } = body
 
-    if (!academicYearId || !name) {
+    if (!academicYearId || !name || !grade) {
       return NextResponse.json(
-        { error: "Akademik yıl ve ders adı zorunludur" },
+        { error: "Akademik yıl, ders adı ve sınıf zorunludur" },
         { status: 400 }
       )
     }
 
+    // Sınıf validasyonu (5-12 arası)
+    const gradeNum = parseInt(grade, 10)
+    if (isNaN(gradeNum) || gradeNum < 5 || gradeNum > 12) {
+      return NextResponse.json(
+        { error: "Sınıf 5 ile 12 arasında olmalıdır" },
+        { status: 400 }
+      )
+    }
+
+    // Şube validasyonu (boş string ise null yap)
+    const sectionValue = section && section.trim() !== "" ? section.trim() : null
+
     const subject = await prisma.subject.create({
       data: {
         academicYearId,
-        name,
-        code: code || null,
-        description: description || null,
+        name: name.trim(),
+        code: code && code.trim() !== "" ? code.trim() : null,
+        grade: gradeNum,
+        section: sectionValue,
+        description: description && description.trim() !== "" ? description.trim() : null,
       },
     })
 

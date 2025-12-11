@@ -19,6 +19,7 @@ import {
   Users,
   AlertTriangle,
   Settings,
+  PartyPopper,
 } from "lucide-react"
 
 interface AcademicYear {
@@ -34,6 +35,8 @@ interface Subject {
   name: string
   code: string | null
   academicYearId: string
+  grade: number
+  section: string | null
   assignments: Array<{
     id: string
     staff: {
@@ -64,6 +67,18 @@ export default function YonetimPage() {
     endDate: "",
     isActive: false,
   })
+
+  interface HolidayFormData {
+    id?: string
+    name: string
+    type: "RESMI_TATIL" | "YARILYIL_TATILI" | "ARA_TATIL" | "DIGER"
+    startDate: string
+    endDate: string
+    description: string
+  }
+
+  const [holidays, setHolidays] = useState<HolidayFormData[]>([])
+  const [savingHolidayId, setSavingHolidayId] = useState<string | null>(null)
 
   const [subjectFormData, setSubjectFormData] = useState({
     name: "",
@@ -159,6 +174,30 @@ export default function YonetimPage() {
       })
 
       if (response.ok) {
+        const data = await response.json()
+        const academicYearId = editingYear ? editingYear.id : data.id
+
+        // Tatilleri kaydet
+        if (holidays.length > 0 && academicYearId) {
+          for (const holiday of holidays) {
+            if (!holiday.id) {
+              // Yeni tatil ekle
+              await fetch("/api/neredeyiz/holidays", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  academicYearId,
+                  name: holiday.name,
+                  type: holiday.type,
+                  startDate: holiday.startDate,
+                  endDate: holiday.endDate,
+                  description: holiday.description || null,
+                }),
+              })
+            }
+          }
+        }
+
         success(
           editingYear
             ? "Akademik yıl başarıyla güncellendi!"
@@ -173,6 +212,7 @@ export default function YonetimPage() {
           endDate: "",
           isActive: false,
         })
+        setHolidays([])
       } else {
         const errorData = await response.json()
         error(errorData.error || "Akademik yıl kaydedilirken hata oluştu!")
@@ -183,6 +223,133 @@ export default function YonetimPage() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const handleAddHoliday = () => {
+    const newHoliday: HolidayFormData = {
+      name: "",
+      type: "RESMI_TATIL",
+      startDate: "",
+      endDate: "",
+      description: "",
+    }
+    setHolidays([...holidays, newHoliday])
+  }
+
+  const handleSaveHoliday = async (index: number) => {
+    const holiday = holidays[index]
+    
+    if (!holiday.name.trim()) {
+      error("Tatil adı zorunludur!")
+      return
+    }
+
+    if (!holiday.startDate || !holiday.endDate) {
+      error("Başlangıç ve bitiş tarihi zorunludur!")
+      return
+    }
+
+    const start = new Date(holiday.startDate)
+    const end = new Date(holiday.endDate)
+
+    if (start > end) {
+      error("Bitiş tarihi başlangıç tarihinden önce olamaz!")
+      return
+    }
+
+    // Akademik yıl ID'si gerekiyor - eğer yoksa önce akademik yılı kaydet
+    let academicYearId = editingYear?.id
+    
+    // Eğer akademik yıl henüz kaydedilmemişse, önce kaydet
+    if (!academicYearId) {
+      // Akademik yıl form validasyonu
+      if (!yearFormData.name.trim()) {
+        error("Önce akademik yıl adını girin!")
+        return
+      }
+      if (!yearFormData.startDate || !yearFormData.endDate) {
+        error("Önce akademik yıl tarihlerini girin!")
+        return
+      }
+
+      setSavingHolidayId(`holiday-${index}`)
+      
+      try {
+        // Önce akademik yılı kaydet
+        const yearResponse = await fetch("/api/neredeyiz/academic-years", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...yearFormData,
+            name: yearFormData.name.trim(),
+          }),
+        })
+
+        if (!yearResponse.ok) {
+          const errorData = await yearResponse.json()
+          error(errorData.error || "Akademik yıl kaydedilirken hata oluştu!")
+          setSavingHolidayId(null)
+          return
+        }
+
+        const yearData = await yearResponse.json()
+        academicYearId = yearData.id
+        
+        // Akademik yıl state'ini güncelle
+        setEditingYear(yearData)
+        await fetchAcademicYears()
+        success("Akademik yıl kaydedildi, tatil ekleniyor...")
+      } catch (err) {
+        console.error("Error saving academic year:", err)
+        error("Akademik yıl kaydedilirken bir hata oluştu!")
+        setSavingHolidayId(null)
+        return
+      }
+    }
+
+    setSavingHolidayId(`holiday-${index}`)
+
+    try {
+      const response = await fetch("/api/neredeyiz/holidays", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          academicYearId,
+          name: holiday.name.trim(),
+          type: holiday.type,
+          startDate: holiday.startDate,
+          endDate: holiday.endDate,
+          description: holiday.description || null,
+        }),
+      })
+
+      if (response.ok) {
+        const savedHoliday = await response.json()
+        const updatedHolidays = [...holidays]
+        updatedHolidays[index] = { ...holiday, id: savedHoliday.id }
+        setHolidays(updatedHolidays)
+        success("Tatil başarıyla kaydedildi!")
+      } else {
+        const errorData = await response.json()
+        error(errorData.error || "Tatil kaydedilirken hata oluştu!")
+      }
+    } catch (err) {
+      console.error("Error saving holiday:", err)
+      error("Tatil kaydedilirken bir hata oluştu!")
+    } finally {
+      setSavingHolidayId(null)
+    }
+  }
+
+  const handleRemoveHoliday = (index: number) => {
+    const updatedHolidays = holidays.filter((_, i) => i !== index)
+    setHolidays(updatedHolidays)
+  }
+
+  const handleHolidayChange = (index: number, field: keyof HolidayFormData, value: string) => {
+    const updatedHolidays = [...holidays]
+    updatedHolidays[index] = { ...updatedHolidays[index], [field]: value }
+    setHolidays(updatedHolidays)
   }
 
   const handleSubjectSubmit = async (e: React.FormEvent) => {
@@ -196,6 +363,17 @@ export default function YonetimPage() {
     
     if (!subjectFormData.name.trim()) {
       error("Ders adı zorunludur!")
+      return
+    }
+
+    if (!subjectFormData.grade) {
+      error("Sınıf seçimi zorunludur!")
+      return
+    }
+
+    const gradeNum = parseInt(subjectFormData.grade, 10)
+    if (isNaN(gradeNum) || gradeNum < 5 || gradeNum > 12) {
+      error("Sınıf 5 ile 12 arasında olmalıdır!")
       return
     }
 
@@ -213,6 +391,8 @@ export default function YonetimPage() {
         body: JSON.stringify({
           ...subjectFormData,
           academicYearId: selectedYearId,
+          grade: gradeNum,
+          section: subjectFormData.section.trim() !== "" ? subjectFormData.section.trim() : null,
         }),
       })
 
@@ -229,6 +409,8 @@ export default function YonetimPage() {
           name: "",
           code: "",
           academicYearId: "",
+          grade: "",
+          section: "",
         })
       } else {
         const errorData = await response.json()
@@ -419,7 +601,7 @@ export default function YonetimPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => {
+                        onClick={async () => {
                           setEditingYear(year)
                           setYearFormData({
                             name: year.name,
@@ -427,6 +609,27 @@ export default function YonetimPage() {
                             endDate: year.endDate.split("T")[0],
                             isActive: year.isActive,
                           })
+                          // Mevcut tatilleri yükle
+                          try {
+                            const response = await fetch(
+                              `/api/neredeyiz/holidays?academicYearId=${year.id}`
+                            )
+                            if (response.ok) {
+                              const data = await response.json()
+                              setHolidays(
+                                data.map((h: { id: string; name: string; type: string; startDate: string; endDate: string; description: string | null }) => ({
+                                  id: h.id,
+                                  name: h.name,
+                                  type: h.type as HolidayFormData["type"],
+                                  startDate: h.startDate.split("T")[0],
+                                  endDate: h.endDate.split("T")[0],
+                                  description: h.description || "",
+                                }))
+                              )
+                            }
+                          } catch (err) {
+                            console.error("Error fetching holidays:", err)
+                          }
                           setShowYearForm(true)
                         }}
                         className="text-xs sm:text-sm"
@@ -506,6 +709,8 @@ export default function YonetimPage() {
                           name: "",
                           code: "",
                           academicYearId: selectedYearId,
+                          grade: "",
+                          section: "",
                         })
                       }}
                       disabled={!selectedYearId}
@@ -538,11 +743,21 @@ export default function YonetimPage() {
                             <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-1">
                               {subject.name}
                             </h3>
-                            {subject.code && (
-                              <div className="text-xs sm:text-sm text-gray-600">
-                                Kod: {subject.code}
-                              </div>
-                            )}
+                            <div className="flex flex-wrap items-center gap-2 mt-1">
+                              <span className="text-xs sm:text-sm text-gray-600 font-medium">
+                                {subject.grade}. Sınıf
+                              </span>
+                              {subject.section && (
+                                <span className="text-xs sm:text-sm text-gray-600">
+                                  - {subject.section} Şubesi
+                                </span>
+                              )}
+                              {subject.code && (
+                                <span className="text-xs sm:text-sm text-gray-500">
+                                  (Kod: {subject.code})
+                                </span>
+                              )}
+                            </div>
                             {subject.assignments.length > 0 && (
                               <div className="flex flex-wrap gap-2 mt-2">
                                 {subject.assignments.map((assignment) => (
@@ -572,6 +787,8 @@ export default function YonetimPage() {
                                   name: subject.name,
                                   code: subject.code || "",
                                   academicYearId: subject.academicYearId,
+                                  grade: subject.grade.toString(),
+                                  section: subject.section || "",
                                 })
                                 setShowSubjectForm(true)
                               }}
@@ -622,6 +839,7 @@ export default function YonetimPage() {
                       endDate: "",
                       isActive: false,
                     })
+                    setHolidays([])
                   }}
                 >
                   <X className="h-4 w-4" />
@@ -691,6 +909,141 @@ export default function YonetimPage() {
                     Aktif Akademik Yıl Olarak İşaretle
                   </Label>
                 </div>
+
+                {/* Resmi Tatiller Bölümü */}
+                <div className="pt-4 border-t border-gray-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <Label className="text-sm sm:text-base font-semibold text-gray-900">
+                      Resmi Tatiller
+                    </Label>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={handleAddHoliday}
+                      className="text-xs sm:text-sm"
+                    >
+                      <PartyPopper className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                      Resmi Tatil Ekle
+                    </Button>
+                  </div>
+
+                  {holidays.length === 0 ? (
+                    <div className="text-center py-4 text-sm text-gray-500">
+                      Henüz tatil eklenmemiş
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {holidays.map((holiday, index) => (
+                        <div
+                          key={index}
+                          className="p-3 sm:p-4 border border-gray-200 rounded-lg bg-gray-50 space-y-3"
+                        >
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <Label className="text-xs sm:text-sm">Tatil Adı *</Label>
+                              <Input
+                                value={holiday.name}
+                                onChange={(e) =>
+                                  handleHolidayChange(index, "name", e.target.value)
+                                }
+                                placeholder="Örn: Kurban Bayramı"
+                                className="h-9 sm:h-10 text-xs sm:text-sm"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs sm:text-sm">Tatil Tipi *</Label>
+                              <select
+                                value={holiday.type}
+                                onChange={(e) =>
+                                  handleHolidayChange(
+                                    index,
+                                    "type",
+                                    e.target.value as HolidayFormData["type"]
+                                  )
+                                }
+                                className="w-full h-9 sm:h-10 px-3 py-2 border border-input bg-background rounded-md text-xs sm:text-sm focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value="RESMI_TATIL">Resmi Tatil</option>
+                                <option value="YARILYIL_TATILI">Yarıyıl Tatili</option>
+                                <option value="ARA_TATIL">Ara Tatil</option>
+                                <option value="DIGER">Diğer</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <Label className="text-xs sm:text-sm">Başlangıç Tarihi *</Label>
+                              <Input
+                                type="date"
+                                value={holiday.startDate}
+                                onChange={(e) =>
+                                  handleHolidayChange(index, "startDate", e.target.value)
+                                }
+                                className="h-9 sm:h-10 text-xs sm:text-sm"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs sm:text-sm">Bitiş Tarihi *</Label>
+                              <Input
+                                type="date"
+                                value={holiday.endDate}
+                                onChange={(e) =>
+                                  handleHolidayChange(index, "endDate", e.target.value)
+                                }
+                                className="h-9 sm:h-10 text-xs sm:text-sm"
+                              />
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex-1">
+                              {holiday.id && (
+                                <span className="text-xs text-green-600 flex items-center gap-1">
+                                  <Save className="h-3 w-3" />
+                                  Kaydedildi
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex gap-2">
+                              {!holiday.id && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={() => handleSaveHoliday(index)}
+                                  disabled={savingHolidayId === `holiday-${index}`}
+                                  className="text-xs sm:text-sm"
+                                >
+                                  {savingHolidayId === `holiday-${index}` ? (
+                                    <>
+                                      <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 animate-spin" />
+                                      Kaydediliyor...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Save className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                                      Kaydet
+                                    </>
+                                  )}
+                                </Button>
+                              )}
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleRemoveHoliday(index)}
+                                className="text-xs sm:text-sm"
+                              >
+                                <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                                Kaldır
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex flex-col sm:flex-row gap-2 pt-2">
                   <Button
                     type="submit"
@@ -822,6 +1175,8 @@ export default function YonetimPage() {
                         name: "",
                         code: "",
                         academicYearId: "",
+                        grade: "",
+                        section: "",
                       })
                     }}
                     className="flex-1 sm:flex-initial text-xs sm:text-sm"

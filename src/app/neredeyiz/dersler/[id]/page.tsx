@@ -29,6 +29,8 @@ interface Subject {
   name: string
   code: string | null
   academicYearId: string
+  grade: number
+  section: string | null
   assignments: Array<{
     id: string
     staff: {
@@ -105,6 +107,7 @@ export default function DersDetayPage() {
     plannedEndDate: "",
     estimatedDuration: "",
     description: "",
+    hasTimeRange: true, // Varsayılan olarak tarih aralığı var
   })
 
   useEffect(() => {
@@ -272,10 +275,10 @@ export default function DersDetayPage() {
         body: JSON.stringify({
           ...topicFormData,
           unitId: selectedUnitId,
-          plannedStartWeek: topicFormData.plannedStartWeek || null,
-          plannedEndWeek: topicFormData.plannedEndWeek || null,
-          plannedStartDate: topicFormData.plannedStartDate || null,
-          plannedEndDate: topicFormData.plannedEndDate || null,
+          plannedStartWeek: topicFormData.hasTimeRange ? (topicFormData.plannedStartWeek || null) : null,
+          plannedEndWeek: topicFormData.hasTimeRange ? (topicFormData.plannedEndWeek || null) : null,
+          plannedStartDate: topicFormData.hasTimeRange ? (topicFormData.plannedStartDate || null) : null,
+          plannedEndDate: topicFormData.hasTimeRange ? (topicFormData.plannedEndDate || null) : null,
           estimatedDuration: topicFormData.estimatedDuration || null,
         }),
       })
@@ -297,6 +300,7 @@ export default function DersDetayPage() {
           plannedEndDate: "",
           estimatedDuration: "",
           description: "",
+          hasTimeRange: true,
         })
       } else {
         const errorData = await response.json()
@@ -633,6 +637,7 @@ export default function DersDetayPage() {
                                     onClick={() => {
                                       setEditingTopic(topic)
                                       setSelectedUnitId(unit.id)
+                                      const hasTimeRange = !!(topic.plannedStartDate || topic.plannedEndDate)
                                       setTopicFormData({
                                         name: topic.name,
                                         order: topic.order,
@@ -646,6 +651,7 @@ export default function DersDetayPage() {
                                           : "",
                                         estimatedDuration: topic.estimatedDuration?.toString() || "",
                                         description: "",
+                                        hasTimeRange,
                                       })
                                       setShowTopicForm(true)
                                     }}
@@ -683,6 +689,7 @@ export default function DersDetayPage() {
                                 plannedEndDate: "",
                                 estimatedDuration: "",
                                 description: "",
+                                hasTimeRange: true,
                               })
                             }}
                             className="w-full text-xs sm:text-sm"
@@ -712,6 +719,7 @@ export default function DersDetayPage() {
                                 plannedEndDate: "",
                                 estimatedDuration: "",
                                 description: "",
+                                hasTimeRange: true,
                               })
                             }}
                             className="text-xs sm:text-sm"
@@ -886,6 +894,7 @@ export default function DersDetayPage() {
                       plannedEndDate: "",
                       estimatedDuration: "",
                       description: "",
+                      hasTimeRange: true,
                     })
                   }}
                 >
@@ -969,42 +978,67 @@ export default function DersDetayPage() {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  <div>
-                    <Label htmlFor="plannedStartDate" className="text-xs sm:text-sm">
-                      Planlanan Başlangıç Tarihi
-                    </Label>
-                    <Input
-                      id="plannedStartDate"
-                      type="date"
-                      value={topicFormData.plannedStartDate}
-                      onChange={(e) =>
-                        setTopicFormData({
-                          ...topicFormData,
-                          plannedStartDate: e.target.value,
-                        })
-                      }
-                      className="h-9 sm:h-10 text-xs sm:text-sm"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="plannedEndDate" className="text-xs sm:text-sm">
-                      Planlanan Bitiş Tarihi
-                    </Label>
-                    <Input
-                      id="plannedEndDate"
-                      type="date"
-                      value={topicFormData.plannedEndDate}
-                      onChange={(e) =>
-                        setTopicFormData({
-                          ...topicFormData,
-                          plannedEndDate: e.target.value,
-                        })
-                      }
-                      className="h-9 sm:h-10 text-xs sm:text-sm"
-                    />
-                  </div>
+                <div className="flex items-center gap-2 pt-2">
+                  <input
+                    type="checkbox"
+                    id="hasTimeRange"
+                    checked={topicFormData.hasTimeRange}
+                    onChange={(e) =>
+                      setTopicFormData({
+                        ...topicFormData,
+                        hasTimeRange: e.target.checked,
+                        // Checkbox kapatıldığında tarihleri temizle
+                        plannedStartDate: e.target.checked ? topicFormData.plannedStartDate : "",
+                        plannedEndDate: e.target.checked ? topicFormData.plannedEndDate : "",
+                        plannedStartWeek: e.target.checked ? topicFormData.plannedStartWeek : "",
+                        plannedEndWeek: e.target.checked ? topicFormData.plannedEndWeek : "",
+                      })
+                    }
+                    className="h-4 w-4"
+                  />
+                  <Label htmlFor="hasTimeRange" className="text-xs sm:text-sm cursor-pointer">
+                    Belirli bir zaman aralığı olsun
+                  </Label>
                 </div>
+
+                {topicFormData.hasTimeRange && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div>
+                      <Label htmlFor="plannedStartDate" className="text-xs sm:text-sm">
+                        Planlanan Başlangıç Tarihi
+                      </Label>
+                      <Input
+                        id="plannedStartDate"
+                        type="date"
+                        value={topicFormData.plannedStartDate}
+                        onChange={(e) =>
+                          setTopicFormData({
+                            ...topicFormData,
+                            plannedStartDate: e.target.value,
+                          })
+                        }
+                        className="h-9 sm:h-10 text-xs sm:text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="plannedEndDate" className="text-xs sm:text-sm">
+                        Planlanan Bitiş Tarihi
+                      </Label>
+                      <Input
+                        id="plannedEndDate"
+                        type="date"
+                        value={topicFormData.plannedEndDate}
+                        onChange={(e) =>
+                          setTopicFormData({
+                            ...topicFormData,
+                            plannedEndDate: e.target.value,
+                          })
+                        }
+                        className="h-9 sm:h-10 text-xs sm:text-sm"
+                      />
+                    </div>
+                  </div>
+                )}
                 <div>
                   <Label htmlFor="estimatedDuration" className="text-xs sm:text-sm">
                     Tahmini Süre (Gün)
@@ -1059,6 +1093,7 @@ export default function DersDetayPage() {
                         plannedEndDate: "",
                         estimatedDuration: "",
                         description: "",
+                        hasTimeRange: true,
                       })
                     }}
                     className="flex-1 sm:flex-initial text-xs sm:text-sm"

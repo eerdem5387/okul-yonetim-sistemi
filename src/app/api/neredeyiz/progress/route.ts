@@ -9,6 +9,8 @@ export async function GET(request: NextRequest) {
     const topicId = searchParams.get("topicId")
     const status = searchParams.get("status")
     const subjectId = searchParams.get("subjectId")
+    const grade = searchParams.get("grade")
+    const section = searchParams.get("section")
 
     const where: Record<string, unknown> = {}
     
@@ -22,6 +24,20 @@ export async function GET(request: NextRequest) {
       where.topic = {
         unit: {
           subjectId,
+        },
+      }
+    } else if (grade || section) {
+      // Sınıf veya şube filtresi varsa subject üzerinden filtrele
+      const subjectWhere: Record<string, unknown> = {}
+      if (grade) {
+        subjectWhere.grade = parseInt(grade, 10)
+      }
+      if (section) {
+        subjectWhere.section = section
+      }
+      where.topic = {
+        unit: {
+          subject: subjectWhere,
         },
       }
     }

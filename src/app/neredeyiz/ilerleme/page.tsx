@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { ToastContainer, useToast } from "@/components/ui/toast"
 import {
   CheckCircle2,
@@ -30,6 +31,8 @@ interface AcademicYear {
 interface Subject {
   id: string
   name: string
+  grade: number
+  section: string | null
   units: Array<{
     id: string
     name: string
@@ -68,12 +71,18 @@ export default function IlerlemePage() {
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [selectedYearId, setSelectedYearId] = useState<string>("")
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string>("")
+  const [selectedGrade, setSelectedGrade] = useState<string>("")
+  const [selectedSection, setSelectedSection] = useState<string>("")
+  const [expandedSubjectId, setExpandedSubjectId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [updatingTopicId, setUpdatingTopicId] = useState<string | null>(null)
+  const [updatingUnitId, setUpdatingUnitId] = useState<string | null>(null)
   const [expandedUnits, setExpandedUnits] = useState<Set<string>>(new Set())
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL")
+  const [showCompletionDateModal, setShowCompletionDateModal] = useState(false)
+  const [completionDateTopicId, setCompletionDateTopicId] = useState<string | null>(null)
+  const [completionDate, setCompletionDate] = useState("")
 
   useEffect(() => {
     fetchAcademicYears()
@@ -87,13 +96,16 @@ export default function IlerlemePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedYearId])
 
-  // İlk yüklemede tüm üniteleri açık tut
+  // Ders açıldığında tüm üniteleri açık tut
   useEffect(() => {
-    if (selectedSubject) {
-      const unitIds = new Set(selectedSubject.units?.map((u) => u.id) || [])
-      setExpandedUnits(unitIds)
+    if (expandedSubjectId) {
+      const subject = subjects.find((s) => s.id === expandedSubjectId)
+      if (subject) {
+        const unitIds = new Set(subject.units?.map((u) => u.id) || [])
+        setExpandedUnits(unitIds)
+      }
     }
-  }, [selectedSubjectId])
+  }, [expandedSubjectId, subjects])
 
   const fetchAcademicYears = async () => {
     try {
@@ -120,15 +132,18 @@ export default function IlerlemePage() {
     if (!selectedYearId) return
 
     try {
-      const response = await fetch(
-        `/api/neredeyiz/subjects?academicYearId=${selectedYearId}`
-      )
+      let url = `/api/neredeyiz/subjects?academicYearId=${selectedYearId}`
+      if (selectedGrade) {
+        url += `&grade=${selectedGrade}`
+      }
+      if (selectedSection) {
+        url += `&section=${selectedSection}`
+      }
+      
+      const response = await fetch(url)
       if (response.ok) {
         const data = await response.json()
         setSubjects(data)
-        if (data.length > 0 && !selectedSubjectId) {
-          setSelectedSubjectId(data[0].id)
-        }
       }
     } catch (err) {
       console.error("Error fetching subjects:", err)
@@ -136,7 +151,16 @@ export default function IlerlemePage() {
     }
   }
 
-  const handleMarkComplete = async (topicId: string) => {
+  const handleMarkComplete = async (topicId: string, topic: Topic) => {
+    // Eğer konunun tarihi yoksa, tamamlama tarihi seçme modalını aç
+    if (!topic.plannedStartDate && !topic.plannedEndDate) {
+      setCompletionDateTopicId(topicId)
+      setCompletionDate(new Date().toISOString().split("T")[0])
+      setShowCompletionDateModal(true)
+      return
+    }
+
+    // Tarihi varsa direkt tamamla
     setUpdatingTopicId(topicId)
     try {
       const response = await fetch("/api/neredeyiz/progress", {
@@ -162,6 +186,76 @@ export default function IlerlemePage() {
       error("Konu işaretlenirken bir hata oluştu!")
     } finally {
       setUpdatingTopicId(null)
+    }
+  }
+
+  const handleCompleteWithDate = async () => {
+    if (!completionDateTopicId || !completionDate) {
+      error("Lütfen tamamlama tarihi seçin!")
+      return
+    }
+
+    setUpdatingTopicId(completionDateTopicId)
+    try {
+      const response = await fetch("/api/neredeyiz/progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topicId: completionDateTopicId,
+          status: "TAMAMLANDI",
+          actualEndDate: new Date(completionDate).toISOString(),
+          markedAt: new Date().toISOString(),
+        }),
+      })
+
+      if (response.ok) {
+        success("Konu başarıyla tamamlandı olarak işaretlendi!")
+        await fetchSubjects()
+        setShowCompletionDateModal(false)
+        setCompletionDateTopicId(null)
+        setCompletionDate("")
+      } else {
+        const errorData = await response.json()
+        error(errorData.error || "Konu işaretlenirken hata oluştu!")
+      }
+    } catch (err) {
+      console.error("Error marking topic complete:", err)
+      error("Konu işaretlenirken bir hata oluştu!")
+    } finally {
+      setUpdatingTopicId(null)
+      setShowCompletionDateModal(false)
+    }
+  }
+
+  const handleMarkUnitComplete = async (unitId: string, topics: Topic[]) => {
+    setUpdatingUnitId(unitId)
+    try {
+      // Ünitedeki tüm konuları tamamla
+      const promises = topics.map((topic) => {
+        const actualEndDate = topic.plannedEndDate 
+          ? new Date(topic.plannedEndDate).toISOString()
+          : new Date().toISOString()
+        
+        return fetch("/api/neredeyiz/progress", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            topicId: topic.id,
+            status: "TAMAMLANDI",
+            actualEndDate,
+            markedAt: new Date().toISOString(),
+          }),
+        })
+      })
+
+      await Promise.all(promises)
+      success("Ünite başarıyla tamamlandı olarak işaretlendi!")
+      await fetchSubjects()
+    } catch (err) {
+      console.error("Error marking unit complete:", err)
+      error("Ünite işaretlenirken bir hata oluştu!")
+    } finally {
+      setUpdatingUnitId(null)
     }
   }
 
@@ -299,10 +393,9 @@ export default function IlerlemePage() {
     return null
   }
 
-  const selectedSubject = subjects.find((s) => s.id === selectedSubjectId)
-
   // Ünite istatistiklerini hesapla
   const unitStats = useMemo(() => {
+    const selectedSubject = subjects.find((s) => s.id === expandedSubjectId)
     if (!selectedSubject) return []
     const now = new Date()
     now.setHours(0, 0, 0, 0)
@@ -375,10 +468,13 @@ export default function IlerlemePage() {
         completionRate: topics.length > 0 ? Math.round((completed / topics.length) * 100) : 0,
       }
     })
-  }, [selectedSubject])
+  }, [subjects, expandedSubjectId])
 
   // Filtrelenmiş ve aranmış üniteler
   const filteredUnits = useMemo(() => {
+    const selectedSubject = subjects.find((s) => s.id === expandedSubjectId)
+    if (!selectedSubject) return []
+    
     return unitStats
       .map((stat) => {
         const filteredTopics = (stat.unit.topics || []).filter((topic) => {
@@ -402,7 +498,7 @@ export default function IlerlemePage() {
         }
       })
       .filter((stat) => stat.filteredTopics.length > 0 || searchQuery === "")
-  }, [unitStats, searchQuery, statusFilter])
+  }, [unitStats, searchQuery, statusFilter, subjects, expandedSubjectId])
 
   const toggleUnit = (unitId: string) => {
     setExpandedUnits((prev) => {
@@ -416,7 +512,10 @@ export default function IlerlemePage() {
     })
   }
 
+  const selectedSubject = subjects.find((s) => s.id === expandedSubjectId)
+
   const expandAll = () => {
+    const selectedSubject = subjects.find((s) => s.id === expandedSubjectId)
     if (selectedSubject) {
       const unitIds = new Set(selectedSubject.units?.map((u) => u.id) || [])
       setExpandedUnits(unitIds)
@@ -456,52 +555,112 @@ export default function IlerlemePage() {
         </div>
       </div>
 
-      {/* Filtreler */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-        <Card>
-          <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
-            <CardTitle className="text-sm sm:text-base">Akademik Yıl</CardTitle>
-          </CardHeader>
-          <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
-            <select
-              value={selectedYearId}
-              onChange={(e) => {
-                setSelectedYearId(e.target.value)
-                setSelectedSubjectId("")
-              }}
-              className="w-full h-10 px-3 py-2 border border-input bg-background rounded-md text-sm focus:ring-2 focus:ring-blue-500"
-            >
-              {academicYears.map((year) => (
-                <option key={year.id} value={year.id}>
-                  {year.name} {year.isActive && "(Aktif)"}
-                </option>
-              ))}
-            </select>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
-            <CardTitle className="text-sm sm:text-base">Ders</CardTitle>
-          </CardHeader>
-          <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
-            <select
-              value={selectedSubjectId}
-              onChange={(e) => setSelectedSubjectId(e.target.value)}
-              className="w-full h-10 px-3 py-2 border border-input bg-background rounded-md text-sm focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Tüm Dersler</option>
-              {subjects.map((subject) => (
-                <option key={subject.id} value={subject.id}>
-                  {subject.name}
-                </option>
-              ))}
-            </select>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Akademik Yıl Seçimi */}
+      <Card>
+        <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
+          <CardTitle className="text-sm sm:text-base">Akademik Yıl</CardTitle>
+        </CardHeader>
+        <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
+          <select
+            value={selectedYearId}
+            onChange={(e) => {
+              setSelectedYearId(e.target.value)
+              setExpandedSubjectId(null)
+            }}
+            className="w-full h-10 px-3 py-2 border border-input bg-background rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+          >
+            {academicYears.map((year) => (
+              <option key={year.id} value={year.id}>
+                {year.name} {year.isActive && "(Aktif)"}
+              </option>
+            ))}
+          </select>
+        </CardContent>
+      </Card>
 
-      {/* Konular Listesi */}
-      {selectedSubjectId && selectedSubject ? (
+      {/* Dersler Kutucukları */}
+      {subjects.length === 0 ? (
+        <Card>
+          <CardContent className="py-8 sm:py-12 text-center">
+            <BookOpen className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-500 text-sm sm:text-base">
+              Bu akademik yılda henüz ders tanımlanmamış
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {subjects.map((subject) => {
+            const isExpanded = expandedSubjectId === subject.id
+            const allTopics = (subject.units || []).flatMap((u) => u.topics || [])
+            const completedTopics = allTopics.filter((t) => t.progress?.[0]?.status === "TAMAMLANDI").length
+            const totalTopics = allTopics.length
+            const completionRate = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0
+
+            return (
+              <Card
+                key={subject.id}
+                className={`cursor-pointer transition-all duration-200 hover:shadow-lg ${
+                  isExpanded ? "ring-2 ring-blue-500" : ""
+                }`}
+                onClick={() => {
+                  setExpandedSubjectId(isExpanded ? null : subject.id)
+                  if (!isExpanded) {
+                    // Ders açıldığında tüm üniteleri aç
+                    const unitIds = new Set(subject.units?.map((u) => u.id) || [])
+                    setExpandedUnits(unitIds)
+                  }
+                }}
+              >
+                <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                      <BookOpen className="h-4 w-4 sm:h-5 sm:w-5" />
+                      {subject.name}
+                      <span className="text-sm font-normal text-gray-600">
+                        - {subject.grade}. Sınıf
+                        {subject.section && ` - ${subject.section} Şubesi`}
+                      </span>
+                    </CardTitle>
+                    {isExpanded ? (
+                      <ChevronDown className="h-5 w-5 text-gray-400" />
+                    ) : (
+                      <ChevronRight className="h-5 w-5 text-gray-400" />
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Toplam Konu:</span>
+                      <span className="font-semibold">{totalTopics}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Tamamlanan:</span>
+                      <span className="font-semibold text-green-600">{completedTopics}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${completionRate}%` }}
+                      />
+                    </div>
+                    <div className="text-xs text-gray-500 text-center">
+                      %{completionRate} Tamamlandı
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Ders Detayları */}
+      {expandedSubjectId && (() => {
+        const selectedSubject = subjects.find((s) => s.id === expandedSubjectId)
+        if (!selectedSubject) return null
+        return (
         <Card>
           <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -618,11 +777,11 @@ export default function IlerlemePage() {
                       className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
                     >
                       {/* Ünite Header */}
-                      <button
-                        onClick={() => toggleUnit(stat.unit.id)}
-                        className="w-full px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 transition-all duration-200 flex items-center justify-between"
-                      >
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="w-full px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 transition-all duration-200 flex items-center justify-between">
+                        <button
+                          onClick={() => toggleUnit(stat.unit.id)}
+                          className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                        >
                           {isExpanded ? (
                             <ChevronDown className="h-5 w-5 text-gray-600 flex-shrink-0" />
                           ) : (
@@ -656,8 +815,29 @@ export default function IlerlemePage() {
                               )}
                             </div>
                           </div>
-                        </div>
-                      </button>
+                        </button>
+                        <Button
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleMarkUnitComplete(stat.unit.id, stat.unit.topics || [])
+                          }}
+                          disabled={updatingUnitId === stat.unit.id}
+                          className="text-xs sm:text-sm bg-green-600 hover:bg-green-700 whitespace-nowrap ml-2"
+                        >
+                          {updatingUnitId === stat.unit.id ? (
+                            <>
+                              <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 animate-spin" />
+                              İşleniyor...
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                              Üniteyi Tamamla
+                            </>
+                          )}
+                        </Button>
+                      </div>
 
                       {/* Konular Listesi */}
                       {isExpanded && (
@@ -719,7 +899,7 @@ export default function IlerlemePage() {
                                         {topic.progress?.[0]?.status !== "TAMAMLANDI" && (
                                           <Button
                                             size="sm"
-                                            onClick={() => handleMarkComplete(topic.id)}
+                                            onClick={() => handleMarkComplete(topic.id, topic)}
                                             disabled={updatingTopicId === topic.id}
                                             className="text-xs sm:text-sm bg-green-600 hover:bg-green-700 whitespace-nowrap"
                                           >
@@ -773,18 +953,84 @@ export default function IlerlemePage() {
             )}
           </CardContent>
         </Card>
-      ) : (
-        <Card>
-          <CardContent className="py-8 sm:py-12 text-center">
-            <TrendingUp className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500 text-sm sm:text-base font-medium mb-1">
-              İlerleme takibi için ders seçin
-            </p>
-            <p className="text-gray-400 text-xs sm:text-sm">
-              Yukarıdaki filtrelerden bir ders seçerek konuları görüntüleyebilirsiniz.
-            </p>
-          </CardContent>
-        </Card>
+        )
+      })()}
+
+      {/* Tamamlama Tarihi Seçme Modalı */}
+      {showCompletionDateModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-0 sm:p-4">
+          <Card className="w-full h-full sm:h-auto sm:max-w-md sm:max-h-[90vh] overflow-y-auto rounded-none sm:rounded-lg">
+            <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
+              <div className="flex justify-between items-center gap-2">
+                <CardTitle className="text-base sm:text-lg lg:text-xl">
+                  Tamamlama Tarihi Seç
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowCompletionDateModal(false)
+                    setCompletionDateTopicId(null)
+                    setCompletionDate("")
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="completionDate" className="text-xs sm:text-sm">
+                    Tamamlanma Tarihi *
+                  </Label>
+                  <Input
+                    id="completionDate"
+                    type="date"
+                    value={completionDate}
+                    onChange={(e) => setCompletionDate(e.target.value)}
+                    className="h-9 sm:h-10 text-xs sm:text-sm mt-1"
+                    required
+                  />
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleCompleteWithDate}
+                    disabled={!completionDate || updatingTopicId === completionDateTopicId}
+                    className="flex-1 sm:flex-initial text-xs sm:text-sm bg-green-600 hover:bg-green-700"
+                  >
+                    {updatingTopicId === completionDateTopicId ? (
+                      <>
+                        <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin" />
+                        Kaydediliyor...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                        Tamamlandı Olarak İşaretle
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setShowCompletionDateModal(false)
+                      setCompletionDateTopicId(null)
+                      setCompletionDate("")
+                    }}
+                    className="flex-1 sm:flex-initial text-xs sm:text-sm"
+                  >
+                    İptal
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   )

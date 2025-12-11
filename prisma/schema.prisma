@@ -377,6 +377,8 @@ model Subject {
   academicYearId String
   name          String   // Örn: "Geometri"
   code          String?  // Ders kodu
+  grade         Int      // Sınıf: 5, 6, 7, 8, 9, 10, 11, 12
+  section       String?  // Şube: "A", "B", "C", vb. (opsiyonel)
   description   String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -386,8 +388,11 @@ model Subject {
   units        Unit[]
   assignments  SubjectAssignment[]
 
+  @@unique([academicYearId, name, grade, section]) // Aynı akademik yılda aynı ders-sınıf-şube kombinasyonu tekrar edemez
   @@index([academicYearId])
-  @@index([name])
+  @@index([academicYearId, grade])
+  @@index([academicYearId, grade, section])
+  @@index([name, grade])
   @@map("subjects")
 }
 
