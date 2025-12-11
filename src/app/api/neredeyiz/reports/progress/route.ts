@@ -1,0 +1,136 @@
+import { NextRequest, NextResponse } from "next/server"
+import { prisma } from "@/lib/prisma"
+
+// GET - Genel ilerleme durumu raporu
+export async function GET(request: NextRequest) {
+  try {
+    const searchParams = request.nextUrl.searchParams
+    const academicYearId = searchParams.get("academicYearId")
+    const subjectId = searchParams.get("subjectId")
+
+    if (!academicYearId) {
+      return NextResponse.json(
+        { error: "Akademik yıl ID zorunludur" },
+        { status: 400 }
+      )
+    }
+
+    // Tüm konuları getir
+    const where: Record<string, unknown> = {
+      unit: {
+        subject: {
+          academicYearId,
+        },
+      },
+    }
+
+    if (subjectId) {
+      where.unit = {
+        subjectId,
+      }
+    }
+
+    const topics = await prisma.topic.findMany({
+      where,
+      include: {
+        unit: {
+          include: {
+            subject: true,
+          },
+        },
+        progress: true,
+      },
+    })
+
+    // İlerleme hesaplamaları
+    const subjectStats: Record<
+      string,
+      {
+        subjectName: string
+        totalTopics: number
+        completedTopics: number
+        inProgressTopics: number
+        plannedTopics: number
+        delayedTopics: number
+        completionPercentage: number
+      }
+    > = {}
+
+    topics.forEach((topic) => {
+      const subjectId = topic.unit.subject.id
+      const subjectName = topic.unit.subject.name
+
+      if (!subjectStats[subjectId]) {
+        subjectStats[subjectId] = {
+          subjectName,
+          totalTopics: 0,
+          completedTopics: 0,
+          inProgressTopics: 0,
+          plannedTopics: 0,
+          delayedTopics: 0,
+          completionPercentage: 0,
+        }
+      }
+
+      subjectStats[subjectId].totalTopics++
+
+      const progress = topic.progress?.[0]
+      if (progress) {
+        if (progress.status === "TAMAMLANDI") {
+          subjectStats[subjectId].completedTopics++
+          
+          // Gecikme kontrolü
+          if (topic.plannedEndDate && progress.actualEndDate) {
+            const plannedDate = new Date(topic.plannedEndDate)
+            const actualDate = new Date(progress.actualEndDate)
+            if (actualDate > plannedDate) {
+              subjectStats[subjectId].delayedTopics++
+            }
+          }
+        } else if (progress.status === "DEVAM_EDIYOR") {
+          subjectStats[subjectId].inProgressTopics++
+        } else {
+          subjectStats[subjectId].plannedTopics++
+        }
+      } else {
+        subjectStats[subjectId].plannedTopics++
+      }
+    })
+
+    // Yüzde hesaplama
+    Object.keys(subjectStats).forEach((id) => {
+      const stats = subjectStats[id]
+      stats.completionPercentage =
+        stats.totalTopics > 0
+          ? Math.round((stats.completedTopics / stats.totalTopics) * 100)
+          : 0
+    })
+
+    return NextResponse.json({
+      subjects: Object.values(subjectStats),
+      summary: {
+        totalSubjects: Object.keys(subjectStats).length,
+        totalTopics: topics.length,
+        completedTopics: Object.values(subjectStats).reduce(
+          (sum, s) => sum + s.completedTopics,
+          0
+        ),
+        averageCompletion: Object.values(subjectStats).length > 0
+          ? Math.round(
+              Object.values(subjectStats).reduce(
+                (sum, s) => sum + s.completionPercentage,
+                0
+              ) / Object.values(subjectStats).length
+            )
+          : 0,
+      },
+    })
+  } catch (error) {
+    console.error("Error generating progress report:", error)
+    return NextResponse.json(
+      { error: "Rapor oluşturulurken hata oluştu" },
+      { status: 500 }
+    )
+  }
+}
+

@@ -322,5 +322,220 @@ model Staff {
   @@index([department])
   @@index([isActive])
   @@index([firstName, lastName])
+  
+  // Relations
+  subjectAssignments SubjectAssignment[]
+
   @@map("staff")
+}
+
+// Neredeyiz Modülü - Yıllık Plan Takip Sistemi
+
+enum DisruptionType {
+  PLANLI_OKUL        // Planlı/Okul Kaynaklı (Gezi, tören, veli toplantısı, müfettiş ziyareti)
+  PLANDISI_DOGAL     // Plan Dışı/Doğal (Kar tatili, sel, elektrik kesintisi)
+  OGRETMEN_KAYNAKLI  // Öğretmen Kaynaklı (Hastalık, hizmet içi eğitim)
+}
+
+enum HolidayType {
+  RESMI_TATIL        // Resmi Tatil (Ulusal ve Dini bayramlar)
+  YARILYIL_TATILI    // Yarıyıl Tatili
+  ARA_TATIL          // Ara Tatil
+  DIGER              // Diğer
+}
+
+enum ProgressStatus {
+  PLANLANDI          // Planlandı (henüz başlanmadı)
+  DEVAM_EDIYOR       // Devam Ediyor
+  TAMAMLANDI         // Tamamlandı
+  ERTELENDI          // Ertelendi
+}
+
+// Akademik Yıl
+model AcademicYear {
+  id          String   @id @default(cuid())
+  name        String   // Örn: "2024-2025 Eğitim Öğretim Yılı"
+  startDate   DateTime // Başlangıç tarihi
+  endDate     DateTime // Bitiş tarihi
+  isActive    Boolean  @default(false) // Aktif akademik yıl
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  subjects    Subject[]
+  holidays    Holiday[]
+  disruptions Disruption[]
+
+  @@index([isActive])
+  @@index([startDate, endDate])
+  @@map("academic_years")
+}
+
+// Ders
+model Subject {
+  id            String   @id @default(cuid())
+  academicYearId String
+  name          String   // Örn: "Geometri"
+  code          String?  // Ders kodu
+  description   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  academicYear AcademicYear      @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  units        Unit[]
+  assignments  SubjectAssignment[]
+
+  @@index([academicYearId])
+  @@index([name])
+  @@map("subjects")
+}
+
+// Ders-Öğretmen Atama
+model SubjectAssignment {
+  id        String   @id @default(cuid())
+  subjectId String
+  staffId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  staff   Staff  @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@unique([subjectId, staffId])
+  @@index([subjectId])
+  @@index([staffId])
+  @@map("subject_assignments")
+}
+
+// Ünite
+model Unit {
+  id          String   @id @default(cuid())
+  subjectId   String
+  name        String   // Örn: "Üçgenler"
+  order       Int      // Sıralama
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  topics  Topic[]
+
+  @@index([subjectId])
+  @@index([subjectId, order])
+  @@map("units")
+}
+
+// Konu
+model Topic {
+  id                String   @id @default(cuid())
+  unitId            String
+  name              String   // Örn: "Üçgenin İç Açıları"
+  order             Int      // Sıralama
+  plannedStartWeek  Int?     // Planlanan başlangıç haftası
+  plannedEndWeek    Int?     // Planlanan bitiş haftası
+  plannedStartDate  DateTime? // Planlanan başlangıç tarihi
+  plannedEndDate    DateTime? // Planlanan bitiş tarihi
+  estimatedDuration Int?     // Tahmini süre (gün)
+  description       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  unit      Unit       @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  subTopics SubTopic[]
+  progress  Progress[]
+
+  @@index([unitId])
+  @@index([unitId, order])
+  @@index([plannedStartDate])
+  @@index([plannedEndDate])
+  @@map("topics")
+}
+
+// Alt Konu (Opsiyonel)
+model SubTopic {
+  id          String   @id @default(cuid())
+  topicId     String
+  name        String
+  order       Int
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@index([topicId])
+  @@index([topicId, order])
+  @@map("sub_topics")
+}
+
+// Tatil
+model Holiday {
+  id          String     @id @default(cuid())
+  academicYearId String
+  name        String     // Örn: "Kurban Bayramı", "Yarıyıl Tatili"
+  type        HolidayType
+  startDate   DateTime
+  endDate     DateTime
+  description String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+
+  @@index([academicYearId])
+  @@index([startDate, endDate])
+  @@index([type])
+  @@map("holidays")
+}
+
+// Aksama
+model Disruption {
+  id          String         @id @default(cuid())
+  academicYearId String
+  type        DisruptionType
+  reason      String         // Aksama sebebi (detaylı açıklama)
+  startDate   DateTime
+  endDate     DateTime
+  affectedSubjects String[]  // Etkilenen dersler (Subject ID'leri)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  createdBy   String?        // Oluşturan kullanıcı
+
+  // Relations
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+
+  @@index([academicYearId])
+  @@index([startDate, endDate])
+  @@index([type])
+  @@map("disruptions")
+}
+
+// İlerleme Takibi
+model Progress {
+  id              String         @id @default(cuid())
+  topicId         String
+  status          ProgressStatus @default(PLANLANDI)
+  plannedDate     DateTime?      // Planlanan tarih
+  actualStartDate DateTime?      // Gerçek başlangıç tarihi
+  actualEndDate   DateTime?      // Gerçek bitiş tarihi
+  notes           String?        // Notlar
+  reportedBy      String?        // Bildiren öğretmen (Staff ID)
+  markedBy        String?        // İşaretleyen (Rehberlik Danışmanı)
+  markedAt        DateTime?      // İşaretleme tarihi
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Relations
+  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@index([topicId])
+  @@index([status])
+  @@index([actualEndDate])
+  @@map("progress")
 }

@@ -22,13 +22,15 @@ import {
   Award,
   MapPin,
   MessageSquare,
-  Briefcase
+  Briefcase,
+  Target
 } from "lucide-react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Neredeyiz?", href: "/neredeyiz", icon: Target },
   { name: "Bursluluk Başvuruları", href: "/basvurular", icon: ClipboardList },
   { name: "Gezi Yönetimi", href: "/gezi", icon: MapPin },
   { name: "Öğrenci Yönetimi", href: "/students", icon: UserPlus },
