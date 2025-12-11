@@ -312,7 +312,6 @@ model Staff {
   department  StaffDepartment
   position    String?        // Pozisyon (Müdür, Müdür Yardımcısı, Sınıf Öğretmeni, vs.)
   subject     String?        // Branş/Ders (öğretmenler için)
-  grades      String[]       // Hangi sınıfları öğretiyor (JSON array)
   isActive    Boolean        @default(true)
   hireDate    DateTime?      // İşe başlama tarihi
   notes       String?        // Notlar

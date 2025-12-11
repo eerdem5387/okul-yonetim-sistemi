@@ -42,7 +42,6 @@ interface Staff {
   department: StaffDepartment
   position: string | null
   subject: string | null
-  grades: string[]
   isActive: boolean
   hireDate: string | null
   notes: string | null
@@ -66,17 +65,6 @@ const departmentLabels: Record<StaffDepartment, string> = {
   DIGER: "Diğer",
 }
 
-const gradeOptions = [
-  "5. Sınıf",
-  "6. Sınıf",
-  "7. Sınıf",
-  "8. Sınıf",
-  "9. Sınıf",
-  "10. Sınıf",
-  "11. Sınıf",
-  "12. Sınıf",
-]
-
 export default function PersonelPage() {
   const [staff, setStaff] = useState<Staff[]>([])
   const [loading, setLoading] = useState(true)
@@ -98,7 +86,6 @@ export default function PersonelPage() {
     department: "OGRETMEN" as StaffDepartment,
     position: "",
     subject: "",
-    grades: [] as string[],
     isActive: true,
     hireDate: "",
     notes: "",
@@ -145,10 +132,7 @@ export default function PersonelPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          ...formData,
-          grades: formData.grades,
-        }),
+        body: JSON.stringify(formData),
       })
 
       if (response.ok) {
@@ -164,7 +148,6 @@ export default function PersonelPage() {
           department: "OGRETMEN",
           position: "",
           subject: "",
-          grades: [],
           isActive: true,
           hireDate: "",
           notes: "",
@@ -190,7 +173,6 @@ export default function PersonelPage() {
       department: staffMember.department,
       position: staffMember.position || "",
       subject: staffMember.subject || "",
-      grades: staffMember.grades || [],
       isActive: staffMember.isActive,
       hireDate: staffMember.hireDate ? staffMember.hireDate.split("T")[0] : "",
       notes: staffMember.notes || "",
@@ -264,7 +246,6 @@ export default function PersonelPage() {
               department: "OGRETMEN",
               position: "",
               subject: "",
-              grades: [],
               isActive: true,
               hireDate: "",
               notes: "",
@@ -430,7 +411,6 @@ export default function PersonelPage() {
                       department: "OGRETMEN",
                       position: "",
                       subject: "",
-                      grades: [],
                       isActive: true,
                       hireDate: "",
                       notes: "",
@@ -592,42 +572,6 @@ export default function PersonelPage() {
                   )}
                 </div>
 
-                {formData.department === "OGRETMEN" && (
-                  <div>
-                    <Label className="text-xs sm:text-sm mb-2 block">
-                      Hangi Sınıfları Öğretiyor?
-                    </Label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {gradeOptions.map((grade) => (
-                        <label
-                          key={grade}
-                          className="flex items-center gap-2 text-xs sm:text-sm"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={formData.grades.includes(grade)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setFormData({
-                                  ...formData,
-                                  grades: [...formData.grades, grade],
-                                })
-                              } else {
-                                setFormData({
-                                  ...formData,
-                                  grades: formData.grades.filter((g) => g !== grade),
-                                })
-                              }
-                            }}
-                            className="h-3 w-3 sm:h-4 sm:w-4"
-                          />
-                          {grade}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <Label htmlFor="hireDate" className="text-xs sm:text-sm">
@@ -696,7 +640,6 @@ export default function PersonelPage() {
                         department: "OGRETMEN",
                         position: "",
                         subject: "",
-                        grades: [],
                         isActive: true,
                         hireDate: "",
                         notes: "",
@@ -782,11 +725,6 @@ export default function PersonelPage() {
                         {staffMember.subject && (
                           <div className="text-[10px] sm:text-xs text-gray-500">
                             {staffMember.subject}
-                          </div>
-                        )}
-                        {staffMember.grades && staffMember.grades.length > 0 && (
-                          <div className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
-                            Sınıflar: {staffMember.grades.join(", ")}
                           </div>
                         )}
                       </td>

@@ -79,7 +79,6 @@ export async function POST(request: NextRequest) {
       department,
       position,
       subject,
-      grades,
       hireDate,
       notes,
     } = body
@@ -101,7 +100,6 @@ export async function POST(request: NextRequest) {
         department: department as StaffDepartment,
         position: position || null,
         subject: subject || null,
-        grades: Array.isArray(grades) ? grades : [],
         hireDate: hireDate ? new Date(hireDate) : null,
         notes: notes || null,
       },

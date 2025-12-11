@@ -69,10 +69,19 @@ export default function VeliGorusmeleriPage() {
       const response = await fetch("/api/students?limit=1000")
       if (response.ok) {
         const data = await response.json()
-        setStudents(Array.isArray(data) ? data : [])
+        // API response format: { students: [...], pagination: {...} }
+        if (data.students && Array.isArray(data.students)) {
+          setStudents(data.students)
+        } else if (Array.isArray(data)) {
+          // Fallback: eski format (array)
+          setStudents(data)
+        } else {
+          setStudents([])
+        }
       }
     } catch (error) {
       console.error("Error fetching students:", error)
+      setStudents([])
     }
   }, [])
 
@@ -111,8 +120,9 @@ export default function VeliGorusmeleriPage() {
   }, [fetchMeetings])
 
   const filteredStudents = useMemo(() => {
-    if (!studentSearchTerm.trim()) return students.slice(0, 10)
-    const search = studentSearchTerm.toLowerCase()
+    // Arama yapılmadığında boş liste döndür (kullanıcı arama yapana kadar öğrenci listesi gösterilmemeli)
+    if (!studentSearchTerm.trim()) return []
+    const search = studentSearchTerm.toLowerCase().trim()
     return students
       .filter(
         (student) =>
@@ -198,7 +208,7 @@ export default function VeliGorusmeleriPage() {
   const handleStudentSelect = (studentId: string) => {
     setSelectedStudentId(studentId)
     setFormData({ ...formData, studentId })
-    setStudentSearchTerm("")
+    setStudentSearchTerm("") // Arama terimini temizle ki dropdown kapansın
   }
 
   const selectedStudent = useMemo(() => {
