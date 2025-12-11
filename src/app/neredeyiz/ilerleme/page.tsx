@@ -18,6 +18,7 @@ import {
   Search,
   Filter,
   X,
+  AlertTriangle,
 } from "lucide-react"
 
 interface AcademicYear {
@@ -35,6 +36,7 @@ interface Subject {
     topics: Array<{
       id: string
       name: string
+      plannedStartDate: string | null
       plannedEndDate: string | null
       progress: Array<{
         id: string
@@ -49,6 +51,7 @@ interface Subject {
 interface Topic {
   id: string
   name: string
+  plannedStartDate: string | null
   plannedEndDate: string | null
   progress: Array<{
     id: string
@@ -192,6 +195,10 @@ export default function IlerlemePage() {
 
   const getTopicStatus = (topic: Topic) => {
     const progress = topic.progress?.[0]
+    const now = new Date()
+    now.setHours(0, 0, 0, 0) // Sadece tarih karşılaştırması için saatleri sıfırla
+
+    // Eğer progress kaydı varsa ve durum belirlenmişse, onu kullan
     if (progress) {
       if (progress.status === "TAMAMLANDI") {
         return {
@@ -216,6 +223,63 @@ export default function IlerlemePage() {
         }
       }
     }
+
+    // Progress kaydı yoksa veya PLANLANDI ise, planlanan tarihlere göre otomatik belirle
+    if (topic.plannedStartDate || topic.plannedEndDate) {
+      const startDate = topic.plannedStartDate ? new Date(topic.plannedStartDate) : null
+      const endDate = topic.plannedEndDate ? new Date(topic.plannedEndDate) : null
+
+      if (startDate) startDate.setHours(0, 0, 0, 0)
+      if (endDate) endDate.setHours(0, 0, 0, 0)
+
+      // Eğer bitiş tarihi geçmişteyse ve tamamlanmamışsa → Gecikmeli
+      if (endDate && endDate < now && (!progress || progress.status !== "TAMAMLANDI")) {
+        return {
+          label: "Gecikmeli",
+          color: "bg-red-100 text-red-800",
+          icon: AlertTriangle,
+          status: "GECIKMELI" as const,
+        }
+      }
+
+      // Eğer başlangıç tarihi geçmişte veya bugünse ve bitiş tarihi gelecekteyse → Devam Ediyor
+      if (
+        startDate &&
+        endDate &&
+        startDate <= now &&
+        endDate >= now &&
+        (!progress || progress.status === "PLANLANDI")
+      ) {
+        return {
+          label: "Devam Ediyor",
+          color: "bg-yellow-100 text-yellow-800",
+          icon: Clock,
+          status: "DEVAM_EDIYOR" as const,
+        }
+      }
+
+      // Eğer sadece bitiş tarihi varsa ve bugün ile gelecek arasındaysa → Devam Ediyor
+      if (!startDate && endDate && endDate >= now && (!progress || progress.status === "PLANLANDI")) {
+        return {
+          label: "Devam Ediyor",
+          color: "bg-yellow-100 text-yellow-800",
+          icon: Clock,
+          status: "DEVAM_EDIYOR" as const,
+        }
+      }
+
+      // Eğer başlangıç tarihi gelecekteyse → Planlandı
+      if (startDate && startDate > now) {
+        return {
+          label: "Planlandı",
+          color: "bg-gray-100 text-gray-800",
+          icon: Calendar,
+          status: "PLANLANDI" as const,
+        }
+      }
+    }
+
+    // Varsayılan durum
     return {
       label: "Planlandı",
       color: "bg-gray-100 text-gray-800",
@@ -240,11 +304,57 @@ export default function IlerlemePage() {
   // Ünite istatistiklerini hesapla
   const unitStats = useMemo(() => {
     if (!selectedSubject) return []
+    const now = new Date()
+    now.setHours(0, 0, 0, 0)
+    
     return (selectedSubject.units || []).map((unit) => {
       const topics = unit.topics || []
       const completed = topics.filter((t) => t.progress?.[0]?.status === "TAMAMLANDI").length
-      const inProgress = topics.filter((t) => t.progress?.[0]?.status === "DEVAM_EDIYOR").length
-      const planned = topics.filter((t) => !t.progress?.[0] || t.progress[0].status === "PLANLANDI").length
+      
+      const inProgress = topics.filter((t) => {
+        const progress = t.progress?.[0]
+        // Progress kaydı varsa ve DEVAM_EDIYOR ise
+        if (progress?.status === "DEVAM_EDIYOR") return true
+        
+        // Progress kaydı yoksa veya PLANLANDI ise, tarihlere göre kontrol et
+        if (!progress || progress.status === "PLANLANDI") {
+          const startDate = t.plannedStartDate ? new Date(t.plannedStartDate) : null
+          const endDate = t.plannedEndDate ? new Date(t.plannedEndDate) : null
+          
+          if (startDate) startDate.setHours(0, 0, 0, 0)
+          if (endDate) endDate.setHours(0, 0, 0, 0)
+          
+          // Başlangıç tarihi geçmişte veya bugünse ve bitiş tarihi gelecekteyse
+          if (startDate && endDate && startDate <= now && endDate >= now) return true
+          // Sadece bitiş tarihi varsa ve bugün ile gelecek arasındaysa
+          if (!startDate && endDate && endDate >= now) return true
+        }
+        
+        return false
+      }).length
+      
+      const planned = topics.filter((t) => {
+        const progress = t.progress?.[0]
+        const startDate = t.plannedStartDate ? new Date(t.plannedStartDate) : null
+        const endDate = t.plannedEndDate ? new Date(t.plannedEndDate) : null
+        
+        if (startDate) startDate.setHours(0, 0, 0, 0)
+        if (endDate) endDate.setHours(0, 0, 0, 0)
+        
+        // Progress kaydı varsa ve durum belirlenmişse planlandı değil
+        if (progress && progress.status !== "PLANLANDI") return false
+        
+        // Başlangıç tarihi gelecekteyse planlandı
+        if (startDate && startDate > now) return true
+        
+        // Tarih yoksa planlandı
+        if (!startDate && !endDate) return true
+        
+        // Başlangıç tarihi geçmişteyse ve bitiş tarihi gelecekteyse planlandı değil (devam ediyor)
+        if (startDate && endDate && startDate <= now && endDate >= now) return false
+        
+        return true
+      }).length
       const delayed = topics.filter((t) => {
         const progress = t.progress?.[0]
         if (progress?.status === "TAMAMLANDI" && t.plannedEndDate && progress.actualEndDate) {
