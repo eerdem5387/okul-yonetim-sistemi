@@ -534,7 +534,7 @@ export default function ClubsPage() {
               <Card
                 key={club.id}
                 className="card-soft hover:shadow-xl transition-all duration-200 border-0 cursor-pointer"
-                onClick={() => (window.location.href = `/clubs/${club.id}`)}
+                onClick={() => (window.location.href = `/rehberlik/clubs/${club.id}`)}
               >
                 <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 lg:pt-6">
                   <div className="flex justify-between items-start gap-2 sm:gap-3">
@@ -561,7 +561,7 @@ export default function ClubsPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => (window.location.href = `/clubs/${club.id}`)}
+                        onClick={() => (window.location.href = `/rehberlik/clubs/${club.id}`)}
                         className="h-7 w-7 sm:h-8 sm:w-8 p-0"
                       >
                         <Eye className="h-3 w-3 sm:h-4 sm:w-4" />

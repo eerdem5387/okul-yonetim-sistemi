@@ -374,7 +374,7 @@ export default function RehberlikGeziPage() {
                         variant="outline"
                         size="sm"
                         className="flex-1 text-xs sm:text-sm"
-                        onClick={() => router.push(`/gezi/${trip.id}`)}
+                        onClick={() => router.push(`/rehberlik/gezi/${trip.id}`)}
                       >
                         <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                         <span className="hidden sm:inline">Detay</span>
