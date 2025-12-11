@@ -34,6 +34,16 @@ export async function GET(request: NextRequest) {
           orderBy: {
             order: "asc",
           },
+          include: {
+            topics: {
+              orderBy: {
+                order: "asc",
+              },
+              include: {
+                progress: true,
+              },
+            },
+          },
         },
       },
       orderBy: {

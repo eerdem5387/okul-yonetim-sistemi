@@ -5,11 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ToastContainer, useToast } from "@/components/ui/toast"
 import { Skeleton } from "@/components/ui/skeleton"
+import Link from "next/link"
 import {
   Calendar,
   TrendingUp,
   AlertTriangle,
   Target,
+  Plus,
+  BookOpen,
+  UserPlus,
+  AlertCircle,
+  ArrowRight,
 } from "lucide-react"
 
 interface AcademicYear {
@@ -191,6 +197,135 @@ export default function NeredeyizPage() {
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Kısayol Butonları */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
+        <Link href="/neredeyiz/yonetim">
+          <Card className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02] border-2 hover:border-blue-500">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center flex-shrink-0">
+                  <Plus className="h-6 w-6 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-1">
+                    Ders Oluştur
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-600">
+                    Yeni ders ekle
+                  </p>
+                </div>
+                <ArrowRight className="h-5 w-5 text-gray-400 flex-shrink-0" />
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/neredeyiz/yonetim">
+          <Card className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02] border-2 hover:border-purple-500">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                  <UserPlus className="h-6 w-6 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-1">
+                    Öğretmen Ata
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-600">
+                    Derse öğretmen atama
+                  </p>
+                </div>
+                <ArrowRight className="h-5 w-5 text-gray-400 flex-shrink-0" />
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/neredeyiz/aksamalar">
+          <Card className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02] border-2 hover:border-orange-500">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center flex-shrink-0">
+                  <AlertCircle className="h-6 w-6 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-1">
+                    Aksama Oluştur
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-600">
+                    Plan dışı gelişme kaydet
+                  </p>
+                </div>
+                <ArrowRight className="h-5 w-5 text-gray-400 flex-shrink-0" />
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/neredeyiz/ilerleme">
+          <Card className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02] border-2 hover:border-green-500">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center flex-shrink-0">
+                  <TrendingUp className="h-6 w-6 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-1">
+                    İlerleme Takibi
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-600">
+                    Konu durumlarını güncelle
+                  </p>
+                </div>
+                <ArrowRight className="h-5 w-5 text-gray-400 flex-shrink-0" />
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/neredeyiz/raporlar">
+          <Card className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02] border-2 hover:border-indigo-500">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
+                  <TrendingUp className="h-6 w-6 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-1">
+                    Raporlar
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-600">
+                    Detaylı analiz görüntüle
+                  </p>
+                </div>
+                <ArrowRight className="h-5 w-5 text-gray-400 flex-shrink-0" />
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/neredeyiz/yonetim">
+          <Card className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02] border-2 hover:border-gray-500">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-gray-500 to-gray-600 flex items-center justify-center flex-shrink-0">
+                  <BookOpen className="h-6 w-6 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-1">
+                    Yönetim Paneli
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-600">
+                    Tüm yönetim işlemleri
+                  </p>
+                </div>
+                <ArrowRight className="h-5 w-5 text-gray-400 flex-shrink-0" />
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       {/* Akademik Yıl Seçimi */}
