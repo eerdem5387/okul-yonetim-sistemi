@@ -75,6 +75,9 @@ export async function GET(request: NextRequest) {
       subjectStats[subjectId].totalTopics++
 
       const progress = topic.progress?.[0]
+      const now = new Date()
+      now.setHours(0, 0, 0, 0)
+
       if (progress) {
         if (progress.status === "TAMAMLANDI") {
           subjectStats[subjectId].completedTopics++
@@ -89,11 +92,51 @@ export async function GET(request: NextRequest) {
           }
         } else if (progress.status === "DEVAM_EDIYOR") {
           subjectStats[subjectId].inProgressTopics++
+        } else if (progress.status === "ERTELENDI") {
+          subjectStats[subjectId].plannedTopics++
+        } else {
+          // PLANLANDI durumunda tarih kontrolü yap
+          const startDate = topic.plannedStartDate ? new Date(topic.plannedStartDate) : null
+          const endDate = topic.plannedEndDate ? new Date(topic.plannedEndDate) : null
+          
+          if (startDate) startDate.setHours(0, 0, 0, 0)
+          if (endDate) endDate.setHours(0, 0, 0, 0)
+
+          // Başlangıç tarihi geçmişte veya bugünse ve bitiş tarihi gelecekteyse → Devam Ediyor
+          if (startDate && endDate && startDate <= now && endDate >= now) {
+            subjectStats[subjectId].inProgressTopics++
+          } else if (!startDate && endDate && endDate >= now) {
+            // Sadece bitiş tarihi varsa ve bugün ile gelecek arasındaysa → Devam Ediyor
+            subjectStats[subjectId].inProgressTopics++
+          } else if (endDate && endDate < now) {
+            // Bitiş tarihi geçmişteyse → Gecikmeli
+            subjectStats[subjectId].delayedTopics++
+            subjectStats[subjectId].plannedTopics++
+          } else {
+            subjectStats[subjectId].plannedTopics++
+          }
+        }
+      } else {
+        // Progress kaydı yoksa, tarihlere göre otomatik belirle
+        const startDate = topic.plannedStartDate ? new Date(topic.plannedStartDate) : null
+        const endDate = topic.plannedEndDate ? new Date(topic.plannedEndDate) : null
+        
+        if (startDate) startDate.setHours(0, 0, 0, 0)
+        if (endDate) endDate.setHours(0, 0, 0, 0)
+
+        // Başlangıç tarihi geçmişte veya bugünse ve bitiş tarihi gelecekteyse → Devam Ediyor
+        if (startDate && endDate && startDate <= now && endDate >= now) {
+          subjectStats[subjectId].inProgressTopics++
+        } else if (!startDate && endDate && endDate >= now) {
+          // Sadece bitiş tarihi varsa ve bugün ile gelecek arasındaysa → Devam Ediyor
+          subjectStats[subjectId].inProgressTopics++
+        } else if (endDate && endDate < now) {
+          // Bitiş tarihi geçmişteyse → Gecikmeli
+          subjectStats[subjectId].delayedTopics++
+          subjectStats[subjectId].plannedTopics++
         } else {
           subjectStats[subjectId].plannedTopics++
         }
-      } else {
-        subjectStats[subjectId].plannedTopics++
       }
     })
 
