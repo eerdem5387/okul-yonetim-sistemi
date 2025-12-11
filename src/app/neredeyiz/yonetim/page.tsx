@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,11 +16,10 @@ import {
   Save,
   Loader2,
   BookOpen,
-  ArrowLeft,
   Users,
   AlertTriangle,
+  Settings,
 } from "lucide-react"
-import Link from "next/link"
 
 interface AcademicYear {
   id: string
@@ -44,12 +44,6 @@ interface Subject {
   }>
 }
 
-interface Staff {
-  id: string
-  firstName: string
-  lastName: string
-  department: string
-}
 
 export default function YonetimPage() {
   const { toasts, success, error, removeToast } = useToast()
@@ -317,18 +311,16 @@ export default function YonetimPage() {
       <ToastContainer toasts={toasts} onClose={removeToast} />
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-        <div className="flex items-center gap-3">
-          <Link href="/neredeyiz">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-            </Button>
-          </Link>
+      <div className="mb-6">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-lg">
+            <Settings className="h-6 w-6 text-white" />
+          </div>
           <div>
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
-              Neredeyiz? Yönetim
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">
+              Yönetim
             </h1>
-            <p className="text-gray-600 mt-1 sm:mt-2 text-xs sm:text-sm">
+            <p className="text-gray-600 mt-1 text-sm sm:text-base">
               Akademik yıl ve ders yönetimi
             </p>
           </div>

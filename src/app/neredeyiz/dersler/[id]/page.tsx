@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ToastContainer, useToast } from "@/components/ui/toast"
 import {
-  ArrowLeft,
   Plus,
   Edit,
   Trash2,
@@ -20,8 +19,9 @@ import {
   ChevronDown,
   ChevronRight,
   Calendar,
+  UserPlus,
+  XCircle,
 } from "lucide-react"
-import Link from "next/link"
 
 interface Subject {
   id: string
@@ -79,6 +79,15 @@ export default function DersDetayPage() {
     estimatedDuration: number | null
   } | null>(null)
   const [selectedUnitId, setSelectedUnitId] = useState<string>("")
+  const [showTeacherForm, setShowTeacherForm] = useState(false)
+  const [availableTeachers, setAvailableTeachers] = useState<Array<{
+    id: string
+    firstName: string
+    lastName: string
+    subject: string | null
+  }>>([])
+  const [loadingTeachers, setLoadingTeachers] = useState(false)
+  const [assigningTeacher, setAssigningTeacher] = useState(false)
 
   const [unitFormData, setUnitFormData] = useState({
     name: "",
@@ -100,6 +109,7 @@ export default function DersDetayPage() {
   useEffect(() => {
     if (params.id) {
       fetchSubject()
+      fetchAvailableTeachers()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id])
@@ -123,6 +133,77 @@ export default function DersDetayPage() {
       error("Ders bilgileri yüklenirken bir hata oluştu!")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchAvailableTeachers = async () => {
+    try {
+      setLoadingTeachers(true)
+      const response = await fetch("/api/staff?department=OGRETMEN&isActive=true")
+      if (response.ok) {
+        const data = await response.json()
+        setAvailableTeachers(data.staff || [])
+      }
+    } catch (err) {
+      console.error("Error fetching teachers:", err)
+    } finally {
+      setLoadingTeachers(false)
+    }
+  }
+
+  const handleAssignTeacher = async (staffId: string) => {
+    setAssigningTeacher(true)
+    try {
+      const response = await fetch(`/api/neredeyiz/subjects/${params.id}/assignments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ staffId }),
+      })
+
+      if (response.ok) {
+        success("Öğretmen başarıyla atandı!")
+        await fetchSubject()
+        setShowTeacherForm(false)
+      } else {
+        const errorData = await response.json()
+        error(errorData.error || "Öğretmen atanırken hata oluştu!")
+      }
+    } catch (err) {
+      console.error("Error assigning teacher:", err)
+      error("Öğretmen atanırken bir hata oluştu!")
+    } finally {
+      setAssigningTeacher(false)
+    }
+  }
+
+  const handleRemoveTeacher = async (staffId: string) => {
+    const assignment = subject?.assignments.find((a) => a.staff.id === staffId)
+    if (
+      !window.confirm(
+        `${assignment?.staff.firstName} ${assignment?.staff.lastName} öğretmeninin atamasını kaldırmak istediğinizden emin misiniz?`
+      )
+    ) {
+      return
+    }
+
+    try {
+      const response = await fetch(
+        `/api/neredeyiz/subjects/${params.id}/assignments?staffId=${staffId}`,
+        {
+          method: "DELETE",
+        }
+      )
+
+      if (response.ok) {
+        success("Öğretmen ataması başarıyla kaldırıldı!")
+        await fetchSubject()
+      } else {
+        const errorData = await response.json()
+        error(errorData.error || "Atama kaldırılırken hata oluştu!")
+      }
+    } catch (err) {
+      console.error("Error removing teacher:", err)
+      error("Atama kaldırılırken bir hata oluştu!")
     }
   }
 
@@ -257,8 +338,8 @@ export default function DersDetayPage() {
   }
 
   const handleDeleteTopic = async (id: string) => {
-    const topic = subject?.units
-      ?.flatMap((u) => u.topics || [])
+    const topic = (subject?.units || [])
+      .flatMap((u) => u.topics || [])
       .find((t) => t.id === id)
     if (
       !confirm(
@@ -346,66 +427,92 @@ export default function DersDetayPage() {
       <ToastContainer toasts={toasts} onClose={removeToast} />
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-        <div className="flex items-center gap-3">
-          <Link href="/neredeyiz/yonetim">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
-              {subject.name}
-            </h1>
-            {subject.code && (
-              <p className="text-gray-600 mt-1 text-xs sm:text-sm">Kod: {subject.code}</p>
-            )}
+      <div className="mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-700 flex items-center justify-center shadow-lg">
+              <BookOpen className="h-6 w-6 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 truncate">
+                {subject.name}
+              </h1>
+              {subject.code && (
+                <p className="text-gray-600 mt-1 text-sm">Kod: {subject.code}</p>
+              )}
+            </div>
           </div>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            onClick={() => {
-              setShowUnitForm(true)
-              setEditingUnit(null)
-              setUnitFormData({
-                name: "",
-                order: (subject.units?.length || 0) + 1,
-                description: "",
-              })
-            }}
-            className="text-xs sm:text-sm"
-          >
-            <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-            Yeni Ünite
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              onClick={() => {
+                setShowUnitForm(true)
+                setEditingUnit(null)
+                setUnitFormData({
+                  name: "",
+                  order: (subject.units?.length || 0) + 1,
+                  description: "",
+                })
+              }}
+              className="text-xs sm:text-sm"
+            >
+              <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+              Yeni Ünite
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* Öğretmen Atamaları */}
-      {subject.assignments && subject.assignments.length > 0 && (
-        <Card>
-          <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
+      <Card>
+        <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <CardTitle className="text-base sm:text-lg flex items-center gap-2">
               <Users className="h-4 w-4 sm:h-5 sm:w-5" />
               Öğretmenler
             </CardTitle>
-          </CardHeader>
-          <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
+            <Button
+              size="sm"
+              onClick={() => setShowTeacherForm(true)}
+              className="text-xs sm:text-sm"
+            >
+              <UserPlus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+              Öğretmen Ata
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
+          {subject.assignments && subject.assignments.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {subject.assignments.map((assignment) => (
-                <span
+                <div
                   key={assignment.id}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-100 text-blue-800 rounded-full text-xs sm:text-sm font-medium"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-800 rounded-full text-xs sm:text-sm font-medium group"
                 >
                   <Users className="h-3 w-3 sm:h-4 sm:w-4" />
-                  {assignment.staff.firstName} {assignment.staff.lastName}
-                </span>
+                  <span>
+                    {assignment.staff.firstName} {assignment.staff.lastName}
+                  </span>
+                  <button
+                    onClick={() => handleRemoveTeacher(assignment.staff.id)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-600"
+                    title="Atamayı kaldır"
+                  >
+                    <XCircle className="h-3 w-3 sm:h-4 sm:w-4" />
+                  </button>
+                </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <div className="text-center py-4">
+              <Users className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+              <p className="text-gray-500 text-xs sm:text-sm">
+                Henüz öğretmen atanmamış
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Üniteler ve Konular */}
       <Card>
@@ -415,7 +522,7 @@ export default function DersDetayPage() {
         <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
           {subject.units && subject.units.length > 0 ? (
             <div className="space-y-3 sm:space-y-4">
-              {subject.units.map((unit) => (
+              {(subject.units || []).map((unit) => (
                 <div key={unit.id} className="border border-gray-200 rounded-lg">
                   {/* Ünite Header */}
                   <div
@@ -476,7 +583,7 @@ export default function DersDetayPage() {
                     <div className="p-3 sm:p-4 space-y-2 sm:space-y-3">
                       {unit.topics && unit.topics.length > 0 ? (
                         <>
-                          {unit.topics.map((topic) => {
+                          {(unit.topics || []).map((topic) => {
                             const status = getTopicStatus(topic)
                             return (
                               <div
@@ -959,6 +1066,101 @@ export default function DersDetayPage() {
                   </Button>
                 </div>
               </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Öğretmen Atama Modal */}
+      {showTeacherForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-0 sm:p-4">
+          <Card className="w-full h-full sm:h-auto sm:max-w-2xl sm:max-h-[90vh] overflow-y-auto rounded-none sm:rounded-lg">
+            <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
+              <div className="flex justify-between items-center gap-2">
+                <CardTitle className="text-base sm:text-lg lg:text-xl">
+                  Öğretmen Ata
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowTeacherForm(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
+              {loadingTeachers ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                </div>
+              ) : availableTeachers.length === 0 ? (
+                <div className="text-center py-8">
+                  <Users className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500 text-sm sm:text-base font-medium mb-1">
+                    Henüz öğretmen tanımlanmamış
+                  </p>
+                  <p className="text-gray-400 text-xs sm:text-sm">
+                    Personel Yönetimi sayfasından öğretmen ekleyebilirsiniz.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+                  {availableTeachers
+                    .filter((teacher) => {
+                      // Zaten atanmış öğretmenleri filtrele
+                      return !subject?.assignments?.some(
+                        (a) => a.staff.id === teacher.id
+                      )
+                    })
+                    .map((teacher) => (
+                      <div
+                        key={teacher.id}
+                        className="flex items-center justify-between p-3 sm:p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex-1">
+                          <div className="font-medium text-sm sm:text-base text-gray-900">
+                            {teacher.firstName} {teacher.lastName}
+                          </div>
+                          {teacher.subject && (
+                            <div className="text-xs sm:text-sm text-gray-600 mt-1">
+                              Branş: {teacher.subject}
+                            </div>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => handleAssignTeacher(teacher.id)}
+                          disabled={assigningTeacher}
+                          className="text-xs sm:text-sm"
+                        >
+                          {assigningTeacher ? (
+                            <>
+                              <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin" />
+                              Atanıyor...
+                            </>
+                          ) : (
+                            <>
+                              <UserPlus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                              Ata
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    ))}
+                  {availableTeachers.filter((teacher) => {
+                    return !subject?.assignments?.some(
+                      (a) => a.staff.id === teacher.id
+                    )
+                  }).length === 0 && (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500 text-sm">
+                        Tüm öğretmenler zaten bu derse atanmış
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

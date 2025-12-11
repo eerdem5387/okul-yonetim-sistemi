@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ToastContainer, useToast } from "@/components/ui/toast"
 import {
-  ArrowLeft,
   CheckCircle2,
   Clock,
   Calendar,
@@ -14,7 +13,6 @@ import {
   TrendingUp,
   XCircle,
 } from "lucide-react"
-import Link from "next/link"
 
 interface AcademicYear {
   id: string
@@ -215,12 +213,12 @@ export default function IlerlemePage() {
   }
 
   const selectedSubject = subjects.find((s) => s.id === selectedSubjectId)
-  const allTopics = selectedSubject?.units?.flatMap((unit) =>
-    unit.topics?.map((topic) => ({
+  const allTopics = (selectedSubject?.units || []).flatMap((unit) =>
+    (unit.topics || []).map((topic) => ({
       ...topic,
       unitName: unit.name,
-    })) || []
-  ) || []
+    }))
+  )
 
   if (loading) {
     return (
@@ -235,18 +233,16 @@ export default function IlerlemePage() {
       <ToastContainer toasts={toasts} onClose={removeToast} />
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-        <div className="flex items-center gap-3">
-          <Link href="/neredeyiz">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-            </Button>
-          </Link>
+      <div className="mb-6">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-green-600 to-green-700 flex items-center justify-center shadow-lg">
+            <TrendingUp className="h-6 w-6 text-white" />
+          </div>
           <div>
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">
               İlerleme Takibi
             </h1>
-            <p className="text-gray-600 mt-1 sm:mt-2 text-xs sm:text-sm">
+            <p className="text-gray-600 mt-1 text-sm sm:text-base">
               Konuların tamamlanma durumunu işaretleyin
             </p>
           </div>
@@ -316,7 +312,7 @@ export default function IlerlemePage() {
               </div>
             ) : (
               <div className="space-y-3 sm:space-y-4">
-                {selectedSubject.units?.map((unit) =>
+                {(selectedSubject.units || []).map((unit) =>
                   (unit.topics || []).map((topic) => {
                     const status = getTopicStatus(topic)
                     const delayDays = getDelayDays(topic)

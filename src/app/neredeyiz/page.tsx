@@ -9,11 +9,9 @@ import {
   Calendar,
   TrendingUp,
   AlertTriangle,
-  Settings,
   Loader2,
-  BarChart3,
+  Target,
 } from "lucide-react"
-import Link from "next/link"
 
 interface AcademicYear {
   id: string
@@ -176,44 +174,23 @@ export default function NeredeyizPage() {
   }
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 relative">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 relative min-h-full bg-gradient-to-br from-gray-50 to-blue-50/30">
       <ToastContainer toasts={toasts} onClose={removeToast} />
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-        <div className="flex-1 min-w-0">
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
-            Neredeyiz?
-          </h1>
-          <p className="text-gray-600 mt-1 sm:mt-2 text-xs sm:text-sm">
-            Yıllık Plan Takip ve İlerleme Yönetim Sistemi
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/neredeyiz/yonetim">
-            <Button size="sm" variant="outline" className="text-xs sm:text-sm">
-              <Settings className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-              Yönetim
-            </Button>
-          </Link>
-          <Link href="/neredeyiz/ilerleme">
-            <Button size="sm" variant="outline" className="text-xs sm:text-sm">
-              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-              İlerleme Takibi
-            </Button>
-          </Link>
-          <Link href="/neredeyiz/aksamalar">
-            <Button size="sm" variant="outline" className="text-xs sm:text-sm">
-              <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-              Aksamalar
-            </Button>
-          </Link>
-          <Link href="/neredeyiz/raporlar">
-            <Button size="sm" variant="outline" className="text-xs sm:text-sm">
-              <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-              Raporlar
-            </Button>
-          </Link>
+      <div className="mb-6">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-lg">
+            <Target className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">
+              Dashboard
+            </h1>
+            <p className="text-gray-600 mt-1 text-sm sm:text-base">
+              Yıllık Plan Takip ve İlerleme Yönetim Sistemi
+            </p>
+          </div>
         </div>
       </div>
 

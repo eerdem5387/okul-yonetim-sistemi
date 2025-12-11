@@ -15,10 +15,8 @@ import {
   Save,
   Loader2,
   Calendar,
-  ArrowLeft,
   FileText,
 } from "lucide-react"
-import Link from "next/link"
 
 interface AcademicYear {
   id: string
@@ -235,41 +233,41 @@ export default function AksamalarPage() {
       <ToastContainer toasts={toasts} onClose={removeToast} />
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-        <div className="flex items-center gap-3">
-          <Link href="/neredeyiz">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
-              Aksama Yönetimi
-            </h1>
-            <p className="text-gray-600 mt-1 sm:mt-2 text-xs sm:text-sm">
-              Plan dışı gelişmeleri kaydedin ve yönetin
-            </p>
+      <div className="mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-orange-600 to-orange-700 flex items-center justify-center shadow-lg">
+              <AlertTriangle className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">
+                Aksama Yönetimi
+              </h1>
+              <p className="text-gray-600 mt-1 text-sm sm:text-base">
+                Plan dışı gelişmeleri kaydedin ve yönetin
+              </p>
+            </div>
           </div>
+          <Button
+            size="sm"
+            onClick={() => {
+              setShowForm(true)
+              setEditingDisruption(null)
+              setFormData({
+                type: "PLANLI_OKUL",
+                reason: "",
+                startDate: "",
+                endDate: "",
+                affectedSubjects: [],
+              })
+            }}
+            disabled={!selectedYearId}
+            className="text-xs sm:text-sm"
+          >
+            <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            Yeni Aksama Ekle
+          </Button>
         </div>
-        <Button
-          size="sm"
-          onClick={() => {
-            setShowForm(true)
-            setEditingDisruption(null)
-            setFormData({
-              type: "PLANLI_OKUL",
-              reason: "",
-              startDate: "",
-              endDate: "",
-              affectedSubjects: [],
-            })
-          }}
-          disabled={!selectedYearId}
-          className="text-xs sm:text-sm"
-        >
-          <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-          Yeni Aksama Ekle
-        </Button>
       </div>
 
       {/* Akademik Yıl Seçimi */}

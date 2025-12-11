@@ -131,6 +131,23 @@ export default function RootLayout({
     )
   }
 
+  // Neredeyiz modülü için özel layout (kendi sidebar'ı var)
+  if (pathname?.startsWith("/neredeyiz")) {
+    return (
+      <html lang="tr">
+        <head>
+          <title>Neredeyiz? - Yıllık Plan Takip Sistemi</title>
+          <meta name="description" content="Yıllık plan takip ve ilerleme yönetim sistemi" />
+          <link rel="icon" href="/logo.png?v=2" type="image/png" />
+          <link rel="apple-touch-icon" href="/logo.png?v=2" />
+        </head>
+        <body className={inter.className}>
+          {children}
+        </body>
+      </html>
+    )
+  }
+
   // Öğrenci İşleri için normal layout (sidebar ile)
   if (authRole === "student_affairs") {
     return (
