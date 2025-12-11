@@ -20,7 +20,8 @@ import {
   LogOut,
   ClipboardList,
   Award,
-  MapPin
+  MapPin,
+  MessageSquare
 } from "lucide-react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
@@ -32,6 +33,7 @@ const navigation = [
   { name: "Öğrenci Yönetimi", href: "/students", icon: UserPlus },
   { name: "Kulüp Yönetimi", href: "/clubs", icon: Users },
   { name: "IB Faaliyet Yönetimi", href: "/activities", icon: Award },
+  { name: "Veli Görüşmeleri", href: "/veli-gorusmeleri", icon: MessageSquare },
   { name: "Yeni Kayıt", href: "/new-registration", icon: FileText },
   { name: "Kayıt Yenileme", href: "/renewal", icon: FileText },
   { name: "Forma Sözleşmesi", href: "/uniform", icon: Shirt },

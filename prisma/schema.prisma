@@ -11,40 +11,41 @@ datasource db {
 }
 
 model Student {
-  id          String   @id @default(cuid())
-  firstName   String
-  lastName    String
-  tcNumber    String   @unique
-  birthDate   DateTime
-  grade       String   // Sınıf (zorunlu)
-  phone       String?
-  email       String?
-  address     String   // Adres (zorunlu)
+  id               String   @id @default(cuid())
+  firstName        String
+  lastName         String
+  tcNumber         String   @unique
+  birthDate        DateTime
+  grade            String // Sınıf (zorunlu)
+  phone            String?
+  email            String?
+  address          String // Adres (zorunlu)
   // Anne Bilgileri (Zorunlu)
-  motherName        String
-  motherTc          String
-  motherPhone       String
-  motherAddress     String
-  motherOccupation  String
+  motherName       String
+  motherTc         String
+  motherPhone      String
+  motherAddress    String
+  motherOccupation String
 
   // Baba Bilgileri (Zorunlu)
-  fatherName        String
-  fatherTc          String
-  fatherPhone       String
-  fatherAddress     String
-  fatherOccupation  String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @default(now())
+  fatherName       String
+  fatherTc         String
+  fatherPhone      String
+  fatherAddress    String
+  fatherOccupation String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @default(now())
 
   // Relations
-  clubSelections     ClubSelection[]
-  newRegistrations   NewRegistration[]
-  renewals           Renewal[]
-  uniformContracts   UniformContract[]
-  mealContracts      MealContract[]
-  serviceContracts   ServiceContract[]
-  bookContracts      BookContract[]
-  activities         Activity[]
+  clubSelections   ClubSelection[]
+  newRegistrations NewRegistration[]
+  renewals         Renewal[]
+  uniformContracts UniformContract[]
+  mealContracts    MealContract[]
+  serviceContracts ServiceContract[]
+  bookContracts    BookContract[]
+  activities       Activity[]
+  parentMeetings   ParentMeeting[]
 
   @@map("students")
 }
@@ -78,8 +79,8 @@ model ClubSelection {
 }
 
 model NewRegistration {
-  id        String   @id @default(cuid())
-  studentId String
+  id           String   @id @default(cuid())
+  studentId    String
   // Yeni kayıt sözleşmesi alanları
   contractData Json
   pdfPath      String?
@@ -93,8 +94,8 @@ model NewRegistration {
 }
 
 model Renewal {
-  id        String   @id @default(cuid())
-  studentId String
+  id           String   @id @default(cuid())
+  studentId    String
   // Kayıt yenileme sözleşmesi alanları
   contractData Json
   pdfPath      String?
@@ -108,8 +109,8 @@ model Renewal {
 }
 
 model UniformContract {
-  id        String   @id @default(cuid())
-  studentId String
+  id           String   @id @default(cuid())
+  studentId    String
   // Forma sözleşmesi alanları
   contractData Json
   pdfPath      String?
@@ -123,8 +124,8 @@ model UniformContract {
 }
 
 model MealContract {
-  id        String   @id @default(cuid())
-  studentId String
+  id           String   @id @default(cuid())
+  studentId    String
   // Yemek sözleşmesi alanları
   contractData Json
   pdfPath      String?
@@ -138,8 +139,8 @@ model MealContract {
 }
 
 model ServiceContract {
-  id        String   @id @default(cuid())
-  studentId String
+  id           String   @id @default(cuid())
+  studentId    String
   // Servis sözleşmesi alanları
   contractData Json
   pdfPath      String?
@@ -153,8 +154,8 @@ model ServiceContract {
 }
 
 model BookContract {
-  id        String   @id @default(cuid())
-  studentId String
+  id           String   @id @default(cuid())
+  studentId    String
   // Kitap sözleşmesi alanları
   contractData Json
   pdfPath      String?
@@ -169,26 +170,26 @@ model BookContract {
 
 // Başvuru sisteminden gelen başvurular
 model Basvuru {
-  id               String   @id @default(cuid())
-  externalId       String   @unique // Başvuru sistemindeki ID
-  ogrenciAdSoyad   String
-  ogrenciTc        String
-  okul             String
-  ogrenciSinifi    String
-  ogrenciSube      String   @default("Belirtilmedi")
-  sinavGunu        String   @default("Belirtilmedi")
-  babaAdSoyad      String
-  babaMeslek       String
-  babaIsAdresi     String   @default("")
-  babaCepTel       String
-  anneAdSoyad      String
-  anneMeslek       String
-  anneIsAdresi     String   @default("")
-  anneCepTel       String
-  email            String
-  createdAt        DateTime @default(now())
-  syncedAt         DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id             String   @id @default(cuid())
+  externalId     String   @unique // Başvuru sistemindeki ID
+  ogrenciAdSoyad String
+  ogrenciTc      String
+  okul           String
+  ogrenciSinifi  String
+  ogrenciSube    String   @default("Belirtilmedi")
+  sinavGunu      String   @default("Belirtilmedi")
+  babaAdSoyad    String
+  babaMeslek     String
+  babaIsAdresi   String   @default("")
+  babaCepTel     String
+  anneAdSoyad    String
+  anneMeslek     String
+  anneIsAdresi   String   @default("")
+  anneCepTel     String
+  email          String
+  createdAt      DateTime @default(now())
+  syncedAt       DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@index([externalId])
   @@index([ogrenciTc])
@@ -199,46 +200,46 @@ model Basvuru {
 
 // IB Programı - Öğrenci Faaliyet Kayıtları
 enum ActivityType {
-  ETKINLIK    // Etkinlik
-  GEZI        // Gezi
-  PROJE       // Proje
-  SINAV       // Sınav
-  YARISMA     // Yarışma
-  SEMINER     // Seminer
-  WORKSHOP    // Workshop
-  SPORT       // Spor
-  SANAT       // Sanat
-  SOSYAL      // Sosyal Sorumluluk
-  DIL         // Dil Faaliyeti
-  BILIM       // Bilim
-  DEGER       // Değerler Eğitimi
-  DIGER       // Diğer
+  ETKINLIK // Etkinlik
+  GEZI // Gezi
+  PROJE // Proje
+  SINAV // Sınav
+  YARISMA // Yarışma
+  SEMINER // Seminer
+  WORKSHOP // Workshop
+  SPORT // Spor
+  SANAT // Sanat
+  SOSYAL // Sosyal Sorumluluk
+  DIL // Dil Faaliyeti
+  BILIM // Bilim
+  DEGER // Değerler Eğitimi
+  DIGER // Diğer
 }
 
 model Activity {
-  id            String       @id @default(cuid())
-  studentId     String
-  type          ActivityType
-  title         String       // Faaliyet başlığı
-  description   String?      // Detaylı açıklama
-  activityDate  DateTime     // Faaliyet tarihi (IMMUTABLE - değiştirilemez)
-  location      String?      // Konum
-  organizer     String?      // Organizatör/Koordinatör
-  duration      Int?         // Süre (dakika)
-  participants  Int?         // Katılımcı sayısı
-  outcome       String?      // Sonuç/Kazanım
-  evidence      String?      // Kanıt (dosya yolu, link vb.)
-  isVerified    Boolean      @default(false) // Doğrulandı mı?
-  verifiedBy    String?      // Doğrulayan kişi
-  verifiedAt    DateTime?    // Doğrulama tarihi
-  notes         String?      // Notlar
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id           String       @id @default(cuid())
+  studentId    String
+  type         ActivityType
+  title        String // Faaliyet başlığı
+  description  String? // Detaylı açıklama
+  activityDate DateTime // Faaliyet tarihi (IMMUTABLE - değiştirilemez)
+  location     String? // Konum
+  organizer    String? // Organizatör/Koordinatör
+  duration     Int? // Süre (dakika)
+  participants Int? // Katılımcı sayısı
+  outcome      String? // Sonuç/Kazanım
+  evidence     String? // Kanıt (dosya yolu, link vb.)
+  isVerified   Boolean      @default(false) // Doğrulandı mı?
+  verifiedBy   String? // Doğrulayan kişi
+  verifiedAt   DateTime? // Doğrulama tarihi
+  notes        String? // Notlar
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
   // Tarih değişikliği koruması için - activityDate asla güncellenemez
-  createdBy     String?      // Oluşturan kullanıcı
+  createdBy    String? // Oluşturan kullanıcı
 
   // Relations
-  student       Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@index([studentId])
   @@index([activityDate])
@@ -249,18 +250,37 @@ model Activity {
 
 // IB Programı - Dışarıdan Görüntüleme Yetkisi
 model IBViewer {
-  id            String   @id @default(cuid())
-  username      String   @unique // Özel kullanıcı adı
-  password      String   // Hash'lenmiş şifre (bcrypt)
-  fullName      String   // IB Personeli adı
-  email         String?  // İletişim email
-  organization  String?  // Organizasyon
-  isActive      Boolean  @default(true)
-  lastLoginAt   DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String    @id @default(cuid())
+  username     String    @unique // Özel kullanıcı adı
+  password     String // Hash'lenmiş şifre (bcrypt)
+  fullName     String // IB Personeli adı
+  email        String? // İletişim email
+  organization String? // Organizasyon
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@index([username])
   @@index([isActive])
   @@map("ib_viewers")
+}
+
+// Veli Görüşmeleri - Rehberlik Danışmanı Notları
+model ParentMeeting {
+  id            String   @id @default(cuid())
+  studentId     String
+  meetingDate   DateTime // Görüşme tarihi
+  notes         String // Görüşme notları/detayları
+  counselorName String? // Rehberlik danışmanı adı (opsiyonel)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdBy     String? // Oluşturan kullanıcı (opsiyonel)
+
+  // Relations
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([meetingDate])
+  @@map("parent_meetings")
 }
