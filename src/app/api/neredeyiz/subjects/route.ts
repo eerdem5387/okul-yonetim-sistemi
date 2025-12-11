@@ -61,7 +61,11 @@ import { prisma } from "@/lib/prisma"
                 order: "asc",
               },
               include: {
-                progress: true,
+                progress: {
+                  orderBy: {
+                    createdAt: "desc",
+                  },
+                },
               },
             },
           },

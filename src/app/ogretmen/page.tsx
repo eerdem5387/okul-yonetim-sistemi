@@ -133,6 +133,27 @@ export default function OgretmenPage() {
       fetchAssignedSubjects(id)
       fetchDelayedTopics(id)
       fetchDashboardData(id)
+
+      // Sayfa focus olduğunda verileri yenile
+      const handleFocus = () => {
+        fetchAssignedSubjects(id)
+        fetchDelayedTopics(id)
+        fetchDashboardData(id)
+      }
+
+      // Her 30 saniyede bir verileri yenile
+      const interval = setInterval(() => {
+        fetchAssignedSubjects(id)
+        fetchDelayedTopics(id)
+        fetchDashboardData(id)
+      }, 30000) // 30 saniye
+
+      window.addEventListener("focus", handleFocus)
+
+      return () => {
+        clearInterval(interval)
+        window.removeEventListener("focus", handleFocus)
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

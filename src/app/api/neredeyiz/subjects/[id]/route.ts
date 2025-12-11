@@ -28,6 +28,9 @@ export async function GET(
               },
               include: {
                 progress: {
+                  orderBy: {
+                    createdAt: "desc",
+                  },
                   include: {
                     topic: true,
                   },

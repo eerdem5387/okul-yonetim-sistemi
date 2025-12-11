@@ -49,7 +49,11 @@ export async function GET(request: NextRequest) {
             subject: true,
           },
         },
-        progress: true,
+        progress: {
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
       },
     })
 

@@ -17,7 +17,11 @@ export async function GET(request: NextRequest) {
     const topics = await prisma.topic.findMany({
       where: { unitId },
       include: {
-        progress: true,
+        progress: {
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
         subTopics: {
           orderBy: {
             order: "asc",
