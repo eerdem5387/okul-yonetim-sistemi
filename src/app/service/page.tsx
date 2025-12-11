@@ -109,28 +109,28 @@ export default function ServicePage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Servis Sözleşmesi</h1>
-        <p className="text-gray-600 mt-2">Öğrenci servis sözleşmesini oluşturun</p>
+    <div className="p-3 sm:p-4 md:p-6">
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Servis Sözleşmesi</h1>
+        <p className="text-gray-600 mt-1 sm:mt-2 text-xs sm:text-sm">Öğrenci servis sözleşmesini oluşturun</p>
       </div>
 
       <div className="max-w-4xl mx-auto">
         <Card>
-          <CardHeader>
-            <CardTitle>Servis Sözleşmesi</CardTitle>
-            <CardDescription>
+          <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
+            <CardTitle className="text-base sm:text-lg lg:text-xl">Servis Sözleşmesi</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">
               {selectedStudent 
                 ? `${selectedStudent.firstName} ${selectedStudent.lastName} için servis sözleşmesi oluşturuluyor`
                 : "Önce bir öğrenci seçin"
               }
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
+          <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
+            <div className="space-y-3 sm:space-y-4">
               {/* Öğrenci Seçimi */}
-              <div className="mb-6">
-                <Label htmlFor="studentSelect">Öğrenci Seçin *</Label>
+              <div className="mb-4 sm:mb-6">
+                <Label htmlFor="studentSelect" className="text-xs sm:text-sm">Öğrenci Seçin *</Label>
                 <select
                   id="studentSelect"
                   value={selectedStudent?.id || ""}
@@ -138,7 +138,7 @@ export default function ServicePage() {
                     const student = students.find(s => s.id === e.target.value)
                     setSelectedStudent(student || null)
                   }}
-                  className="w-full h-11 px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl text-sm text-gray-900 transition-all duration-200 hover:border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 focus:outline-none cursor-pointer"
+                  className="w-full h-9 sm:h-10 lg:h-11 px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 lg:py-2.5 bg-white border-2 border-gray-200 rounded-lg sm:rounded-xl text-xs sm:text-sm text-gray-900 transition-all duration-200 hover:border-gray-300 focus:border-blue-500 focus:ring-2 sm:focus:ring-4 focus:ring-blue-500/10 focus:outline-none cursor-pointer"
                   required
                 >
                   <option value="">Öğrenci seçin...</option>

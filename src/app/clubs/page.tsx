@@ -276,91 +276,93 @@ export default function ClubsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Kulüp Yönetimi</h1>
-          <p className="text-gray-600 mt-2">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Kulüp Yönetimi</h1>
+          <p className="text-gray-600 mt-1 sm:mt-2 text-xs sm:text-sm">
             Kulüpleri oluşturun, filtreleyin ve stratejik olarak yönetin
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-2" />
-            Kulüpleri İndir
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+          <Button variant="outline" size="sm" onClick={handleExport} className="flex-1 sm:flex-initial text-xs sm:text-sm">
+            <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Kulüpleri İndir</span>
+            <span className="sm:hidden">İndir</span>
           </Button>
-          <Button onClick={() => setShowForm(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Yeni Kulüp
+          <Button onClick={() => setShowForm(true)} size="sm" className="flex-1 sm:flex-initial text-xs sm:text-sm">
+            <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Yeni Kulüp</span>
+            <span className="sm:hidden">Yeni</span>
           </Button>
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-2 sm:gap-3 lg:gap-4 grid-cols-2 lg:grid-cols-4">
         <Card className="card-soft border-0">
-          <CardContent className="p-5">
+          <CardContent className="p-3 sm:p-4 lg:p-5">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Toplam Kulüp</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{clubs.length}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-gray-500 truncate">Toplam Kulüp</p>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mt-0.5 sm:mt-1">{clubs.length}</p>
               </div>
-              <div className="p-3 rounded-xl bg-blue-50 text-blue-600">
-                <BarChart3 className="h-6 w-6" />
+              <div className="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-blue-50 text-blue-600 flex-shrink-0 ml-2">
+                <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-3">
-              {fullClubs} kulüp dolu • {emptyClubs} kulüp boş
+            <p className="text-[10px] sm:text-xs text-gray-500 mt-2 sm:mt-3">
+              {fullClubs} dolu • {emptyClubs} boş
             </p>
           </CardContent>
         </Card>
 
         <Card className="card-soft border-0">
-          <CardContent className="p-5">
+          <CardContent className="p-3 sm:p-4 lg:p-5">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Kontenjan Yönetimi</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-gray-500 truncate">Kontenjan</p>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mt-0.5 sm:mt-1">
                   {totalSelections}/{totalCapacity}
                 </p>
               </div>
-              <div className="p-3 rounded-xl bg-indigo-50 text-indigo-600">
-                <PieChart className="h-6 w-6" />
+              <div className="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-indigo-50 text-indigo-600 flex-shrink-0 ml-2">
+                <PieChart className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-3">
-              Doluluk oranı {totalCapacity ? Math.round((totalSelections / totalCapacity) * 100) : 0}%
+            <p className="text-[10px] sm:text-xs text-gray-500 mt-2 sm:mt-3">
+              Doluluk: {totalCapacity ? Math.round((totalSelections / totalCapacity) * 100) : 0}%
             </p>
           </CardContent>
         </Card>
 
         <Card className="card-soft border-0">
-          <CardContent className="p-5">
+          <CardContent className="p-3 sm:p-4 lg:p-5">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Toplam Kulüp Seçim Sayısı</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{totalSelections}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-gray-500 truncate">Toplam Seçim</p>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mt-0.5 sm:mt-1">{totalSelections}</p>
               </div>
-              <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600">
-                <Users className="h-6 w-6" />
+              <div className="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-emerald-50 text-emerald-600 flex-shrink-0 ml-2">
+                <Users className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-3">Kulüplere kayıtlı toplam öğrenci sayısı</p>
+            <p className="text-[10px] sm:text-xs text-gray-500 mt-2 sm:mt-3 line-clamp-2">Kulüplere kayıtlı öğrenci</p>
           </CardContent>
         </Card>
 
         <Card className="card-soft border-0">
-          <CardContent className="p-5">
+          <CardContent className="p-3 sm:p-4 lg:p-5">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Kulüp Seçmeyen Öğrenciler</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{studentsWithoutClubs.length}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-gray-500 truncate">Seçmeyen</p>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mt-0.5 sm:mt-1">{studentsWithoutClubs.length}</p>
               </div>
-              <div className="p-3 rounded-xl bg-rose-50 text-rose-600">
-                <UserX className="h-6 w-6" />
+              <div className="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-rose-50 text-rose-600 flex-shrink-0 ml-2">
+                <UserX className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
               </div>
             </div>
             <button
-              className="text-xs font-semibold text-rose-600 mt-3 hover:underline"
+              className="text-[10px] sm:text-xs font-semibold text-rose-600 mt-2 sm:mt-3 hover:underline"
               onClick={handleOpenUnassignedModal}
             >
               Listeyi görüntüle
@@ -370,22 +372,22 @@ export default function ClubsPage() {
       </div>
 
       <Card className="border-0 shadow-lg">
-        <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Filter className="h-5 w-5 text-blue-600" />
-              İleri Seviye Filtreleme
+        <CardHeader className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-center lg:justify-between px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
+          <div className="min-w-0 flex-1">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <Filter className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 flex-shrink-0" />
+              <span className="truncate">İleri Seviye Filtreleme</span>
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-xs sm:text-sm mt-1">
               Sınıf, doluluk durumu ve özel listelerle görünümü özelleştirin
             </CardDescription>
           </div>
-          <Button variant="ghost" size="sm" onClick={handleResetFilters}>
+          <Button variant="ghost" size="sm" onClick={handleResetFilters} className="flex-shrink-0 text-xs sm:text-sm">
             Filtreleri Sıfırla
           </Button>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 lg:grid-cols-3">
+        <CardContent className="space-y-3 sm:space-y-4 px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <Label className="text-xs uppercase tracking-wide text-gray-500">Sınıf</Label>
               <div className="mt-2">
@@ -447,48 +449,51 @@ export default function ClubsPage() {
       </Card>
 
       {showForm && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>{editingClub ? "Kulüp Düzenle" : "Yeni Kulüp"}</CardTitle>
+        <Card className="mb-4 sm:mb-6">
+          <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
+            <CardTitle className="text-base sm:text-lg lg:text-xl">{editingClub ? "Kulüp Düzenle" : "Yeni Kulüp"}</CardTitle>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+          <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
+            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
               <div>
-                <Label htmlFor="name">Kulüp Adı</Label>
+                <Label htmlFor="name" className="text-xs sm:text-sm">Kulüp Adı</Label>
                 <Input
                   id="name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
+                  className="h-9 sm:h-10 text-xs sm:text-sm"
                 />
               </div>
               <div>
-                <Label htmlFor="description">Açıklama</Label>
+                <Label htmlFor="description" className="text-xs sm:text-sm">Açıklama</Label>
                 <Input
                   id="description"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="h-9 sm:h-10 text-xs sm:text-sm"
                 />
               </div>
               <div>
-                <Label htmlFor="capacity">Kontejan</Label>
+                <Label htmlFor="capacity" className="text-xs sm:text-sm">Kontejan</Label>
                 <Input
                   id="capacity"
                   type="number"
                   value={formData.capacity}
                   onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
                   required
+                  className="h-9 sm:h-10 text-xs sm:text-sm"
                 />
               </div>
-              <div className="flex gap-2">
-                <Button type="submit">
+              <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                <Button type="submit" size="sm" className="w-full sm:w-auto text-xs sm:text-sm">
                   {editingClub ? "Güncelle" : "Oluştur"}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => {
+                <Button type="button" variant="outline" size="sm" onClick={() => {
                   setShowForm(false)
                   setEditingClub(null)
                   setFormData({ name: "", description: "", capacity: 0 })
-                }}>
+                }} className="w-full sm:w-auto text-xs sm:text-sm">
                   İptal
                 </Button>
               </div>
@@ -497,7 +502,7 @@ export default function ClubsPage() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         {filteredClubs.length > 0 ? (
           filteredClubs.map((club) => {
             const capacityPercentage = (club.selections.length / club.capacity) * 100
@@ -527,93 +532,93 @@ export default function ClubsPage() {
                 className="card-soft hover:shadow-xl transition-all duration-200 border-0 cursor-pointer"
                 onClick={() => (window.location.href = `/clubs/${club.id}`)}
               >
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start gap-3">
-                    <div className="flex-1">
-                      <CardTitle className="flex items-center gap-3 text-lg">
-                        <Users className="h-6 w-6 icon-blue" />
-                        {club.name}
+                <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 lg:pt-6">
+                  <div className="flex justify-between items-start gap-2 sm:gap-3">
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="flex items-center gap-2 sm:gap-3 text-base sm:text-lg">
+                        <Users className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 icon-blue flex-shrink-0" />
+                        <span className="truncate">{club.name}</span>
                       </CardTitle>
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <CardDescription className="text-sm">
+                      <div className="mt-1.5 sm:mt-2 flex flex-wrap items-center gap-1.5 sm:gap-2">
+                        <CardDescription className="text-xs sm:text-sm">
                           {club.selections.length}/{club.capacity} öğrenci
                         </CardDescription>
-                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${statusColor}`}>
+                        <span className={`px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold rounded-full ${statusColor}`}>
                           {isFull ? "Dolu" : isEmpty ? "Boş" : "Kontenjan Var"}
                         </span>
                         {selectedGrade !== "all" && (
-                          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-50 text-blue-600">
+                          <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold rounded-full bg-blue-50 text-blue-600">
                             {selectedGrade}
                           </span>
                         )}
                       </div>
                     </div>
-                    <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex gap-1 sm:gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => (window.location.href = `/clubs/${club.id}`)}
-                        className="h-8 w-8 p-0"
+                        className="h-7 w-7 sm:h-8 sm:w-8 p-0"
                       >
-                        <Eye className="h-4 w-4" />
+                        <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => handleEdit(club)}
-                        className="h-8 w-8 p-0"
+                        className="h-7 w-7 sm:h-8 sm:w-8 p-0"
                       >
-                        <Edit className="h-4 w-4" />
+                        <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => handleDelete(club.id)}
-                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                        className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-red-600 hover:text-red-700"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                       </Button>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="pt-0">
+                <CardContent className="pt-0 px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
                   {club.description && (
-                    <p className="text-sm text-gray-600 mb-4 line-clamp-2">{club.description}</p>
+                    <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4 line-clamp-2">{club.description}</p>
                   )}
 
-                  <div className="mb-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium text-gray-700">Kontejan</span>
-                      <span className="text-sm text-gray-500">{Math.round(capacityPercentage)}%</span>
+                  <div className="mb-3 sm:mb-4">
+                    <div className="flex justify-between items-center mb-1.5 sm:mb-2">
+                      <span className="text-xs sm:text-sm font-medium text-gray-700">Kontejan</span>
+                      <span className="text-xs sm:text-sm text-gray-500">{Math.round(capacityPercentage)}%</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="w-full bg-gray-200 rounded-full h-1.5 sm:h-2">
                       <div
-                        className={`h-2 rounded-full transition-all duration-300 ${getCapacityColor()}`}
+                        className={`h-1.5 sm:h-2 rounded-full transition-all duration-300 ${getCapacityColor()}`}
                         style={{ width: `${Math.min(capacityPercentage, 100)}%` }}
                       ></div>
                     </div>
                   </div>
 
                   <div>
-                    <h4 className="font-medium mb-2 text-sm text-gray-700">
+                    <h4 className="font-medium mb-1.5 sm:mb-2 text-xs sm:text-sm text-gray-700">
                       {selectedGrade === "all" ? "Seçen Öğrenciler" : `${selectedGrade} öğrencileri`}
                     </h4>
                     {gradeSpecificStudents.length > 0 ? (
-                      <div className="max-h-24 overflow-y-auto space-y-1">
+                      <div className="max-h-20 sm:max-h-24 overflow-y-auto space-y-0.5 sm:space-y-1">
                         {gradeSpecificStudents.slice(0, 4).map((selection) => (
-                          <div key={selection.id} className="text-sm text-gray-600 py-0.5">
+                          <div key={selection.id} className="text-xs sm:text-sm text-gray-600 py-0.5">
                             {selection.student.firstName} {selection.student.lastName}
-                            <span className="text-xs text-gray-400"> · {selection.student.grade}</span>
+                            <span className="text-[10px] sm:text-xs text-gray-400"> · {selection.student.grade}</span>
                           </div>
                         ))}
                         {gradeSpecificStudents.length > 4 && (
-                          <div className="text-xs text-gray-500">
+                          <div className="text-[10px] sm:text-xs text-gray-500">
                             +{gradeSpecificStudents.length - 4} daha fazla
                           </div>
                         )}
                       </div>
                     ) : (
-                      <p className="text-sm text-gray-500">
+                      <p className="text-xs sm:text-sm text-gray-500">
                         {selectedGrade === "all"
                           ? "Henüz öğrenci seçimi yapılmamış"
                           : "Bu sınıftan öğrenci bulunmuyor"}
@@ -625,10 +630,10 @@ export default function ClubsPage() {
             )
           })
         ) : (
-          <Card className="col-span-full border-2 border-dashed border-gray-200 py-16 text-center">
-            <CardContent>
-              <p className="text-lg font-semibold text-gray-700">Seçili filtrelere uygun kulüp bulunamadı</p>
-              <p className="text-sm text-gray-500 mt-2">
+          <Card className="col-span-full border-2 border-dashed border-gray-200 py-8 sm:py-12 lg:py-16 text-center">
+            <CardContent className="px-4">
+              <p className="text-sm sm:text-base lg:text-lg font-semibold text-gray-700">Seçili filtrelere uygun kulüp bulunamadı</p>
+              <p className="text-xs sm:text-sm text-gray-500 mt-1 sm:mt-2">
                 Farklı bir sınıf ya da durum seçerek sonuçları genişletebilirsiniz.
               </p>
             </CardContent>

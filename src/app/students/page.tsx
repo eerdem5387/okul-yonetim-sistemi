@@ -247,22 +247,22 @@ export default function StudentsPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <div className="flex items-end justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Öğrenci Yönetimi</h1>
-            <p className="text-gray-600 mt-2">Öğrenci bilgilerini ekleyin, düzenleyin ve yönetin</p>
+    <div className="p-3 sm:p-4 md:p-6">
+      <div className="mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 sm:gap-4">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Öğrenci Yönetimi</h1>
+            <p className="text-gray-600 mt-1 sm:mt-2 text-xs sm:text-sm">Öğrenci bilgilerini ekleyin, düzenleyin ve yönetin</p>
           </div>
-          <div className="mb-1">
-            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 text-sm font-medium">
+          <div className="mb-1 flex-shrink-0">
+            <span className="inline-flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 text-xs sm:text-sm font-medium">
               {selectedGrade ? (
                 <>
-                  <span className="font-semibold">{selectedGrade}</span> Öğrenci Sayısı: <span className="font-semibold">{totalStudents}</span>
+                  <span className="font-semibold truncate">{selectedGrade}</span> <span className="hidden sm:inline">Öğrenci Sayısı:</span> <span className="sm:hidden">:</span> <span className="font-semibold">{totalStudents}</span>
                 </>
               ) : (
                 <>
-                  Toplam Öğrenci: <span className="font-semibold">{totalStudents}</span>
+                  <span className="hidden sm:inline">Toplam Öğrenci:</span> <span className="sm:hidden">Toplam:</span> <span className="font-semibold">{totalStudents}</span>
                 </>
               )}
             </span>
@@ -270,22 +270,22 @@ export default function StudentsPage() {
         </div>
       </div>
 
-      <div className="mb-6 flex justify-between items-center gap-4 flex-wrap">
-        <div className="flex-1 flex gap-2 items-center min-w-[300px]">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+      <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
+        <div className="flex-1 flex flex-col sm:flex-row gap-2 sm:gap-2 items-stretch sm:items-center w-full sm:min-w-[300px]">
+          <div className="relative flex-1 w-full sm:max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-3 w-3 sm:h-4 sm:w-4" />
             <Input
               placeholder="Öğrenci ara (ad, soyad, TC, sınıf)..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="pl-9 sm:pl-10 h-9 sm:h-10 text-xs sm:text-sm"
             />
           </div>
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 w-full sm:w-auto">
             <select
               value={selectedGrade}
               onChange={(e) => setSelectedGrade(e.target.value)}
-              className="h-10 px-3 py-2 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full sm:w-auto h-9 sm:h-10 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">Tüm Sınıflar</option>
               {gradeOptions.map((grade) => (
@@ -296,24 +296,26 @@ export default function StudentsPage() {
             </select>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
         {confirmPromote ? (
           <>
-            <Button type="button" variant="destructive" onClick={handlePromoteAll}>
-              <ArrowUp className="h-4 w-4 mr-2" />
-              Eminim, Yükselt
+            <Button type="button" variant="destructive" size="sm" onClick={handlePromoteAll} className="flex-1 sm:flex-initial text-xs sm:text-sm">
+              <ArrowUp className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Eminim, Yükselt</span>
+              <span className="sm:hidden">Yükselt</span>
             </Button>
-            <Button type="button" variant="outline" onClick={() => setConfirmPromote(false)}>
+            <Button type="button" variant="outline" size="sm" onClick={() => setConfirmPromote(false)} className="flex-1 sm:flex-initial text-xs sm:text-sm">
               İptal
             </Button>
           </>
         ) : (
-          <Button type="button" variant="outline" onClick={() => setConfirmPromote(true)}>
-            <ArrowUp className="h-4 w-4 mr-2" />
-            Sınıf Yükselt
+          <Button type="button" variant="outline" size="sm" onClick={() => setConfirmPromote(true)} className="flex-1 sm:flex-initial text-xs sm:text-sm">
+            <ArrowUp className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Sınıf Yükselt</span>
+            <span className="sm:hidden">Yükselt</span>
           </Button>
         )}
-        <Button type="button" variant="outline" onClick={async () => {
+        <Button type="button" variant="outline" size="sm" onClick={async () => {
           try {
             const res = await fetch('/api/students/export')
             if (!res.ok) throw new Error('Export failed')
@@ -330,10 +332,14 @@ export default function StudentsPage() {
             console.error('Export error:', e)
             alert('Excel dışa aktarım başarısız oldu')
           }
-        }}>Excel’e Aktar</Button>
-        <Button onClick={() => setShowForm(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Yeni Öğrenci Ekle
+        }} className="flex-1 sm:flex-initial text-xs sm:text-sm">
+          <span className="hidden sm:inline">Excel'e Aktar</span>
+          <span className="sm:hidden">Excel</span>
+        </Button>
+        <Button onClick={() => setShowForm(true)} size="sm" className="flex-1 sm:flex-initial text-xs sm:text-sm">
+          <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+          <span className="hidden sm:inline">Yeni Öğrenci Ekle</span>
+          <span className="sm:hidden">Yeni Ekle</span>
         </Button>
         </div>
       </div>
@@ -341,7 +347,7 @@ export default function StudentsPage() {
       {/* Modal Overlay */}
       {showForm && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" 
           onClick={() => {
             setShowForm(false)
             setEditingStudent(null)
@@ -366,21 +372,21 @@ export default function StudentsPage() {
           }}
         >
           <Card 
-            className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white shadow-2xl" 
+            className="w-full h-full sm:h-auto sm:max-w-4xl sm:max-h-[90vh] overflow-y-auto bg-white shadow-2xl rounded-none sm:rounded-lg" 
             onClick={(e) => e.stopPropagation()}
           >
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>{editingStudent ? "Öğrenci Düzenle" : "Yeni Öğrenci Ekle"}</CardTitle>
-                  <CardDescription>
+            <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
+              <div className="flex items-start sm:items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <CardTitle className="text-base sm:text-lg lg:text-xl">{editingStudent ? "Öğrenci Düzenle" : "Yeni Öğrenci Ekle"}</CardTitle>
+                  <CardDescription className="text-xs sm:text-sm mt-1">
                     {editingStudent ? "Öğrenci bilgilerini güncelleyin" : "Yeni öğrenci bilgilerini girin"}
                   </CardDescription>
                 </div>
                 <Button
                   type="button"
                   variant="ghost"
-                  size="icon"
+                  size="sm"
                   onClick={() => {
                     setShowForm(false)
                     setEditingStudent(null)
@@ -403,37 +409,40 @@ export default function StudentsPage() {
                       fatherOccupation: ""
                     })
                   }}
+                  className="flex-shrink-0"
                 >
                   <X className="h-4 w-4" />
                 </Button>
               </div>
             </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+          <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
+            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <Label htmlFor="firstName">Öğrenci Adı *</Label>
+                  <Label htmlFor="firstName" className="text-xs sm:text-sm">Öğrenci Adı *</Label>
                   <Input
                     id="firstName"
                     value={formData.firstName}
                     onChange={(e) => setFormData({ ...formData, firstName: capitalizeWords(e.target.value) })}
                     required
+                    className="h-9 sm:h-10 text-xs sm:text-sm"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="lastName">Öğrenci Soyadı *</Label>
+                  <Label htmlFor="lastName" className="text-xs sm:text-sm">Öğrenci Soyadı *</Label>
                   <Input
                     id="lastName"
                     value={formData.lastName}
                     onChange={(e) => setFormData({ ...formData, lastName: capitalizeWords(e.target.value) })}
                     required
+                    className="h-9 sm:h-10 text-xs sm:text-sm"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <Label htmlFor="tcNumber">TC Kimlik No * <span className="text-xs text-gray-500">(11 haneli)</span></Label>
+                  <Label htmlFor="tcNumber" className="text-xs sm:text-sm">TC Kimlik No * <span className="text-[10px] sm:text-xs text-gray-500">(11 haneli)</span></Label>
                   <Input
                     id="tcNumber"
                     value={formData.tcNumber}
@@ -444,15 +453,16 @@ export default function StudentsPage() {
                     maxLength={11}
                     placeholder="12345678901"
                     required
+                    className="h-9 sm:h-10 text-xs sm:text-sm"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="grade">Sınıfı *</Label>
+                  <Label htmlFor="grade" className="text-xs sm:text-sm">Sınıfı *</Label>
                   <select
                     id="grade"
                     value={formData.grade}
                     onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
-                    className="w-full h-10 px-3 py-2 border border-input bg-background rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+                    className="w-full h-9 sm:h-10 px-2 sm:px-3 py-1.5 sm:py-2 border border-input bg-background rounded-md text-xs sm:text-sm focus:ring-2 focus:ring-blue-500"
                     required
                   >
                     <option value="">Sınıf seçin...</option>
@@ -465,7 +475,7 @@ export default function StudentsPage() {
 
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <Label htmlFor="birthDate">Doğum Tarihi *</Label>
+                  <Label htmlFor="birthDate" className="text-xs sm:text-sm">Doğum Tarihi *</Label>
                 </div>
                 <Input
                   id="birthDate"
@@ -473,32 +483,35 @@ export default function StudentsPage() {
                   value={formData.birthDate}
                   onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
                   required
+                  className="h-9 sm:h-10 text-xs sm:text-sm"
                 />
               </div>
 
               <div>
-                <Label htmlFor="address">Adres *</Label>
+                <Label htmlFor="address" className="text-xs sm:text-sm">Adres *</Label>
                 <Input
                   id="address"
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   required
+                  className="h-9 sm:h-10 text-xs sm:text-sm"
                 />
               </div>
 
-              <div className="border-t pt-4">
-                <h3 className="text-lg font-semibold mb-4">Öğrenci Anne Bilgileri</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="border-t pt-3 sm:pt-4">
+                <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Öğrenci Anne Bilgileri</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <Label htmlFor="motherName">Ad Soyad</Label>
+                    <Label htmlFor="motherName" className="text-xs sm:text-sm">Ad Soyad</Label>
                     <Input
                       id="motherName"
                       value={formData.motherName}
                       onChange={(e) => setFormData({ ...formData, motherName: capitalizeWords(e.target.value) })}
+                      className="h-9 sm:h-10 text-xs sm:text-sm"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="motherTc">TC <span className="text-xs text-gray-500">(11 haneli)</span></Label>
+                    <Label htmlFor="motherTc" className="text-xs sm:text-sm">TC <span className="text-[10px] sm:text-xs text-gray-500">(11 haneli)</span></Label>
                     <Input
                       id="motherTc"
                       value={formData.motherTc}
@@ -508,10 +521,11 @@ export default function StudentsPage() {
                       }}
                       maxLength={11}
                       placeholder="12345678901"
+                      className="h-9 sm:h-10 text-xs sm:text-sm"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="motherPhone">Telefon <span className="text-xs text-gray-500">(5XX XXX XX XX)</span></Label>
+                    <Label htmlFor="motherPhone" className="text-xs sm:text-sm">Telefon <span className="text-[10px] sm:text-xs text-gray-500">(5XX XXX XX XX)</span></Label>
                     <Input
                       id="motherPhone"
                       value={formData.motherPhone}
@@ -521,30 +535,33 @@ export default function StudentsPage() {
                       }}
                       maxLength={10}
                       placeholder="5XXXXXXXXX"
+                      className="h-9 sm:h-10 text-xs sm:text-sm"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="motherOccupation">Meslek</Label>
+                    <Label htmlFor="motherOccupation" className="text-xs sm:text-sm">Meslek</Label>
                     <Input
                       id="motherOccupation"
                       value={formData.motherOccupation}
                       onChange={(e) => setFormData({ ...formData, motherOccupation: e.target.value })}
+                      className="h-9 sm:h-10 text-xs sm:text-sm"
                     />
                   </div>
                 </div>
-                <div className="mt-4">
-                  <Label htmlFor="motherAddress">Adres</Label>
+                <div className="mt-3 sm:mt-4">
+                  <Label htmlFor="motherAddress" className="text-xs sm:text-sm">Adres</Label>
                   <Input
                     id="motherAddress"
                     value={formData.motherAddress}
                     onChange={(e) => setFormData({ ...formData, motherAddress: e.target.value })}
+                    className="h-9 sm:h-10 text-xs sm:text-sm"
                   />
                 </div>
               </div>
 
-              <div className="border-t pt-4">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold">Öğrenci Baba Bilgileri</h3>
+              <div className="border-t pt-3 sm:pt-4">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-4 mb-3 sm:mb-4">
+                  <h3 className="text-base sm:text-lg font-semibold">Öğrenci Baba Bilgileri</h3>
                   <Button
                     type="button"
                     variant="outline"
@@ -557,22 +574,23 @@ export default function StudentsPage() {
                       fatherAddress: formData.motherAddress,
                       fatherOccupation: formData.motherOccupation
                     })}
-                    className="text-xs"
+                    className="text-xs sm:text-sm w-full sm:w-auto"
                   >
                     Anne Bilgilerini Kopyala
                   </Button>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <Label htmlFor="fatherName">Ad Soyad</Label>
+                    <Label htmlFor="fatherName" className="text-xs sm:text-sm">Ad Soyad</Label>
                     <Input
                       id="fatherName"
                       value={formData.fatherName}
                       onChange={(e) => setFormData({ ...formData, fatherName: capitalizeWords(e.target.value) })}
+                      className="h-9 sm:h-10 text-xs sm:text-sm"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="fatherTc">TC <span className="text-xs text-gray-500">(11 haneli)</span></Label>
+                    <Label htmlFor="fatherTc" className="text-xs sm:text-sm">TC <span className="text-[10px] sm:text-xs text-gray-500">(11 haneli)</span></Label>
                     <Input
                       id="fatherTc"
                       value={formData.fatherTc}
@@ -582,10 +600,11 @@ export default function StudentsPage() {
                       }}
                       maxLength={11}
                       placeholder="12345678901"
+                      className="h-9 sm:h-10 text-xs sm:text-sm"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="fatherPhone">Telefon <span className="text-xs text-gray-500">(5XX XXX XX XX)</span></Label>
+                    <Label htmlFor="fatherPhone" className="text-xs sm:text-sm">Telefon <span className="text-[10px] sm:text-xs text-gray-500">(5XX XXX XX XX)</span></Label>
                     <Input
                       id="fatherPhone"
                       value={formData.fatherPhone}
@@ -595,33 +614,36 @@ export default function StudentsPage() {
                       }}
                       maxLength={10}
                       placeholder="5XXXXXXXXX"
+                      className="h-9 sm:h-10 text-xs sm:text-sm"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="fatherOccupation">Meslek</Label>
+                    <Label htmlFor="fatherOccupation" className="text-xs sm:text-sm">Meslek</Label>
                     <Input
                       id="fatherOccupation"
                       value={formData.fatherOccupation}
                       onChange={(e) => setFormData({ ...formData, fatherOccupation: e.target.value })}
+                      className="h-9 sm:h-10 text-xs sm:text-sm"
                     />
                   </div>
                 </div>
-                <div className="mt-4">
-                  <Label htmlFor="fatherAddress">Adres</Label>
+                <div className="mt-3 sm:mt-4">
+                  <Label htmlFor="fatherAddress" className="text-xs sm:text-sm">Adres</Label>
                   <Input
                     id="fatherAddress"
                     value={formData.fatherAddress}
                     onChange={(e) => setFormData({ ...formData, fatherAddress: e.target.value })}
+                    className="h-9 sm:h-10 text-xs sm:text-sm"
                   />
                 </div>
               </div>
 
-              <div className="flex gap-2">
-                <Button type="submit">
-                  <Save className="h-4 w-4 mr-2" />
+              <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                <Button type="submit" size="sm" className="w-full sm:w-auto text-xs sm:text-sm">
+                  <Save className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                   {editingStudent ? "Güncelle" : "Kaydet"}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => {
+                <Button type="button" variant="outline" size="sm" onClick={() => {
                   setShowForm(false)
                   setEditingStudent(null)
                   setFormData({
@@ -642,7 +664,7 @@ export default function StudentsPage() {
                     fatherAddress: "",
                     fatherOccupation: ""
                   })
-                }}>
+                }} className="w-full sm:w-auto text-xs sm:text-sm">
                   İptal
                 </Button>
               </div>
@@ -658,60 +680,60 @@ export default function StudentsPage() {
             <table className="w-full">
               <thead className="bg-gray-50 border-b">
                 <tr>
-                  <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Öğrenci</th>
-                  <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TC</th>
-                  <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sınıf</th>
-                  <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Adres</th>
-                  <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Anne</th>
-                  <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Anne Tel</th>
-                  <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Baba</th>
-                  <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Baba Tel</th>
-                  <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">İşlemler</th>
+                  <th className="px-2 sm:px-3 lg:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">Öğrenci</th>
+                  <th className="hidden lg:table-cell px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TC</th>
+                  <th className="px-2 sm:px-3 lg:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">Sınıf</th>
+                  <th className="hidden md:table-cell px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Adres</th>
+                  <th className="hidden lg:table-cell px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Anne</th>
+                  <th className="hidden md:table-cell px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Anne Tel</th>
+                  <th className="hidden lg:table-cell px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Baba</th>
+                  <th className="hidden md:table-cell px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Baba Tel</th>
+                  <th className="px-2 sm:px-3 lg:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">İşlemler</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {students.map((student) => (
                   <tr key={student.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleEdit(student)}>
-                    <td className="px-3 lg:px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
+                    <td className="px-2 sm:px-3 lg:px-6 py-2 sm:py-4 whitespace-nowrap">
+                      <div className="text-xs sm:text-sm font-medium text-gray-900">
                         {student.firstName} {student.lastName}
                       </div>
-                      <div className="lg:hidden text-xs text-gray-500 mt-1">
+                      <div className="lg:hidden text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1">
                         TC: {student.tcNumber}
                       </div>
                     </td>
-                    <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="hidden lg:table-cell px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                       {student.tcNumber}
                     </td>
-                    <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-2 sm:px-3 lg:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                       {student.grade}
                     </td>
-                    <td className="hidden md:table-cell px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                    <td className="hidden md:table-cell px-6 py-2 sm:py-4 text-xs sm:text-sm text-gray-500 max-w-xs truncate">
                       {student.address}
                     </td>
-                    <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="hidden lg:table-cell px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                       {student.motherName}
                     </td>
-                    <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="hidden md:table-cell px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                       <a href={`tel:${student.motherPhone}`} className="text-blue-600 hover:underline">
                         {student.motherPhone}
                       </a>
                     </td>
-                    <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="hidden lg:table-cell px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                       {student.fatherName}
                     </td>
-                    <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="hidden md:table-cell px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                       <a href={`tel:${student.fatherPhone}`} className="text-blue-600 hover:underline">
                         {student.fatherPhone}
                       </a>
                     </td>
-                    <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                        <Button size="sm" variant="outline" onClick={() => handleEdit(student)}>
-                          <Edit className="h-4 w-4" />
+                    <td className="px-2 sm:px-3 lg:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
+                      <div className="flex gap-1 sm:gap-2" onClick={(e) => e.stopPropagation()}>
+                        <Button size="sm" variant="outline" onClick={() => handleEdit(student)} className="h-7 w-7 sm:h-8 sm:w-8 p-0">
+                          <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => handleDelete(student.id)}>
-                          <Trash2 className="h-4 w-4" />
+                        <Button size="sm" variant="outline" onClick={() => handleDelete(student.id)} className="h-7 w-7 sm:h-8 sm:w-8 p-0">
+                          <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                         </Button>
                       </div>
                     </td>
@@ -720,7 +742,7 @@ export default function StudentsPage() {
               </tbody>
             </table>
             {students.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-6 sm:py-8 text-gray-500 text-xs sm:text-sm px-4">
                 {searchTerm ? "Arama kriterlerinize uygun öğrenci bulunamadı." : "Henüz öğrenci eklenmemiş."}
               </div>
             )}
@@ -730,11 +752,11 @@ export default function StudentsPage() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="mt-6 flex items-center justify-between">
-          <div className="text-sm text-gray-700">
+        <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
+          <div className="text-xs sm:text-sm text-gray-700 text-center sm:text-left">
             Sayfa <span className="font-medium">{currentPage}</span> / <span className="font-medium">{totalPages}</span>
             {(searchTerm || selectedGrade) && (
-              <span className="ml-2 text-gray-500">
+              <span className="ml-1 sm:ml-2 text-gray-500 block sm:inline mt-1 sm:mt-0">
                 ({searchTerm && selectedGrade ? 'Arama ve Filtre' : searchTerm ? 'Arama' : 'Filtre'} sonuçları: {totalStudents} öğrenci)
               </span>
             )}
@@ -745,6 +767,7 @@ export default function StudentsPage() {
               size="sm"
               onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
               disabled={currentPage === 1}
+              className="text-xs sm:text-sm"
             >
               Önceki
             </Button>
@@ -753,6 +776,7 @@ export default function StudentsPage() {
               size="sm"
               onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
               disabled={currentPage === totalPages}
+              className="text-xs sm:text-sm"
             >
               Sonraki
             </Button>

@@ -109,28 +109,28 @@ export default function BookPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Kitap Sözleşmesi</h1>
-        <p className="text-gray-600 mt-2">Öğrenci kitap sözleşmesini oluşturun</p>
+    <div className="p-3 sm:p-4 md:p-6">
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Kitap Sözleşmesi</h1>
+        <p className="text-gray-600 mt-1 sm:mt-2 text-xs sm:text-sm">Öğrenci kitap sözleşmesini oluşturun</p>
       </div>
 
       <div className="max-w-4xl mx-auto">
         <Card>
-          <CardHeader>
-            <CardTitle>Kitap Sözleşmesi</CardTitle>
-            <CardDescription>
+          <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
+            <CardTitle className="text-base sm:text-lg lg:text-xl">Kitap Sözleşmesi</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">
               {selectedStudent 
                 ? `${selectedStudent.firstName} ${selectedStudent.lastName} için kitap sözleşmesi oluşturuluyor`
                 : "Önce bir öğrenci seçin"
               }
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
+          <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
+            <div className="space-y-3 sm:space-y-4">
               {/* Öğrenci Seçimi */}
-              <div className="mb-6">
-                <Label htmlFor="studentSelect">Öğrenci Seçin *</Label>
+              <div className="mb-4 sm:mb-6">
+                <Label htmlFor="studentSelect" className="text-xs sm:text-sm">Öğrenci Seçin *</Label>
                 <select
                   id="studentSelect"
                   value={selectedStudent?.id || ""}
@@ -138,7 +138,7 @@ export default function BookPage() {
                     const student = students.find(s => s.id === e.target.value)
                     setSelectedStudent(student || null)
                   }}
-                  className="w-full h-11 px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl text-sm text-gray-900 transition-all duration-200 hover:border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 focus:outline-none cursor-pointer"
+                  className="w-full h-9 sm:h-10 lg:h-11 px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 lg:py-2.5 bg-white border-2 border-gray-200 rounded-lg sm:rounded-xl text-xs sm:text-sm text-gray-900 transition-all duration-200 hover:border-gray-300 focus:border-blue-500 focus:ring-2 sm:focus:ring-4 focus:ring-blue-500/10 focus:outline-none cursor-pointer"
                   required
                 >
                   <option value="">Öğrenci seçin...</option>
@@ -149,87 +149,92 @@ export default function BookPage() {
                   ))}
                 </select>
                 {!students.length && (
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-xs sm:text-sm text-gray-500 mt-1">
                     Önce <a href="/students" className="text-blue-600 hover:underline">Öğrenci Yönetimi</a> sayfasından öğrenci ekleyin.
                   </p>
                 )}
               </div>
 
               {selectedStudent && (
-                <div className="p-4 bg-gray-50 rounded">
-                  <h3 className="font-medium mb-2">Seçilen Öğrenci Bilgileri</h3>
-                  <p><strong>Ad Soyad:</strong> {selectedStudent.firstName} {selectedStudent.lastName}</p>
-                  <p><strong>TC Kimlik No:</strong> {selectedStudent.tcNumber}</p>
-                  <p><strong>Sınıf:</strong> {selectedStudent.grade}</p>
-                  <p><strong>Adres:</strong> {selectedStudent.address}</p>
+                <div className="p-3 sm:p-4 bg-gray-50 rounded-lg">
+                  <h3 className="font-medium mb-2 text-sm sm:text-base">Seçilen Öğrenci Bilgileri</h3>
+                  <div className="space-y-1 text-xs sm:text-sm">
+                    <p><strong>Ad Soyad:</strong> {selectedStudent.firstName} {selectedStudent.lastName}</p>
+                    <p><strong>TC Kimlik No:</strong> {selectedStudent.tcNumber}</p>
+                    <p><strong>Sınıf:</strong> {selectedStudent.grade}</p>
+                    <p><strong>Adres:</strong> {selectedStudent.address}</p>
+                  </div>
                 </div>
               )}
 
               {selectedStudent ? (
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   <div>
-                    <Label htmlFor="contractDate">Sözleşme Tarihi</Label>
+                    <Label htmlFor="contractDate" className="text-xs sm:text-sm">Sözleşme Tarihi</Label>
                     <Input
                       id="contractDate"
                       type="date"
                       defaultValue={new Date().toISOString().split('T')[0]}
+                      className="h-9 sm:h-10 text-xs sm:text-sm"
                     />
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                      <Label htmlFor="studentName">Öğrenci Ad Soyad</Label>
+                      <Label htmlFor="studentName" className="text-xs sm:text-sm">Öğrenci Ad Soyad</Label>
                       <Input
                         id="studentName"
                         value={selectedStudent ? `${selectedStudent.firstName} ${selectedStudent.lastName}` : ""}
                         disabled
-                        className="bg-gray-100"
+                        className="bg-gray-100 h-9 sm:h-10 text-xs sm:text-sm"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="studentGrade">Sınıfı</Label>
+                      <Label htmlFor="studentGrade" className="text-xs sm:text-sm">Sınıfı</Label>
                       <Input
                         id="studentGrade"
                         value={selectedStudent?.grade || ""}
                         disabled
-                        className="bg-gray-100"
+                        className="bg-gray-100 h-9 sm:h-10 text-xs sm:text-sm"
                       />
                     </div>
                   </div>
                   
                   <div>
-                    <Label htmlFor="bookSet">Kitap Seti</Label>
+                    <Label htmlFor="bookSet" className="text-xs sm:text-sm">Kitap Seti</Label>
                     <Input
                       id="bookSet"
                       value={contractData.bookSet}
                       onChange={(e) => setContractData({ ...contractData, bookSet: e.target.value })}
                       placeholder="Örn: 9. Sınıf Seti"
+                      className="h-9 sm:h-10 text-xs sm:text-sm"
                     />
                   </div>
                   
                   <div>
-                    <Label htmlFor="bookDeliveryDate">Teslimat Tarihi</Label>
+                    <Label htmlFor="bookDeliveryDate" className="text-xs sm:text-sm">Teslimat Tarihi</Label>
                     <Input
                       id="bookDeliveryDate"
                       type="date"
                       value={contractData.bookDeliveryDate}
                       onChange={(e) => setContractData({ ...contractData, bookDeliveryDate: e.target.value })}
+                      className="h-9 sm:h-10 text-xs sm:text-sm"
                     />
                   </div>
 
-                  <div className="flex gap-2">
-                    <Button onClick={handleSaveContract}>
-                      <Save className="h-4 w-4 mr-2" />
+                  <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                    <Button onClick={handleSaveContract} size="sm" className="w-full sm:w-auto text-xs sm:text-sm">
+                      <Save className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                       Sözleşmeyi Kaydet
                     </Button>
-                    <Button onClick={handleDownloadPDF} variant="outline">
-                      <Download className="h-4 w-4 mr-2" />
+                    <Button onClick={handleDownloadPDF} variant="outline" size="sm" className="w-full sm:w-auto text-xs sm:text-sm">
+                      <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                       PDF İndir
                     </Button>
                   </div>
                 </div>
               ) : (
-                <p className="text-gray-500">Lütfen bir öğrenci seçin</p>
+                <p className="text-gray-500 text-xs sm:text-sm">Lütfen bir öğrenci seçin</p>
               )}
             </div>
           </CardContent>

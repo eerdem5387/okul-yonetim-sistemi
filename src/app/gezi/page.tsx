@@ -209,92 +209,99 @@ export default function GeziPage() {
   })
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       {/* İstatistik Kartları */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3 lg:gap-4">
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">Toplam Gezi</CardTitle>
+          <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 lg:pt-6">
+            <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">Toplam Gezi</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalTrips}</div>
+          <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
+            <div className="text-xl sm:text-2xl font-bold">{stats.totalTrips}</div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">Aktif Gezi</CardTitle>
+          <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 lg:pt-6">
+            <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">Aktif Gezi</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.activeTrips}</div>
+          <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
+            <div className="text-xl sm:text-2xl font-bold text-green-600">{stats.activeTrips}</div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">Yaklaşan Gezi</CardTitle>
+          <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 lg:pt-6">
+            <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">Yaklaşan Gezi</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.upcomingTrips}</div>
+          <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
+            <div className="text-xl sm:text-2xl font-bold text-blue-600">{stats.upcomingTrips}</div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">Toplam Başvuru</CardTitle>
+          <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 lg:pt-6">
+            <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">Toplam Başvuru</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalApplications}</div>
+          <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
+            <div className="text-xl sm:text-2xl font-bold">{stats.totalApplications}</div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">Bu Ay Başvuru</CardTitle>
+          <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 lg:pt-6">
+            <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">Bu Ay Başvuru</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">{stats.monthlyApplications}</div>
+          <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
+            <div className="text-xl sm:text-2xl font-bold text-purple-600">{stats.monthlyApplications}</div>
           </CardContent>
         </Card>
       </div>
 
       {/* Başlık ve Aksiyonlar */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Gezi Yönetimi</h1>
-          <p className="text-gray-600 mt-1">Okul gezilerini oluşturun ve yönetin</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Gezi Yönetimi</h1>
+          <p className="text-gray-600 mt-1 text-xs sm:text-sm">Okul gezilerini oluşturun ve yönetin</p>
         </div>
-        <Button onClick={() => setShowForm(true)} className="w-full sm:w-auto">
-          <Plus className="h-4 w-4 mr-2" />
-          Yeni Gezi
+        <Button onClick={() => setShowForm(true)} size="sm" className="w-full sm:w-auto text-xs sm:text-sm">
+          <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+          <span className="hidden sm:inline">Yeni Gezi</span>
+          <span className="sm:hidden">Yeni</span>
         </Button>
       </div>
 
       {/* Arama ve Filtreler */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4">
+        <CardContent className="pt-4 sm:pt-6 px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-3 w-3 sm:h-4 sm:w-4 lg:h-5 lg:w-5" />
               <Input
                 placeholder="Gezi adı veya konum ara..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="pl-9 sm:pl-10 h-9 sm:h-10 text-xs sm:text-sm"
               />
             </div>
             <div className="flex gap-2">
               <Button
                 variant={filterActive === "all" ? "default" : "outline"}
                 onClick={() => setFilterActive("all")}
+                size="sm"
+                className="flex-1 sm:flex-initial text-xs sm:text-sm"
               >
                 Tümü
               </Button>
               <Button
                 variant={filterActive === "active" ? "default" : "outline"}
                 onClick={() => setFilterActive("active")}
+                size="sm"
+                className="flex-1 sm:flex-initial text-xs sm:text-sm"
               >
                 Aktif
               </Button>
               <Button
                 variant={filterActive === "inactive" ? "default" : "outline"}
                 onClick={() => setFilterActive("inactive")}
+                size="sm"
+                className="flex-1 sm:flex-initial text-xs sm:text-sm"
               >
                 Pasif
               </Button>
@@ -317,67 +324,68 @@ export default function GeziPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {filteredTrips.map((trip) => (
             <Card key={trip.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg">{trip.title}</CardTitle>
-                    <CardDescription className="mt-1 flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      {trip.location}
+              <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
+                <div className="flex justify-between items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="text-base sm:text-lg truncate">{trip.title}</CardTitle>
+                    <CardDescription className="mt-1 flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm">
+                      <MapPin className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                      <span className="truncate">{trip.location}</span>
                     </CardDescription>
                   </div>
                   {trip.isActive ? (
-                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                    <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-green-500 flex-shrink-0" />
                   ) : (
-                    <XCircle className="h-5 w-5 text-gray-400" />
+                    <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 flex-shrink-0" />
                   )}
                 </div>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center gap-4 text-sm text-gray-600">
+              <CardContent className="space-y-2 sm:space-y-3 px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 sm:gap-4 text-xs sm:text-sm text-gray-600">
                   <div className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    {new Date(trip.startDate).toLocaleDateString("tr-TR")}
+                    <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                    <span>{new Date(trip.startDate).toLocaleDateString("tr-TR")}</span>
                   </div>
                   {trip.quota && (
                     <div className="flex items-center gap-1">
-                      <Users className="h-4 w-4" />
-                      {trip._count?.applications || 0} / {trip.quota}
+                      <Users className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                      <span>{trip._count?.applications || 0} / {trip.quota}</span>
                     </div>
                   )}
                   {trip.price && (
                     <div className="flex items-center gap-1">
-                      <DollarSign className="h-4 w-4" />
-                      {Number(trip.price).toLocaleString("tr-TR")} ₺
+                      <DollarSign className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                      <span>{Number(trip.price).toLocaleString("tr-TR")} ₺</span>
                     </div>
                   )}
                 </div>
                 {trip.description && (
-                  <p className="text-sm text-gray-600 line-clamp-2">{trip.description}</p>
+                  <p className="text-xs sm:text-sm text-gray-600 line-clamp-2">{trip.description}</p>
                 )}
-                <div className="flex gap-2 pt-2">
+                <div className="flex gap-1.5 sm:gap-2 pt-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1"
+                    className="flex-1 text-xs sm:text-sm"
                     onClick={() => router.push(`/gezi/${trip.id}`)}
                   >
-                    <Eye className="h-4 w-4 mr-1" />
-                    Detay
+                    <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                    <span className="hidden sm:inline">Detay</span>
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleEdit(trip)}>
-                    <Edit className="h-4 w-4" />
+                  <Button variant="outline" size="sm" onClick={() => handleEdit(trip)} className="h-8 w-8 sm:h-9 sm:w-9 p-0">
+                    <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handleToggleActive(trip)}
                     title={trip.isActive ? "Pasif Yap" : "Aktif Yap"}
+                    className="h-8 w-8 sm:h-9 sm:w-9 p-0"
                   >
-                    {trip.isActive ? <XCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+                    {trip.isActive ? <XCircle className="h-3 w-3 sm:h-4 sm:w-4" /> : <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4" />}
                   </Button>
                 </div>
               </CardContent>
@@ -388,11 +396,11 @@ export default function GeziPage() {
 
       {/* Gezi Formu Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle>{editingTrip ? "Gezi Düzenle" : "Yeni Gezi Oluştur"}</CardTitle>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-0 sm:p-4">
+          <Card className="w-full h-full sm:h-auto sm:max-w-2xl sm:max-h-[90vh] overflow-y-auto rounded-none sm:rounded-lg">
+            <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
+              <div className="flex justify-between items-center gap-2">
+                <CardTitle className="text-base sm:text-lg lg:text-xl">{editingTrip ? "Gezi Düzenle" : "Yeni Gezi Oluştur"}</CardTitle>
                 <Button variant="ghost" size="sm" onClick={() => {
                   setShowForm(false)
                   setEditingTrip(null)
@@ -413,56 +421,60 @@ export default function GeziPage() {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
+            <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
+              <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
                 <div>
-                  <Label htmlFor="title">Gezi Adı *</Label>
+                  <Label htmlFor="title" className="text-xs sm:text-sm">Gezi Adı *</Label>
                   <Input
                     id="title"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     placeholder="Örn: İstanbul Kültür Gezisi"
+                    className="h-9 sm:h-10 text-xs sm:text-sm"
                   />
-                  {formErrors.title && <p className="text-sm text-red-500 mt-1">{formErrors.title}</p>}
+                  {formErrors.title && <p className="text-xs sm:text-sm text-red-500 mt-1">{formErrors.title}</p>}
                 </div>
 
                 <div>
-                  <Label htmlFor="location">Konum *</Label>
+                  <Label htmlFor="location" className="text-xs sm:text-sm">Konum *</Label>
                   <Input
                     id="location"
                     value={formData.location}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                     placeholder="Örn: İstanbul"
+                    className="h-9 sm:h-10 text-xs sm:text-sm"
                   />
-                  {formErrors.location && <p className="text-sm text-red-500 mt-1">{formErrors.location}</p>}
+                  {formErrors.location && <p className="text-xs sm:text-sm text-red-500 mt-1">{formErrors.location}</p>}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <Label htmlFor="startDate">Başlangıç Tarihi *</Label>
+                    <Label htmlFor="startDate" className="text-xs sm:text-sm">Başlangıç Tarihi *</Label>
                     <Input
                       id="startDate"
                       type="date"
                       value={formData.startDate}
                       onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                      className="h-9 sm:h-10 text-xs sm:text-sm"
                     />
-                    {formErrors.startDate && <p className="text-sm text-red-500 mt-1">{formErrors.startDate}</p>}
+                    {formErrors.startDate && <p className="text-xs sm:text-sm text-red-500 mt-1">{formErrors.startDate}</p>}
                   </div>
                   <div>
-                    <Label htmlFor="endDate">Bitiş Tarihi *</Label>
+                    <Label htmlFor="endDate" className="text-xs sm:text-sm">Bitiş Tarihi *</Label>
                     <Input
                       id="endDate"
                       type="date"
                       value={formData.endDate}
                       onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                      className="h-9 sm:h-10 text-xs sm:text-sm"
                     />
-                    {formErrors.endDate && <p className="text-sm text-red-500 mt-1">{formErrors.endDate}</p>}
+                    {formErrors.endDate && <p className="text-xs sm:text-sm text-red-500 mt-1">{formErrors.endDate}</p>}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <Label htmlFor="price">Ücret (₺)</Label>
+                    <Label htmlFor="price" className="text-xs sm:text-sm">Ücret (₺)</Label>
                     <Input
                       id="price"
                       type="number"
@@ -470,25 +482,27 @@ export default function GeziPage() {
                       value={formData.price || ""}
                       onChange={(e) => setFormData({ ...formData, price: e.target.value ? Number(e.target.value) : null })}
                       placeholder="Opsiyonel"
+                      className="h-9 sm:h-10 text-xs sm:text-sm"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="quota">Kota</Label>
+                    <Label htmlFor="quota" className="text-xs sm:text-sm">Kota</Label>
                     <Input
                       id="quota"
                       type="number"
                       value={formData.quota || ""}
                       onChange={(e) => setFormData({ ...formData, quota: e.target.value ? Number(e.target.value) : null })}
                       placeholder="Opsiyonel"
+                      className="h-9 sm:h-10 text-xs sm:text-sm"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="description">Açıklama</Label>
+                  <Label htmlFor="description" className="text-xs sm:text-sm">Açıklama</Label>
                   <textarea
                     id="description"
-                    className="w-full min-h-[100px] px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-full min-h-[80px] sm:min-h-[100px] px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md text-xs sm:text-sm"
                     value={formData.description || ""}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Gezi hakkında detaylı bilgi..."
@@ -496,10 +510,10 @@ export default function GeziPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="extraNotes">Ek Açıklamalar (Veli Bilgilendirme)</Label>
+                  <Label htmlFor="extraNotes" className="text-xs sm:text-sm">Ek Açıklamalar (Veli Bilgilendirme)</Label>
                   <textarea
                     id="extraNotes"
-                    className="w-full min-h-[100px] px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-full min-h-[80px] sm:min-h-[100px] px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md text-xs sm:text-sm"
                     value={formData.extraNotes || ""}
                     onChange={(e) => setFormData({ ...formData, extraNotes: e.target.value })}
                     placeholder="Velilere özel notlar, önemli bilgiler..."
@@ -512,20 +526,21 @@ export default function GeziPage() {
                     id="isActive"
                     checked={formData.isActive}
                     onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                    className="h-4 w-4"
+                    className="h-3 w-3 sm:h-4 sm:w-4"
                   />
-                  <Label htmlFor="isActive" className="cursor-pointer">
+                  <Label htmlFor="isActive" className="cursor-pointer text-xs sm:text-sm">
                     Aktif (Başvuru alınabilir)
                   </Label>
                 </div>
 
-                <div className="flex gap-2 pt-4">
-                  <Button type="submit" disabled={submitting} className="flex-1">
+                <div className="flex flex-col sm:flex-row gap-2 pt-3 sm:pt-4">
+                  <Button type="submit" disabled={submitting} size="sm" className="flex-1 text-xs sm:text-sm">
                     {submitting ? "Kaydediliyor..." : editingTrip ? "Güncelle" : "Oluştur"}
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
+                    size="sm"
                     onClick={() => {
                       setShowForm(false)
                       setEditingTrip(null)
@@ -542,6 +557,7 @@ export default function GeziPage() {
                       })
                       setFormErrors({})
                     }}
+                    className="flex-1 sm:flex-initial text-xs sm:text-sm"
                   >
                     İptal
                   </Button>
