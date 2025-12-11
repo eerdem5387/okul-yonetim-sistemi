@@ -258,7 +258,7 @@ export default function DersDetayPage() {
 
   const handleDeleteTopic = async (id: string) => {
     const topic = subject?.units
-      .flatMap((u) => u.topics)
+      ?.flatMap((u) => u.topics || [])
       .find((t) => t.id === id)
     if (
       !confirm(

@@ -215,11 +215,11 @@ export default function IlerlemePage() {
   }
 
   const selectedSubject = subjects.find((s) => s.id === selectedSubjectId)
-  const allTopics = selectedSubject?.units.flatMap((unit) =>
-    unit.topics.map((topic) => ({
+  const allTopics = selectedSubject?.units?.flatMap((unit) =>
+    unit.topics?.map((topic) => ({
       ...topic,
       unitName: unit.name,
-    }))
+    })) || []
   ) || []
 
   if (loading) {
@@ -316,8 +316,8 @@ export default function IlerlemePage() {
               </div>
             ) : (
               <div className="space-y-3 sm:space-y-4">
-                {selectedSubject.units.map((unit) =>
-                  unit.topics.map((topic) => {
+                {selectedSubject.units?.map((unit) =>
+                  (unit.topics || []).map((topic) => {
                     const status = getTopicStatus(topic)
                     const delayDays = getDelayDays(topic)
                     const StatusIcon = status.icon
