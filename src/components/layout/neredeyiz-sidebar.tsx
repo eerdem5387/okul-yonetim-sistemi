@@ -16,7 +16,7 @@ import {
   Calendar,
   Target,
 } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 const navigation = [
   {
@@ -54,6 +54,15 @@ const navigation = [
 export function NeredeyizSidebar() {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [backUrl, setBackUrl] = useState("/")
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const role = localStorage.getItem("auth_role")
+      // Rehberlik kullanıcısı ise rehberlik paneline, değilse ana panele yönlendir
+      setBackUrl(role === "counselor" ? "/rehberlik" : "/")
+    }
+  }, [])
 
   return (
     <>
@@ -96,7 +105,7 @@ export function NeredeyizSidebar() {
               <p className="text-xs text-blue-100 mt-0.5">Yıllık Plan Takip</p>
             </div>
           </div>
-          <Link href="/">
+          <Link href={backUrl}>
             <Button
               variant="ghost"
               size="sm"
