@@ -1149,6 +1149,43 @@ export default function YonetimPage() {
                     className="h-9 sm:h-10 text-xs sm:text-sm"
                   />
                 </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div>
+                    <Label htmlFor="subjectGrade" className="text-xs sm:text-sm">
+                      Sınıf *
+                    </Label>
+                    <select
+                      id="subjectGrade"
+                      value={subjectFormData.grade}
+                      onChange={(e) =>
+                        setSubjectFormData({ ...subjectFormData, grade: e.target.value })
+                      }
+                      required
+                      className="w-full h-9 sm:h-10 px-3 py-2 border border-input bg-background rounded-md text-xs sm:text-sm focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Sınıf Seçin</option>
+                      {[5, 6, 7, 8, 9, 10, 11, 12].map((grade) => (
+                        <option key={grade} value={grade}>
+                          {grade}. Sınıf
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="subjectSection" className="text-xs sm:text-sm">
+                      Şube (Opsiyonel)
+                    </Label>
+                    <Input
+                      id="subjectSection"
+                      value={subjectFormData.section}
+                      onChange={(e) =>
+                        setSubjectFormData({ ...subjectFormData, section: e.target.value })
+                      }
+                      placeholder="Örn: A, B, C"
+                      className="h-9 sm:h-10 text-xs sm:text-sm"
+                    />
+                  </div>
+                </div>
                 <div className="flex flex-col sm:flex-row gap-2 pt-2">
                   <Button
                     type="submit"
