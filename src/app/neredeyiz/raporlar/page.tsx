@@ -13,12 +13,6 @@ import {
   Loader2,
   Filter,
   X,
-  Search,
-  Calendar,
-  BookOpen,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
 } from "lucide-react"
 
 interface AcademicYear {
@@ -190,13 +184,13 @@ export default function RaporlarPage() {
       }
 
       // Aksama raporu
-      let disruptionUrl = `/api/neredeyiz/reports/disruptions?academicYearId=${selectedYearId}`
+      const disruptionUrl = `/api/neredeyiz/reports/disruptions?academicYearId=${selectedYearId}`
       
       const disruptionResponse = await fetch(disruptionUrl)
       if (disruptionResponse.ok) {
         const disruptionData = await disruptionResponse.json()
         // Aksama tipi etiketlerini ekle
-        let disruptionsWithLabels = disruptionData.disruptions.map((d: {
+        let disruptionsWithLabels = (disruptionData.disruptions || []).map((d: {
           type: string
           count: number
           totalDays: number
@@ -635,13 +629,15 @@ export default function RaporlarPage() {
                         <h3 className="font-semibold text-sm sm:text-base text-gray-900">
                           {subject.subjectName}
                         </h3>
-                        {subjects.find((s) => s.name === subject.subjectName) && (
-                          <span className="text-xs text-gray-500 px-2 py-0.5 bg-gray-100 rounded">
-                            {subjects.find((s) => s.name === subject.subjectName)?.grade}. Sınıf
-                            {subjects.find((s) => s.name === subject.subjectName)?.section && 
-                              ` - ${subjects.find((s) => s.name === subject.subjectName)?.section} Şubesi`}
-                          </span>
-                        )}
+                        {(() => {
+                          const foundSubject = subjects.find((s) => s.name === subject.subjectName)
+                          return foundSubject ? (
+                            <span className="text-xs text-gray-500 px-2 py-0.5 bg-gray-100 rounded">
+                              {foundSubject.grade}. Sınıf
+                              {foundSubject.section && ` - ${foundSubject.section} Şubesi`}
+                            </span>
+                          ) : null
+                        })()}
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 text-xs sm:text-sm">
                         <div>

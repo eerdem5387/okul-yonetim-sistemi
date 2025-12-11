@@ -14,7 +14,6 @@ import {
   Calendar,
   Loader2,
   BookOpen,
-  TrendingUp,
   XCircle,
   ChevronDown,
   ChevronRight,
@@ -466,7 +465,7 @@ export default function IlerlemeDetayPage() {
         }
       })
       .filter((stat) => stat.filteredTopics.length > 0 || searchQuery === "")
-  }, [unitStats, searchQuery, statusFilter])
+  }, [unitStats, searchQuery, statusFilter, subject])
 
   const toggleUnit = (unitId: string) => {
     const newExpanded = new Set(expandedUnits)

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { ProgressStatus } from "@prisma/client"
 
 // POST - Progress kaydını onayla
 export async function POST(

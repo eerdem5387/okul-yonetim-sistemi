@@ -3,23 +3,12 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { ToastContainer, useToast } from "@/components/ui/toast"
 import {
-  CheckCircle2,
-  Clock,
-  Calendar,
   Loader2,
   BookOpen,
   TrendingUp,
-  XCircle,
-  ChevronDown,
   ChevronRight,
-  Search,
-  X,
-  AlertTriangle,
 } from "lucide-react"
 
 interface AcademicYear {
@@ -51,23 +40,8 @@ interface Subject {
   }>
 }
 
-interface Topic {
-  id: string
-  name: string
-  plannedStartDate: string | null
-  plannedEndDate: string | null
-  progress: Array<{
-    id: string
-    status: string
-    actualEndDate: string | null
-    markedAt: string | null
-  }>
-}
-
-type StatusFilter = "ALL" | "PLANLANDI" | "DEVAM_EDIYOR" | "TAMAMLANDI" | "ERTELENDI"
-
 export default function IlerlemePage() {
-  const { toasts, success, error, removeToast } = useToast()
+  const { toasts, error, removeToast } = useToast()
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [selectedYearId, setSelectedYearId] = useState<string>("")

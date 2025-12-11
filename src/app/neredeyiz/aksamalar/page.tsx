@@ -17,7 +17,6 @@ import {
   Calendar,
   FileText,
   Search,
-  Filter,
   CheckSquare,
   Square,
 } from "lucide-react"

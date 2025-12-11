@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { 
   Target, 
@@ -15,8 +15,7 @@ import {
   Clock, 
   Loader2, 
   LogOut, 
-  User,
-  AlertCircle
+  User
 } from "lucide-react"
 import { RehberlikSidebar } from "@/components/layout/rehberlik-sidebar"
 

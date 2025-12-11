@@ -12,9 +12,7 @@ import {
   CheckCircle2,
   Calendar,
   Clock,
-  AlertTriangle,
   BookOpen,
-  User,
 } from "lucide-react"
 
 interface Topic {

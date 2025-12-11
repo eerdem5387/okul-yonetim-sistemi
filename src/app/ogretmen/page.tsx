@@ -22,7 +22,6 @@ export default function OgretmenPage() {
   const router = useRouter()
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [loading, setLoading] = useState(true)
-  const [staffId, setStaffId] = useState<string | null>(null)
   const [staffName, setStaffName] = useState<string>("")
 
   useEffect(() => {
@@ -36,7 +35,6 @@ export default function OgretmenPage() {
         return
       }
 
-      setStaffId(id)
       setStaffName(name || "")
       fetchAssignedSubjects(id)
     }
