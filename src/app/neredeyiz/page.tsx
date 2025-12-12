@@ -152,10 +152,15 @@ export default function NeredeyizPage() {
       (sum, s) => sum + s.delayedTopics,
       0
     )
+    const early = progressReport.subjects.reduce(
+      (sum, s) => sum + ((s as { earlyTopics?: number }).earlyTopics || 0),
+      0
+    )
 
     return {
       totalPlanned,
       completed,
+      early,
       inProgress,
       delayed,
       completionRate: summary.averageCompletion,
@@ -383,7 +388,7 @@ export default function NeredeyizPage() {
           ))}
         </div>
       ) : stats ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
           {/* Tamamlanma Oranı */}
           <Link href="/neredeyiz/ilerleme">
             <Card className="relative overflow-hidden border-2 border-blue-200 hover:border-blue-400 transition-all duration-200 hover:shadow-xl cursor-pointer">
@@ -448,6 +453,37 @@ export default function NeredeyizPage() {
             </CardContent>
           </Card>
           </Link>
+
+          {/* Erken Tamamlanan */}
+          <Card className="relative overflow-hidden border-2 border-emerald-200 hover:border-emerald-400 transition-all duration-200 hover:shadow-xl">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-100 rounded-full -mr-16 -mt-16 opacity-50" />
+            <CardHeader className="pb-2 px-4 sm:px-6 pt-4 sm:pt-6 relative z-10">
+              <div className="flex items-center justify-between mb-2">
+                <CardTitle className="text-sm sm:text-base font-semibold text-gray-700">
+                  Erken Tamamlanan
+                </CardTitle>
+                <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6 relative z-10">
+              <div className="text-3xl sm:text-4xl font-bold text-emerald-600 mb-2">
+                {stats.early || 0}
+              </div>
+              <div className="text-xs sm:text-sm text-gray-600 mb-2">
+                {stats.totalPlanned > 0
+                  ? `${Math.round(((stats.early || 0) / stats.totalPlanned) * 100)}% erken tamamlandı`
+                  : "Henüz konu yok"}
+              </div>
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span>Planın önünde</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Devam Ediyor */}
           <Link href="/neredeyiz/ilerleme?status=DEVAM_EDIYOR">

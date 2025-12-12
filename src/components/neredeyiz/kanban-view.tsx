@@ -9,6 +9,7 @@ interface KanbanTopic {
   name: string
   plannedStartDate: string | null
   plannedEndDate: string | null
+  actualEndDate?: string | null
   status: "PLANLANDI" | "DEVAM_EDIYOR" | "TAMAMLANDI" | "GECIKMELI" | "GECIKMELI_TAMAMLANDI"
   delayDays?: number
   subject: {
@@ -19,6 +20,19 @@ interface KanbanTopic {
   unit: {
     name: string
   }
+  teachers?: Array<{
+    id: string
+    firstName: string
+    lastName: string
+  }>
+  markedByStaff?: {
+    firstName: string
+    lastName: string
+  } | null
+  approvedByStaff?: {
+    firstName: string
+    lastName: string
+  } | null
 }
 
 interface KanbanViewProps {
@@ -133,7 +147,7 @@ export default function KanbanView({ topics, onTopicClick }: KanbanViewProps) {
                         <h3 className="font-semibold text-xs sm:text-sm text-gray-900 mb-2 line-clamp-2">
                           {topic.name}
                         </h3>
-                        <div className="space-y-1 text-[10px] sm:text-xs text-gray-600">
+                        <div className="space-y-1.5 text-[10px] sm:text-xs text-gray-600">
                           <div className="flex items-center gap-1">
                             <BookOpen className="h-3 w-3 flex-shrink-0" />
                             <span className="truncate">
@@ -141,10 +155,19 @@ export default function KanbanView({ topics, onTopicClick }: KanbanViewProps) {
                               {topic.subject.section && ` - ${topic.subject.section}`}
                             </span>
                           </div>
-                          <div className="text-gray-500 truncate">Ünite: {topic.unit.name}</div>
+                          <div className="text-gray-500 truncate">📚 Ünite: {topic.unit.name}</div>
+                          
+                          {/* Öğretmen Bilgisi */}
+                          {topic.teachers && topic.teachers.length > 0 && (
+                            <div className="text-gray-600 truncate">
+                              👨‍🏫 {topic.teachers.map((t) => `${t.firstName} ${t.lastName}`).join(", ")}
+                            </div>
+                          )}
+                          
+                          {/* Tarihler */}
                           {topic.plannedStartDate && topic.plannedEndDate && (
                             <div className="text-gray-500">
-                              {new Date(topic.plannedStartDate).toLocaleDateString("tr-TR", {
+                              📅 {new Date(topic.plannedStartDate).toLocaleDateString("tr-TR", {
                                 day: "numeric",
                                 month: "short",
                               })}{" "}
@@ -155,11 +178,37 @@ export default function KanbanView({ topics, onTopicClick }: KanbanViewProps) {
                               })}
                             </div>
                           )}
-                          {topic.delayDays && topic.delayDays > 0 && (
-                            <div className="text-red-600 font-medium">
-                              +{topic.delayDays} gün gecikme
+                          
+                          {/* Tamamlanma Tarihi */}
+                          {topic.actualEndDate && (
+                            <div className="text-green-600 font-medium">
+                              ✓ {new Date(topic.actualEndDate).toLocaleDateString("tr-TR", {
+                                day: "numeric",
+                                month: "short",
+                              })}
                             </div>
                           )}
+                          
+                          {/* Gecikme */}
+                          {topic.delayDays && topic.delayDays > 0 && (
+                            <div className="text-red-600 font-medium">
+                              ⚠ +{topic.delayDays} gün gecikme
+                            </div>
+                          )}
+                          
+                          {/* Bildiren/Onaylayan */}
+                          <div className="border-t border-gray-200 pt-1.5 mt-1.5 space-y-0.5">
+                            {topic.markedByStaff && (
+                              <div className="text-blue-600 text-[9px] sm:text-[10px]">
+                                ✎ Bildiren: {topic.markedByStaff.firstName} {topic.markedByStaff.lastName}
+                              </div>
+                            )}
+                            {topic.approvedByStaff && (
+                              <div className="text-green-600 text-[9px] sm:text-[10px]">
+                                ✓ Onaylayan: {topic.approvedByStaff.firstName} {topic.approvedByStaff.lastName}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))

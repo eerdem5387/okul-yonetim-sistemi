@@ -64,6 +64,7 @@ export async function GET(request: NextRequest) {
         subjectName: string
         totalTopics: number
         completedTopics: number
+        earlyTopics: number
         inProgressTopics: number
         plannedTopics: number
         delayedTopics: number
@@ -80,6 +81,7 @@ export async function GET(request: NextRequest) {
           subjectName,
           totalTopics: 0,
           completedTopics: 0,
+          earlyTopics: 0,
           inProgressTopics: 0,
           plannedTopics: 0,
           delayedTopics: 0,
@@ -97,12 +99,17 @@ export async function GET(request: NextRequest) {
         if (progress.status === "TAMAMLANDI") {
           subjectStats[subjectId].completedTopics++
           
-          // Gecikme kontrolü
+          // Gecikme veya erken tamamlanma kontrolü
           if (topic.plannedEndDate && progress.actualEndDate) {
             const plannedDate = new Date(topic.plannedEndDate)
+            plannedDate.setHours(0, 0, 0, 0)
             const actualDate = new Date(progress.actualEndDate)
+            actualDate.setHours(0, 0, 0, 0)
+            
             if (actualDate > plannedDate) {
               subjectStats[subjectId].delayedTopics++
+            } else if (actualDate < plannedDate) {
+              subjectStats[subjectId].earlyTopics++
             }
           }
         } else if (progress.status === "DEVAM_EDIYOR") {

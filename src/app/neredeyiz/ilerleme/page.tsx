@@ -4,12 +4,15 @@ import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import { ToastContainer, useToast } from "@/components/ui/toast"
 import {
   Loader2,
   BookOpen,
   TrendingUp,
   ChevronRight,
+  Search,
+  X,
 } from "lucide-react"
 
 interface AcademicYear {
@@ -50,6 +53,7 @@ export default function IlerlemePage() {
   const [selectedYearId, setSelectedYearId] = useState<string>("")
   const [selectedGrade, setSelectedGrade] = useState<string>("")
   const [selectedSection, setSelectedSection] = useState<string>("")
+  const [searchQuery, setSearchQuery] = useState<string>("")
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -137,83 +141,145 @@ export default function IlerlemePage() {
         </div>
       </div>
 
-      {/* Filtreler */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-        <Card>
-          <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:px-6">
-            <CardTitle className="text-sm sm:text-base">Akademik Yıl</CardTitle>
-          </CardHeader>
-          <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
-            <select
-              value={selectedYearId}
-              onChange={(e) => {
-                setSelectedYearId(e.target.value)
-              }}
-              className="w-full h-10 px-3 py-2 border border-input bg-background rounded-md text-sm focus:ring-2 focus:ring-blue-500"
-            >
-              {academicYears.map((year) => (
-                <option key={year.id} value={year.id}>
-                  {year.name} {year.isActive && "(Aktif)"}
-                </option>
-              ))}
-            </select>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:px-6">
-            <CardTitle className="text-sm sm:text-base">Sınıf</CardTitle>
-          </CardHeader>
-          <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
-            <select
-              value={selectedGrade}
-              onChange={(e) => {
-                setSelectedGrade(e.target.value)
-              }}
-              className="w-full h-10 px-3 py-2 border border-input bg-background rounded-md text-sm focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Tüm Sınıflar</option>
-              {[5, 6, 7, 8, 9, 10, 11, 12].map((grade) => (
-                <option key={grade} value={grade}>
-                  {grade}. Sınıf
-                </option>
-              ))}
-            </select>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:px-6">
-            <CardTitle className="text-sm sm:text-base">Şube</CardTitle>
-          </CardHeader>
-          <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
-            <select
-              value={selectedSection}
-              onChange={(e) => {
-                setSelectedSection(e.target.value)
-              }}
-              className="w-full h-10 px-3 py-2 border border-input bg-background rounded-md text-sm focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Tüm Şubeler</option>
-              {Array.from(
-                new Set(
-                  subjects
-                    .map((s) => s.section)
-                    .filter((s): s is string => s !== null && s !== "")
-                )
-              )
-                .sort()
-                .map((section) => (
-                  <option key={section} value={section}>
-                    {section} Şubesi
-                  </option>
-                ))}
-            </select>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Gelişmiş Filtreler ve Arama */}
+      <Card>
+        <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
+          <CardTitle className="text-base sm:text-lg">Filtrele ve Ara</CardTitle>
+        </CardHeader>
+        <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
+          <div className="space-y-4">
+            {/* Arama */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Ders adına göre ara..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 h-10 text-sm"
+              />
+            </div>
+            
+            {/* Filtreler */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="text-xs sm:text-sm mb-1.5 block font-medium text-gray-700">Akademik Yıl</label>
+                <select
+                  value={selectedYearId}
+                  onChange={(e) => setSelectedYearId(e.target.value)}
+                  className="w-full h-10 px-3 py-2 border border-input bg-background rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+                >
+                  {academicYears.map((year) => (
+                    <option key={year.id} value={year.id}>
+                      {year.name} {year.isActive && "(Aktif)"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="text-xs sm:text-sm mb-1.5 block font-medium text-gray-700">Sınıf</label>
+                <select
+                  value={selectedGrade}
+                  onChange={(e) => setSelectedGrade(e.target.value)}
+                  className="w-full h-10 px-3 py-2 border border-input bg-background rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Tüm Sınıflar</option>
+                  {[5, 6, 7, 8, 9, 10, 11, 12].map((grade) => (
+                    <option key={grade} value={grade}>
+                      {grade}. Sınıf
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="text-xs sm:text-sm mb-1.5 block font-medium text-gray-700">Şube</label>
+                <select
+                  value={selectedSection}
+                  onChange={(e) => setSelectedSection(e.target.value)}
+                  className="w-full h-10 px-3 py-2 border border-input bg-background rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Tüm Şubeler</option>
+                  {Array.from(
+                    new Set(
+                      subjects
+                        .map((s) => s.section)
+                        .filter((s): s is string => s !== null && s !== "")
+                    )
+                  )
+                    .sort()
+                    .map((section) => (
+                      <option key={section} value={section}>
+                        {section} Şubesi
+                      </option>
+                    ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Aktif Filtre Özeti */}
+            {(selectedGrade || selectedSection || searchQuery || statusFilter) && (
+              <div className="flex flex-wrap items-center gap-2 pt-2 border-t">
+                <span className="text-xs sm:text-sm text-gray-600 font-medium">Aktif Filtreler:</span>
+                {selectedGrade && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                    {selectedGrade}. Sınıf
+                    <button onClick={() => setSelectedGrade("")} className="hover:bg-blue-200 rounded-full p-0.5">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
+                {selectedSection && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                    {selectedSection} Şubesi
+                    <button onClick={() => setSelectedSection("")} className="hover:bg-blue-200 rounded-full p-0.5">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
+                {searchQuery && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs">
+                    &quot;{searchQuery}&quot;
+                    <button onClick={() => setSearchQuery("")} className="hover:bg-purple-200 rounded-full p-0.5">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
+                {statusFilter && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
+                    {statusFilter === "TAMAMLANDI" && "Tamamlanan"}
+                    {statusFilter === "DEVAM_EDIYOR" && "Devam Ediyor"}
+                    {statusFilter === "GECIKMELI" && "Gecikmeli"}
+                  </span>
+                )}
+                <button
+                  onClick={() => {
+                    setSelectedGrade("")
+                    setSelectedSection("")
+                    setSearchQuery("")
+                  }}
+                  className="text-xs text-red-600 hover:text-red-700 font-medium ml-2"
+                >
+                  Tümünü Temizle
+                </button>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Dersler Kutucukları */}
       {(() => {
         const filteredSubjects = subjects
+          .filter((subject) => {
+            // Arama filtresi
+            if (searchQuery) {
+              const query = searchQuery.toLowerCase()
+              return subject.name.toLowerCase().includes(query)
+            }
+            return true
+          })
           .map((subject) => {
               const allTopics = (subject.units || []).flatMap((u) => u.topics || [])
               const completedTopics = allTopics.filter((t) => t.progress?.[0]?.status === "TAMAMLANDI").length
@@ -240,6 +306,16 @@ export default function IlerlemePage() {
                   }
                 }
                 return false
+              }).length
+
+              const earlyTopics = allTopics.filter((t) => {
+                const progress = t.progress?.[0]
+                if (!t.plannedEndDate || !progress || progress.status !== "TAMAMLANDI" || !progress.actualEndDate) return false
+                const plannedEnd = new Date(t.plannedEndDate)
+                plannedEnd.setHours(0, 0, 0, 0)
+                const actualEnd = new Date(progress.actualEndDate)
+                actualEnd.setHours(0, 0, 0, 0)
+                return actualEnd < plannedEnd
               }).length
               const totalTopics = allTopics.length
               const completionRate = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0

@@ -673,8 +673,8 @@ export default function RaporlarPage() {
       )}
 
       {/* Dashboard İstatistikleri */}
-      {!reportsLoading && progressReport && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+      {!reportsLoading && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
           {/* Toplam Konular */}
           <Card className="relative overflow-hidden border-2 border-blue-200 hover:border-blue-400 transition-all duration-200 hover:shadow-xl">
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-100 rounded-full -mr-16 -mt-16 opacity-50" />
@@ -919,39 +919,106 @@ export default function RaporlarPage() {
             </div>
           </CardHeader>
           <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6 pt-3 sm:pt-4 lg:pt-6">
-            {/* Active View Content */}
-            {activeView === "gantt" && (
-              <GanttChart
-                topics={ganttTopics}
-                onTopicClick={(topic) => {
-                  console.log("Topic clicked:", topic)
-                }}
-              />
-            )}
-            {activeView === "timeline" && (
-              <TimelineView
-                topics={ganttTopics}
-                onTopicClick={(topic) => {
-                  console.log("Topic clicked:", topic)
-                }}
-              />
-            )}
-            {activeView === "calendar" && (
-              <CalendarView
-                topics={ganttTopics}
-                onTopicClick={(topic) => {
-                  console.log("Topic clicked:", topic)
-                }}
-              />
-            )}
-            {activeView === "kanban" && (
-              <KanbanView
-                topics={ganttTopics}
-                onTopicClick={(topic) => {
-                  console.log("Topic clicked:", topic)
-                }}
-              />
-            )}
+            {/* Active View Content with Filtering */}
+            {(() => {
+              // Apply filters to ganttTopics
+              const filteredGanttTopics = ganttTopics.filter((topic) => {
+                // Sınıf filtresi (ortaokul/lise desteği ile)
+                if (selectedGrade) {
+                  if (selectedGrade === "5-8") {
+                    // Ortaokul: 5,6,7,8
+                    if (![5, 6, 7, 8].includes(topic.subject.grade)) return false
+                  } else if (selectedGrade === "9-12") {
+                    // Lise: 9,10,11,12
+                    if (![9, 10, 11, 12].includes(topic.subject.grade)) return false
+                  } else {
+                    // Tekil sınıf seçimi
+                    if (topic.subject.grade !== parseInt(selectedGrade)) return false
+                  }
+                }
+                
+                // Şube filtresi
+                if (selectedSection && topic.subject.section !== selectedSection) return false
+                
+                // Ders filtresi
+                if (selectedSubjectId) {
+                  const matchingSubject = subjects.find(
+                    (s) => s.name === topic.subject.name && 
+                           s.grade === topic.subject.grade && 
+                           s.section === topic.subject.section
+                  )
+                  if (matchingSubject?.id !== selectedSubjectId) return false
+                }
+                
+                // Durum filtresi
+                if (statusFilter !== "ALL") {
+                  if (statusFilter === "COMPLETED" && topic.status !== "TAMAMLANDI") return false
+                  if (statusFilter === "IN_PROGRESS" && topic.status !== "DEVAM_EDIYOR") return false
+                  if (statusFilter === "DELAYED" && topic.status !== "GECIKMELI" && topic.status !== "GECIKMELI_TAMAMLANDI") return false
+                  if (statusFilter === "PLANNED" && topic.status !== "PLANLANDI") return false
+                }
+                
+                // Tarih aralığı filtresi
+                if (dateRangeStart || dateRangeEnd) {
+                  const start = dateRangeStart ? new Date(dateRangeStart) : null
+                  const end = dateRangeEnd ? new Date(dateRangeEnd) : null
+                  const topicStart = topic.plannedStartDate ? new Date(topic.plannedStartDate) : null
+                  const topicEnd = topic.plannedEndDate ? new Date(topic.plannedEndDate) : null
+                  
+                  if (start && topicEnd && topicEnd < start) return false
+                  if (end && topicStart && topicStart > end) return false
+                }
+                
+                return true
+              })
+
+              if (filteredGanttTopics.length === 0) {
+                return (
+                  <div className="py-12 text-center">
+                    <p className="text-gray-500 text-sm sm:text-base">
+                      Seçili filtrelere uygun konu bulunamadı.
+                    </p>
+                  </div>
+                )
+              }
+
+              return (
+                <>
+                  {activeView === "gantt" && (
+                    <GanttChart
+                      topics={filteredGanttTopics}
+                      onTopicClick={(topic) => {
+                        console.log("Topic clicked:", topic)
+                      }}
+                    />
+                  )}
+                  {activeView === "timeline" && (
+                    <TimelineView
+                      topics={filteredGanttTopics}
+                      onTopicClick={(topic) => {
+                        console.log("Topic clicked:", topic)
+                      }}
+                    />
+                  )}
+                  {activeView === "calendar" && (
+                    <CalendarView
+                      topics={filteredGanttTopics}
+                      onTopicClick={(topic) => {
+                        console.log("Topic clicked:", topic)
+                      }}
+                    />
+                  )}
+                  {activeView === "kanban" && (
+                    <KanbanView
+                      topics={filteredGanttTopics}
+                      onTopicClick={(topic) => {
+                        console.log("Topic clicked:", topic)
+                      }}
+                    />
+                  )}
+                </>
+              )
+            })()}
           </CardContent>
         </Card>
       )}

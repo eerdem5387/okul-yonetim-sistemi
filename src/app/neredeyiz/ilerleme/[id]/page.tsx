@@ -169,14 +169,14 @@ export default function IlerlemeDetayPage() {
   }
 
   const getTopicStatus = (topic: Topic): {
-    status: "PLANLANDI" | "DEVAM_EDIYOR" | "TAMAMLANDI" | "GECIKMELI" | "GECIKMELI_TAMAMLANDI"
+    status: "PLANLANDI" | "DEVAM_EDIYOR" | "TAMAMLANDI" | "GECIKMELI" | "GECIKMELI_TAMAMLANDI" | "ERKEN_TAMAMLANDI"
     label: string
     color: string
     icon: React.ComponentType<{ className?: string }>
   } => {
     // Progress kaydı varsa ve TAMAMLANDI ise
     if (topic.progress?.[0]?.status === "TAMAMLANDI") {
-      // Gecikmeli tamamlanma kontrolü
+      // Erken veya gecikmeli tamamlanma kontrolü
       if (topic.plannedEndDate && topic.progress[0].actualEndDate) {
         const plannedEnd = new Date(topic.plannedEndDate)
         plannedEnd.setHours(0, 0, 0, 0)
@@ -189,6 +189,13 @@ export default function IlerlemeDetayPage() {
             label: "Gecikmeli Tamamlandı",
             color: "bg-orange-100 text-orange-800",
             icon: AlertTriangle,
+          }
+        } else if (actualEnd < plannedEnd) {
+          return {
+            status: "ERKEN_TAMAMLANDI",
+            label: "Erken Tamamlandı",
+            color: "bg-emerald-100 text-emerald-800",
+            icon: CheckCircle2,
           }
         }
       }
@@ -270,6 +277,27 @@ export default function IlerlemeDetayPage() {
       const diffTime = now.getTime() - plannedEnd.getTime()
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
       return diffDays
+    }
+
+    return null
+  }
+
+  const getEarlyDays = (topic: Topic): number | null => {
+    if (!topic.plannedEndDate) return null
+
+    const plannedEnd = new Date(topic.plannedEndDate)
+    plannedEnd.setHours(0, 0, 0, 0)
+    
+    // Eğer tamamlandıysa ve erken tamamlandıysa
+    if (topic.progress?.[0]?.status === "TAMAMLANDI" && topic.progress[0].actualEndDate) {
+      const actualEnd = new Date(topic.progress[0].actualEndDate)
+      actualEnd.setHours(0, 0, 0, 0)
+      
+      if (actualEnd < plannedEnd) {
+        const diffTime = plannedEnd.getTime() - actualEnd.getTime()
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+        return diffDays
+      }
     }
 
     return null
@@ -694,6 +722,7 @@ export default function IlerlemeDetayPage() {
                         {stat.filteredTopics.map((topic) => {
                           const topicStatus = getTopicStatus(topic)
                           const delayDays = getDelayDays(topic)
+                          const earlyDays = getEarlyDays(topic)
                           const StatusIcon = topicStatus.icon
 
                           return (
@@ -703,7 +732,7 @@ export default function IlerlemeDetayPage() {
                             >
                               <div className="flex items-center justify-between gap-4">
                                 <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-1">
+                                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                                     <h4 className="font-medium text-sm sm:text-base text-gray-900">
                                       {topic.name}
                                     </h4>
@@ -718,6 +747,11 @@ export default function IlerlemeDetayPage() {
                                         {delayDays} gün gecikme
                                       </span>
                                     )}
+                                    {earlyDays !== null && earlyDays > 0 && topicStatus.status === "ERKEN_TAMAMLANDI" && (
+                                      <span className="px-2 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-medium">
+                                        {earlyDays} gün erken
+                                      </span>
+                                    )}
                                   </div>
                                   {topic.plannedStartDate && topic.plannedEndDate && (
                                     <p className="text-xs text-gray-500">
@@ -729,6 +763,8 @@ export default function IlerlemeDetayPage() {
                                     <p className={`text-xs mt-1 ${
                                       getDelayDays(topic) && getDelayDays(topic)! > 0
                                         ? "text-orange-600 font-medium"
+                                        : getEarlyDays(topic) && getEarlyDays(topic)! > 0
+                                        ? "text-emerald-600 font-medium"
                                         : "text-green-600"
                                     }`}>
                                       Tamamlanma:{" "}
@@ -736,6 +772,11 @@ export default function IlerlemeDetayPage() {
                                       {getDelayDays(topic) && getDelayDays(topic)! > 0 && (
                                         <span className="ml-2">
                                           ({getDelayDays(topic)} gün gecikme)
+                                        </span>
+                                      )}
+                                      {getEarlyDays(topic) && getEarlyDays(topic)! > 0 && (
+                                        <span className="ml-2">
+                                          ({getEarlyDays(topic)} gün erken)
                                         </span>
                                       )}
                                     </p>
@@ -756,7 +797,7 @@ export default function IlerlemeDetayPage() {
                                   size="sm"
                                   variant="outline"
                                   onClick={() => handleTopicComplete(topic.id)}
-                                  disabled={updatingTopicId === topic.id || topicStatus.status === "TAMAMLANDI" || topicStatus.status === "GECIKMELI_TAMAMLANDI"}
+                                  disabled={updatingTopicId === topic.id || topicStatus.status === "TAMAMLANDI" || topicStatus.status === "GECIKMELI_TAMAMLANDI" || topicStatus.status === "ERKEN_TAMAMLANDI"}
                                   className="text-xs sm:text-sm"
                                 >
                                   {updatingTopicId === topic.id ? (

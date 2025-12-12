@@ -49,7 +49,15 @@ export async function GET(request: NextRequest) {
       include: {
         unit: {
           include: {
-            subject: true,
+            subject: {
+              include: {
+                assignments: {
+                  include: {
+                    staff: true,
+                  },
+                },
+              },
+            },
           },
         },
         progress: {
@@ -66,6 +74,31 @@ export async function GET(request: NextRequest) {
 
     const now = new Date()
     now.setHours(0, 0, 0, 0)
+
+    // Progress kayıtlarındaki Staff ID'lerini topla
+    const staffIds = new Set<string>()
+    topics.forEach((topic) => {
+      topic.progress.forEach((p) => {
+        if (p.markedBy) staffIds.add(p.markedBy)
+        if (p.approvedBy) staffIds.add(p.approvedBy)
+      })
+    })
+
+    // Staff bilgilerini çek
+    const staffMembers = await prisma.staff.findMany({
+      where: {
+        id: { in: Array.from(staffIds) },
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        department: true,
+      },
+    })
+
+    // Staff bilgilerini map'e çevir
+    const staffMap = new Map(staffMembers.map((s) => [s.id, s]))
 
     // Konuları Gantt formatına dönüştür
     const ganttTopics = topics.map((topic) => {
@@ -117,11 +150,23 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      // Öğretmen bilgisi
+      const teachers = topic.unit.subject.assignments.map((a) => ({
+        id: a.staff.id,
+        firstName: a.staff.firstName,
+        lastName: a.staff.lastName,
+      }))
+
+      // Onaylayan ve bildiren rehber bilgisi
+      const markedByStaff = progress?.markedBy ? staffMap.get(progress.markedBy) : null
+      const approvedByStaff = progress?.approvedBy ? staffMap.get(progress.approvedBy) : null
+
       return {
         id: topic.id,
         name: topic.name,
         plannedStartDate: topic.plannedStartDate?.toISOString() || null,
         plannedEndDate: topic.plannedEndDate?.toISOString() || null,
+        actualEndDate: progress?.actualEndDate?.toISOString() || null,
         status,
         delayDays,
         subject: {
@@ -132,6 +177,15 @@ export async function GET(request: NextRequest) {
         unit: {
           name: topic.unit.name,
         },
+        teachers,
+        markedByStaff: markedByStaff ? {
+          firstName: markedByStaff.firstName,
+          lastName: markedByStaff.lastName,
+        } : null,
+        approvedByStaff: approvedByStaff ? {
+          firstName: approvedByStaff.firstName,
+          lastName: approvedByStaff.lastName,
+        } : null,
       }
     })
 

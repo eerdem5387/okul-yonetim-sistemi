@@ -13,9 +13,9 @@ export default function NeredeyizLayout({
       <NeredeyizSidebar />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
-        <main className="flex-1 overflow-y-auto">
-          <div className="h-full">{children}</div>
+      <div className="flex-1 flex flex-col overflow-hidden lg:ml-0 min-w-0">
+        <main className="flex-1 overflow-y-auto min-w-0">
+          <div className="h-full min-w-0">{children}</div>
         </main>
       </div>
     </div>

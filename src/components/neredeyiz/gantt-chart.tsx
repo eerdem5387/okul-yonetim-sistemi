@@ -12,6 +12,7 @@ interface GanttTopic {
   name: string
   plannedStartDate: string | null
   plannedEndDate: string | null
+  actualEndDate?: string | null
   status: "PLANLANDI" | "DEVAM_EDIYOR" | "TAMAMLANDI" | "GECIKMELI" | "GECIKMELI_TAMAMLANDI"
   subject: {
     name: string
@@ -22,6 +23,19 @@ interface GanttTopic {
     name: string
   }
   delayDays?: number
+  teachers?: Array<{
+    id: string
+    firstName: string
+    lastName: string
+  }>
+  markedByStaff?: {
+    firstName: string
+    lastName: string
+  } | null
+  approvedByStaff?: {
+    firstName: string
+    lastName: string
+  } | null
 }
 
 interface GanttChartProps {
@@ -34,6 +48,8 @@ type ViewMode = "week" | "month" | "year"
 export default function GanttChart({ topics, onTopicClick }: GanttChartProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("month")
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [hoveredTopic, setHoveredTopic] = useState<string | null>(null)
+  const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
 
   // Tarih aralığını hesapla
   const dateRange = useMemo(() => {
@@ -290,6 +306,12 @@ export default function GanttChart({ topics, onTopicClick }: GanttChartProps) {
                             width: `${Math.max(position.width, 2)}%`,
                             minWidth: "40px",
                           }}
+                          onMouseEnter={(e) => {
+                            setHoveredTopic(topic.id)
+                            const rect = e.currentTarget.getBoundingClientRect()
+                            setTooltipPosition({ x: rect.left + rect.width / 2, y: rect.top - 10 })
+                          }}
+                          onMouseLeave={() => setHoveredTopic(null)}
                         >
                           <span className="truncate">{topic.name}</span>
                           {topic.delayDays && topic.delayDays > 0 && (
@@ -298,6 +320,54 @@ export default function GanttChart({ topics, onTopicClick }: GanttChartProps) {
                             </span>
                           )}
                         </div>
+
+                        {/* Tooltip */}
+                        {hoveredTopic === topic.id && (
+                          <div
+                            className="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-xl p-3 min-w-[250px] max-w-[350px]"
+                            style={{
+                              left: `${tooltipPosition.x}px`,
+                              top: `${tooltipPosition.y}px`,
+                              transform: "translate(-50%, -100%)",
+                            }}
+                          >
+                            <div className="space-y-2 text-xs">
+                              <div className="font-semibold text-gray-900 border-b pb-1">
+                                {topic.name}
+                              </div>
+                              <div className="text-gray-700">
+                                <span className="font-medium">Ders:</span> {topic.subject.name}
+                              </div>
+                              <div className="text-gray-700">
+                                <span className="font-medium">Ünite:</span> {topic.unit.name}
+                              </div>
+                              {topic.teachers && topic.teachers.length > 0 && (
+                                <div className="text-gray-700">
+                                  <span className="font-medium">Öğretmen:</span>{" "}
+                                  {topic.teachers.map((t) => `${t.firstName} ${t.lastName}`).join(", ")}
+                                </div>
+                              )}
+                              {topic.actualEndDate && (
+                                <div className="text-gray-700">
+                                  <span className="font-medium">Tamamlanma:</span>{" "}
+                                  {new Date(topic.actualEndDate).toLocaleDateString("tr-TR")}
+                                </div>
+                              )}
+                              {topic.markedByStaff && (
+                                <div className="text-blue-700">
+                                  <span className="font-medium">Bildiren:</span>{" "}
+                                  Rehberlik {topic.markedByStaff.firstName} {topic.markedByStaff.lastName}
+                                </div>
+                              )}
+                              {topic.approvedByStaff && (
+                                <div className="text-green-700">
+                                  <span className="font-medium">Onaylayan:</span>{" "}
+                                  Rehberlik {topic.approvedByStaff.firstName} {topic.approvedByStaff.lastName}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )
