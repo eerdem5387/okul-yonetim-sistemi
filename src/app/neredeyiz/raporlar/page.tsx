@@ -19,6 +19,9 @@ import {
   BookOpen,
 } from "lucide-react"
 import GanttChart from "@/components/neredeyiz/gantt-chart"
+import TimelineView from "@/components/neredeyiz/timeline-view"
+import CalendarView from "@/components/neredeyiz/calendar-view"
+import KanbanView from "@/components/neredeyiz/kanban-view"
 
 interface AcademicYear {
   id: string
@@ -133,6 +136,7 @@ export default function RaporlarPage() {
   const [statusFilter, setStatusFilter] = useState<string>("ALL")
   const [disruptionTypeFilter, setDisruptionTypeFilter] = useState<string>("ALL")
   const [showFilters, setShowFilters] = useState(false)
+  const [activeView, setActiveView] = useState<"gantt" | "timeline" | "calendar" | "kanban">("gantt")
 
   // Dashboard istatistikleri
   const [stats, setStats] = useState<{
@@ -848,15 +852,108 @@ export default function RaporlarPage() {
         </Card>
       )}
 
-      {/* Gantt Takvimi */}
+      {/* Görünüm Seçimi - Tab Sistemi */}
       {!reportsLoading && ganttTopics.length > 0 && (
-        <GanttChart
-          topics={ganttTopics}
-          onTopicClick={(topic) => {
-            // Konu detayı için modal veya sayfa açılabilir
-            console.log("Topic clicked:", topic)
-          }}
-        />
+        <Card>
+          <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6 pb-0">
+            {/* Desktop Tab Navigation */}
+            <div className="hidden sm:flex gap-2 border-b border-gray-200 -mx-3 sm:-mx-4 lg:-mx-6 px-3 sm:px-4 lg:px-6">
+              <button
+                onClick={() => setActiveView("gantt")}
+                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeView === "gantt"
+                    ? "border-blue-600 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                <BarChart3 className="h-4 w-4 inline mr-2" />
+                Gantt
+              </button>
+              <button
+                onClick={() => setActiveView("timeline")}
+                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeView === "timeline"
+                    ? "border-blue-600 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                <Clock className="h-4 w-4 inline mr-2" />
+                Timeline
+              </button>
+              <button
+                onClick={() => setActiveView("calendar")}
+                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeView === "calendar"
+                    ? "border-blue-600 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                <Target className="h-4 w-4 inline mr-2" />
+                Takvim
+              </button>
+              <button
+                onClick={() => setActiveView("kanban")}
+                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeView === "kanban"
+                    ? "border-blue-600 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                <BookOpen className="h-4 w-4 inline mr-2" />
+                Kanban
+              </button>
+            </div>
+
+            {/* Mobile Dropdown Navigation */}
+            <div className="sm:hidden">
+              <select
+                value={activeView}
+                onChange={(e) => setActiveView(e.target.value as typeof activeView)}
+                className="w-full h-10 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="gantt">📊 Gantt</option>
+                <option value="timeline">⏱️ Timeline</option>
+                <option value="calendar">📅 Takvim</option>
+                <option value="kanban">📋 Kanban</option>
+              </select>
+            </div>
+          </CardHeader>
+          <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6 pt-3 sm:pt-4 lg:pt-6">
+            {/* Active View Content */}
+            {activeView === "gantt" && (
+              <GanttChart
+                topics={ganttTopics}
+                onTopicClick={(topic) => {
+                  console.log("Topic clicked:", topic)
+                }}
+              />
+            )}
+            {activeView === "timeline" && (
+              <TimelineView
+                topics={ganttTopics}
+                onTopicClick={(topic) => {
+                  console.log("Topic clicked:", topic)
+                }}
+              />
+            )}
+            {activeView === "calendar" && (
+              <CalendarView
+                topics={ganttTopics}
+                onTopicClick={(topic) => {
+                  console.log("Topic clicked:", topic)
+                }}
+              />
+            )}
+            {activeView === "kanban" && (
+              <KanbanView
+                topics={ganttTopics}
+                onTopicClick={(topic) => {
+                  console.log("Topic clicked:", topic)
+                }}
+              />
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Genel İlerleme Durumu Raporu */}
