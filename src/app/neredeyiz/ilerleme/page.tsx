@@ -212,31 +212,34 @@ export default function IlerlemePage() {
       </div>
 
       {/* Dersler Kutucukları */}
-      {subjects.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 sm:py-12 text-center">
-            <BookOpen className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500 text-sm sm:text-base">
-              Bu akademik yılda henüz ders tanımlanmamış
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {subjects
-            .map((subject) => {
+      {(() => {
+        const filteredSubjects = subjects
+          .map((subject) => {
               const allTopics = (subject.units || []).flatMap((u) => u.topics || [])
               const completedTopics = allTopics.filter((t) => t.progress?.[0]?.status === "TAMAMLANDI").length
               const inProgressTopics = allTopics.filter((t) => t.progress?.[0]?.status === "DEVAM_EDIYOR").length
               const delayedTopics = allTopics.filter((t) => {
                 const progress = t.progress?.[0]
-                if (!progress || progress.status === "TAMAMLANDI") return false
                 if (!t.plannedEndDate) return false
                 const now = new Date()
                 now.setHours(0, 0, 0, 0)
                 const plannedEnd = new Date(t.plannedEndDate)
                 plannedEnd.setHours(0, 0, 0, 0)
-                return now > plannedEnd
+                
+                // Eğer tarih geçmişse
+                if (now > plannedEnd) {
+                  // Progress kaydı yoksa veya TAMAMLANDI değilse gecikmeli
+                  if (!progress || progress.status !== "TAMAMLANDI") {
+                    return true
+                  }
+                  // TAMAMLANDI ama gecikmeli tamamlanmışsa
+                  if (progress.status === "TAMAMLANDI" && progress.actualEndDate) {
+                    const actualEnd = new Date(progress.actualEndDate)
+                    actualEnd.setHours(0, 0, 0, 0)
+                    return actualEnd > plannedEnd
+                  }
+                }
+                return false
               }).length
               const totalTopics = allTopics.length
               const completionRate = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0
@@ -251,7 +254,46 @@ export default function IlerlemePage() {
               return { subject, completedTopics, inProgressTopics, delayedTopics, totalTopics, completionRate }
             })
             .filter((item): item is NonNullable<typeof item> => item !== null)
-            .map(({ subject, completedTopics, totalTopics, completionRate }) => (
+
+        if (subjects.length === 0) {
+          return (
+            <Card>
+              <CardContent className="py-8 sm:py-12 text-center">
+                <BookOpen className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500 text-sm sm:text-base">
+                  Bu akademik yılda henüz ders tanımlanmamış
+                </p>
+              </CardContent>
+            </Card>
+          )
+        }
+
+        if (filteredSubjects.length === 0) {
+          const statusLabels: Record<string, string> = {
+            TAMAMLANDI: "tamamlanan",
+            DEVAM_EDIYOR: "devam eden",
+            GECIKMELI: "gecikmeli",
+          }
+          return (
+            <Card>
+              <CardContent className="py-8 sm:py-12 text-center">
+                <BookOpen className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500 text-sm sm:text-base font-medium mb-1">
+                  {statusFilter ? `${statusLabels[statusFilter] || statusFilter} konu bulunamadı` : "Ders bulunamadı"}
+                </p>
+                <p className="text-gray-400 text-xs sm:text-sm">
+                  {statusFilter 
+                    ? "Seçili filtreye uygun ders bulunmamaktadır."
+                    : "Bu akademik yılda henüz ders tanımlanmamış"}
+                </p>
+              </CardContent>
+            </Card>
+          )
+        }
+
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredSubjects.map(({ subject, completedTopics, totalTopics, completionRate }) => (
               <Link key={subject.id} href={`/neredeyiz/ilerleme/${subject.id}${statusFilter ? `?status=${statusFilter}` : ""}`}>
                 <Card className="cursor-pointer transition-all duration-200 hover:shadow-lg h-full">
                   <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
@@ -291,8 +333,9 @@ export default function IlerlemePage() {
                 </Card>
               </Link>
             ))}
-        </div>
-      )}
+          </div>
+        )
+      })()}
     </div>
   )
 }

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -92,6 +92,7 @@ type StatusFilter = "ALL" | "PLANLANDI" | "DEVAM_EDIYOR" | "TAMAMLANDI" | "ERTEL
 export default function IlerlemeDetayPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { toasts, success, error, removeToast } = useToast()
   const [subject, setSubject] = useState<Subject | null>(null)
   const [loading, setLoading] = useState(true)
@@ -105,6 +106,21 @@ export default function IlerlemeDetayPage() {
   const [completionDate, setCompletionDate] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [staffId, setStaffId] = useState<string | null>(null)
+
+  useEffect(() => {
+    // URL parametresinden status filtresini oku
+    const urlStatus = searchParams.get("status")
+    if (urlStatus) {
+      if (urlStatus === "TAMAMLANDI") {
+        setStatusFilter("TAMAMLANDI")
+      } else if (urlStatus === "DEVAM_EDIYOR") {
+        setStatusFilter("DEVAM_EDIYOR")
+      } else if (urlStatus === "GECIKMELI") {
+        setStatusFilter("ERTELENDI") // ERTELENDI = GECIKMELI için kullanılıyor
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -454,7 +470,7 @@ export default function IlerlemeDetayPage() {
             (statusFilter === "PLANLANDI" && topicStatus.status === "PLANLANDI") ||
             (statusFilter === "DEVAM_EDIYOR" && topicStatus.status === "DEVAM_EDIYOR") ||
             (statusFilter === "TAMAMLANDI" && topicStatus.status === "TAMAMLANDI") ||
-            (statusFilter === "ERTELENDI" && topicStatus.status === "GECIKMELI")
+            (statusFilter === "ERTELENDI" && (topicStatus.status === "GECIKMELI" || topicStatus.status === "GECIKMELI_TAMAMLANDI"))
 
           return matchesSearch && matchesStatus
         })
