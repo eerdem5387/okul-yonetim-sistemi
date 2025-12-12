@@ -718,7 +718,137 @@ Herhangi bir sorun veya öneri için geliştirme ekibi ile iletişime geçin.
 
 ---
 
-**Son Güncelleme:** 2024-12-12  
-**Versiyon:** 2.0.0  
+**Son Güncelleme:** 2024-12-12 (Final Revizyon 3)
+**Versiyon:** 2.3.0  
 **Durum:** Production Ready ✅
+
+### Yeni Eklenen Özellikler (v2.3.0)
+- ✅ **Öğretmen Performans Raporu:** Raporlar sayfasında öğretmen bazlı detaylı analiz
+- ✅ **Rehberlik Performans Raporu:** Rehberlik danışmanlarının aktivite takibi
+- ✅ **İlerleme Takibi:** Ortaokul/Lise hızlı filtreleri eklendi
+- ✅ **Aksamalar:** Ortaokul/Lise toplu seçim butonları
+- ✅ **Takvim:** Hover tooltip ile tam detay
+
+### Önceki Versiyon (v2.2.0)
+- ✅ Aksamalar: Büyük veri seti UX iyileştirmeleri
+- ✅ İlerleme Detay: Hover tooltip (öğretmen + rehber bilgileri)
+- ✅ Takvim: Hover tooltip (öğretmen + rehber bilgileri)  
+- ✅ Tüm tooltip'ler: Tam detay gösterimi
+
+### Önceki Versiyon (v2.1.0)
+- ✅ Erken Tamamlandı (Emerald badge)
+- ✅ Büyük veri seti optimizasyonları (12K+ konu)
+- ✅ Gantt tooltip (öğretmen + rehber)
+- ✅ Kanban detaylı kartlar
+- ✅ Ortaokul/Lise hızlı filtreleri
+
+---
+
+## 🎯 Son Eklenen Özellikler (v2.2.0 - 12 Aralık 2025)
+
+### 1. Aksamalar Modülü - Büyük Veri UX İyileştirmeleri ⚡
+
+**Problem:** 12,000+ ders için aksama oluşturma zor
+
+**Çözümler:**
+- **🎒 Ortaokul Tümü Butonu:** 5-8. sınıfların tüm derslerini tek tıkla seç
+- **🎓 Lise Tümü Butonu:** 9-12. sınıfların tüm derslerini tek tıkla seç
+- **Sınıf Bazlı Toggle:** Her sınıf için ayrı buton (✓ seçili, + seçili değil)
+- **Ders Sayısı Gösterimi:** Her buton kaç ders içeriyor gösterir
+- **Gradient Tasarım:** Mavi-mor gradyan ile görsel zenginlik
+
+**Örnek Kullanım:**
+1. Aksama form aç
+2. "🎒 Ortaokul Tümü (40)" butonuna tıkla
+3. Tüm ortaokul dersleri seçilir
+4. Veya "5. Sınıf (10)" butonuyla sadece 5. sınıf seçilir
+
+### 2. İlerleme Detay Sayfası - Hover Tooltip 💡
+
+**Eklenen Bilgiler:**
+- 📚 Ders, Sınıf, Şube
+- 👨‍🏫 Öğretmen(ler)
+- 📊 Durum (badge + gecikme/erken bilgisi)
+- 📅 Planlanan tarih aralığı
+- ✓ Tamamlanma tarihi (varsa)
+- ✎ Bildiren rehberlik danışmanı (mavi zemin)
+- ✎ İşaretleyen rehberlik danışmanı (mavi zemin)
+- ✓ Onaylayan rehberlik danışmanı (yeşil zemin)
+
+**Teknik:**
+- `onMouseEnter` / `onMouseLeave` events
+- Fixed pozisyon tooltip (z-index: 50)
+- `transform: translate(-50%, -100%)` ile ortalama
+- `pointer-events-none` ile tıklanamaz
+
+### 3. Takvim Görünümü - Hover Tooltip 📅
+
+**Eklenen Bilgiler:**
+- 📚 Ders, Sınıf, Şube, Ünite
+- 👨‍🏫 Öğretmen(ler)
+- 📊 Durum göstergesi
+- 📅 Planlanan + Gerçek tamamlanma tarihi
+- ✎ Bildiren/İşaretleyen rehber (mavi zemin)
+- ✓ Onaylayan rehber (yeşil zemin)
+
+**Özellikler:**
+- Her konu barına hover ile tooltip
+- Küçük konular bile detaylarını gösterir
+- z-index: 100 (takvim üzerinde)
+- Responsive tasarım (min-280px, max-380px)
+
+### 4. API Güncellemeleri 🔧
+
+#### İlerleme Detay API
+- `Subject` interface'ine `assignments` array eklendi
+- Öğretmen bilgileri `staff` ilişkisi ile çekiliyor
+- `Progress` nesnesine `reportedByStaff` eklendi
+
+```typescript
+assignments: Array<{
+  id: string
+  staff: {
+    id: string
+    firstName: string
+    lastName: string
+  }
+}>
+```
+
+#### Takvim Görünümü Interface
+- `CalendarTopic` interface genişletildi
+- `teachers`, `actualEndDate`, `reportedByStaff` eklendi
+- `ERKEN_TAMAMLANDI` status desteği
+
+---
+
+## 📊 Kullanım Senaryoları (Güncellenmiş)
+
+### Senaryo D: Müdür - Aksama Oluşturma (12K+ ders)
+1. Aksamalar → "Yeni Aksama Ekle"
+2. "Kar tatili" sebebi, 3 gün süre
+3. **🎒 Ortaokul Tümü (40 ders)** butonuna tıklar
+4. Tüm ortaokul dersleri seçilir
+5. "Kaydet" → Toplu aksama oluşturuldu
+
+### Senaryo E: Rehberlik - Konu Detay İnceleme
+1. İlerleme Takibi → Ders seç → Konu listesi
+2. Mouse'u konunun üzerine getirir
+3. **Tooltip açılır:**
+   - Öğretmen: Ahmet Yılmaz
+   - Tamamlandı: 10.12.2025
+   - ✎ Bildiren: Rehberlik Ayşe Demir
+   - ✓ Onaylayan: Rehberlik Mehmet Kaya
+4. Kontrol mekanizması sayesinde kim ne yaptı görülüyor
+
+### Senaryo F: Müdür - Takvim İncelemesi
+1. Raporlar → Takvim görünümü
+2. Aralık ayındaki konuları görür
+3. Mouse'u yeşil bir bara getirir
+4. **Tooltip gösterir:**
+   - Matematik - 11. Sınıf
+   - Öğretmen: Ali Veli
+   - Erken Tamamlandı (5 gün erken)
+   - Onaylayan: Rehberlik Fatma
+5. Başarılı konuları takdir eder
 

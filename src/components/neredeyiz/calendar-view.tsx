@@ -31,6 +31,8 @@ interface CalendarViewProps {
 
 export default function CalendarView({ topics, onTopicClick }: CalendarViewProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date())
+  const [hoveredTopic, setHoveredTopic] = useState<CalendarTopic | null>(null)
+  const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null)
 
   const monthStart = startOfMonth(currentMonth)
   const monthEnd = endOfMonth(currentMonth)
@@ -163,8 +165,16 @@ export default function CalendarView({ topics, onTopicClick }: CalendarViewProps
                       <div
                         key={topic.id}
                         onClick={() => onTopicClick?.(topic)}
-                        className={`${getStatusColor(topic.status)} text-white text-[8px] sm:text-xs px-1 py-0.5 rounded cursor-pointer hover:opacity-80 transition-opacity truncate`}
-                        title={topic.name}
+                        onMouseEnter={(e) => {
+                          setHoveredTopic(topic)
+                          const rect = e.currentTarget.getBoundingClientRect()
+                          setTooltipPosition({ x: rect.left + rect.width / 2, y: rect.top - 10 })
+                        }}
+                        onMouseLeave={() => {
+                          setHoveredTopic(null)
+                          setTooltipPosition(null)
+                        }}
+                        className={`${getStatusColor(topic.status)} text-white text-[8px] sm:text-xs px-1 py-0.5 rounded cursor-pointer hover:opacity-80 transition-opacity truncate relative`}
                       >
                         {topic.name}
                       </div>

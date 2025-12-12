@@ -619,28 +619,88 @@ export default function AksamalarPage() {
                       </Button>
                     </div>
 
+                    {/* Hızlı Seçim Butonları */}
+                    <div className="bg-gradient-to-r from-blue-50 via-purple-50 to-blue-50 p-3 rounded-lg border border-blue-200">
+                      <Label className="text-xs sm:text-sm font-medium text-blue-900 mb-2 block">
+                        ⚡ Hızlı Toplu Seçim
+                      </Label>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const ortaokulGrades = [5, 6, 7, 8]
+                            const ortaokulSubjects = subjects.filter((s) => ortaokulGrades.includes(s.grade))
+                            const subjectIds = ortaokulSubjects.map((s) => s.id)
+                            const newSelected = Array.from(new Set([...formData.affectedSubjects, ...subjectIds]))
+                            setFormData({ ...formData, affectedSubjects: newSelected })
+                          }}
+                          className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                        >
+                          🎒 Ortaokul Tümü ({subjects.filter((s) => [5,6,7,8].includes(s.grade)).length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const liseGrades = [9, 10, 11, 12]
+                            const liseSubjects = subjects.filter((s) => liseGrades.includes(s.grade))
+                            const subjectIds = liseSubjects.map((s) => s.id)
+                            const newSelected = Array.from(new Set([...formData.affectedSubjects, ...subjectIds]))
+                            setFormData({ ...formData, affectedSubjects: newSelected })
+                          }}
+                          className="px-3 py-1.5 text-xs font-medium rounded-md bg-purple-600 text-white hover:bg-purple-700 transition-colors"
+                        >
+                          🎓 Lise Tümü ({subjects.filter((s) => [9,10,11,12].includes(s.grade)).length})
+                        </button>
+                        {formData.affectedSubjects.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setFormData({ ...formData, affectedSubjects: [] })}
+                            className="px-3 py-1.5 text-xs font-medium rounded-md bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                          >
+                            ✕ Tümünü Kaldır
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
                     {/* Sınıf Bazlı Toplu Seçim */}
                     <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
                       <Label className="text-xs sm:text-sm font-medium text-blue-900 mb-2 block">
-                        Sınıf Bazlı Toplu Seçim
+                        Sınıf Bazlı Seçim
                       </Label>
-                      <select
-                        value={selectedGradeForBulk}
-                        onChange={(e) => handleGradeBulkSelect(e.target.value)}
-                        className="w-full h-9 px-3 py-1 border border-blue-300 bg-white rounded-md text-xs sm:text-sm focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">Sınıf seçin...</option>
-                        {grades.map((grade) => (
-                          <option key={grade} value={grade.toString()}>
-                            {grade}. Sınıf - Tüm Dersler
-                          </option>
-                        ))}
-                      </select>
-                      {selectedGradeForBulk && (
-                        <p className="text-xs text-blue-700 mt-2">
-                          {subjects.filter((s) => s.grade === parseInt(selectedGradeForBulk, 10)).length} ders seçildi
-                        </p>
-                      )}
+                      <div className="grid grid-cols-4 gap-2">
+                        {grades.map((grade) => {
+                          const gradeSubjects = subjects.filter((s) => s.grade === grade)
+                          const isAllSelected = gradeSubjects.every((s) => formData.affectedSubjects.includes(s.id))
+                          return (
+                            <button
+                              key={grade}
+                              type="button"
+                              onClick={() => {
+                                const subjectIds = gradeSubjects.map((s) => s.id)
+                                if (isAllSelected) {
+                                  // Kaldır
+                                  setFormData({
+                                    ...formData,
+                                    affectedSubjects: formData.affectedSubjects.filter((id) => !subjectIds.includes(id))
+                                  })
+                                } else {
+                                  // Ekle
+                                  const newSelected = Array.from(new Set([...formData.affectedSubjects, ...subjectIds]))
+                                  setFormData({ ...formData, affectedSubjects: newSelected })
+                                }
+                              }}
+                              className={`px-2 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                                isAllSelected
+                                  ? "bg-blue-600 text-white hover:bg-blue-700"
+                                  : "bg-white text-blue-700 border border-blue-300 hover:bg-blue-50"
+                              }`}
+                            >
+                              {isAllSelected ? "✓" : "+"} {grade}. Sınıf ({gradeSubjects.length})
+                            </button>
+                          )
+                        })}
+                      </div>
                     </div>
 
                     {/* Filtreleme */}

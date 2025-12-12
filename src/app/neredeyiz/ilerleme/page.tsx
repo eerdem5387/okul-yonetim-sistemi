@@ -54,6 +54,7 @@ export default function IlerlemePage() {
   const [selectedGrade, setSelectedGrade] = useState<string>("")
   const [selectedSection, setSelectedSection] = useState<string>("")
   const [searchQuery, setSearchQuery] = useState<string>("")
+  const [quickGradeFilter, setQuickGradeFilter] = useState<"" | "ortaokul" | "lise">("")
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -148,6 +149,49 @@ export default function IlerlemePage() {
         </CardHeader>
         <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
           <div className="space-y-4">
+            {/* Hızlı Filtreler - Ortaokul/Lise */}
+            <div>
+              <label className="text-xs sm:text-sm mb-1.5 block font-medium text-gray-700">Hızlı Filtreler</label>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => {
+                    if (quickGradeFilter === "ortaokul") {
+                      setQuickGradeFilter("")
+                      setSelectedGrade("")
+                    } else {
+                      setQuickGradeFilter("ortaokul")
+                      setSelectedGrade("") // Reset individual grade selection
+                    }
+                  }}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg border-2 transition-all ${
+                    quickGradeFilter === "ortaokul"
+                      ? "border-blue-600 bg-blue-600 text-white shadow-md"
+                      : "border-blue-300 text-blue-700 hover:bg-blue-50"
+                  }`}
+                >
+                  🎒 Ortaokul (5-8)
+                </button>
+                <button
+                  onClick={() => {
+                    if (quickGradeFilter === "lise") {
+                      setQuickGradeFilter("")
+                      setSelectedGrade("")
+                    } else {
+                      setQuickGradeFilter("lise")
+                      setSelectedGrade("") // Reset individual grade selection
+                    }
+                  }}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg border-2 transition-all ${
+                    quickGradeFilter === "lise"
+                      ? "border-purple-600 bg-purple-600 text-white shadow-md"
+                      : "border-purple-300 text-purple-700 hover:bg-purple-50"
+                  }`}
+                >
+                  🎓 Lise (9-12)
+                </button>
+              </div>
+            </div>
+
             {/* Arama */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -276,8 +320,16 @@ export default function IlerlemePage() {
             // Arama filtresi
             if (searchQuery) {
               const query = searchQuery.toLowerCase()
-              return subject.name.toLowerCase().includes(query)
+              if (!subject.name.toLowerCase().includes(query)) return false
             }
+            
+            // Hızlı sınıf filtresi (Ortaokul/Lise)
+            if (quickGradeFilter === "ortaokul") {
+              if (![5, 6, 7, 8].includes(subject.grade)) return false
+            } else if (quickGradeFilter === "lise") {
+              if (![9, 10, 11, 12].includes(subject.grade)) return false
+            }
+            
             return true
           })
           .map((subject) => {

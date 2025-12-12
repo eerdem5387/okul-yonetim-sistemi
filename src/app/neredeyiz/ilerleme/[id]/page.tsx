@@ -28,6 +28,14 @@ interface Subject {
   name: string
   grade: number
   section: string | null
+  assignments: Array<{
+    id: string
+    staff: {
+      id: string
+      firstName: string
+      lastName: string
+    }
+  }>
   units: Array<{
     id: string
     name: string
@@ -43,6 +51,7 @@ interface Subject {
         markedAt: string | null
         markedBy: string | null
         approvedBy: string | null
+        reportedBy: string | null
         markedByStaff: {
           id: string
           firstName: string
@@ -50,6 +59,12 @@ interface Subject {
           department: string
         } | null
         approvedByStaff: {
+          id: string
+          firstName: string
+          lastName: string
+          department: string
+        } | null
+        reportedByStaff: {
           id: string
           firstName: string
           lastName: string
@@ -106,6 +121,8 @@ export default function IlerlemeDetayPage() {
   const [completionDate, setCompletionDate] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [staffId, setStaffId] = useState<string | null>(null)
+  const [hoveredTopic, setHoveredTopic] = useState<string | null>(null)
+  const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null)
 
   useEffect(() => {
     // URL parametresinden status filtresini oku

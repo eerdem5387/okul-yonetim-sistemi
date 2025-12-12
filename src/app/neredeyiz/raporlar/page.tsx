@@ -150,9 +150,68 @@ export default function RaporlarPage() {
     inProgress: 0,
     delayed: 0,
   })
+  
+  // Performans raporları
+  const [teachers, setTeachers] = useState<Array<{ id: string; firstName: string; lastName: string }>>([])
+  const [counselors, setCounselors] = useState<Array<{ id: string; firstName: string; lastName: string }>>([])
+  const [selectedTeacher, setSelectedTeacher] = useState<string>("")
+  const [selectedCounselor, setSelectedCounselor] = useState<string>("")
+  const [teacherPerformance, setTeacherPerformance] = useState<{
+    teacher: { id: string; firstName: string; lastName: string }
+    subjects: Array<{
+      subjectId: string
+      subjectName: string
+      grade: number
+      section: string | null
+      totalTopics: number
+      completedTopics: number
+      inProgressTopics: number
+      delayedTopics: number
+      completionRate: number
+    }>
+    summary: {
+      totalSubjects: number
+      totalTopics: number
+      completedTopics: number
+      inProgressTopics: number
+      delayedTopics: number
+      completionRate: number
+    }
+  } | null>(null)
+  const [counselorPerformance, setCounselorPerformance] = useState<{
+    counselor: { id: string; firstName: string; lastName: string }
+    subjects: Array<{
+      subjectId: string
+      subjectName: string
+      grade: number
+      section: string | null
+      markedCount: number
+      approvedCount: number
+      reportedCount: number
+    }>
+    recentActivities: Array<{
+      type: "marked" | "approved" | "reported"
+      date: string | null
+      topic: string
+      unit: string
+      subject: string
+      grade: number
+      section: string | null
+    }>
+    summary: {
+      totalSubjects: number
+      totalMarked: number
+      totalApproved: number
+      totalReported: number
+      totalActivities: number
+    }
+  } | null>(null)
+  const [loadingTeacherPerf, setLoadingTeacherPerf] = useState(false)
+  const [loadingCounselorPerf, setLoadingCounselorPerf] = useState(false)
 
   useEffect(() => {
     fetchAcademicYears()
+    fetchStaff()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -203,6 +262,60 @@ export default function RaporlarPage() {
       error("Akademik yıllar yüklenirken hata oluştu!")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchStaff = async () => {
+    try {
+      const response = await fetch("/api/staff")
+      if (response.ok) {
+        const data = await response.json() as Array<{
+          id: string
+          firstName: string
+          lastName: string
+          department: string
+        }>
+        const teachersList = data.filter((s) => s.department === "OGRETMEN")
+        const counselorsList = data.filter((s) => s.department === "REHBERLIK")
+        setTeachers(teachersList)
+        setCounselors(counselorsList)
+      }
+    } catch (err) {
+      console.error("Error fetching staff:", err)
+    }
+  }
+
+  const fetchTeacherPerformance = async (teacherId: string) => {
+    if (!teacherId) return
+    setLoadingTeacherPerf(true)
+    try {
+      const url = `/api/neredeyiz/reports/teacher-performance?staffId=${teacherId}${activeYearId ? `&academicYearId=${activeYearId}` : ""}`
+      const response = await fetch(url)
+      if (response.ok) {
+        const data = await response.json()
+        setTeacherPerformance(data)
+      }
+    } catch (err) {
+      console.error("Error fetching teacher performance:", err)
+    } finally {
+      setLoadingTeacherPerf(false)
+    }
+  }
+
+  const fetchCounselorPerformance = async (counselorId: string) => {
+    if (!counselorId) return
+    setLoadingCounselorPerf(true)
+    try {
+      const url = `/api/neredeyiz/reports/counselor-performance?staffId=${counselorId}${activeYearId ? `&academicYearId=${activeYearId}` : ""}`
+      const response = await fetch(url)
+      if (response.ok) {
+        const data = await response.json()
+        setCounselorPerformance(data)
+      }
+    } catch (err) {
+      console.error("Error fetching counselor performance:", err)
+    } finally {
+      setLoadingCounselorPerf(false)
     }
   }
 
@@ -1221,6 +1334,209 @@ export default function RaporlarPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Performans Raporları */}
+      {activeYearId && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          {/* Öğretmen Performansı */}
+          <Card>
+            <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
+              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                👨‍🏫 Öğretmen Performans Raporu
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6 space-y-4">
+              <div>
+                <Label className="text-sm mb-2 block">Öğretmen Seç</Label>
+                <select
+                  value={selectedTeacher}
+                  onChange={(e) => {
+                    setSelectedTeacher(e.target.value)
+                    fetchTeacherPerformance(e.target.value)
+                  }}
+                  className="w-full h-10 px-3 py-2 border border-input bg-background rounded-md text-sm"
+                >
+                  <option value="">Seçiniz...</option>
+                  {teachers.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.firstName} {t.lastName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {loadingTeacherPerf && (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                </div>
+              )}
+
+              {teacherPerformance && !loadingTeacherPerf && (
+                <div className="space-y-4">
+                  {/* Özet */}
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                    <div className="p-2 sm:p-3 bg-blue-50 rounded-lg">
+                      <div className="text-xl sm:text-2xl font-bold text-blue-700">
+                        {teacherPerformance.summary.totalSubjects}
+                      </div>
+                      <div className="text-[10px] sm:text-xs text-gray-600">Atanmış Ders</div>
+                    </div>
+                    <div className="p-2 sm:p-3 bg-green-50 rounded-lg">
+                      <div className="text-xl sm:text-2xl font-bold text-green-700">
+                        %{teacherPerformance.summary.completionRate}
+                      </div>
+                      <div className="text-[10px] sm:text-xs text-gray-600">Tamamlanma</div>
+                    </div>
+                    <div className="p-2 sm:p-3 bg-yellow-50 rounded-lg">
+                      <div className="text-xl sm:text-2xl font-bold text-yellow-700">
+                        {teacherPerformance.summary.inProgressTopics}
+                      </div>
+                      <div className="text-[10px] sm:text-xs text-gray-600">Devam Eden</div>
+                    </div>
+                    <div className="p-2 sm:p-3 bg-red-50 rounded-lg">
+                      <div className="text-xl sm:text-2xl font-bold text-red-700">
+                        {teacherPerformance.summary.delayedTopics}
+                      </div>
+                      <div className="text-[10px] sm:text-xs text-gray-600">Gecikmeli</div>
+                    </div>
+                  </div>
+
+                  {/* Dersler */}
+                  <div>
+                    <h4 className="font-medium text-sm mb-2">Atanmış Dersler</h4>
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {teacherPerformance.subjects.map((subject) => (
+                        <div key={subject.subjectId} className="p-2 sm:p-3 border rounded-lg bg-gray-50">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="font-medium text-xs sm:text-sm">
+                              {subject.subjectName} - {subject.grade}. Sınıf
+                              {subject.section && ` - ${subject.section}`}
+                            </div>
+                            <span className="text-xs font-medium text-blue-600">
+                              %{subject.completionRate}
+                            </span>
+                          </div>
+                          <div className="flex gap-2 sm:gap-3 text-[10px] sm:text-xs text-gray-600">
+                            <span>✓ {subject.completedTopics}</span>
+                            <span>⏳ {subject.inProgressTopics}</span>
+                            <span className="text-red-600">⚠ {subject.delayedTopics}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Rehberlik Performansı */}
+          <Card>
+            <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
+              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                📋 Rehberlik Performans Raporu
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6 space-y-4">
+              <div>
+                <Label className="text-sm mb-2 block">Rehberlik Danışmanı Seç</Label>
+                <select
+                  value={selectedCounselor}
+                  onChange={(e) => {
+                    setSelectedCounselor(e.target.value)
+                    fetchCounselorPerformance(e.target.value)
+                  }}
+                  className="w-full h-10 px-3 py-2 border border-input bg-background rounded-md text-sm"
+                >
+                  <option value="">Seçiniz...</option>
+                  {counselors.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.firstName} {c.lastName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {loadingCounselorPerf && (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                </div>
+              )}
+
+              {counselorPerformance && !loadingCounselorPerf && (
+                <div className="space-y-4">
+                  {/* Özet */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="p-2 sm:p-3 bg-blue-50 rounded-lg">
+                      <div className="text-lg sm:text-xl font-bold text-blue-700">
+                        {counselorPerformance.summary.totalMarked}
+                      </div>
+                      <div className="text-[9px] sm:text-[10px] text-gray-600">İşaretlenen</div>
+                    </div>
+                    <div className="p-2 sm:p-3 bg-green-50 rounded-lg">
+                      <div className="text-lg sm:text-xl font-bold text-green-700">
+                        {counselorPerformance.summary.totalApproved}
+                      </div>
+                      <div className="text-[9px] sm:text-[10px] text-gray-600">Onaylanan</div>
+                    </div>
+                    <div className="p-2 sm:p-3 bg-purple-50 rounded-lg">
+                      <div className="text-lg sm:text-xl font-bold text-purple-700">
+                        {counselorPerformance.summary.totalReported}
+                      </div>
+                      <div className="text-[9px] sm:text-[10px] text-gray-600">Bildirilen</div>
+                    </div>
+                  </div>
+
+                  {/* Dersler */}
+                  <div>
+                    <h4 className="font-medium text-sm mb-2">İşlem Yapılan Dersler</h4>
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {counselorPerformance.subjects.map((subject) => (
+                        <div key={subject.subjectId} className="p-2 sm:p-3 border rounded-lg bg-gray-50">
+                          <div className="font-medium text-xs sm:text-sm mb-1">
+                            {subject.subjectName} - {subject.grade}. Sınıf
+                            {subject.section && ` - ${subject.section}`}
+                          </div>
+                          <div className="flex gap-2 sm:gap-3 text-[10px] sm:text-xs text-gray-600">
+                            <span className="text-blue-600">✎ {subject.markedCount}</span>
+                            <span className="text-green-600">✓ {subject.approvedCount}</span>
+                            <span className="text-purple-600">📝 {subject.reportedCount}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Son Aktiviteler */}
+                  <div>
+                    <h4 className="font-medium text-sm mb-2">Son Aktiviteler</h4>
+                    <div className="space-y-1 max-h-48 overflow-y-auto">
+                      {counselorPerformance.recentActivities.map((activity, idx) => (
+                        <div key={idx} className="text-xs p-2 bg-gray-50 rounded">
+                          <span className={`font-medium ${
+                            activity.type === "marked" ? "text-blue-600" :
+                            activity.type === "approved" ? "text-green-600" : "text-purple-600"
+                          }`}>
+                            {activity.type === "marked" ? "✎ İşaretledi" :
+                             activity.type === "approved" ? "✓ Onayladı" : "📝 Bildirdi"}
+                          </span>
+                          {" - "}
+                          <span className="text-gray-700">{activity.topic}</span>
+                          <div className="text-gray-500 text-[10px] mt-0.5">
+                            {activity.subject} - {activity.grade}. Sınıf
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      <ToastContainer toasts={toasts} onClose={removeToast} />
     </div>
   )
 }
