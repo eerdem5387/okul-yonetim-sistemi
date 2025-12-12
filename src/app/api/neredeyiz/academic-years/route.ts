@@ -24,7 +24,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, startDate, endDate, isActive } = body
+    const { name, startDate, endDate, isActive, weekendDays } = body
 
     if (!name || !startDate || !endDate) {
       return NextResponse.json(
@@ -51,6 +51,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // weekendDays validasyonu
+    const validWeekendDays = weekendDays?.filter(
+      (day: string) => day === "SATURDAY" || day === "SUNDAY"
+    ) || []
+
     // Eğer aktif yapılıyorsa, diğer aktif yılları pasif yap
     if (isActive) {
       await prisma.academicYear.updateMany({
@@ -65,6 +70,7 @@ export async function POST(request: NextRequest) {
         startDate: start,
         endDate: end,
         isActive: isActive || false,
+        weekendDays: validWeekendDays,
       },
     })
 

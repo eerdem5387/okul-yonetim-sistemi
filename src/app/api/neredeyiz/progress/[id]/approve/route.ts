@@ -1,6 +1,35 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
+// Bildirim helper
+async function createNotificationServer(params: {
+  type: string
+  title: string
+  message: string
+  targetRole?: string | null
+  targetUserId?: string | null
+  priority?: string
+  relatedSubjectId?: string | null
+  relatedTopicId?: string | null
+}) {
+  try {
+    await prisma.notification.create({
+      data: {
+        type: params.type,
+        title: params.title,
+        message: params.message,
+        targetRole: params.targetRole as any,
+        targetUserId: params.targetUserId || null,
+        priority: params.priority as any || "NORMAL",
+        relatedSubjectId: params.relatedSubjectId || null,
+        relatedTopicId: params.relatedTopicId || null,
+      },
+    })
+  } catch (error) {
+    console.error("Error creating notification:", error)
+  }
+}
+
 // POST - Progress kaydını onayla
 export async function POST(
   request: NextRequest,
@@ -50,13 +79,38 @@ export async function POST(
           include: {
             unit: {
               include: {
-                subject: true,
+                subject: {
+                  include: {
+                    assignments: {
+                      include: {
+                        staff: true,
+                      },
+                    },
+                  },
+                },
               },
             },
           },
         },
       },
     })
+
+    // BİLDİRİM: Öğretmene konu onaylandı
+    const subject = updatedProgress.topic.unit.subject
+    const teachers = subject.assignments.map((a) => a.staff)
+
+    for (const teacher of teachers) {
+      await createNotificationServer({
+        type: "TAMAMLANDI",
+        title: "Konu Onaylandı ✅",
+        message: `${subject.grade}${subject.section ? `/${subject.section}` : ""}. sınıf ${subject.name} - ${updatedProgress.topic.name} konusu onaylandı. Tebrikler!`,
+        targetRole: "OGRETMEN",
+        targetUserId: teacher.id,
+        priority: "NORMAL",
+        relatedTopicId: updatedProgress.topicId,
+        relatedSubjectId: subject.id,
+      })
+    }
 
     return NextResponse.json(updatedProgress)
   } catch (error) {

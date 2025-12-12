@@ -353,13 +353,14 @@ enum ProgressStatus {
 
 // Akademik Yıl
 model AcademicYear {
-  id        String   @id @default(cuid())
-  name      String // Örn: "2024-2025 Eğitim Öğretim Yılı"
-  startDate DateTime // Başlangıç tarihi
-  endDate   DateTime // Bitiş tarihi
-  isActive  Boolean  @default(false) // Aktif akademik yıl
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  name        String // Örn: "2024-2025 Eğitim Öğretim Yılı"
+  startDate   DateTime // Başlangıç tarihi
+  endDate     DateTime // Bitiş tarihi
+  isActive    Boolean  @default(false) // Aktif akademik yıl
+  weekendDays String[] @default([]) // Hafta tatili günleri: ["SATURDAY", "SUNDAY"]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   // Relations
   subjects    Subject[]
@@ -369,6 +370,52 @@ model AcademicYear {
   @@index([isActive])
   @@index([startDate, endDate])
   @@map("academic_years")
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  type        NotificationType
+  title       String
+  message     String
+  targetRole  StaffDepartment? // OGRETMEN, REHBERLIK, OGRENCI_ISLERI, null = herkese
+  targetUserId String? // Belirli bir kullanıcıya özel (örn: öğretmen)
+  isRead      Boolean          @default(false)
+  priority    NotificationPriority @default(NORMAL)
+  
+  // İlişkili kayıtlar (opsiyonel)
+  relatedSubjectId String?
+  relatedTopicId   String?
+  relatedUnitId    String?
+  relatedStaffId   String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([targetRole, isRead])
+  @@index([targetUserId, isRead])
+  @@index([createdAt])
+  @@index([type])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  ONAY_BEKLIYOR        // Konu tamamlama onayı bekliyor
+  TAMAMLANDI           // Konu tamamlandı ve onaylandı
+  GECIKMELI            // Konu gecikmeye girdi
+  YAKLASAN_DEADLINE    // Yaklaşan bitiş tarihi
+  AKSAMA_OLUSTURULDU   // Yeni aksama eklendi
+  OGRETMEN_ATANDI      // Öğretmen derse atandı
+  UNITE_TAMAMLANDI     // Ünite tamamlandı
+  ERKEN_TAMAMLANDI     // Konu erken tamamlandı
+  HAFTALIK_OZET        // Haftalık özet bildirimi
+  KRITIK_GECIKME       // 5+ gün gecikme
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  CRITICAL
 }
 
 // Ders

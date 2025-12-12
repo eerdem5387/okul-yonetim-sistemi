@@ -2,6 +2,35 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { ProgressStatus } from "@prisma/client"
 
+// Bildirim helper fonksiyonları (server-side)
+async function createNotificationServer(params: {
+  type: string
+  title: string
+  message: string
+  targetRole?: string | null
+  targetUserId?: string | null
+  priority?: string
+  relatedSubjectId?: string | null
+  relatedTopicId?: string | null
+}) {
+  try {
+    await prisma.notification.create({
+      data: {
+        type: params.type,
+        title: params.title,
+        message: params.message,
+        targetRole: params.targetRole as any,
+        targetUserId: params.targetUserId || null,
+        priority: params.priority as any || "NORMAL",
+        relatedSubjectId: params.relatedSubjectId || null,
+        relatedTopicId: params.relatedTopicId || null,
+      },
+    })
+  } catch (error) {
+    console.error("Error creating notification:", error)
+  }
+}
+
 // GET - Tüm ilerleme kayıtlarını listele
 export async function GET(request: NextRequest) {
   try {
@@ -148,6 +177,30 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Topic bilgisini çek (bildirim için)
+    const topic = await prisma.topic.findUnique({
+      where: { id: topicId },
+      include: {
+        unit: {
+          include: {
+            subject: {
+              include: {
+                assignments: {
+                  include: {
+                    staff: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    })
+
+    if (!topic) {
+      return NextResponse.json({ error: "Konu bulunamadı" }, { status: 404 })
+    }
+
     // Mevcut progress kaydını kontrol et
     const existingProgress = await prisma.progress.findFirst({
       where: { topicId },
@@ -185,6 +238,27 @@ export async function POST(request: NextRequest) {
           markedBy: markedBy || null,
           markedAt: markedBy ? new Date() : null,
         },
+      })
+    }
+
+    // BİLDİRİM OLUŞTUR
+    const subject = topic.unit.subject
+    const teacherStaff = markedBy ? await prisma.staff.findUnique({ where: { id: markedBy } }) : null
+
+    // Onay bekliyor bildirimi (Rehberlik için)
+    if (status === "PENDING_APPROVAL") {
+      const teacherName = teacherStaff
+        ? `${teacherStaff.firstName} ${teacherStaff.lastName}`
+        : "Bir öğretmen"
+
+      await createNotificationServer({
+        type: "ONAY_BEKLIYOR",
+        title: "Onay Bekleyen Konu",
+        message: `${teacherName}, ${subject.grade}${subject.section ? `/${subject.section}` : ""}. sınıf ${subject.name} - ${topic.name} konusunu tamamlandı olarak bildirdi.`,
+        targetRole: "REHBERLIK",
+        priority: "HIGH",
+        relatedTopicId: topicId,
+        relatedSubjectId: subject.id,
       })
     }
 

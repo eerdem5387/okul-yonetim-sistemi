@@ -28,6 +28,7 @@ interface AcademicYear {
   startDate: string
   endDate: string
   isActive: boolean
+  weekendDays: string[]
 }
 
 interface Subject {
@@ -66,6 +67,7 @@ export default function YonetimPage() {
     startDate: "",
     endDate: "",
     isActive: false,
+    weekendDays: [] as string[],
   })
 
   interface HolidayFormData {
@@ -213,6 +215,7 @@ export default function YonetimPage() {
           startDate: "",
           endDate: "",
           isActive: false,
+          weekendDays: [],
         })
         setHolidays([])
       } else {
@@ -557,6 +560,7 @@ export default function YonetimPage() {
                     startDate: "",
                     endDate: "",
                     isActive: false,
+                    weekendDays: [],
                   })
                 }}
                 className="text-xs sm:text-sm"
@@ -611,6 +615,7 @@ export default function YonetimPage() {
                             startDate: year.startDate.split("T")[0],
                             endDate: year.endDate.split("T")[0],
                             isActive: year.isActive,
+                            weekendDays: year.weekendDays || [],
                           })
                           // Mevcut tatilleri yükle
                           try {
@@ -841,6 +846,7 @@ export default function YonetimPage() {
                       startDate: "",
                       endDate: "",
                       isActive: false,
+                      weekendDays: [],
                     })
                     setHolidays([])
                   }}
@@ -911,6 +917,66 @@ export default function YonetimPage() {
                   <Label htmlFor="isActive" className="text-xs sm:text-sm cursor-pointer">
                     Aktif Akademik Yıl Olarak İşaretle
                   </Label>
+                </div>
+
+                {/* Hafta Tatili Ayarları */}
+                <div className="pt-4 border-t border-gray-200">
+                  <Label className="text-sm sm:text-base font-semibold text-gray-900 mb-3 block">
+                    🗓️ Hafta Tatili Günleri
+                  </Label>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Okulunuzda hafta tatili olan günleri seçin. Bu günler planlamadan otomatik olarak çıkarılacaktır.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="saturday"
+                        checked={yearFormData.weekendDays.includes("SATURDAY")}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setYearFormData({
+                              ...yearFormData,
+                              weekendDays: [...yearFormData.weekendDays, "SATURDAY"],
+                            })
+                          } else {
+                            setYearFormData({
+                              ...yearFormData,
+                              weekendDays: yearFormData.weekendDays.filter((d) => d !== "SATURDAY"),
+                            })
+                          }
+                        }}
+                        className="h-4 w-4"
+                      />
+                      <Label htmlFor="saturday" className="text-xs sm:text-sm cursor-pointer">
+                        Cumartesi
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="sunday"
+                        checked={yearFormData.weekendDays.includes("SUNDAY")}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setYearFormData({
+                              ...yearFormData,
+                              weekendDays: [...yearFormData.weekendDays, "SUNDAY"],
+                            })
+                          } else {
+                            setYearFormData({
+                              ...yearFormData,
+                              weekendDays: yearFormData.weekendDays.filter((d) => d !== "SUNDAY"),
+                            })
+                          }
+                        }}
+                        className="h-4 w-4"
+                      />
+                      <Label htmlFor="sunday" className="text-xs sm:text-sm cursor-pointer">
+                        Pazar
+                      </Label>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Resmi Tatiller Bölümü */}
@@ -1078,6 +1144,7 @@ export default function YonetimPage() {
                         startDate: "",
                         endDate: "",
                         isActive: false,
+                        weekendDays: [],
                       })
                     }}
                     className="flex-1 sm:flex-initial text-xs sm:text-sm"

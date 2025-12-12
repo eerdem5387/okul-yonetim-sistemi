@@ -56,7 +56,7 @@ export async function PUT(
   try {
     const params = await context.params
     const body = await request.json()
-    const { name, startDate, endDate, isActive } = body
+    const { name, startDate, endDate, isActive, weekendDays } = body
 
     if (!name || !startDate || !endDate) {
       return NextResponse.json(
@@ -64,6 +64,11 @@ export async function PUT(
         { status: 400 }
       )
     }
+
+    // weekendDays validasyonu
+    const validWeekendDays = weekendDays?.filter(
+      (day: string) => day === "SATURDAY" || day === "SUNDAY"
+    ) || []
 
     // Eğer aktif yapılıyorsa, diğer aktif yılları pasif yap
     if (isActive) {
@@ -80,6 +85,7 @@ export async function PUT(
         startDate: new Date(startDate),
         endDate: new Date(endDate),
         isActive: isActive !== undefined ? isActive : false,
+        weekendDays: validWeekendDays,
       },
     })
 
