@@ -15,12 +15,12 @@ async function createNotificationServer(params: {
   try {
     await prisma.notification.create({
       data: {
-        type: params.type,
+        type: params.type as "ONAY_BEKLIYOR" | "TAMAMLANDI" | "GECIKMELI" | "YAKLASAN_DEADLINE" | "AKSAMA_OLUSTURULDU" | "OGRETMEN_ATANDI" | "UNITE_TAMAMLANDI" | "ERKEN_TAMAMLANDI" | "HAFTALIK_OZET" | "KRITIK_GECIKME",
         title: params.title,
         message: params.message,
-        targetRole: params.targetRole as any,
+        targetRole: params.targetRole ? (params.targetRole as "OGRETMEN" | "REHBERLIK" | "OGRENCI_ISLERI") : null,
         targetUserId: params.targetUserId || null,
-        priority: params.priority as any || "NORMAL",
+        priority: (params.priority as "LOW" | "NORMAL" | "HIGH" | "CRITICAL") || "NORMAL",
         relatedSubjectId: params.relatedSubjectId || null,
         relatedTopicId: params.relatedTopicId || null,
       },

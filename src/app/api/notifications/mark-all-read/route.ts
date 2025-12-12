@@ -7,6 +7,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { targetRole, targetUserId } = body
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = { isRead: false }
 
     if (targetRole) {

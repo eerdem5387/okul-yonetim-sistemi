@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get("type")
     const limit = searchParams.get("limit") ? parseInt(searchParams.get("limit")!) : 50
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {}
 
     // Rol bazlı filtreleme
