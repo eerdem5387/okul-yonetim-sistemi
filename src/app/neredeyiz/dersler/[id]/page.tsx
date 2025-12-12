@@ -91,6 +91,7 @@ export default function DersDetayPage() {
   }>>([])
   const [loadingTeachers, setLoadingTeachers] = useState(false)
   const [assigningTeacher, setAssigningTeacher] = useState(false)
+  const [teacherSearchTerm, setTeacherSearchTerm] = useState("")
 
   const [unitFormData, setUnitFormData] = useState({
     name: "",
@@ -1119,7 +1120,10 @@ export default function DersDetayPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setShowTeacherForm(false)}
+                  onClick={() => {
+                    setShowTeacherForm(false)
+                    setTeacherSearchTerm("")
+                  }}
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -1141,61 +1145,85 @@ export default function DersDetayPage() {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-                  {availableTeachers
-                    .filter((teacher) => {
-                      // Zaten atanmış öğretmenleri filtrele
-                      return !subject?.assignments?.some(
-                        (a) => a.staff.id === teacher.id
-                      )
-                    })
-                    .map((teacher) => (
-                      <div
-                        key={teacher.id}
-                        className="flex items-center justify-between p-3 sm:p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                      >
-                        <div className="flex-1">
-                          <div className="font-medium text-sm sm:text-base text-gray-900">
-                            {teacher.firstName} {teacher.lastName}
-                          </div>
-                          {teacher.subject && (
-                            <div className="text-xs sm:text-sm text-gray-600 mt-1">
-                              Branş: {teacher.subject}
-                            </div>
-                          )}
-                        </div>
-                        <Button
-                          size="sm"
-                          onClick={() => handleAssignTeacher(teacher.id)}
-                          disabled={assigningTeacher}
-                          className="text-xs sm:text-sm"
-                        >
-                          {assigningTeacher ? (
-                            <>
-                              <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin" />
-                              Atanıyor...
-                            </>
-                          ) : (
-                            <>
-                              <UserPlus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                              Ata
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    ))}
-                  {availableTeachers.filter((teacher) => {
-                    return !subject?.assignments?.some(
-                      (a) => a.staff.id === teacher.id
-                    )
-                  }).length === 0 && (
-                    <div className="text-center py-8">
-                      <p className="text-gray-500 text-sm">
-                        Tüm öğretmenler zaten bu derse atanmış
-                      </p>
+                <>
+                  {/* Arama Input */}
+                  <div className="mb-4">
+                    <div className="relative">
+                      <Input
+                        placeholder="Öğretmen ara..."
+                        value={teacherSearchTerm}
+                        onChange={(e) => setTeacherSearchTerm(e.target.value)}
+                        className="h-9 sm:h-10 text-xs sm:text-sm pl-9"
+                      />
+                      <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     </div>
-                  )}
-                </div>
+                  </div>
+                  <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+                    {(() => {
+                      const filteredTeachers = availableTeachers.filter((teacher) => {
+                        // Zaten atanmış öğretmenleri filtrele
+                        const isNotAssigned = !subject?.assignments?.some(
+                          (a) => a.staff.id === teacher.id
+                        )
+                        // Arama terimine göre filtrele
+                        if (!isNotAssigned) return false
+                        if (!teacherSearchTerm.trim()) return true
+                        const searchLower = teacherSearchTerm.toLowerCase().trim()
+                        const fullName = `${teacher.firstName} ${teacher.lastName}`.toLowerCase()
+                        const subjectName = teacher.subject?.toLowerCase() || ""
+                        return fullName.includes(searchLower) || subjectName.includes(searchLower)
+                      })
+
+                      if (filteredTeachers.length === 0) {
+                        return (
+                          <div className="text-center py-8">
+                            <p className="text-gray-500 text-sm">
+                              {teacherSearchTerm.trim()
+                                ? "Arama kriterlerine uygun öğretmen bulunamadı"
+                                : "Tüm öğretmenler zaten bu derse atanmış"}
+                            </p>
+                          </div>
+                        )
+                      }
+
+                      return filteredTeachers.map((teacher) => (
+                        <div
+                          key={teacher.id}
+                          className="flex items-center justify-between p-3 sm:p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                          <div className="flex-1">
+                            <div className="font-medium text-sm sm:text-base text-gray-900">
+                              {teacher.firstName} {teacher.lastName}
+                            </div>
+                            {teacher.subject && (
+                              <div className="text-xs sm:text-sm text-gray-600 mt-1">
+                                Branş: {teacher.subject}
+                              </div>
+                            )}
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => handleAssignTeacher(teacher.id)}
+                            disabled={assigningTeacher}
+                            className="text-xs sm:text-sm"
+                          >
+                            {assigningTeacher ? (
+                              <>
+                                <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin" />
+                                Atanıyor...
+                              </>
+                            ) : (
+                              <>
+                                <UserPlus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                                Ata
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      ))
+                    })()}
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>

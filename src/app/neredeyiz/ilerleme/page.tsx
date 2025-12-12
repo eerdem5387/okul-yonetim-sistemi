@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ToastContainer, useToast } from "@/components/ui/toast"
@@ -41,6 +42,8 @@ interface Subject {
 }
 
 export default function IlerlemePage() {
+  const searchParams = useSearchParams()
+  const statusFilter = searchParams.get("status") || ""
   const { toasts, error, removeToast } = useToast()
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
@@ -220,14 +223,36 @@ export default function IlerlemePage() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {subjects.map((subject) => {
-            const allTopics = (subject.units || []).flatMap((u) => u.topics || [])
-            const completedTopics = allTopics.filter((t) => t.progress?.[0]?.status === "TAMAMLANDI").length
-            const totalTopics = allTopics.length
-            const completionRate = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0
+          {subjects
+            .map((subject) => {
+              const allTopics = (subject.units || []).flatMap((u) => u.topics || [])
+              const completedTopics = allTopics.filter((t) => t.progress?.[0]?.status === "TAMAMLANDI").length
+              const inProgressTopics = allTopics.filter((t) => t.progress?.[0]?.status === "DEVAM_EDIYOR").length
+              const delayedTopics = allTopics.filter((t) => {
+                const progress = t.progress?.[0]
+                if (!progress || progress.status === "TAMAMLANDI") return false
+                if (!t.plannedEndDate) return false
+                const now = new Date()
+                now.setHours(0, 0, 0, 0)
+                const plannedEnd = new Date(t.plannedEndDate)
+                plannedEnd.setHours(0, 0, 0, 0)
+                return now > plannedEnd
+              }).length
+              const totalTopics = allTopics.length
+              const completionRate = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0
 
-            return (
-              <Link key={subject.id} href={`/neredeyiz/ilerleme/${subject.id}`}>
+              // Status filtresine göre filtrele
+              if (statusFilter) {
+                if (statusFilter === "TAMAMLANDI" && completedTopics === 0) return null
+                if (statusFilter === "DEVAM_EDIYOR" && inProgressTopics === 0) return null
+                if (statusFilter === "GECIKMELI" && delayedTopics === 0) return null
+              }
+
+              return { subject, completedTopics, inProgressTopics, delayedTopics, totalTopics, completionRate }
+            })
+            .filter((item): item is NonNullable<typeof item> => item !== null)
+            .map(({ subject, completedTopics, totalTopics, completionRate }) => (
+              <Link key={subject.id} href={`/neredeyiz/ilerleme/${subject.id}${statusFilter ? `?status=${statusFilter}` : ""}`}>
                 <Card className="cursor-pointer transition-all duration-200 hover:shadow-lg h-full">
                   <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
                     <div className="flex items-center justify-between">
@@ -265,8 +290,7 @@ export default function IlerlemePage() {
                   </CardContent>
                 </Card>
               </Link>
-            )
-          })}
+            ))}
         </div>
       )}
     </div>

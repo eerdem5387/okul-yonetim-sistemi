@@ -385,7 +385,8 @@ export default function NeredeyizPage() {
       ) : stats ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {/* Tamamlanma Oranı */}
-          <Card className="relative overflow-hidden border-2 border-blue-200 hover:border-blue-400 transition-all duration-200 hover:shadow-xl">
+          <Link href="/neredeyiz/ilerleme">
+            <Card className="relative overflow-hidden border-2 border-blue-200 hover:border-blue-400 transition-all duration-200 hover:shadow-xl cursor-pointer">
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-100 rounded-full -mr-16 -mt-16 opacity-50" />
             <CardHeader className="pb-2 px-4 sm:px-6 pt-4 sm:pt-6 relative z-10">
               <div className="flex items-center justify-between mb-2">
@@ -413,9 +414,11 @@ export default function NeredeyizPage() {
               </div>
             </CardContent>
           </Card>
+          </Link>
 
           {/* Tamamlanan */}
-          <Card className="relative overflow-hidden border-2 border-green-200 hover:border-green-400 transition-all duration-200 hover:shadow-xl">
+          <Link href="/neredeyiz/ilerleme?status=TAMAMLANDI">
+            <Card className="relative overflow-hidden border-2 border-green-200 hover:border-green-400 transition-all duration-200 hover:shadow-xl cursor-pointer">
             <div className="absolute top-0 right-0 w-32 h-32 bg-green-100 rounded-full -mr-16 -mt-16 opacity-50" />
             <CardHeader className="pb-2 px-4 sm:px-6 pt-4 sm:pt-6 relative z-10">
               <div className="flex items-center justify-between mb-2">
@@ -444,9 +447,11 @@ export default function NeredeyizPage() {
               </div>
             </CardContent>
           </Card>
+          </Link>
 
           {/* Devam Ediyor */}
-          <Card className="relative overflow-hidden border-2 border-yellow-200 hover:border-yellow-400 transition-all duration-200 hover:shadow-xl">
+          <Link href="/neredeyiz/ilerleme?status=DEVAM_EDIYOR">
+            <Card className="relative overflow-hidden border-2 border-yellow-200 hover:border-yellow-400 transition-all duration-200 hover:shadow-xl cursor-pointer">
             <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-100 rounded-full -mr-16 -mt-16 opacity-50" />
             <CardHeader className="pb-2 px-4 sm:px-6 pt-4 sm:pt-6 relative z-10">
               <div className="flex items-center justify-between mb-2">
@@ -475,9 +480,11 @@ export default function NeredeyizPage() {
               </div>
             </CardContent>
           </Card>
+          </Link>
 
           {/* Gecikmeli */}
-          <Card className="relative overflow-hidden border-2 border-red-200 hover:border-red-400 transition-all duration-200 hover:shadow-xl">
+          <Link href="/neredeyiz/ilerleme?status=GECIKMELI">
+            <Card className="relative overflow-hidden border-2 border-red-200 hover:border-red-400 transition-all duration-200 hover:shadow-xl cursor-pointer">
             <div className="absolute top-0 right-0 w-32 h-32 bg-red-100 rounded-full -mr-16 -mt-16 opacity-50" />
             <CardHeader className="pb-2 px-4 sm:px-6 pt-4 sm:pt-6 relative z-10">
               <div className="flex items-center justify-between mb-2">
@@ -506,205 +513,10 @@ export default function NeredeyizPage() {
               </div>
             </CardContent>
           </Card>
+          </Link>
         </div>
       ) : null}
 
-      {/* Ders Bazında İlerleme */}
-      {reportsLoading ? (
-        <Card>
-          <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
-            <Skeleton className="h-6 w-48" />
-          </CardHeader>
-          <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
-            <div className="space-y-3 sm:space-y-4">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-20 w-full rounded-lg" />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      ) : progressReport && progressReport.subjects.length > 0 ? (
-        <>
-      {/* Ders Bazında İlerleme */}
-        <Card>
-          <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
-            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
-              Ders Bazında İlerleme Durumu
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
-            <div className="space-y-3 sm:space-y-4">
-              {progressReport.subjects.map((subject, index) => {
-                const plannedCount = subject.plannedTopics || 0
-                const completionRate = subject.totalTopics > 0 
-                  ? Math.round((subject.completedTopics / subject.totalTopics) * 100) 
-                  : 0
-
-                return (
-                  <div
-                    key={index}
-                    className="border-l-4 border-l-blue-500 pl-4 sm:pl-6 py-4 bg-gradient-to-r from-gray-50 to-white rounded-r-lg transition-all duration-200 hover:shadow-lg hover:scale-[1.01]"
-                  >
-                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                            <BookOpen className="h-5 w-5 text-blue-600" />
-                          </div>
-                          <h3 className="font-bold text-base sm:text-lg text-gray-900 truncate">
-                            {subject.subjectName}
-                          </h3>
-                        </div>
-                        
-                        {/* Detaylı İstatistikler */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
-                          <div className="bg-white rounded-lg p-2 sm:p-3 border border-gray-200">
-                            <div className="text-xs text-gray-500 mb-1">Toplam</div>
-                            <div className="text-lg sm:text-xl font-bold text-gray-900">
-                              {subject.totalTopics}
-                            </div>
-                            <div className="text-[10px] text-gray-400">konu</div>
-                          </div>
-                          <div className="bg-green-50 rounded-lg p-2 sm:p-3 border border-green-200">
-                            <div className="flex items-center gap-1 text-xs text-green-700 mb-1">
-                              <CheckCircle2 className="h-3 w-3" />
-                              Tamamlandı
-                            </div>
-                            <div className="text-lg sm:text-xl font-bold text-green-600">
-                              {subject.completedTopics}
-                            </div>
-                            <div className="text-[10px] text-green-600">
-                              {subject.totalTopics > 0 
-                                ? `${Math.round((subject.completedTopics / subject.totalTopics) * 100)}%`
-                                : "0%"}
-                            </div>
-                          </div>
-                          <div className="bg-yellow-50 rounded-lg p-2 sm:p-3 border border-yellow-200">
-                            <div className="flex items-center gap-1 text-xs text-yellow-700 mb-1">
-                              <Clock className="h-3 w-3" />
-                              Devam Ediyor
-                            </div>
-                            <div className="text-lg sm:text-xl font-bold text-yellow-600">
-                              {subject.inProgressTopics}
-                            </div>
-                            <div className="text-[10px] text-yellow-600">
-                              {subject.totalTopics > 0 
-                                ? `${Math.round((subject.inProgressTopics / subject.totalTopics) * 100)}%`
-                                : "0%"}
-                            </div>
-                          </div>
-                          {subject.delayedTopics > 0 ? (
-                            <div className="bg-red-50 rounded-lg p-2 sm:p-3 border border-red-200">
-                              <div className="flex items-center gap-1 text-xs text-red-700 mb-1">
-                                <AlertTriangle className="h-3 w-3" />
-                                Gecikmeli
-                              </div>
-                              <div className="text-lg sm:text-xl font-bold text-red-600">
-                                {subject.delayedTopics}
-                              </div>
-                              <div className="text-[10px] text-red-600">
-                                {subject.totalTopics > 0 
-                                  ? `${Math.round((subject.delayedTopics / subject.totalTopics) * 100)}%`
-                                  : "0%"}
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="bg-gray-50 rounded-lg p-2 sm:p-3 border border-gray-200">
-                              <div className="text-xs text-gray-500 mb-1">Planlandı</div>
-                              <div className="text-lg sm:text-xl font-bold text-gray-600">
-                                {plannedCount}
-                              </div>
-                              <div className="text-[10px] text-gray-500">bekliyor</div>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Progress Bar */}
-                        <div className="mt-3">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-xs sm:text-sm font-medium text-gray-700">
-                              Genel İlerleme
-                            </span>
-                            <span className="text-xs sm:text-sm font-bold text-blue-600">
-                              %{completionRate}
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                            <div
-                              className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500 flex items-center justify-end pr-2"
-                              style={{ width: `${completionRate}%` }}
-                            >
-                              {completionRate > 10 && (
-                                <span className="text-[8px] text-white font-medium">
-                                  %{completionRate}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Circular Progress */}
-                      <div className="flex-shrink-0 flex justify-center lg:justify-end">
-                        <div className="relative w-24 h-24 sm:w-28 sm:h-28">
-                          <svg className="w-full h-full transform -rotate-90">
-                            <circle
-                              cx="50%"
-                              cy="50%"
-                              r="42%"
-                              stroke="currentColor"
-                              strokeWidth="6"
-                              fill="none"
-                              className="text-gray-200"
-                            />
-                            <circle
-                              cx="50%"
-                              cy="50%"
-                              r="42%"
-                              stroke="currentColor"
-                              strokeWidth="6"
-                              fill="none"
-                              strokeDasharray={`${(completionRate / 100) * 264} 264`}
-                              className={`transition-all duration-500 ${
-                                completionRate === 100
-                                  ? "text-green-500"
-                                  : completionRate >= 75
-                                  ? "text-blue-500"
-                                  : completionRate >= 50
-                                  ? "text-yellow-500"
-                                  : "text-orange-500"
-                              }`}
-                              strokeLinecap="round"
-                            />
-                          </svg>
-                          <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <div className={`text-xl sm:text-2xl font-bold ${
-                              completionRate === 100
-                                ? "text-green-600"
-                                : completionRate >= 75
-                                ? "text-blue-600"
-                                : completionRate >= 50
-                                ? "text-yellow-600"
-                                : "text-orange-600"
-                            }`}>
-                              %{completionRate}
-                            </div>
-                            <div className="text-[8px] sm:text-[10px] text-gray-500">
-                              Tamamlanma
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </CardContent>
-        </Card>
-        </>
-      ) : null}
 
       {/* Aksama Analizi */}
       {reportsLoading ? (
