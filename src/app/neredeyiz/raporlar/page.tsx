@@ -18,6 +18,7 @@ import {
   Target,
   BookOpen,
 } from "lucide-react"
+import GanttChart from "@/components/neredeyiz/gantt-chart"
 
 interface AcademicYear {
   id: string
@@ -99,12 +100,27 @@ interface DisruptionReport {
 
 export default function RaporlarPage() {
   const { toasts, error, removeToast } = useToast()
-  const [academicYears, setAcademicYears] = useState<AcademicYear[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [activeYearId, setActiveYearId] = useState<string>("")
   const [progressReport, setProgressReport] = useState<ProgressReport | null>(null)
   const [delayedTopicsReport, setDelayedTopicsReport] = useState<DelayedTopicsReport | null>(null)
   const [disruptionReport, setDisruptionReport] = useState<DisruptionReport | null>(null)
+  const [ganttTopics, setGanttTopics] = useState<Array<{
+    id: string
+    name: string
+    plannedStartDate: string | null
+    plannedEndDate: string | null
+    status: "PLANLANDI" | "DEVAM_EDIYOR" | "TAMAMLANDI" | "GECIKMELI" | "GECIKMELI_TAMAMLANDI"
+    delayDays: number
+    subject: {
+      name: string
+      grade: number
+      section: string | null
+    }
+    unit: {
+      name: string
+    }
+  }>>([])
   const [loading, setLoading] = useState(true)
   const [reportsLoading, setReportsLoading] = useState(false)
   
@@ -171,7 +187,6 @@ export default function RaporlarPage() {
       const response = await fetch("/api/neredeyiz/academic-years")
       if (response.ok) {
         const data = await response.json()
-        setAcademicYears(data)
         const active = data.find((year: AcademicYear) => year.isActive)
         if (active) {
           setActiveYearId(active.id)
@@ -266,6 +281,24 @@ export default function RaporlarPage() {
       if (delayedResponse.ok) {
         const delayedData = await delayedResponse.json()
         setDelayedTopicsReport(delayedData)
+      }
+
+      // Gantt verileri
+      let ganttUrl = `/api/neredeyiz/reports/gantt-topics?academicYearId=${activeYearId}`
+      if (selectedGrade) {
+        ganttUrl += `&grade=${selectedGrade}`
+      }
+      if (selectedSection) {
+        ganttUrl += `&section=${selectedSection}`
+      }
+      if (selectedSubjectId) {
+        ganttUrl += `&subjectId=${selectedSubjectId}`
+      }
+
+      const ganttResponse = await fetch(ganttUrl)
+      if (ganttResponse.ok) {
+        const ganttData = await ganttResponse.json()
+        setGanttTopics(ganttData.topics || [])
       }
 
       // Aksama raporu
@@ -813,6 +846,17 @@ export default function RaporlarPage() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Gantt Takvimi */}
+      {!reportsLoading && ganttTopics.length > 0 && (
+        <GanttChart
+          topics={ganttTopics}
+          onTopicClick={(topic) => {
+            // Konu detayı için modal veya sayfa açılabilir
+            console.log("Topic clicked:", topic)
+          }}
+        />
       )}
 
       {/* Genel İlerleme Durumu Raporu */}
