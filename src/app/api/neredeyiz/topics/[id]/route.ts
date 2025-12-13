@@ -67,7 +67,6 @@ export async function PUT(
       plannedEndDate,
       estimatedDuration,
       order,
-      hasTimeRange,
     } = body
 
     if (!name || !name.trim()) {
@@ -97,7 +96,6 @@ export async function PUT(
       plannedEndDate?: Date | null
       estimatedDuration?: number | null
       order?: number
-      hasTimeRange?: boolean
     } = {
       name: name.trim(),
     }
@@ -106,30 +104,21 @@ export async function PUT(
       updateData.description = description && description.trim() ? description.trim() : null
     }
 
-    if (hasTimeRange !== undefined) {
-      updateData.hasTimeRange = hasTimeRange
+    // Tarihleri kaydet (varsa)
+    if (plannedStartDate !== undefined) {
+      updateData.plannedStartDate = plannedStartDate ? new Date(plannedStartDate) : null
     }
 
-    // Zaman aralığı varsa tarihleri kaydet
-    if (hasTimeRange) {
-      if (plannedStartDate) {
-        updateData.plannedStartDate = new Date(plannedStartDate)
-      }
-      if (plannedEndDate) {
-        updateData.plannedEndDate = new Date(plannedEndDate)
-      }
-    } else {
-      // Zaman aralığı yoksa tarihleri null yap
-      updateData.plannedStartDate = null
-      updateData.plannedEndDate = null
+    if (plannedEndDate !== undefined) {
+      updateData.plannedEndDate = plannedEndDate ? new Date(plannedEndDate) : null
     }
 
     if (estimatedDuration !== undefined) {
-      updateData.estimatedDuration = estimatedDuration ? parseInt(estimatedDuration, 10) : null
+      updateData.estimatedDuration = estimatedDuration ? parseInt(estimatedDuration.toString(), 10) : null
     }
 
     if (order !== undefined) {
-      updateData.order = order
+      updateData.order = parseInt(order.toString(), 10)
     }
 
     const topic = await prisma.topic.update({
