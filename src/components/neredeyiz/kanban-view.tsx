@@ -1,8 +1,10 @@
 "use client"
 
-import React, { useMemo } from "react"
+import React, { useMemo, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { BookOpen, Calendar, Clock, CheckCircle2, AlertTriangle } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { BookOpen, Calendar, Clock, CheckCircle2, AlertTriangle, Filter, X } from "lucide-react"
 
 interface KanbanTopic {
   id: string
@@ -41,6 +43,38 @@ interface KanbanViewProps {
 }
 
 export default function KanbanView({ topics, onTopicClick }: KanbanViewProps) {
+  const [searchQuery, setSearchQuery] = useState("")
+  const [selectedGrade, setSelectedGrade] = useState<string>("")
+  const [selectedSubject, setSelectedSubject] = useState<string>("")
+  const [showFilters, setShowFilters] = useState(false)
+
+  // Filtreleme
+  const filteredTopics = useMemo(() => {
+    return topics.filter((topic) => {
+      const matchesSearch = searchQuery === "" || 
+        topic.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        topic.subject.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        topic.unit.name.toLowerCase().includes(searchQuery.toLowerCase())
+      
+      const matchesGrade = selectedGrade === "" || 
+        topic.subject.grade.toString() === selectedGrade
+      
+      const matchesSubject = selectedSubject === "" ||
+        topic.subject.name === selectedSubject
+
+      return matchesSearch && matchesGrade && matchesSubject
+    })
+  }, [topics, searchQuery, selectedGrade, selectedSubject])
+
+  // Benzersiz sınıf ve ders listeleri
+  const uniqueGrades = useMemo(() => {
+    return Array.from(new Set(topics.map(t => t.subject.grade))).sort((a, b) => a - b)
+  }, [topics])
+
+  const uniqueSubjects = useMemo(() => {
+    return Array.from(new Set(topics.map(t => t.subject.name))).sort()
+  }, [topics])
+
   // Konuları duruma göre grupla
   const groupedTopics = useMemo(() => {
     const groups: Record<string, KanbanTopic[]> = {
@@ -50,7 +84,7 @@ export default function KanbanView({ topics, onTopicClick }: KanbanViewProps) {
       GECIKMELI: [],
     }
 
-    topics.forEach((topic) => {
+    filteredTopics.forEach((topic) => {
       if (topic.status === "GECIKMELI_TAMAMLANDI") {
         groups.GECIKMELI.push(topic)
       } else {
@@ -59,7 +93,7 @@ export default function KanbanView({ topics, onTopicClick }: KanbanViewProps) {
     })
 
     return groups
-  }, [topics])
+  }, [filteredTopics])
 
   const columns = [
     {
@@ -110,10 +144,130 @@ export default function KanbanView({ topics, onTopicClick }: KanbanViewProps) {
   return (
     <Card>
       <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
-        <CardTitle className="text-base sm:text-lg">Kanban Görünümü</CardTitle>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <CardTitle className="text-base sm:text-lg">Kanban Görünümü</CardTitle>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+              className="text-xs sm:text-sm"
+            >
+              <Filter className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+              Filtreler
+              {(searchQuery || selectedGrade || selectedSubject) && (
+                <span className="ml-1 sm:ml-2 px-1.5 py-0.5 bg-blue-600 text-white rounded-full text-[10px] sm:text-xs">
+                  {[searchQuery, selectedGrade, selectedSubject].filter(Boolean).length}
+                </span>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {/* Filtreleme Paneli */}
+        {showFilters && (
+          <div className="mt-4 pt-4 border-t border-gray-200 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Arama */}
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                  Arama
+                </label>
+                <Input
+                  type="text"
+                  placeholder="Konu, ders, ünite ara..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-9 sm:h-10 text-xs sm:text-sm"
+                />
+              </div>
+
+              {/* Sınıf Filtresi */}
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                  Sınıf
+                </label>
+                <select
+                  value={selectedGrade}
+                  onChange={(e) => setSelectedGrade(e.target.value)}
+                  className="w-full h-9 sm:h-10 px-3 py-2 border border-gray-300 rounded-md text-xs sm:text-sm focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Tüm Sınıflar</option>
+                  {uniqueGrades.map((grade) => (
+                    <option key={grade} value={grade.toString()}>
+                      {grade}. Sınıf
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Ders Filtresi */}
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                  Ders
+                </label>
+                <select
+                  value={selectedSubject}
+                  onChange={(e) => setSelectedSubject(e.target.value)}
+                  className="w-full h-9 sm:h-10 px-3 py-2 border border-gray-300 rounded-md text-xs sm:text-sm focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Tüm Dersler</option>
+                  {uniqueSubjects.map((subject) => (
+                    <option key={subject} value={subject}>
+                      {subject}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Aktif Filtreler ve Temizle */}
+            {(searchQuery || selectedGrade || selectedSubject) && (
+              <div className="flex items-center justify-between pt-2 border-t border-gray-200">
+                <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
+                  <span className="font-medium text-gray-700">Aktif Filtreler:</span>
+                  {searchQuery && (
+                    <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
+                      Arama: {searchQuery}
+                    </span>
+                  )}
+                  {selectedGrade && (
+                    <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
+                      {selectedGrade}. Sınıf
+                    </span>
+                  )}
+                  {selectedSubject && (
+                    <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
+                      {selectedSubject}
+                    </span>
+                  )}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSearchQuery("")
+                    setSelectedGrade("")
+                    setSelectedSubject("")
+                  }}
+                  className="text-xs sm:text-sm"
+                >
+                  <X className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                  Temizle
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
       </CardHeader>
       <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {filteredTopics.length === 0 ? (
+          <div className="text-center py-12">
+            <BookOpen className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-500 text-sm">Filtrelere uygun konu bulunamadı.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {columns.map((column) => {
             const Icon = column.icon
             return (
@@ -218,6 +372,7 @@ export default function KanbanView({ topics, onTopicClick }: KanbanViewProps) {
             )
           })}
         </div>
+      )}
       </CardContent>
     </Card>
   )

@@ -156,11 +156,16 @@ export default function NeredeyizPage() {
       (sum, s) => sum + ((s as { earlyTopics?: number }).earlyTopics || 0),
       0
     )
+    const lateCompleted = progressReport.subjects.reduce(
+      (sum, s) => sum + ((s as { lateCompletedTopics?: number }).lateCompletedTopics || 0),
+      0
+    )
 
     return {
       totalPlanned,
       completed,
       early,
+      lateCompleted,
       inProgress,
       delayed,
       completionRate: summary.averageCompletion,
@@ -388,7 +393,7 @@ export default function NeredeyizPage() {
           ))}
         </div>
       ) : stats ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 sm:gap-6">
           {/* Tamamlanma Oranı */}
           <Link href="/neredeyiz/ilerleme">
             <Card className="relative overflow-hidden border-2 border-blue-200 hover:border-blue-400 transition-all duration-200 hover:shadow-xl cursor-pointer">
@@ -428,7 +433,7 @@ export default function NeredeyizPage() {
             <CardHeader className="pb-2 px-4 sm:px-6 pt-4 sm:pt-6 relative z-10">
               <div className="flex items-center justify-between mb-2">
                 <CardTitle className="text-sm sm:text-base font-semibold text-gray-700">
-                  Tamamlanan Konular
+                  Tamamlanan
                 </CardTitle>
                 <div className="h-10 w-10 rounded-lg bg-green-100 flex items-center justify-center">
                   <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -441,13 +446,13 @@ export default function NeredeyizPage() {
               </div>
               <div className="text-xs sm:text-sm text-gray-600 mb-2">
                 {stats.totalPlanned > 0
-                  ? `${Math.round((stats.completed / stats.totalPlanned) * 100)}% tamamlandı`
+                  ? `${Math.round((stats.completed / stats.totalPlanned) * 100)}% normal tamamlandı`
                   : "Henüz konu yok"}
               </div>
               <div className="flex items-center gap-2 text-xs text-gray-500">
                 <div className="flex items-center gap-1">
                   <div className="w-2 h-2 rounded-full bg-green-500" />
-                  <span>Başarıyla tamamlandı</span>
+                  <span>Zamanında tamamlandı</span>
                 </div>
               </div>
             </CardContent>
@@ -455,7 +460,8 @@ export default function NeredeyizPage() {
           </Link>
 
           {/* Erken Tamamlanan */}
-          <Card className="relative overflow-hidden border-2 border-emerald-200 hover:border-emerald-400 transition-all duration-200 hover:shadow-xl">
+          <Link href="/neredeyiz/ilerleme?status=ERKEN_TAMAMLANDI">
+            <Card className="relative overflow-hidden border-2 border-emerald-200 hover:border-emerald-400 transition-all duration-200 hover:shadow-xl cursor-pointer">
             <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-100 rounded-full -mr-16 -mt-16 opacity-50" />
             <CardHeader className="pb-2 px-4 sm:px-6 pt-4 sm:pt-6 relative z-10">
               <div className="flex items-center justify-between mb-2">
@@ -463,7 +469,7 @@ export default function NeredeyizPage() {
                   Erken Tamamlanan
                 </CardTitle>
                 <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                  <TrendingUp className="h-5 w-5 text-emerald-600" />
                 </div>
               </div>
             </CardHeader>
@@ -473,7 +479,7 @@ export default function NeredeyizPage() {
               </div>
               <div className="text-xs sm:text-sm text-gray-600 mb-2">
                 {stats.totalPlanned > 0
-                  ? `${Math.round(((stats.early || 0) / stats.totalPlanned) * 100)}% erken tamamlandı`
+                  ? `${Math.round(((stats.early || 0) / stats.totalPlanned) * 100)}% erken`
                   : "Henüz konu yok"}
               </div>
               <div className="flex items-center gap-2 text-xs text-gray-500">
@@ -484,6 +490,40 @@ export default function NeredeyizPage() {
               </div>
             </CardContent>
           </Card>
+          </Link>
+
+          {/* Geç Tamamlanan (YENİ) */}
+          <Link href="/neredeyiz/ilerleme?status=GECIKMELI_TAMAMLANDI">
+            <Card className="relative overflow-hidden border-2 border-orange-200 hover:border-orange-400 transition-all duration-200 hover:shadow-xl cursor-pointer">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-orange-100 rounded-full -mr-16 -mt-16 opacity-50" />
+            <CardHeader className="pb-2 px-4 sm:px-6 pt-4 sm:pt-6 relative z-10">
+              <div className="flex items-center justify-between mb-2">
+                <CardTitle className="text-sm sm:text-base font-semibold text-gray-700">
+                  Geç Tamamlanan
+                </CardTitle>
+                <div className="h-10 w-10 rounded-lg bg-orange-100 flex items-center justify-center">
+                  <Clock className="h-5 w-5 text-orange-600" />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6 relative z-10">
+              <div className="text-3xl sm:text-4xl font-bold text-orange-600 mb-2">
+                {stats.lateCompleted || 0}
+              </div>
+              <div className="text-xs sm:text-sm text-gray-600 mb-2">
+                {stats.totalPlanned > 0
+                  ? `${Math.round(((stats.lateCompleted || 0) / stats.totalPlanned) * 100)}% geç tamamlandı`
+                  : "Henüz konu yok"}
+              </div>
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full bg-orange-500" />
+                  <span>Gecikmeli tamamlandı</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          </Link>
 
           {/* Devam Ediyor */}
           <Link href="/neredeyiz/ilerleme?status=DEVAM_EDIYOR">

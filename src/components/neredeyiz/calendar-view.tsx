@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, X } from "lucide-react"
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths } from "date-fns"
 import { tr } from "date-fns/locale"
 
@@ -33,6 +33,8 @@ export default function CalendarView({ topics, onTopicClick }: CalendarViewProps
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [hoveredTopic, setHoveredTopic] = useState<CalendarTopic | null>(null)
   const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null)
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  const [showMoreModal, setShowMoreModal] = useState(false)
 
   const monthStart = startOfMonth(currentMonth)
   const monthEnd = endOfMonth(currentMonth)
@@ -180,9 +182,15 @@ export default function CalendarView({ topics, onTopicClick }: CalendarViewProps
                       </div>
                     ))}
                     {dayTopics.length > 3 && (
-                      <div className="text-[8px] sm:text-xs text-gray-500 px-1">
+                      <button
+                        onClick={() => {
+                          setSelectedDate(day)
+                          setShowMoreModal(true)
+                        }}
+                        className="text-[8px] sm:text-xs text-blue-600 hover:text-blue-700 font-medium px-1 hover:underline"
+                      >
                         +{dayTopics.length - 3} daha
-                      </div>
+                      </button>
                     )}
                   </div>
                 </div>
@@ -214,7 +222,65 @@ export default function CalendarView({ topics, onTopicClick }: CalendarViewProps
           </div>
         </div>
       </CardContent>
+
+      {/* "+X daha" Modal */}
+      {showMoreModal && selectedDate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-3 sm:p-4">
+          <Card className="w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+            <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6 border-b border-gray-200 flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base sm:text-lg">
+                  {format(selectedDate, "d MMMM yyyy", { locale: tr })} - Tüm Konular
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowMoreModal(false)
+                    setSelectedDate(null)
+                  }}
+                  className="h-8 w-8 p-0"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6 overflow-y-auto flex-1">
+              <div className="space-y-2">
+                {(() => {
+                  const dateKey = format(selectedDate, "yyyy-MM-dd")
+                  const dayTopics = topicsByDate[dateKey] || []
+                  return dayTopics.map((topic) => (
+                    <div
+                      key={topic.id}
+                      onClick={() => {
+                        onTopicClick?.(topic)
+                        setShowMoreModal(false)
+                        setSelectedDate(null)
+                      }}
+                      className={`${getStatusColor(topic.status)} text-white p-3 rounded-lg cursor-pointer hover:opacity-90 transition-opacity`}
+                    >
+                      <div className="font-semibold text-sm sm:text-base mb-1">{topic.name}</div>
+                      <div className="text-xs sm:text-sm opacity-90">
+                        {topic.subject.name} - {topic.subject.grade}. Sınıf
+                        {topic.subject.section && ` - ${topic.subject.section}`}
+                      </div>
+                      <div className="text-xs sm:text-sm opacity-80 mt-1">
+                        Ünite: {topic.unit.name}
+                      </div>
+                      {topic.delayDays && topic.delayDays > 0 && (
+                        <div className="text-xs sm:text-sm opacity-90 mt-1">
+                          ⚠️ {topic.delayDays} gün gecikme
+                        </div>
+                      )}
+                    </div>
+                  ))
+                })()}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </Card>
   )
 }
-

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -142,11 +143,15 @@ export default function RaporlarPage() {
   const [stats, setStats] = useState<{
     total: number
     completed: number
+    early: number
+    lateCompleted: number
     inProgress: number
     delayed: number
   }>({
     total: 0,
     completed: 0,
+    early: 0,
+    lateCompleted: 0,
     inProgress: 0,
     delayed: 0,
   })
@@ -208,6 +213,10 @@ export default function RaporlarPage() {
   } | null>(null)
   const [loadingTeacherPerf, setLoadingTeacherPerf] = useState(false)
   const [loadingCounselorPerf, setLoadingCounselorPerf] = useState(false)
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(10)
 
   useEffect(() => {
     fetchAcademicYears()
@@ -373,10 +382,20 @@ export default function RaporlarPage() {
           (sum: number, s: { delayedTopics: number }) => sum + s.delayedTopics,
           0
         )
+        const early = filteredSubjects.reduce(
+          (sum: number, s: { earlyTopics?: number }) => sum + ((s as { earlyTopics?: number }).earlyTopics || 0),
+          0
+        )
+        const lateCompleted = filteredSubjects.reduce(
+          (sum: number, s: { lateCompletedTopics?: number }) => sum + ((s as { lateCompletedTopics?: number }).lateCompletedTopics || 0),
+          0
+        )
 
         setStats({
           total,
           completed,
+          early,
+          lateCompleted,
           inProgress,
           delayed,
         })
@@ -787,7 +806,7 @@ export default function RaporlarPage() {
 
       {/* Dashboard İstatistikleri */}
       {!reportsLoading && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4 sm:gap-6">
           {/* Toplam Konular */}
           <Card className="relative overflow-hidden border-2 border-blue-200 hover:border-blue-400 transition-all duration-200 hover:shadow-xl">
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-100 rounded-full -mr-16 -mt-16 opacity-50" />
@@ -812,7 +831,8 @@ export default function RaporlarPage() {
           </Card>
 
           {/* Tamamlanan */}
-          <Card className="relative overflow-hidden border-2 border-green-200 hover:border-green-400 transition-all duration-200 hover:shadow-xl">
+          <Link href="/neredeyiz/ilerleme?status=TAMAMLANDI">
+            <Card className="relative overflow-hidden border-2 border-green-200 hover:border-green-400 transition-all duration-200 hover:shadow-xl cursor-pointer">
             <div className="absolute top-0 right-0 w-32 h-32 bg-green-100 rounded-full -mr-16 -mt-16 opacity-50" />
             <CardHeader className="pb-2 px-4 sm:px-6 pt-4 sm:pt-6 relative z-10">
               <div className="flex items-center justify-between mb-2">
@@ -830,11 +850,66 @@ export default function RaporlarPage() {
               </div>
               <div className="text-xs sm:text-sm text-gray-600 mb-2">
                 {stats.total > 0
-                  ? `${Math.round((stats.completed / stats.total) * 100)}% tamamlandı`
+                  ? `${Math.round((stats.completed / stats.total) * 100)}% normal tamamlandı`
                   : "Henüz konu yok"}
               </div>
             </CardContent>
           </Card>
+          </Link>
+
+          {/* Erken Tamamlanan */}
+          <Link href="/neredeyiz/ilerleme?status=ERKEN_TAMAMLANDI">
+            <Card className="relative overflow-hidden border-2 border-emerald-200 hover:border-emerald-400 transition-all duration-200 hover:shadow-xl cursor-pointer">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-100 rounded-full -mr-16 -mt-16 opacity-50" />
+            <CardHeader className="pb-2 px-4 sm:px-6 pt-4 sm:pt-6 relative z-10">
+              <div className="flex items-center justify-between mb-2">
+                <CardTitle className="text-sm sm:text-base font-semibold text-gray-700">
+                  Erken Tamamlanan
+                </CardTitle>
+                <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+                  <TrendingUp className="h-5 w-5 text-emerald-600" />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6 relative z-10">
+              <div className="text-3xl sm:text-4xl font-bold text-emerald-600 mb-2">
+                {stats.early || 0}
+              </div>
+              <div className="text-xs sm:text-sm text-gray-600 mb-2">
+                {stats.total > 0
+                  ? `${Math.round(((stats.early || 0) / stats.total) * 100)}% erken`
+                  : "Henüz konu yok"}
+              </div>
+            </CardContent>
+          </Card>
+          </Link>
+
+          {/* Geç Tamamlanan */}
+          <Link href="/neredeyiz/ilerleme?status=GECIKMELI_TAMAMLANDI">
+            <Card className="relative overflow-hidden border-2 border-orange-200 hover:border-orange-400 transition-all duration-200 hover:shadow-xl cursor-pointer">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-orange-100 rounded-full -mr-16 -mt-16 opacity-50" />
+            <CardHeader className="pb-2 px-4 sm:px-6 pt-4 sm:pt-6 relative z-10">
+              <div className="flex items-center justify-between mb-2">
+                <CardTitle className="text-sm sm:text-base font-semibold text-gray-700">
+                  Geç Tamamlanan
+                </CardTitle>
+                <div className="h-10 w-10 rounded-lg bg-orange-100 flex items-center justify-center">
+                  <Clock className="h-5 w-5 text-orange-600" />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6 relative z-10">
+              <div className="text-3xl sm:text-4xl font-bold text-orange-600 mb-2">
+                {stats.lateCompleted || 0}
+              </div>
+              <div className="text-xs sm:text-sm text-gray-600 mb-2">
+                {stats.total > 0
+                  ? `${Math.round(((stats.lateCompleted || 0) / stats.total) * 100)}% geç tamamlandı`
+                  : "Henüz konu yok"}
+              </div>
+            </CardContent>
+          </Card>
+          </Link>
 
           {/* Devam Ediyor */}
           <Card className="relative overflow-hidden border-2 border-yellow-200 hover:border-yellow-400 transition-all duration-200 hover:shadow-xl">
@@ -917,49 +992,114 @@ export default function RaporlarPage() {
               </div>
             </div>
             <div className="space-y-3">
-              {delayedTopicsReport.delayedTopics.map((topic) => (
-                <div
-                  key={topic.id}
-                  className="border-l-4 border-l-red-500 p-3 sm:p-4 bg-gray-50 rounded-r-lg hover:bg-gray-100 transition-colors"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <BookOpen className="h-4 w-4 text-gray-500" />
-                        <h3 className="font-semibold text-sm sm:text-base text-gray-900">
-                          {topic.name}
-                        </h3>
+              {(() => {
+                const totalPages = Math.ceil(delayedTopicsReport.delayedTopics.length / itemsPerPage)
+                const startIndex = (currentPage - 1) * itemsPerPage
+                const endIndex = startIndex + itemsPerPage
+                const paginatedTopics = delayedTopicsReport.delayedTopics.slice(startIndex, endIndex)
+
+                return (
+                  <>
+                    {paginatedTopics.map((topic) => (
+                      <div
+                        key={topic.id}
+                        className="border-l-4 border-l-red-500 p-3 sm:p-4 bg-gray-50 rounded-r-lg hover:bg-gray-100 transition-colors"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <BookOpen className="h-4 w-4 text-gray-500" />
+                              <h3 className="font-semibold text-sm sm:text-base text-gray-900">
+                                {topic.name}
+                              </h3>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs sm:text-sm text-gray-600">
+                              <div>
+                                <span className="font-medium">Ders:</span> {topic.subject.name}
+                              </div>
+                              <div>
+                                <span className="font-medium">Sınıf:</span> {topic.subject.grade}. Sınıf
+                                {topic.subject.section && ` - ${topic.subject.section} Şubesi`}
+                              </div>
+                              <div>
+                                <span className="font-medium">Ünite:</span> {topic.unit.name}
+                              </div>
+                            </div>
+                            {topic.plannedEndDate && (
+                              <div className="mt-2 text-xs text-gray-500">
+                                Planlanan Bitiş:{" "}
+                                {new Date(topic.plannedEndDate).toLocaleDateString("tr-TR")}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <div className="text-xl sm:text-2xl font-bold text-red-600">
+                                {topic.delayDays}
+                              </div>
+                              <div className="text-[10px] sm:text-xs text-gray-500">Gün Gecikme</div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs sm:text-sm text-gray-600">
-                        <div>
-                          <span className="font-medium">Ders:</span> {topic.subject.name}
+                    ))}
+
+                    {/* Pagination Controls */}
+                    {totalPages > 1 && (
+                      <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-gray-200">
+                        <div className="text-xs sm:text-sm text-gray-600">
+                          Sayfa {currentPage} / {totalPages} (Toplam {delayedTopicsReport.delayedTopics.length} konu)
                         </div>
-                        <div>
-                          <span className="font-medium">Sınıf:</span> {topic.subject.grade}. Sınıf
-                          {topic.subject.section && ` - ${topic.subject.section} Şubesi`}
-                        </div>
-                        <div>
-                          <span className="font-medium">Ünite:</span> {topic.unit.name}
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                            disabled={currentPage === 1}
+                            className="text-xs sm:text-sm"
+                          >
+                            Önceki
+                          </Button>
+                          <div className="flex items-center gap-1">
+                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                              let pageNum: number
+                              if (totalPages <= 5) {
+                                pageNum = i + 1
+                              } else if (currentPage <= 3) {
+                                pageNum = i + 1
+                              } else if (currentPage >= totalPages - 2) {
+                                pageNum = totalPages - 4 + i
+                              } else {
+                                pageNum = currentPage - 2 + i
+                              }
+                              return (
+                                <Button
+                                  key={pageNum}
+                                  variant={currentPage === pageNum ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => setCurrentPage(pageNum)}
+                                  className="text-xs sm:text-sm min-w-[2rem]"
+                                >
+                                  {pageNum}
+                                </Button>
+                              )
+                            })}
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                            disabled={currentPage === totalPages}
+                            className="text-xs sm:text-sm"
+                          >
+                            Sonraki
+                          </Button>
                         </div>
                       </div>
-                      {topic.plannedEndDate && (
-                        <div className="mt-2 text-xs text-gray-500">
-                          Planlanan Bitiş:{" "}
-                          {new Date(topic.plannedEndDate).toLocaleDateString("tr-TR")}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="text-right">
-                        <div className="text-xl sm:text-2xl font-bold text-red-600">
-                          {topic.delayDays}
-                        </div>
-                        <div className="text-[10px] sm:text-xs text-gray-500">Gün Gecikme</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                    )}
+                  </>
+                )
+              })()}
             </div>
           </CardContent>
         </Card>
