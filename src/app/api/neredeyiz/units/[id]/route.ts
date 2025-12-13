@@ -94,11 +94,49 @@ export async function DELETE(
 ) {
   try {
     const params = await context.params
-    await prisma.unit.delete({
+
+    // Ünite var mı kontrol et
+    const existingUnit = await prisma.unit.findUnique({
       where: { id: params.id },
+      include: {
+        topics: true,
+      },
     })
 
-    return NextResponse.json({ message: "Ünite başarıyla silindi" })
+    if (!existingUnit) {
+      return NextResponse.json(
+        { error: "Ünite bulunamadı" },
+        { status: 404 }
+      )
+    }
+
+    // İlişkili kayıtları sil
+    try {
+      // 1. Her topic için progress kayıtlarını sil
+      for (const topic of existingUnit.topics) {
+        await prisma.progress.deleteMany({
+          where: { topicId: topic.id },
+        })
+      }
+
+      // 2. Topic'leri sil
+      await prisma.topic.deleteMany({
+        where: { unitId: params.id },
+      })
+
+      // 3. Üniteyi sil
+      await prisma.unit.delete({
+        where: { id: params.id },
+      })
+
+      return NextResponse.json({ message: "Ünite ve tüm konuları başarıyla silindi" })
+    } catch (deleteError) {
+      console.error("Error during unit cascade delete:", deleteError)
+      return NextResponse.json(
+        { error: "Ünite silinirken bir hata oluştu" },
+        { status: 500 }
+      )
+    }
   } catch (error) {
     console.error("Error deleting unit:", error)
     if (error instanceof Error && error.message.includes("Record to delete does not exist")) {
