@@ -190,11 +190,66 @@ export async function DELETE(
 ) {
   try {
     const params = await context.params
-    await prisma.subject.delete({
+
+    // Önce dersin var olup olmadığını kontrol et
+    const existingSubject = await prisma.subject.findUnique({
       where: { id: params.id },
+      include: {
+        units: {
+          include: {
+            topics: true,
+          },
+        },
+        assignments: true,
+      },
     })
 
-    return NextResponse.json({ message: "Ders başarıyla silindi" })
+    if (!existingSubject) {
+      return NextResponse.json({ error: "Ders bulunamadı" }, { status: 404 })
+    }
+
+    // İlişkili kayıtları sil (cascade delete çalışmazsa manuel silme)
+    try {
+      // 1. Progress kayıtlarını sil
+      for (const unit of existingSubject.units) {
+        for (const topic of unit.topics) {
+          await prisma.progress.deleteMany({
+            where: { topicId: topic.id },
+          })
+        }
+        // 2. Topic'leri sil
+        await prisma.topic.deleteMany({
+          where: { unitId: unit.id },
+        })
+      }
+
+      // 3. Unit'leri sil
+      await prisma.unit.deleteMany({
+        where: { subjectId: params.id },
+      })
+
+      // 4. Öğretmen atamalarını sil
+      await prisma.subjectAssignment.deleteMany({
+        where: { subjectId: params.id },
+      })
+
+      // 5. Son olarak dersi sil
+      await prisma.subject.delete({
+        where: { id: params.id },
+      })
+
+      return NextResponse.json({
+        message: "Ders ve tüm ilişkili kayıtlar başarıyla silindi",
+      })
+    } catch (deleteError) {
+      console.error("Error during cascade delete:", deleteError)
+      return NextResponse.json(
+        {
+          error: "Ders silinirken bir hata oluştu. İlişkili kayıtlar temizlenemedi.",
+        },
+        { status: 500 }
+      )
+    }
   } catch (error) {
     console.error("Error deleting subject:", error)
     if (error instanceof Error && error.message.includes("Record to delete does not exist")) {
@@ -209,4 +264,5 @@ export async function DELETE(
     )
   }
 }
+
 
