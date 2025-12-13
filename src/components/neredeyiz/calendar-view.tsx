@@ -12,6 +12,7 @@ interface CalendarTopic {
   name: string
   plannedStartDate: string | null
   plannedEndDate: string | null
+  actualEndDate?: string | null
   status: "PLANLANDI" | "DEVAM_EDIYOR" | "TAMAMLANDI" | "GECIKMELI" | "GECIKMELI_TAMAMLANDI"
   delayDays?: number
   subject: {
@@ -22,6 +23,19 @@ interface CalendarTopic {
   unit: {
     name: string
   }
+  teachers?: Array<{
+    id: string
+    firstName: string
+    lastName: string
+  }>
+  markedByStaff?: {
+    firstName: string
+    lastName: string
+  } | null
+  approvedByStaff?: {
+    firstName: string
+    lastName: string
+  } | null
 }
 
 interface CalendarViewProps {
@@ -170,7 +184,10 @@ export default function CalendarView({ topics, onTopicClick }: CalendarViewProps
                         onMouseEnter={(e) => {
                           setHoveredTopic(topic)
                           const rect = e.currentTarget.getBoundingClientRect()
-                          setTooltipPosition({ x: rect.left + rect.width / 2, y: rect.top - 10 })
+                          setTooltipPosition({ 
+                            x: rect.left + rect.width / 2, 
+                            y: rect.top 
+                          })
                         }}
                         onMouseLeave={() => {
                           setHoveredTopic(null)
@@ -223,6 +240,74 @@ export default function CalendarView({ topics, onTopicClick }: CalendarViewProps
         </div>
       </CardContent>
 
+      {/* Tooltip */}
+      {hoveredTopic && tooltipPosition && (
+        <div
+          className="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-xl p-3 min-w-[250px] max-w-[350px] pointer-events-none"
+          style={{
+            left: `${tooltipPosition.x}px`,
+            top: `${tooltipPosition.y}px`,
+            transform: "translate(-50%, calc(-100% - 8px))",
+          }}
+        >
+          <div className="space-y-2 text-xs">
+            <div className="font-semibold text-gray-900 border-b pb-1">
+              {hoveredTopic.name}
+            </div>
+            <div className="text-gray-700">
+              <span className="font-medium">Ders:</span> {hoveredTopic.subject.name} - {hoveredTopic.subject.grade}. Sınıf
+              {hoveredTopic.subject.section && ` - ${hoveredTopic.subject.section}`}
+            </div>
+            <div className="text-gray-700">
+              <span className="font-medium">Ünite:</span> {hoveredTopic.unit.name}
+            </div>
+            {hoveredTopic.teachers && hoveredTopic.teachers.length > 0 && (
+              <div className="text-gray-700">
+                <span className="font-medium">Öğretmen:</span>{" "}
+                {hoveredTopic.teachers.map((t) => `${t.firstName} ${t.lastName}`).join(", ")}
+              </div>
+            )}
+            {hoveredTopic.plannedStartDate && hoveredTopic.plannedEndDate && (
+              <div className="text-gray-700">
+                <span className="font-medium">Planlanan:</span>{" "}
+                {new Date(hoveredTopic.plannedStartDate).toLocaleDateString("tr-TR", {
+                  day: "numeric",
+                  month: "short",
+                })}{" "}
+                -{" "}
+                {new Date(hoveredTopic.plannedEndDate).toLocaleDateString("tr-TR", {
+                  day: "numeric",
+                  month: "short",
+                })}
+              </div>
+            )}
+            {hoveredTopic.actualEndDate && (
+              <div className="text-gray-700">
+                <span className="font-medium">Tamamlanma:</span>{" "}
+                {new Date(hoveredTopic.actualEndDate).toLocaleDateString("tr-TR")}
+              </div>
+            )}
+            {hoveredTopic.markedByStaff && (
+              <div className="text-blue-700">
+                <span className="font-medium">Bildiren:</span>{" "}
+                Rehberlik {hoveredTopic.markedByStaff.firstName} {hoveredTopic.markedByStaff.lastName}
+              </div>
+            )}
+            {hoveredTopic.approvedByStaff && (
+              <div className="text-green-700">
+                <span className="font-medium">Onaylayan:</span>{" "}
+                Rehberlik {hoveredTopic.approvedByStaff.firstName} {hoveredTopic.approvedByStaff.lastName}
+              </div>
+            )}
+            {hoveredTopic.delayDays && hoveredTopic.delayDays > 0 && (
+              <div className="text-red-700">
+                <span className="font-medium">Gecikme:</span> {hoveredTopic.delayDays} gün
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* "+X daha" Modal */}
       {showMoreModal && selectedDate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-3 sm:p-4">
@@ -246,7 +331,7 @@ export default function CalendarView({ topics, onTopicClick }: CalendarViewProps
               </div>
             </CardHeader>
             <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6 overflow-y-auto flex-1">
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {(() => {
                   const dateKey = format(selectedDate, "yyyy-MM-dd")
                   const dayTopics = topicsByDate[dateKey] || []
@@ -258,21 +343,72 @@ export default function CalendarView({ topics, onTopicClick }: CalendarViewProps
                         setShowMoreModal(false)
                         setSelectedDate(null)
                       }}
-                      className={`${getStatusColor(topic.status)} text-white p-3 rounded-lg cursor-pointer hover:opacity-90 transition-opacity`}
+                      className={`${getStatusColor(topic.status)} text-white p-4 rounded-lg cursor-pointer hover:opacity-90 transition-opacity`}
                     >
-                      <div className="font-semibold text-sm sm:text-base mb-1">{topic.name}</div>
-                      <div className="text-xs sm:text-sm opacity-90">
-                        {topic.subject.name} - {topic.subject.grade}. Sınıf
-                        {topic.subject.section && ` - ${topic.subject.section}`}
-                      </div>
-                      <div className="text-xs sm:text-sm opacity-80 mt-1">
-                        Ünite: {topic.unit.name}
-                      </div>
-                      {topic.delayDays && topic.delayDays > 0 && (
-                        <div className="text-xs sm:text-sm opacity-90 mt-1">
-                          ⚠️ {topic.delayDays} gün gecikme
+                      <div className="font-semibold text-base sm:text-lg mb-2">{topic.name}</div>
+                      
+                      <div className="space-y-1.5 text-xs sm:text-sm opacity-90">
+                        <div>
+                          <span className="font-medium">Ders:</span> {topic.subject.name} - {topic.subject.grade}. Sınıf
+                          {topic.subject.section && ` - ${topic.subject.section}`}
                         </div>
-                      )}
+                        <div>
+                          <span className="font-medium">Ünite:</span> {topic.unit.name}
+                        </div>
+                        
+                        {topic.teachers && topic.teachers.length > 0 && (
+                          <div>
+                            <span className="font-medium">Öğretmen:</span>{" "}
+                            {topic.teachers.map((t) => `${t.firstName} ${t.lastName}`).join(", ")}
+                          </div>
+                        )}
+                        
+                        {topic.plannedStartDate && topic.plannedEndDate && (
+                          <div>
+                            <span className="font-medium">Planlanan Tarih:</span>{" "}
+                            {new Date(topic.plannedStartDate).toLocaleDateString("tr-TR", {
+                              day: "numeric",
+                              month: "long",
+                            })}{" "}
+                            -{" "}
+                            {new Date(topic.plannedEndDate).toLocaleDateString("tr-TR", {
+                              day: "numeric",
+                              month: "long",
+                            })}
+                          </div>
+                        )}
+                        
+                        {topic.actualEndDate && (
+                          <div>
+                            <span className="font-medium">Tamamlanma Tarihi:</span>{" "}
+                            {new Date(topic.actualEndDate).toLocaleDateString("tr-TR", {
+                              day: "numeric",
+                              month: "long",
+                              year: "numeric",
+                            })}
+                          </div>
+                        )}
+                        
+                        {topic.markedByStaff && (
+                          <div className="text-blue-200">
+                            <span className="font-medium">Bildiren:</span>{" "}
+                            Rehberlik {topic.markedByStaff.firstName} {topic.markedByStaff.lastName}
+                          </div>
+                        )}
+                        
+                        {topic.approvedByStaff && (
+                          <div className="text-green-200">
+                            <span className="font-medium">Onaylayan:</span>{" "}
+                            Rehberlik {topic.approvedByStaff.firstName} {topic.approvedByStaff.lastName}
+                          </div>
+                        )}
+                        
+                        {topic.delayDays && topic.delayDays > 0 && (
+                          <div className="text-red-200">
+                            <span className="font-medium">⚠️ Gecikme:</span> {topic.delayDays} gün
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))
                 })()}
