@@ -102,7 +102,7 @@ interface Topic {
   }>
 }
 
-type StatusFilter = "ALL" | "PLANLANDI" | "DEVAM_EDIYOR" | "TAMAMLANDI" | "ERTELENDI"
+type StatusFilter = "ALL" | "PLANLANDI" | "DEVAM_EDIYOR" | "TAMAMLANDI" | "ERTELENDI" | "ERKEN_TAMAMLANDI" | "GECIKMELI_TAMAMLANDI"
 
 export default function IlerlemeDetayPage() {
   const params = useParams()
@@ -134,6 +134,10 @@ export default function IlerlemeDetayPage() {
         setStatusFilter("DEVAM_EDIYOR")
       } else if (urlStatus === "GECIKMELI") {
         setStatusFilter("ERTELENDI") // ERTELENDI = GECIKMELI için kullanılıyor
+      } else if (urlStatus === "ERKEN_TAMAMLANDI") {
+        setStatusFilter("ERKEN_TAMAMLANDI")
+      } else if (urlStatus === "GECIKMELI_TAMAMLANDI") {
+        setStatusFilter("GECIKMELI_TAMAMLANDI")
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -445,6 +449,26 @@ export default function IlerlemeDetayPage() {
       const topics = unit.topics || []
       const completed = topics.filter((t) => t.progress?.[0]?.status === "TAMAMLANDI").length
 
+      const earlyTopics = topics.filter((t) => {
+        const progress = t.progress?.[0]
+        if (!t.plannedEndDate || !progress || progress.status !== "TAMAMLANDI" || !progress.actualEndDate) return false
+        const plannedEnd = new Date(t.plannedEndDate)
+        plannedEnd.setHours(0, 0, 0, 0)
+        const actualEnd = new Date(progress.actualEndDate)
+        actualEnd.setHours(0, 0, 0, 0)
+        return actualEnd < plannedEnd
+      }).length
+
+      const lateCompletedTopics = topics.filter((t) => {
+        const progress = t.progress?.[0]
+        if (!t.plannedEndDate || !progress || progress.status !== "TAMAMLANDI" || !progress.actualEndDate) return false
+        const plannedEnd = new Date(t.plannedEndDate)
+        plannedEnd.setHours(0, 0, 0, 0)
+        const actualEnd = new Date(progress.actualEndDate)
+        actualEnd.setHours(0, 0, 0, 0)
+        return actualEnd > plannedEnd
+      }).length
+
       const inProgress = topics.filter((t) => {
         const progress = t.progress?.[0]
         if (progress?.status === "TAMAMLANDI") return false
@@ -486,6 +510,8 @@ export default function IlerlemeDetayPage() {
       return {
         unit,
         completed,
+        earlyTopics,
+        lateCompletedTopics,
         inProgress,
         planned,
         delayed,
@@ -515,7 +541,9 @@ export default function IlerlemeDetayPage() {
             (statusFilter === "PLANLANDI" && topicStatus.status === "PLANLANDI") ||
             (statusFilter === "DEVAM_EDIYOR" && topicStatus.status === "DEVAM_EDIYOR") ||
             (statusFilter === "TAMAMLANDI" && topicStatus.status === "TAMAMLANDI") ||
-            (statusFilter === "ERTELENDI" && (topicStatus.status === "GECIKMELI" || topicStatus.status === "GECIKMELI_TAMAMLANDI"))
+            (statusFilter === "ERTELENDI" && (topicStatus.status === "GECIKMELI" || topicStatus.status === "GECIKMELI_TAMAMLANDI")) ||
+            (statusFilter === "ERKEN_TAMAMLANDI" && topicStatus.status === "ERKEN_TAMAMLANDI") ||
+            (statusFilter === "GECIKMELI_TAMAMLANDI" && topicStatus.status === "GECIKMELI_TAMAMLANDI")
 
           return matchesSearch && matchesStatus
         })
@@ -629,12 +657,14 @@ export default function IlerlemeDetayPage() {
               />
             </div>
             <div className="flex flex-wrap gap-2">
-              {(["ALL", "PLANLANDI", "DEVAM_EDIYOR", "TAMAMLANDI", "ERTELENDI"] as StatusFilter[]).map((filter) => {
+              {(["ALL", "PLANLANDI", "DEVAM_EDIYOR", "TAMAMLANDI", "ERKEN_TAMAMLANDI", "GECIKMELI_TAMAMLANDI", "ERTELENDI"] as StatusFilter[]).map((filter) => {
                 const labels: Record<StatusFilter, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
                   ALL: { label: "Tümü", icon: BookOpen },
                   PLANLANDI: { label: "Planlandı", icon: Calendar },
                   DEVAM_EDIYOR: { label: "Devam Ediyor", icon: Clock },
                   TAMAMLANDI: { label: "Tamamlandı", icon: CheckCircle2 },
+                  ERKEN_TAMAMLANDI: { label: "Erken Tamamlandı", icon: CheckCircle2 },
+                  GECIKMELI_TAMAMLANDI: { label: "Geç Tamamlandı", icon: AlertTriangle },
                   ERTELENDI: { label: "Ertelendi", icon: XCircle },
                 }
                 const { label, icon: Icon } = labels[filter]
@@ -715,6 +745,12 @@ export default function IlerlemeDetayPage() {
                     <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600">
                       <span>Toplam: {stat.total}</span>
                       <span className="text-green-600">Tamamlanan: {stat.completed}</span>
+                      {stat.earlyTopics > 0 && (
+                        <span className="text-emerald-600">Erken: {stat.earlyTopics}</span>
+                      )}
+                      {stat.lateCompletedTopics > 0 && (
+                        <span className="text-orange-600">Geç: {stat.lateCompletedTopics}</span>
+                      )}
                       <span className="text-yellow-600">Devam Ediyor: {stat.inProgress}</span>
                       <span className="text-blue-600">Planlandı: {stat.planned}</span>
                       <span className="text-red-600">Gecikmeli: {stat.delayed}</span>

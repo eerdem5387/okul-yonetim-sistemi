@@ -65,6 +65,7 @@ export async function GET(request: NextRequest) {
         totalTopics: number
         completedTopics: number
         earlyTopics: number
+        lateCompletedTopics: number
         inProgressTopics: number
         plannedTopics: number
         delayedTopics: number
@@ -82,6 +83,7 @@ export async function GET(request: NextRequest) {
           totalTopics: 0,
           completedTopics: 0,
           earlyTopics: 0,
+          lateCompletedTopics: 0,
           inProgressTopics: 0,
           plannedTopics: 0,
           delayedTopics: 0,
@@ -107,8 +109,10 @@ export async function GET(request: NextRequest) {
             actualDate.setHours(0, 0, 0, 0)
             
             if (actualDate > plannedDate) {
-              subjectStats[subjectId].delayedTopics++
+              // Gecikmeli tamamlanan
+              subjectStats[subjectId].lateCompletedTopics++
             } else if (actualDate < plannedDate) {
+              // Erken tamamlanan
               subjectStats[subjectId].earlyTopics++
             }
           }
@@ -131,7 +135,7 @@ export async function GET(request: NextRequest) {
             // Sadece bitiş tarihi varsa ve bugün ile gelecek arasındaysa → Devam Ediyor
             subjectStats[subjectId].inProgressTopics++
           } else if (endDate && endDate < now) {
-            // Bitiş tarihi geçmişteyse → Gecikmeli
+            // Bitiş tarihi geçmişteyse → Gecikmeli (tamamlanmamış)
             subjectStats[subjectId].delayedTopics++
             subjectStats[subjectId].plannedTopics++
           } else {
@@ -153,7 +157,7 @@ export async function GET(request: NextRequest) {
           // Sadece bitiş tarihi varsa ve bugün ile gelecek arasındaysa → Devam Ediyor
           subjectStats[subjectId].inProgressTopics++
         } else if (endDate && endDate < now) {
-          // Bitiş tarihi geçmişteyse → Gecikmeli
+          // Bitiş tarihi geçmişteyse → Gecikmeli (tamamlanmamış)
           subjectStats[subjectId].delayedTopics++
           subjectStats[subjectId].plannedTopics++
         } else {
@@ -178,6 +182,14 @@ export async function GET(request: NextRequest) {
         totalTopics: topics.length,
         completedTopics: Object.values(subjectStats).reduce(
           (sum, s) => sum + s.completedTopics,
+          0
+        ),
+        earlyTopics: Object.values(subjectStats).reduce(
+          (sum, s) => sum + s.earlyTopics,
+          0
+        ),
+        lateCompletedTopics: Object.values(subjectStats).reduce(
+          (sum, s) => sum + s.lateCompletedTopics,
           0
         ),
         averageCompletion: Object.values(subjectStats).length > 0

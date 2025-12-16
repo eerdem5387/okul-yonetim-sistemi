@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-// Toast notifications will be handled via success/error functions
+import { ToastContainer, useToast } from "@/components/ui/toast"
 import {
   BookOpen,
   Loader2,
@@ -16,6 +16,8 @@ import {
   ChevronDown,
   ChevronRight,
   AlertTriangle,
+  TrendingUp,
+  Hourglass,
 } from "lucide-react"
 
 interface Subject {
@@ -51,7 +53,7 @@ interface Subject {
 export default function OgretmenDersDetayPage() {
   const params = useParams()
   const router = useRouter()
-  const [toastMessage, setToastMessage] = useState<{ type: "success" | "error"; message: string } | null>(null)
+  const { toasts, success, error, removeToast } = useToast()
   const [subject, setSubject] = useState<Subject | null>(null)
   const [loading, setLoading] = useState(true)
   const [updatingTopicId, setUpdatingTopicId] = useState<string | null>(null)
@@ -93,12 +95,12 @@ export default function OgretmenDersDetayPage() {
         const data = await response.json()
         setSubject(data)
       } else {
-        setToastMessage({ type: "error", message: "Ders yüklenirken hata oluştu!" })
+        error("Ders yüklenirken hata oluştu!")
         router.push("/ogretmen")
       }
     } catch (err) {
       console.error("Error fetching subject:", err)
-      setToastMessage({ type: "error", message: "Ders yüklenirken hata oluştu!" })
+      error("Ders yüklenirken bir hata oluştu!")
       router.push("/ogretmen")
     } finally {
       setLoading(false)
@@ -106,10 +108,13 @@ export default function OgretmenDersDetayPage() {
   }
 
   const getTopicStatus = (topic: Subject["units"][0]["topics"][0]): {
-    status: "PLANLANDI" | "DEVAM_EDIYOR" | "TAMAMLANDI" | "GECIKMELI" | "PENDING_APPROVAL"
+    status: "PLANLANDI" | "DEVAM_EDIYOR" | "TAMAMLANDI" | "GECIKMELI" | "PENDING_APPROVAL" | "ERKEN_TAMAMLANDI" | "GECIKMELI_TAMAMLANDI"
     label: string
     color: string
     icon: React.ComponentType<{ className?: string }>
+    isEarly?: boolean
+    isLate?: boolean
+    daysDifference?: number
   } => {
     const progress = topic.progress?.[0]
 
@@ -123,6 +128,40 @@ export default function OgretmenDersDetayPage() {
     }
 
     if (progress?.status === "TAMAMLANDI") {
+      // Erken veya gecikmeli tamamlanma kontrolü
+      if (topic.plannedEndDate && progress.actualEndDate) {
+        const plannedEnd = new Date(topic.plannedEndDate)
+        plannedEnd.setHours(0, 0, 0, 0)
+        const actualEnd = new Date(progress.actualEndDate)
+        actualEnd.setHours(0, 0, 0, 0)
+        
+        if (actualEnd > plannedEnd) {
+          const daysDifference = Math.floor(
+            (actualEnd.getTime() - plannedEnd.getTime()) / (1000 * 60 * 60 * 24)
+          )
+          return {
+            status: "GECIKMELI_TAMAMLANDI",
+            label: "Geç Tamamlandı",
+            color: "bg-orange-100 text-orange-800",
+            icon: AlertTriangle,
+            isLate: true,
+            daysDifference,
+          }
+        } else if (actualEnd < plannedEnd) {
+          const daysDifference = Math.floor(
+            (plannedEnd.getTime() - actualEnd.getTime()) / (1000 * 60 * 60 * 24)
+          )
+          return {
+            status: "ERKEN_TAMAMLANDI",
+            label: "Erken Tamamlandı",
+            color: "bg-emerald-100 text-emerald-800",
+            icon: CheckCircle2,
+            isEarly: true,
+            daysDifference,
+          }
+        }
+      }
+      
       return {
         status: "TAMAMLANDI",
         label: "Tamamlandı",
@@ -173,7 +212,7 @@ export default function OgretmenDersDetayPage() {
 
   const handleMarkComplete = async (topicId: string) => {
     if (!staffId) {
-      setToastMessage({ type: "error", message: "Kullanıcı bilgisi bulunamadı!" })
+      error("Kullanıcı bilgisi bulunamadı!")
       return
     }
 
@@ -193,18 +232,15 @@ export default function OgretmenDersDetayPage() {
       })
 
       if (response.ok) {
-        setToastMessage({ type: "success", message: "Konu tamamlandı olarak işaretlendi ve onay için gönderildi!" })
+        success("Konu tamamlandı olarak işaretlendi ve onay için gönderildi!")
         await fetchSubject()
-        setTimeout(() => setToastMessage(null), 5000)
       } else {
         const errorData = await response.json()
-        setToastMessage({ type: "error", message: errorData.error || "Konu işaretlenirken hata oluştu!" })
-        setTimeout(() => setToastMessage(null), 5000)
+        error(errorData.error || "Konu işaretlenirken hata oluştu!")
       }
     } catch (err) {
       console.error("Error marking topic complete:", err)
-      setToastMessage({ type: "error", message: "Konu işaretlenirken bir hata oluştu!" })
-      setTimeout(() => setToastMessage(null), 5000)
+      error("Konu işaretlenirken bir hata oluştu!")
     } finally {
       setUpdatingTopicId(null)
     }
@@ -249,14 +285,7 @@ export default function OgretmenDersDetayPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
-          toastMessage.type === "success" ? "bg-green-500 text-white" : "bg-red-500 text-white"
-        }`}>
-          <p className="font-medium">{toastMessage.message}</p>
-        </div>
-      )}
+      <ToastContainer toasts={toasts} onClose={removeToast} />
 
       {/* Header */}
       <div className="mb-6">
@@ -347,7 +376,30 @@ export default function OgretmenDersDetayPage() {
                                       {new Date(topic.plannedEndDate).toLocaleDateString("tr-TR")}
                                     </p>
                                   )}
-                                  {topic.progress?.[0]?.reportedAt && (
+                                  {topic.progress?.[0]?.actualEndDate && (
+                                    <p className={`text-xs mt-1 ${
+                                      topicStatus.isLate
+                                        ? "text-orange-600 font-medium"
+                                        : topicStatus.isEarly
+                                        ? "text-emerald-600 font-medium"
+                                        : "text-green-600"
+                                    }`}>
+                                      Tamamlanma: {new Date(topic.progress[0].actualEndDate).toLocaleDateString("tr-TR")}
+                                      {topicStatus.isLate && topicStatus.daysDifference && (
+                                        <span className="ml-2 flex items-center gap-1">
+                                          <Hourglass className="h-3 w-3" />
+                                          {topicStatus.daysDifference} gün geç
+                                        </span>
+                                      )}
+                                      {topicStatus.isEarly && topicStatus.daysDifference && (
+                                        <span className="ml-2 flex items-center gap-1">
+                                          <TrendingUp className="h-3 w-3" />
+                                          {topicStatus.daysDifference} gün erken
+                                        </span>
+                                      )}
+                                    </p>
+                                  )}
+                                  {topic.progress?.[0]?.reportedAt && topicStatus.status === "PENDING_APPROVAL" && (
                                     <p className="text-xs text-yellow-600 mt-1">
                                       İşaretleme: {new Date(topic.progress[0].reportedAt).toLocaleDateString("tr-TR")} (Onay bekliyor)
                                     </p>
@@ -360,7 +412,9 @@ export default function OgretmenDersDetayPage() {
                                   disabled={
                                     updatingTopicId === topic.id ||
                                     topicStatus.status === "TAMAMLANDI" ||
-                                    topicStatus.status === "PENDING_APPROVAL"
+                                    topicStatus.status === "PENDING_APPROVAL" ||
+                                    topicStatus.status === "ERKEN_TAMAMLANDI" ||
+                                    topicStatus.status === "GECIKMELI_TAMAMLANDI"
                                   }
                                   className="text-xs sm:text-sm"
                                 >

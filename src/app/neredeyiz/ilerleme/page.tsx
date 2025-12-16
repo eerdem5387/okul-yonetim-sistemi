@@ -369,6 +369,17 @@ export default function IlerlemePage() {
                 actualEnd.setHours(0, 0, 0, 0)
                 return actualEnd < plannedEnd
               }).length
+              
+              const lateCompletedTopics = allTopics.filter((t) => {
+                const progress = t.progress?.[0]
+                if (!t.plannedEndDate || !progress || progress.status !== "TAMAMLANDI" || !progress.actualEndDate) return false
+                const plannedEnd = new Date(t.plannedEndDate)
+                plannedEnd.setHours(0, 0, 0, 0)
+                const actualEnd = new Date(progress.actualEndDate)
+                actualEnd.setHours(0, 0, 0, 0)
+                return actualEnd > plannedEnd
+              }).length
+              
               const totalTopics = allTopics.length
               const completionRate = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0
 
@@ -377,9 +388,11 @@ export default function IlerlemePage() {
                 if (statusFilter === "TAMAMLANDI" && completedTopics === 0) return null
                 if (statusFilter === "DEVAM_EDIYOR" && inProgressTopics === 0) return null
                 if (statusFilter === "GECIKMELI" && delayedTopics === 0) return null
+                if (statusFilter === "ERKEN_TAMAMLANDI" && earlyTopics === 0) return null
+                if (statusFilter === "GECIKMELI_TAMAMLANDI" && lateCompletedTopics === 0) return null
               }
 
-              return { subject, completedTopics, inProgressTopics, delayedTopics, totalTopics, completionRate }
+              return { subject, completedTopics, inProgressTopics, delayedTopics, earlyTopics, lateCompletedTopics, totalTopics, completionRate }
             })
             .filter((item): item is NonNullable<typeof item> => item !== null)
 

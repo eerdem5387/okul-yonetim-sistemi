@@ -42,6 +42,8 @@ interface ProgressReport {
     subjectName: string
     totalTopics: number
     completedTopics: number
+    earlyTopics?: number
+    lateCompletedTopics?: number
     inProgressTopics: number
     plannedTopics: number
     delayedTopics: number
@@ -51,6 +53,8 @@ interface ProgressReport {
     totalSubjects: number
     totalTopics: number
     completedTopics: number
+    earlyTopics?: number
+    lateCompletedTopics?: number
     averageCompletion: number
   }
 }
@@ -374,20 +378,14 @@ export default function RaporlarPage() {
         // Dashboard istatistiklerini hesapla
         const total = progressData.summary.totalTopics
         const completed = progressData.summary.completedTopics
+        const early = progressData.summary.earlyTopics || 0
+        const lateCompleted = progressData.summary.lateCompletedTopics || 0
         const inProgress = filteredSubjects.reduce(
           (sum: number, s: { inProgressTopics: number }) => sum + s.inProgressTopics,
           0
         )
         const delayed = filteredSubjects.reduce(
           (sum: number, s: { delayedTopics: number }) => sum + s.delayedTopics,
-          0
-        )
-        const early = filteredSubjects.reduce(
-          (sum: number, s: { earlyTopics?: number }) => sum + ((s as { earlyTopics?: number }).earlyTopics || 0),
-          0
-        )
-        const lateCompleted = filteredSubjects.reduce(
-          (sum: number, s: { lateCompletedTopics?: number }) => sum + ((s as { lateCompletedTopics?: number }).lateCompletedTopics || 0),
           0
         )
 

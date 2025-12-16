@@ -32,6 +32,8 @@ interface ProgressReport {
     subjectName: string
     totalTopics: number
     completedTopics: number
+    earlyTopics?: number
+    lateCompletedTopics?: number
     inProgressTopics: number
     plannedTopics: number
     delayedTopics: number
@@ -41,6 +43,8 @@ interface ProgressReport {
     totalSubjects: number
     totalTopics: number
     completedTopics: number
+    earlyTopics?: number
+    lateCompletedTopics?: number
     averageCompletion: number
   }
 }
@@ -144,20 +148,14 @@ export default function NeredeyizPage() {
     const { summary } = progressReport
     const totalPlanned = summary.totalTopics
     const completed = summary.completedTopics
+    const early = summary.earlyTopics || 0
+    const lateCompleted = summary.lateCompletedTopics || 0
     const inProgress = progressReport.subjects.reduce(
       (sum, s) => sum + s.inProgressTopics,
       0
     )
     const delayed = progressReport.subjects.reduce(
       (sum, s) => sum + s.delayedTopics,
-      0
-    )
-    const early = progressReport.subjects.reduce(
-      (sum, s) => sum + ((s as { earlyTopics?: number }).earlyTopics || 0),
-      0
-    )
-    const lateCompleted = progressReport.subjects.reduce(
-      (sum, s) => sum + ((s as { lateCompletedTopics?: number }).lateCompletedTopics || 0),
       0
     )
 

@@ -54,6 +54,8 @@ export async function GET(request: NextRequest) {
     // İstatistikler
     let totalTopics = 0
     let completedTopics = 0
+    let earlyTopics = 0
+    let lateCompletedTopics = 0
     let inProgressTopics = 0
     let plannedTopics = 0
     let delayedTopics = 0
@@ -78,6 +80,9 @@ export async function GET(request: NextRequest) {
       id: string
       name: string
       completedDate: string
+      isEarly?: boolean
+      isLate?: boolean
+      daysDifference?: number
       subject: {
         id: string
         name: string
@@ -99,6 +104,23 @@ export async function GET(request: NextRequest) {
           if (progress) {
             if (progress.status === "TAMAMLANDI") {
               completedTopics++
+              
+              // Erken veya gecikmeli tamamlanma kontrolü
+              if (topic.plannedEndDate && progress.actualEndDate) {
+                const plannedEnd = new Date(topic.plannedEndDate)
+                plannedEnd.setHours(0, 0, 0, 0)
+                const actualEnd = new Date(progress.actualEndDate)
+                actualEnd.setHours(0, 0, 0, 0)
+                
+                if (actualEnd > plannedEnd) {
+                  // Gecikmeli tamamlanan
+                  lateCompletedTopics++
+                } else if (actualEnd < plannedEnd) {
+                  // Erken tamamlanan
+                  earlyTopics++
+                }
+              }
+              
               // Son 7 gün içinde tamamlananlar
               if (progress.actualEndDate) {
                 const completedDate = new Date(progress.actualEndDate)
@@ -106,10 +128,37 @@ export async function GET(request: NextRequest) {
                   (now.getTime() - completedDate.getTime()) / (1000 * 60 * 60 * 24)
                 )
                 if (daysAgo <= 7 && daysAgo >= 0) {
+                  // Erken veya geç tamamlanma kontrolü
+                  let isEarly = false
+                  let isLate = false
+                  let daysDifference = 0
+                  
+                  if (topic.plannedEndDate) {
+                    const plannedEnd = new Date(topic.plannedEndDate)
+                    plannedEnd.setHours(0, 0, 0, 0)
+                    const actualEnd = new Date(progress.actualEndDate)
+                    actualEnd.setHours(0, 0, 0, 0)
+                    
+                    if (actualEnd > plannedEnd) {
+                      isLate = true
+                      daysDifference = Math.floor(
+                        (actualEnd.getTime() - plannedEnd.getTime()) / (1000 * 60 * 60 * 24)
+                      )
+                    } else if (actualEnd < plannedEnd) {
+                      isEarly = true
+                      daysDifference = Math.floor(
+                        (plannedEnd.getTime() - actualEnd.getTime()) / (1000 * 60 * 60 * 24)
+                      )
+                    }
+                  }
+                  
                   recentCompletions.push({
                     id: topic.id,
                     name: topic.name,
                     completedDate: progress.actualEndDate.toISOString(),
+                    isEarly,
+                    isLate,
+                    daysDifference: daysDifference > 0 ? daysDifference : undefined,
                     subject: {
                       id: subject.id,
                       name: subject.name,
@@ -164,7 +213,7 @@ export async function GET(request: NextRequest) {
             }
           }
 
-          // Gecikme kontrolü
+          // Gecikme kontrolü (sadece tamamlanmamış konular için)
           if (topic.plannedEndDate) {
             const plannedEnd = new Date(topic.plannedEndDate)
             plannedEnd.setHours(0, 0, 0, 0)
@@ -172,12 +221,6 @@ export async function GET(request: NextRequest) {
             if (now > plannedEnd) {
               if (!progress || progress.status !== "TAMAMLANDI") {
                 delayedTopics++
-              } else if (progress.status === "TAMAMLANDI" && progress.actualEndDate) {
-                const actualEnd = new Date(progress.actualEndDate)
-                actualEnd.setHours(0, 0, 0, 0)
-                if (actualEnd > plannedEnd) {
-                  delayedTopics++
-                }
               }
             }
           }
@@ -201,6 +244,8 @@ export async function GET(request: NextRequest) {
       stats: {
         totalTopics,
         completedTopics,
+        earlyTopics,
+        lateCompletedTopics,
         inProgressTopics,
         plannedTopics,
         delayedTopics,
