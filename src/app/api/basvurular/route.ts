@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
     const anneMeslek = searchParams.get('anneMeslek') || ''
     const startDate = searchParams.get('startDate') || ''
     const endDate = searchParams.get('endDate') || ''
+    const contactStatus = searchParams.get('contactStatus') || ''
     
     const skip = (page - 1) * limit
 
@@ -57,6 +58,11 @@ export async function GET(request: NextRequest) {
     // Anne meslek filtresi
     if (anneMeslek) {
       whereConditions.push({ anneMeslek: { contains: anneMeslek, mode: 'insensitive' as const } })
+    }
+
+    // İletişim durumu filtresi
+    if (contactStatus === 'ILETISIME_GECILDI' || contactStatus === 'ILETISIME_GECILMEDI') {
+      whereConditions.push({ contactStatus })
     }
     
     // Tarih filtresi

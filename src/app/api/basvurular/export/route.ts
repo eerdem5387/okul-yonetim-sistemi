@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
     const anneMeslek = searchParams.get('anneMeslek') || ''
     const startDate = searchParams.get('startDate') || ''
     const endDate = searchParams.get('endDate') || ''
+    const contactStatus = searchParams.get('contactStatus') || ''
 
     // Filtreleme koşulları (API ile aynı)
     const whereConditions: Array<Record<string, unknown>> = []
@@ -47,6 +48,10 @@ export async function GET(request: NextRequest) {
     
     if (anneMeslek) {
       whereConditions.push({ anneMeslek: { contains: anneMeslek, mode: 'insensitive' as const } })
+    }
+
+    if (contactStatus === 'ILETISIME_GECILDI' || contactStatus === 'ILETISIME_GECILMEDI') {
+      whereConditions.push({ contactStatus })
     }
     
     // Tarih filtresi
@@ -93,6 +98,9 @@ export async function GET(request: NextRequest) {
       "Anne İş Adresi": basvuru.anneIsAdresi || "",
       "Anne Cep Telefonu": basvuru.anneCepTel,
       "E-posta": basvuru.email,
+      "İletişim Durumu": basvuru.contactStatus === "ILETISIME_GECILDI" ? "İletişime Geçildi" : "İletişime Geçilmedi",
+      "İletişim Notu": basvuru.contactNote || "",
+      "Son İletişim Tarihi": basvuru.lastContactedAt ? new Date(basvuru.lastContactedAt).toLocaleString('tr-TR') : "",
       "Başvuru Tarihi": new Date(basvuru.createdAt).toLocaleString('tr-TR'),
       "Senkronizasyon Tarihi": new Date(basvuru.syncedAt).toLocaleString('tr-TR'),
     }))
@@ -118,6 +126,9 @@ export async function GET(request: NextRequest) {
       { wch: 40 },  // Anne İş Adresi
       { wch: 15 },  // Anne Cep Telefonu
       { wch: 30 },  // E-posta
+      { wch: 18 },  // İletişim Durumu
+      { wch: 40 },  // İletişim Notu
+      { wch: 22 },  // Son İletişim Tarihi
       { wch: 20 },  // Başvuru Tarihi
       { wch: 20 },  // Senkronizasyon Tarihi
     ]

@@ -191,11 +191,23 @@ model Basvuru {
   syncedAt       DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  // İletişim durumu ve notları
+  contactStatus    ContactStatus @default(ILETISIME_GECILMEDI)
+  contactNote      String?
+  lastContactedAt  DateTime?
+  lastContactedBy  String?
+
   @@index([externalId])
   @@index([ogrenciTc])
   @@index([email])
   @@index([createdAt])
   @@map("basvurular")
+}
+
+// Bursluluk başvuruları için iletişim durumu
+enum ContactStatus {
+  ILETISIME_GECILDI
+  ILETISIME_GECILMEDI
 }
 
 // IB Programı - Öğrenci Faaliyet Kayıtları

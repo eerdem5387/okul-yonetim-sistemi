@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label"
 import { 
   Search, Eye, Calendar, User, Mail, Phone, School, GraduationCap, 
   Briefcase, X, Filter, ChevronDown, ChevronUp, 
-  FileSpreadsheet, Users, TrendingUp, Clock, RefreshCw, CheckCircle2, Trash2
+  FileSpreadsheet, Users, TrendingUp, Clock, RefreshCw, CheckCircle2, Trash2,
+  PhoneCall
 } from "lucide-react"
 
 interface Basvuru {
@@ -31,6 +32,10 @@ interface Basvuru {
   email: string
   createdAt: string
   syncedAt: string
+  contactStatus: "ILETISIME_GECILDI" | "ILETISIME_GECILMEDI"
+  contactNote: string | null
+  lastContactedAt: string | null
+  lastContactedBy: string | null
 }
 
 const siniflar = [
@@ -58,6 +63,13 @@ export default function BasvurularPage() {
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState<{ synced: number; skipped: number; errors: number } | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [contactModal, setContactModal] = useState<{
+    basvuru: Basvuru
+    status: "ILETISIME_GECILDI" | "ILETISIME_GECILMEDI"
+    note: string
+    contactedBy: string
+  } | null>(null)
+  const [isSavingContact, setIsSavingContact] = useState(false)
   
   // Filtreler
   const [selectedSinif, setSelectedSinif] = useState("")
@@ -67,6 +79,7 @@ export default function BasvurularPage() {
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
   const [showFilters, setShowFilters] = useState(false)
+  const [contactFilter, setContactFilter] = useState<"" | "ILETISIME_GECILDI" | "ILETISIME_GECILMEDI">("")
   
   // İstatistikler
   const [stats, setStats] = useState({
@@ -121,7 +134,8 @@ export default function BasvurularPage() {
     babaMeslek: string = "",
     anneMeslek: string = "",
     startDateParam: string = "",
-    endDateParam: string = ""
+    endDateParam: string = "",
+    contactStatusParam: "" | "ILETISIME_GECILDI" | "ILETISIME_GECILMEDI" = ""
   ) => {
     try {
       setLoading(true)
@@ -149,6 +163,9 @@ export default function BasvurularPage() {
       }
       if (endDateParam) {
         params.append("endDate", endDateParam)
+      }
+      if (contactStatusParam) {
+        params.append("contactStatus", contactStatusParam)
       }
       
       const response = await fetch(`/api/basvurular?${params.toString()}`)
@@ -207,8 +224,7 @@ export default function BasvurularPage() {
       endDate
     )
     fetchStats()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, fetchBasvurular, startDate, endDate])
+  }, [currentPage, fetchBasvurular, startDate, endDate, contactFilter, searchTerm, selectedSinif, selectedOkul, selectedBabaMeslek, selectedAnneMeslek])
 
   const handleSearch = () => {
     setCurrentPage(1)
@@ -231,7 +247,8 @@ export default function BasvurularPage() {
     newBabaMeslek?: string, 
     newAnneMeslek?: string,
     newStartDate?: string,
-    newEndDate?: string
+    newEndDate?: string,
+    newContactStatus?: "" | "ILETISIME_GECILDI" | "ILETISIME_GECILMEDI"
   ) => {
     setCurrentPage(1)
     const sinifToUse = newSinif !== undefined ? newSinif : selectedSinif
@@ -240,6 +257,7 @@ export default function BasvurularPage() {
     const anneMeslekToUse = newAnneMeslek !== undefined ? newAnneMeslek : selectedAnneMeslek
     const startDateToUse = newStartDate !== undefined ? newStartDate : startDate
     const endDateToUse = newEndDate !== undefined ? newEndDate : endDate
+    const contactStatusToUse = newContactStatus !== undefined ? newContactStatus : contactFilter
     
     fetchBasvurular(
       1, 
@@ -249,7 +267,8 @@ export default function BasvurularPage() {
       babaMeslekToUse, 
       anneMeslekToUse,
       startDateToUse,
-      endDateToUse
+      endDateToUse,
+      contactStatusToUse
     )
     fetchStats()
   }
@@ -262,12 +281,13 @@ export default function BasvurularPage() {
     setSelectedAnneMeslek("")
     setStartDate("")
     setEndDate("")
+    setContactFilter("")
     setCurrentPage(1)
-    fetchBasvurular(1, "", "", "", "", "", "", "")
+    fetchBasvurular(1, "", "", "", "", "", "", "", "")
     fetchStats()
   }
 
-  const hasActiveFilters = searchTerm || selectedSinif || selectedOkul || selectedBabaMeslek || selectedAnneMeslek || startDate || endDate
+  const hasActiveFilters = searchTerm || selectedSinif || selectedOkul || selectedBabaMeslek || selectedAnneMeslek || startDate || endDate || contactFilter
 
   const handleExport = async () => {
     try {
@@ -293,6 +313,9 @@ export default function BasvurularPage() {
       }
       if (endDate) {
         params.append("endDate", endDate)
+      }
+      if (contactFilter) {
+        params.append("contactStatus", contactFilter)
       }
 
       const response = await fetch(`/api/basvurular/export?${params.toString()}`)
@@ -539,6 +562,160 @@ export default function BasvurularPage() {
         </Card>
       )}
 
+      {/* İletişim Notu Modalı */}
+      {contactModal && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          onClick={() => !isSavingContact && setContactModal(null)}
+        >
+          <Card
+            className="max-w-lg w-full shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <PhoneCall className="h-4 w-4 text-blue-600" />
+                {contactModal.status === "ILETISIME_GECILDI"
+                  ? "İletişime Geçildi Notu"
+                  : "İletişime Geçilmedi Notu"}
+              </CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
+                {contactModal.basvuru.ogrenciAdSoyad} - {contactModal.basvuru.okul}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 sm:space-y-4">
+              {contactModal.status === "ILETISIME_GECILDI" && (
+                <div>
+                  <Label className="text-xs sm:text-sm mb-1.5 sm:mb-2 block">
+                    İletişime Geçen <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    type="text"
+                    value={contactModal.contactedBy}
+                    onChange={(e) =>
+                      setContactModal((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              contactedBy: e.target.value,
+                            }
+                          : prev
+                      )
+                    }
+                    className="w-full px-3 py-2 text-xs sm:text-sm"
+                    placeholder="Adınızı ve soyadınızı yazınız..."
+                  />
+                </div>
+              )}
+              <div>
+                <Label className="text-xs sm:text-sm mb-1.5 sm:mb-2 block">
+                  Not <span className="text-red-500">*</span>
+                </Label>
+                <textarea
+                  value={contactModal.note}
+                  onChange={(e) =>
+                    setContactModal((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            note: e.target.value,
+                          }
+                        : prev
+                    )
+                  }
+                  rows={4}
+                  className="w-full px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder={
+                    contactModal.status === "ILETISIME_GECILDI"
+                      ? "İletişime geçildikten sonra yapılan görüşmenin özetini yazınız..."
+                      : "İletişime geçilememesinin nedenini yazınız..."
+                  }
+                />
+              </div>
+            </CardContent>
+            <CardContent className="pt-0 pb-4 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => !isSavingContact && setContactModal(null)}
+                disabled={isSavingContact}
+              >
+                İptal
+              </Button>
+              <Button
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                disabled={
+                  isSavingContact ||
+                  !contactModal.note.trim() ||
+                  (contactModal.status === "ILETISIME_GECILDI" &&
+                    !contactModal.contactedBy.trim())
+                }
+                onClick={async () => {
+                  if (!contactModal.note.trim()) return
+                  if (
+                    contactModal.status === "ILETISIME_GECILDI" &&
+                    !contactModal.contactedBy.trim()
+                  )
+                    return
+                  try {
+                    setIsSavingContact(true)
+                    const response = await fetch(
+                      `/api/basvurular/${contactModal.basvuru.id}`,
+                      {
+                        method: "PATCH",
+                        headers: {
+                          "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                          status: contactModal.status,
+                          note: contactModal.note.trim(),
+                          contactedBy:
+                            contactModal.status === "ILETISIME_GECILDI"
+                              ? contactModal.contactedBy.trim()
+                              : undefined,
+                        }),
+                      }
+                    )
+
+                    if (!response.ok) {
+                      const data = await response.json().catch(() => null)
+                      throw new Error(data?.error || "İletişim durumu güncellenemedi")
+                    }
+
+                    // Listeyi ve detayları güncelle
+                    await fetchBasvurular(
+                      currentPage,
+                      searchTerm,
+                      selectedSinif,
+                      selectedOkul,
+                      selectedBabaMeslek,
+                      selectedAnneMeslek,
+                      startDate,
+                      endDate,
+                      contactFilter
+                    )
+                    await fetchAllBasvurular()
+                    setContactModal(null)
+                  } catch (error) {
+                    console.error("Error updating contact status:", error)
+                    alert(
+                      error instanceof Error
+                        ? error.message
+                        : "İletişim durumu güncellenirken bir hata oluştu"
+                    )
+                  } finally {
+                    setIsSavingContact(false)
+                  }
+                }}
+              >
+                {isSavingContact ? "Kaydediliyor..." : "Kaydet"}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* İstatistik Kartları */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
         <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white">
@@ -716,6 +893,26 @@ export default function BasvurularPage() {
                         {sinif}
                       </option>
                     ))}
+                  </select>
+                </div>
+
+                <div>
+                  <Label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2 block">
+                    <PhoneCall className="h-3 w-3 sm:h-4 sm:w-4 inline mr-1" />
+                    İletişim Durumu
+                  </Label>
+                  <select
+                    value={contactFilter}
+                    onChange={(e) => {
+                      const newValue = e.target.value as "" | "ILETISIME_GECILDI" | "ILETISIME_GECILMEDI"
+                      setContactFilter(newValue)
+                      handleFilterChange(undefined, undefined, undefined, undefined, undefined, undefined, newValue)
+                    }}
+                    className="w-full h-9 sm:h-10 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Tümü</option>
+                    <option value="ILETISIME_GECILDI">İletişime Geçildi</option>
+                    <option value="ILETISIME_GECILMEDI">İletişime Geçilmedi</option>
                   </select>
                 </div>
 
@@ -902,6 +1099,21 @@ export default function BasvurularPage() {
                     </button>
                   </span>
                 )}
+                {contactFilter && (
+                  <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-0.5 sm:py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs sm:text-sm">
+                    <span className="hidden sm:inline">İletişim: </span>
+                    {contactFilter === "ILETISIME_GECILDI" ? "İletişime Geçildi" : "İletişime Geçilmedi"}
+                    <button
+                      onClick={() => {
+                        setContactFilter("")
+                        handleFilterChange(undefined, undefined, undefined, undefined, undefined, undefined, "")
+                      }}
+                      className="hover:text-yellow-900 ml-0.5"
+                    >
+                      <X className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                    </button>
+                  </span>
+                )}
                 {endDate && (
                   <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-0.5 sm:py-1 bg-teal-100 text-teal-700 rounded-full text-xs sm:text-sm">
                     <span className="hidden sm:inline">Bitiş: </span>
@@ -996,19 +1208,54 @@ export default function BasvurularPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex gap-2 sm:ml-4 flex-shrink-0">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setSelectedBasvuru(basvuru)
-                        }}
-                        className="group-hover:border-blue-300 group-hover:bg-blue-50 transition-colors text-xs sm:text-sm flex-1 sm:flex-initial"
-                      >
-                        <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                        <span className="hidden sm:inline">Detay</span>
-                      </Button>
+                    <div className="flex flex-col sm:flex-row gap-2 sm:ml-4 flex-shrink-0 min-w-[160px]">
+                      <div className="flex gap-2">
+                        <Button
+                          variant={basvuru.contactStatus === "ILETISIME_GECILDI" ? "default" : "outline"}
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setContactModal({
+                              basvuru,
+                              status: "ILETISIME_GECILDI",
+                              note: basvuru.contactNote || "",
+                              contactedBy: basvuru.lastContactedBy || ""
+                            })
+                          }}
+                          className="text-xs sm:text-sm flex-1 bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          İletişime Geçildi
+                        </Button>
+                        <Button
+                          variant={basvuru.contactStatus === "ILETISIME_GECILMEDI" ? "default" : "outline"}
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setContactModal({
+                              basvuru,
+                              status: "ILETISIME_GECILMEDI",
+                              note: basvuru.contactStatus === "ILETISIME_GECILMEDI" ? (basvuru.contactNote || "") : "",
+                              contactedBy: ""
+                            })
+                          }}
+                          className="text-xs sm:text-sm flex-1 bg-red-600 hover:bg-red-700 text-white"
+                        >
+                          İletişime Geçilmedi
+                        </Button>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedBasvuru(basvuru)
+                          }}
+                          className="group-hover:border-blue-300 group-hover:bg-blue-50 transition-colors text-xs sm:text-sm flex-1 sm:flex-initial"
+                        >
+                          <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                          <span className="hidden sm:inline">Detay</span>
+                        </Button>
                       {(basvuru.ogrenciAdSoyad.includes('TEST') || 
                         basvuru.okul === 'Test Okulu' || 
                         basvuru.externalId.startsWith('test-')) && (
@@ -1029,6 +1276,7 @@ export default function BasvurularPage() {
                           )}
                         </Button>
                       )}
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -1197,9 +1445,49 @@ export default function BasvurularPage() {
                     <Mail className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 flex-shrink-0" />
                     İletişim Bilgileri
                   </h3>
-                  <div>
-                    <Label className="text-gray-500 text-xs sm:text-sm">E-posta</Label>
-                    <p className="font-semibold text-sm sm:text-base break-all">{selectedBasvuru.email}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div>
+                      <Label className="text-gray-500 text-xs sm:text-sm">E-posta</Label>
+                      <p className="font-semibold text-sm sm:text-base break-all">{selectedBasvuru.email}</p>
+                    </div>
+                    <div>
+                      <Label className="text-gray-500 text-xs sm:text-sm">İletişim Durumu</Label>
+                      <p className="font-semibold text-sm sm:text-base">
+                        {selectedBasvuru.contactStatus === "ILETISIME_GECILDI" ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs sm:text-sm">
+                            İletişime Geçildi
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 text-xs sm:text-sm">
+                            İletişime Geçilmedi
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    {selectedBasvuru.lastContactedAt && (
+                      <div>
+                        <Label className="text-gray-500 text-xs sm:text-sm">Son İletişim Tarihi</Label>
+                        <p className="font-semibold text-xs sm:text-sm">
+                          {new Date(selectedBasvuru.lastContactedAt).toLocaleString("tr-TR")}
+                        </p>
+                      </div>
+                    )}
+                    {selectedBasvuru.lastContactedBy && (
+                      <div>
+                        <Label className="text-gray-500 text-xs sm:text-sm">İletişime Geçen</Label>
+                        <p className="font-semibold text-sm sm:text-base break-words">
+                          {selectedBasvuru.lastContactedBy}
+                        </p>
+                      </div>
+                    )}
+                    {selectedBasvuru.contactNote && (
+                      <div className="sm:col-span-2">
+                        <Label className="text-gray-500 text-xs sm:text-sm">İletişim Notu</Label>
+                        <p className="font-semibold text-sm sm:text-base whitespace-pre-wrap break-words bg-gray-50 rounded-lg p-3 border border-gray-100">
+                          {selectedBasvuru.contactNote}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
