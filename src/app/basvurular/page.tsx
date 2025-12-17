@@ -79,7 +79,7 @@ export default function BasvurularPage() {
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
   const [showFilters, setShowFilters] = useState(false)
-  const [contactFilter, setContactFilter] = useState<"" | "ILETISIME_GECILDI" | "ILETISIME_GECILMEDI">("")
+  const [contactFilter, setContactFilter] = useState<"" | "ILETISIME_GECILDI" | "ILETISIME_GECILMEDI_NOT_CONTACTED" | "ILETISIME_GECILMEDI_FAILED">("")
   
   // İstatistikler
   const [stats, setStats] = useState({
@@ -135,7 +135,7 @@ export default function BasvurularPage() {
     anneMeslek: string = "",
     startDateParam: string = "",
     endDateParam: string = "",
-    contactStatusParam: "" | "ILETISIME_GECILDI" | "ILETISIME_GECILMEDI" = ""
+    contactStatusParam: "" | "ILETISIME_GECILDI" | "ILETISIME_GECILMEDI_NOT_CONTACTED" | "ILETISIME_GECILMEDI_FAILED" = ""
   ) => {
     try {
       setLoading(true)
@@ -248,7 +248,7 @@ export default function BasvurularPage() {
     newAnneMeslek?: string,
     newStartDate?: string,
     newEndDate?: string,
-    newContactStatus?: "" | "ILETISIME_GECILDI" | "ILETISIME_GECILMEDI"
+    newContactStatus?: "" | "ILETISIME_GECILDI" | "ILETISIME_GECILMEDI_NOT_CONTACTED" | "ILETISIME_GECILMEDI_FAILED"
   ) => {
     setCurrentPage(1)
     const sinifToUse = newSinif !== undefined ? newSinif : selectedSinif
@@ -904,7 +904,7 @@ export default function BasvurularPage() {
                   <select
                     value={contactFilter}
                     onChange={(e) => {
-                      const newValue = e.target.value as "" | "ILETISIME_GECILDI" | "ILETISIME_GECILMEDI"
+                      const newValue = e.target.value as "" | "ILETISIME_GECILDI" | "ILETISIME_GECILMEDI_NOT_CONTACTED" | "ILETISIME_GECILMEDI_FAILED"
                       setContactFilter(newValue)
                       handleFilterChange(undefined, undefined, undefined, undefined, undefined, undefined, newValue)
                     }}
@@ -912,7 +912,8 @@ export default function BasvurularPage() {
                   >
                     <option value="">Tümü</option>
                     <option value="ILETISIME_GECILDI">İletişime Geçildi</option>
-                    <option value="ILETISIME_GECILMEDI">İletişime Geçilemedi</option>
+                    <option value="ILETISIME_GECILMEDI_NOT_CONTACTED">İletişime Geçilmedi</option>
+                    <option value="ILETISIME_GECILMEDI_FAILED">İletişime Geçilemedi</option>
                   </select>
                 </div>
 
@@ -1100,15 +1101,31 @@ export default function BasvurularPage() {
                   </span>
                 )}
                 {contactFilter && (
-                  <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-0.5 sm:py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs sm:text-sm">
+                  <span className={`inline-flex items-center gap-1 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs sm:text-sm ${
+                    contactFilter === "ILETISIME_GECILDI"
+                      ? "bg-green-100 text-green-700"
+                      : contactFilter === "ILETISIME_GECILMEDI_FAILED"
+                      ? "bg-red-100 text-red-700"
+                      : "bg-yellow-100 text-yellow-700"
+                  }`}>
                     <span className="hidden sm:inline">İletişim: </span>
-                    {contactFilter === "ILETISIME_GECILDI" ? "İletişime Geçildi" : "İletişime Geçilemedi"}
+                    {contactFilter === "ILETISIME_GECILDI"
+                      ? "İletişime Geçildi"
+                      : contactFilter === "ILETISIME_GECILMEDI_FAILED"
+                      ? "İletişime Geçilemedi"
+                      : "İletişime Geçilmedi"}
                     <button
                       onClick={() => {
                         setContactFilter("")
                         handleFilterChange(undefined, undefined, undefined, undefined, undefined, undefined, "")
                       }}
-                      className="hover:text-yellow-900 ml-0.5"
+                      className={`ml-0.5 hover:opacity-70 ${
+                        contactFilter === "ILETISIME_GECILDI"
+                          ? "hover:text-green-900"
+                          : contactFilter === "ILETISIME_GECILMEDI_FAILED"
+                          ? "hover:text-red-900"
+                          : "hover:text-yellow-900"
+                      }`}
                     >
                       <X className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                     </button>
@@ -1242,14 +1259,14 @@ export default function BasvurularPage() {
                           İletişime Geçildi
                         </Button>
                         <Button
-                          variant={basvuru.contactStatus === "ILETISIME_GECILMEDI" ? "default" : "outline"}
+                          variant={basvuru.contactStatus === "ILETISIME_GECILMEDI" && basvuru.lastContactedAt ? "default" : "outline"}
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation()
                             setContactModal({
                               basvuru,
                               status: "ILETISIME_GECILMEDI",
-                              note: basvuru.contactStatus === "ILETISIME_GECILMEDI" ? (basvuru.contactNote || "") : "",
+                              note: basvuru.contactStatus === "ILETISIME_GECILMEDI" && basvuru.lastContactedAt ? (basvuru.contactNote || "") : "",
                               contactedBy: ""
                             })
                           }}

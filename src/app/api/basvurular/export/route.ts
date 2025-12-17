@@ -50,8 +50,24 @@ export async function GET(request: NextRequest) {
       whereConditions.push({ anneMeslek: { contains: anneMeslek, mode: 'insensitive' as const } })
     }
 
-    if (contactStatus === 'ILETISIME_GECILDI' || contactStatus === 'ILETISIME_GECILMEDI') {
-      whereConditions.push({ contactStatus })
+    // İletişim durumu filtresi
+    if (contactStatus === 'ILETISIME_GECILDI') {
+      whereConditions.push({ contactStatus: 'ILETISIME_GECILDI' })
+    } else if (contactStatus === 'ILETISIME_GECILMEDI_NOT_CONTACTED') {
+      // İletişime Geçilmedi - Henüz işlem yapılmamış (sarı)
+      whereConditions.push({ 
+        contactStatus: 'ILETISIME_GECILMEDI',
+        lastContactedAt: null
+      })
+    } else if (contactStatus === 'ILETISIME_GECILMEDI_FAILED') {
+      // İletişime Geçilemedi - İşlem yapılmış ama başarısız (kırmızı)
+      whereConditions.push({ 
+        contactStatus: 'ILETISIME_GECILMEDI',
+        lastContactedAt: { not: null }
+      })
+    } else if (contactStatus === 'ILETISIME_GECILMEDI') {
+      // Eski filtreleme için geriye dönük uyumluluk - tüm ILETISIME_GECILMEDI'leri getir
+      whereConditions.push({ contactStatus: 'ILETISIME_GECILMEDI' })
     }
     
     // Tarih filtresi
@@ -98,7 +114,11 @@ export async function GET(request: NextRequest) {
       "Anne İş Adresi": basvuru.anneIsAdresi || "",
       "Anne Cep Telefonu": basvuru.anneCepTel,
       "E-posta": basvuru.email,
-      "İletişim Durumu": basvuru.contactStatus === "ILETISIME_GECILDI" ? "İletişime Geçildi" : "İletişime Geçilemedi",
+      "İletişim Durumu": basvuru.contactStatus === "ILETISIME_GECILDI" 
+        ? "İletişime Geçildi" 
+        : basvuru.contactStatus === "ILETISIME_GECILMEDI" && basvuru.lastContactedAt
+        ? "İletişime Geçilemedi"
+        : "İletişime Geçilmedi",
       "İletişim Notu": basvuru.contactNote || "",
       "Son İletişim Tarihi": basvuru.lastContactedAt ? new Date(basvuru.lastContactedAt).toLocaleString('tr-TR') : "",
       "Başvuru Tarihi": new Date(basvuru.createdAt).toLocaleString('tr-TR'),

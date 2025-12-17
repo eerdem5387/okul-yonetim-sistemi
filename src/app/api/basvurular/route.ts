@@ -61,8 +61,23 @@ export async function GET(request: NextRequest) {
     }
 
     // İletişim durumu filtresi
-    if (contactStatus === 'ILETISIME_GECILDI' || contactStatus === 'ILETISIME_GECILMEDI') {
-      whereConditions.push({ contactStatus })
+    if (contactStatus === 'ILETISIME_GECILDI') {
+      whereConditions.push({ contactStatus: 'ILETISIME_GECILDI' })
+    } else if (contactStatus === 'ILETISIME_GECILMEDI_NOT_CONTACTED') {
+      // İletişime Geçilmedi - Henüz işlem yapılmamış (sarı)
+      whereConditions.push({ 
+        contactStatus: 'ILETISIME_GECILMEDI',
+        lastContactedAt: null
+      })
+    } else if (contactStatus === 'ILETISIME_GECILMEDI_FAILED') {
+      // İletişime Geçilemedi - İşlem yapılmış ama başarısız (kırmızı)
+      whereConditions.push({ 
+        contactStatus: 'ILETISIME_GECILMEDI',
+        lastContactedAt: { not: null }
+      })
+    } else if (contactStatus === 'ILETISIME_GECILMEDI') {
+      // Eski filtreleme için geriye dönük uyumluluk - tüm ILETISIME_GECILMEDI'leri getir
+      whereConditions.push({ contactStatus: 'ILETISIME_GECILMEDI' })
     }
     
     // Tarih filtresi
