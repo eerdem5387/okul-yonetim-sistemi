@@ -577,7 +577,7 @@ export default function BasvurularPage() {
                 <PhoneCall className="h-4 w-4 text-blue-600" />
                 {contactModal.status === "ILETISIME_GECILDI"
                   ? "İletişime Geçildi Notu"
-                  : "İletişime Geçilmedi Notu"}
+                  : "İletişime Geçilemedi Notu"}
               </CardTitle>
               <CardDescription className="text-xs sm:text-sm">
                 {contactModal.basvuru.ogrenciAdSoyad} - {contactModal.basvuru.okul}
@@ -912,7 +912,7 @@ export default function BasvurularPage() {
                   >
                     <option value="">Tümü</option>
                     <option value="ILETISIME_GECILDI">İletişime Geçildi</option>
-                    <option value="ILETISIME_GECILMEDI">İletişime Geçilmedi</option>
+                    <option value="ILETISIME_GECILMEDI">İletişime Geçilemedi</option>
                   </select>
                 </div>
 
@@ -1102,7 +1102,7 @@ export default function BasvurularPage() {
                 {contactFilter && (
                   <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-0.5 sm:py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs sm:text-sm">
                     <span className="hidden sm:inline">İletişim: </span>
-                    {contactFilter === "ILETISIME_GECILDI" ? "İletişime Geçildi" : "İletişime Geçilmedi"}
+                    {contactFilter === "ILETISIME_GECILDI" ? "İletişime Geçildi" : "İletişime Geçilemedi"}
                     <button
                       onClick={() => {
                         setContactFilter("")
@@ -1177,9 +1177,20 @@ export default function BasvurularPage() {
                           {basvuru.ogrenciAdSoyad.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <h3 className="text-base sm:text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors truncate">
-                            {basvuru.ogrenciAdSoyad}
-                          </h3>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-base sm:text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors truncate">
+                              {basvuru.ogrenciAdSoyad}
+                            </h3>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                              basvuru.contactStatus === "ILETISIME_GECILDI"
+                                ? "bg-green-100 text-green-700"
+                                : "bg-yellow-100 text-yellow-700"
+                            }`}>
+                              {basvuru.contactStatus === "ILETISIME_GECILDI"
+                                ? "İletişime Geçildi"
+                                : "İletişime Geçilmedi"}
+                            </span>
+                          </div>
                           <p className="text-xs sm:text-sm text-gray-500">TC: {basvuru.ogrenciTc}</p>
                         </div>
                       </div>
@@ -1240,7 +1251,7 @@ export default function BasvurularPage() {
                           }}
                           className="text-xs sm:text-sm flex-1 bg-red-600 hover:bg-red-700 text-white"
                         >
-                          İletişime Geçilmedi
+                          İletişime Geçilemedi
                         </Button>
                       </div>
                       <div className="flex gap-2">
@@ -1459,7 +1470,7 @@ export default function BasvurularPage() {
                           </span>
                         ) : (
                           <span className="inline-flex items-center px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 text-xs sm:text-sm">
-                            İletişime Geçilmedi
+                            İletişime Geçilemedi
                           </span>
                         )}
                       </p>

@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
       "Anne İş Adresi": basvuru.anneIsAdresi || "",
       "Anne Cep Telefonu": basvuru.anneCepTel,
       "E-posta": basvuru.email,
-      "İletişim Durumu": basvuru.contactStatus === "ILETISIME_GECILDI" ? "İletişime Geçildi" : "İletişime Geçilmedi",
+      "İletişim Durumu": basvuru.contactStatus === "ILETISIME_GECILDI" ? "İletişime Geçildi" : "İletişime Geçilemedi",
       "İletişim Notu": basvuru.contactNote || "",
       "Son İletişim Tarihi": basvuru.lastContactedAt ? new Date(basvuru.lastContactedAt).toLocaleString('tr-TR') : "",
       "Başvuru Tarihi": new Date(basvuru.createdAt).toLocaleString('tr-TR'),
