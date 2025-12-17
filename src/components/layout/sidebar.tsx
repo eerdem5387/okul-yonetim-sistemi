@@ -23,7 +23,8 @@ import {
   MapPin,
   MessageSquare,
   Briefcase,
-  Target
+  Target,
+  Handshake
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
@@ -32,6 +33,7 @@ const allNavigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard, roles: ["student_affairs"] },
   { name: "Neredeyiz?", href: "/neredeyiz", icon: Target, roles: ["student_affairs", "counselor"] },
   { name: "Bursluluk Başvuruları", href: "/basvurular", icon: ClipboardList, roles: ["student_affairs"] },
+  { name: "Teklif Görüşmeleri", href: "/teklif-gorusmeleri", icon: Handshake, roles: ["student_affairs"] },
   { name: "Gezi Yönetimi", href: "/gezi", icon: MapPin, roles: ["student_affairs", "counselor"] },
   { name: "Öğrenci Yönetimi", href: "/students", icon: UserPlus, roles: ["student_affairs"] },
   { name: "Personel Yönetimi", href: "/personel", icon: Briefcase, roles: ["student_affairs"] },

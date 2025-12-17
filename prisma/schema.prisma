@@ -192,10 +192,10 @@ model Basvuru {
   updatedAt      DateTime @updatedAt
 
   // İletişim durumu ve notları
-  contactStatus    ContactStatus @default(ILETISIME_GECILMEDI)
-  contactNote      String?
-  lastContactedAt  DateTime?
-  lastContactedBy  String?
+  contactStatus   ContactStatus @default(ILETISIME_GECILMEDI)
+  contactNote     String?
+  lastContactedAt DateTime?
+  lastContactedBy String?
 
   @@index([externalId])
   @@index([ogrenciTc])
@@ -385,21 +385,21 @@ model AcademicYear {
 }
 
 model Notification {
-  id          String           @id @default(cuid())
-  type        NotificationType
-  title       String
-  message     String
-  targetRole  StaffDepartment? // OGRETMEN, REHBERLIK, OGRENCI_ISLERI, null = herkese
+  id           String               @id @default(cuid())
+  type         NotificationType
+  title        String
+  message      String
+  targetRole   StaffDepartment? // OGRETMEN, REHBERLIK, OGRENCI_ISLERI, null = herkese
   targetUserId String? // Belirli bir kullanıcıya özel (örn: öğretmen)
-  isRead      Boolean          @default(false)
-  priority    NotificationPriority @default(NORMAL)
-  
+  isRead       Boolean              @default(false)
+  priority     NotificationPriority @default(NORMAL)
+
   // İlişkili kayıtlar (opsiyonel)
   relatedSubjectId String?
   relatedTopicId   String?
   relatedUnitId    String?
   relatedStaffId   String?
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -411,16 +411,16 @@ model Notification {
 }
 
 enum NotificationType {
-  ONAY_BEKLIYOR        // Konu tamamlama onayı bekliyor
-  TAMAMLANDI           // Konu tamamlandı ve onaylandı
-  GECIKMELI            // Konu gecikmeye girdi
-  YAKLASAN_DEADLINE    // Yaklaşan bitiş tarihi
-  AKSAMA_OLUSTURULDU   // Yeni aksama eklendi
-  OGRETMEN_ATANDI      // Öğretmen derse atandı
-  UNITE_TAMAMLANDI     // Ünite tamamlandı
-  ERKEN_TAMAMLANDI     // Konu erken tamamlandı
-  HAFTALIK_OZET        // Haftalık özet bildirimi
-  KRITIK_GECIKME       // 5+ gün gecikme
+  ONAY_BEKLIYOR // Konu tamamlama onayı bekliyor
+  TAMAMLANDI // Konu tamamlandı ve onaylandı
+  GECIKMELI // Konu gecikmeye girdi
+  YAKLASAN_DEADLINE // Yaklaşan bitiş tarihi
+  AKSAMA_OLUSTURULDU // Yeni aksama eklendi
+  OGRETMEN_ATANDI // Öğretmen derse atandı
+  UNITE_TAMAMLANDI // Ünite tamamlandı
+  ERKEN_TAMAMLANDI // Konu erken tamamlandı
+  HAFTALIK_OZET // Haftalık özet bildirimi
+  KRITIK_GECIKME // 5+ gün gecikme
 }
 
 enum NotificationPriority {
@@ -607,4 +607,62 @@ model Progress {
   @@index([reportedBy])
   @@index([approvedBy])
   @@map("progress")
+}
+
+// Teklif Görüşmeleri
+enum TeklifGorusmeDurumu {
+  OLUMLU
+  OLUMSUZ
+  BELIRSIZ
+}
+
+model TeklifGorusmesi {
+  id                String   @id @default(cuid())
+  // Öğrenci Bilgileri
+  ogrenciAdSoyad    String
+  okul              String
+  sinif             String
+  // Veli Bilgileri
+  veliAdSoyad       String
+  veliTelefon       String
+  veliEmail         String?
+  veliMeslek        String?
+  veliAdres         String?
+  // Teklif Bilgileri
+  teklifEdilenFiyat Float // Teklif edilen fiyat
+  okulFiyati        Float // Okul fiyatı
+  // Sistem Bilgileri
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  createdBy         String? // Oluşturan kullanıcı
+
+  // Relations
+  kayitlar TeklifGorusmeKaydi[]
+
+  @@index([ogrenciAdSoyad])
+  @@index([okul])
+  @@index([sinif])
+  @@index([createdAt])
+  @@map("teklif_gorusmeleri")
+}
+
+model TeklifGorusmeKaydi {
+  id                String              @id @default(cuid())
+  teklifGorusmesiId String
+  // Görüşme Bilgileri
+  gorusmeTarihi     DateTime            @default(now())
+  gorusmeyiYapan    String // Görüşmeyi yapan kişi adı
+  durum             TeklifGorusmeDurumu
+  durumNotu         String? // Duruma özel not (örn: "Olumlu - %20 indirim teklif edildi")
+  genelNot          String? // Genel açıklama/notlar
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  // Relations
+  teklifGorusmesi TeklifGorusmesi @relation(fields: [teklifGorusmesiId], references: [id], onDelete: Cascade)
+
+  @@index([teklifGorusmesiId])
+  @@index([gorusmeTarihi])
+  @@index([durum])
+  @@map("teklif_gorusme_kayitlari")
 }
