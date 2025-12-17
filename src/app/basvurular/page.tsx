@@ -1352,173 +1352,245 @@ export default function BasvurularPage() {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="pt-4 sm:pt-6 px-4 sm:px-6 pb-6 sm:pb-8">
-              <div className="space-y-4 sm:space-y-6">
-                {/* Öğrenci Bilgileri */}
-                <div>
-                  <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
-                    <User className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 flex-shrink-0" />
-                    Öğrenci Bilgileri
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                    <div>
-                      <Label className="text-gray-500 text-xs sm:text-sm">Ad Soyad</Label>
-                      <p className="font-semibold text-sm sm:text-base break-words">{selectedBasvuru.ogrenciAdSoyad}</p>
-                    </div>
-                    <div>
-                      <Label className="text-gray-500 text-xs sm:text-sm">TC Kimlik No</Label>
-                      <p className="font-semibold text-sm sm:text-base">{selectedBasvuru.ogrenciTc}</p>
-                    </div>
-                    <div>
-                      <Label className="text-gray-500 text-xs sm:text-sm">Okul</Label>
-                      <p className="font-semibold text-sm sm:text-base break-words">{selectedBasvuru.okul}</p>
-                    </div>
-                    <div>
-                      <Label className="text-gray-500 text-xs sm:text-sm">Sınıf / Şube</Label>
-                      <p className="font-semibold text-sm sm:text-base">
-                        {selectedBasvuru.ogrenciSinifi} · {selectedBasvuru.ogrenciSube} Şubesi
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-gray-500 text-xs sm:text-sm">Sınav Günü</Label>
-                      <p className="font-semibold text-sm sm:text-base text-blue-600">
-                        {selectedBasvuru.sinavGunu || "Belirtilmedi"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Baba Bilgileri */}
-                <div>
-                  <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
-                    <User className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600 flex-shrink-0" />
-                    Baba Bilgileri
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                    <div>
-                      <Label className="text-gray-500 text-xs sm:text-sm">Ad Soyad</Label>
-                      <p className="font-semibold text-sm sm:text-base break-words">{selectedBasvuru.babaAdSoyad}</p>
-                    </div>
-                    <div>
-                      <Label className="text-gray-500 text-xs sm:text-sm">Meslek</Label>
-                      <p className="font-semibold text-sm sm:text-base break-words">{selectedBasvuru.babaMeslek}</p>
-                    </div>
-                    <div>
-                      <Label className="text-gray-500 text-xs sm:text-sm">Cep Telefonu</Label>
-                      <p className="font-semibold text-sm sm:text-base flex items-center gap-2">
-                        <Phone className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                        {formatPhone(selectedBasvuru.babaCepTel)}
-                      </p>
-                    </div>
-                    {selectedBasvuru.babaIsAdresi && (
-                      <div className="sm:col-span-2">
-                        <Label className="text-gray-500 text-xs sm:text-sm">İş Adresi</Label>
-                        <p className="font-semibold text-sm sm:text-base break-words">{selectedBasvuru.babaIsAdresi}</p>
+            <CardContent className="pt-6 sm:pt-8 px-4 sm:px-6 pb-6 sm:pb-8 bg-gray-50">
+              <div className="space-y-5 sm:space-y-6">
+                {/* Öğrenci Bilgileri - Öne Çıkan Kart */}
+                <Card className="border-0 shadow-md bg-white">
+                  <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 pb-3">
+                    <CardTitle className="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white">
+                        <User className="h-4 w-4" />
                       </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Anne Bilgileri */}
-                <div>
-                  <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
-                    <User className="h-4 w-4 sm:h-5 sm:w-5 text-pink-600 flex-shrink-0" />
-                    Anne Bilgileri
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                    <div>
-                      <Label className="text-gray-500 text-xs sm:text-sm">Ad Soyad</Label>
-                      <p className="font-semibold text-sm sm:text-base break-words">{selectedBasvuru.anneAdSoyad}</p>
-                    </div>
-                    <div>
-                      <Label className="text-gray-500 text-xs sm:text-sm">Meslek</Label>
-                      <p className="font-semibold text-sm sm:text-base break-words">{selectedBasvuru.anneMeslek}</p>
-                    </div>
-                    <div>
-                      <Label className="text-gray-500 text-xs sm:text-sm">Cep Telefonu</Label>
-                      <p className="font-semibold text-sm sm:text-base flex items-center gap-2">
-                        <Phone className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                        {formatPhone(selectedBasvuru.anneCepTel)}
-                      </p>
-                    </div>
-                    {selectedBasvuru.anneIsAdresi && (
-                      <div className="sm:col-span-2">
-                        <Label className="text-gray-500 text-xs sm:text-sm">İş Adresi</Label>
-                        <p className="font-semibold text-sm sm:text-base break-words">{selectedBasvuru.anneIsAdresi}</p>
+                      Öğrenci Bilgileri
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-4 sm:pt-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                      <div className="space-y-1">
+                        <Label className="text-gray-500 text-xs font-medium uppercase tracking-wide">Ad Soyad</Label>
+                        <p className="font-bold text-base sm:text-lg text-gray-900 break-words">{selectedBasvuru.ogrenciAdSoyad}</p>
                       </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* İletişim Bilgileri */}
-                <div>
-                  <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
-                    <Mail className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 flex-shrink-0" />
-                    İletişim Bilgileri
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                    <div>
-                      <Label className="text-gray-500 text-xs sm:text-sm">E-posta</Label>
-                      <p className="font-semibold text-sm sm:text-base break-all">{selectedBasvuru.email}</p>
+                      <div className="space-y-1">
+                        <Label className="text-gray-500 text-xs font-medium uppercase tracking-wide">TC Kimlik No</Label>
+                        <p className="font-semibold text-sm sm:text-base text-gray-800 font-mono">{selectedBasvuru.ogrenciTc}</p>
+                      </div>
+                      <div className="space-y-1 sm:col-span-2">
+                        <Label className="text-gray-500 text-xs font-medium uppercase tracking-wide">Okul</Label>
+                        <p className="font-semibold text-sm sm:text-base text-gray-800 break-words flex items-start gap-2">
+                          <School className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                          {selectedBasvuru.okul}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-gray-500 text-xs font-medium uppercase tracking-wide">Sınıf / Şube</Label>
+                        <p className="font-semibold text-sm sm:text-base text-gray-800 flex items-center gap-2">
+                          <GraduationCap className="h-4 w-4 text-indigo-600 flex-shrink-0" />
+                          {selectedBasvuru.ogrenciSinifi} · {selectedBasvuru.ogrenciSube} Şubesi
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-gray-500 text-xs font-medium uppercase tracking-wide">Sınav Günü</Label>
+                        <p className="font-semibold text-sm sm:text-base text-blue-600 flex items-center gap-2">
+                          <Calendar className="h-4 w-4 flex-shrink-0" />
+                          {selectedBasvuru.sinavGunu || "Belirtilmedi"}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <Label className="text-gray-500 text-xs sm:text-sm">İletişim Durumu</Label>
-                      <p className="font-semibold text-sm sm:text-base">
-                        {selectedBasvuru.contactStatus === "ILETISIME_GECILDI" ? (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs sm:text-sm">
-                            İletişime Geçildi
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 text-xs sm:text-sm">
-                            İletişime Geçilemedi
-                          </span>
+                  </CardContent>
+                </Card>
+
+                {/* İletişim Durumu - Öne Çıkan Kart */}
+                <Card className={`border-2 shadow-md ${
+                  selectedBasvuru.contactStatus === "ILETISIME_GECILDI" 
+                    ? "border-green-200 bg-green-50/50" 
+                    : "border-yellow-200 bg-yellow-50/50"
+                }`}>
+                  <CardHeader className={`pb-3 ${
+                    selectedBasvuru.contactStatus === "ILETISIME_GECILDI" 
+                      ? "bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100" 
+                      : "bg-gradient-to-r from-yellow-50 to-amber-50 border-b border-yellow-100"
+                  }`}>
+                    <CardTitle className="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
+                      <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
+                        selectedBasvuru.contactStatus === "ILETISIME_GECILDI" 
+                          ? "bg-green-500 text-white" 
+                          : "bg-yellow-500 text-white"
+                      }`}>
+                        <PhoneCall className="h-4 w-4" />
+                      </div>
+                      İletişim Durumu
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-4 sm:pt-5">
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold ${
+                          selectedBasvuru.contactStatus === "ILETISIME_GECILDI"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-yellow-100 text-yellow-700"
+                        }`}>
+                          {selectedBasvuru.contactStatus === "ILETISIME_GECILDI"
+                            ? "✓ İletişime Geçildi"
+                            : "⚠ İletişime Geçilemedi"}
+                        </span>
+                      </div>
+                      {selectedBasvuru.lastContactedAt && (
+                        <div className="space-y-1">
+                          <Label className="text-gray-500 text-xs font-medium uppercase tracking-wide">Son İletişim Tarihi</Label>
+                          <p className="font-semibold text-sm text-gray-800 flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                            {new Date(selectedBasvuru.lastContactedAt).toLocaleString("tr-TR")}
+                          </p>
+                        </div>
+                      )}
+                      {selectedBasvuru.lastContactedBy && (
+                        <div className="space-y-1">
+                          <Label className="text-gray-500 text-xs font-medium uppercase tracking-wide">İletişime Geçen</Label>
+                          <p className="font-semibold text-sm text-gray-800 break-words flex items-center gap-2">
+                            <User className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                            {selectedBasvuru.lastContactedBy}
+                          </p>
+                        </div>
+                      )}
+                      {selectedBasvuru.contactNote && (
+                        <div className="space-y-1">
+                          <Label className="text-gray-500 text-xs font-medium uppercase tracking-wide">İletişim Notu</Label>
+                          <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+                            <p className="text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed">
+                              {selectedBasvuru.contactNote}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Baba ve Anne Bilgileri - Yan Yana Kartlar */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6">
+                  {/* Baba Bilgileri */}
+                  <Card className="border-0 shadow-md bg-white">
+                    <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-indigo-100 pb-3">
+                      <CardTitle className="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
+                        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white">
+                          <User className="h-4 w-4" />
+                        </div>
+                        Baba Bilgileri
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-4 sm:pt-5">
+                      <div className="space-y-4">
+                        <div className="space-y-1">
+                          <Label className="text-gray-500 text-xs font-medium uppercase tracking-wide">Ad Soyad</Label>
+                          <p className="font-semibold text-sm sm:text-base text-gray-800 break-words">{selectedBasvuru.babaAdSoyad}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-gray-500 text-xs font-medium uppercase tracking-wide">Meslek</Label>
+                          <p className="font-semibold text-sm sm:text-base text-gray-800 break-words flex items-center gap-2">
+                            <Briefcase className="h-4 w-4 text-indigo-600 flex-shrink-0" />
+                            {selectedBasvuru.babaMeslek}
+                          </p>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-gray-500 text-xs font-medium uppercase tracking-wide">Cep Telefonu</Label>
+                          <p className="font-semibold text-sm sm:text-base text-gray-800 flex items-center gap-2">
+                            <Phone className="h-4 w-4 text-green-600 flex-shrink-0" />
+                            <a href={`tel:${selectedBasvuru.babaCepTel}`} className="hover:text-green-600 transition-colors">
+                              {formatPhone(selectedBasvuru.babaCepTel)}
+                            </a>
+                          </p>
+                        </div>
+                        {selectedBasvuru.babaIsAdresi && (
+                          <div className="space-y-1">
+                            <Label className="text-gray-500 text-xs font-medium uppercase tracking-wide">İş Adresi</Label>
+                            <p className="font-semibold text-sm sm:text-base text-gray-800 break-words">{selectedBasvuru.babaIsAdresi}</p>
+                          </div>
                         )}
-                      </p>
-                    </div>
-                    {selectedBasvuru.lastContactedAt && (
-                      <div>
-                        <Label className="text-gray-500 text-xs sm:text-sm">Son İletişim Tarihi</Label>
-                        <p className="font-semibold text-xs sm:text-sm">
-                          {new Date(selectedBasvuru.lastContactedAt).toLocaleString("tr-TR")}
-                        </p>
                       </div>
-                    )}
-                    {selectedBasvuru.lastContactedBy && (
-                      <div>
-                        <Label className="text-gray-500 text-xs sm:text-sm">İletişime Geçen</Label>
-                        <p className="font-semibold text-sm sm:text-base break-words">
-                          {selectedBasvuru.lastContactedBy}
-                        </p>
+                    </CardContent>
+                  </Card>
+
+                  {/* Anne Bilgileri */}
+                  <Card className="border-0 shadow-md bg-white">
+                    <CardHeader className="bg-gradient-to-r from-pink-50 to-rose-50 border-b border-pink-100 pb-3">
+                      <CardTitle className="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
+                        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center text-white">
+                          <User className="h-4 w-4" />
+                        </div>
+                        Anne Bilgileri
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-4 sm:pt-5">
+                      <div className="space-y-4">
+                        <div className="space-y-1">
+                          <Label className="text-gray-500 text-xs font-medium uppercase tracking-wide">Ad Soyad</Label>
+                          <p className="font-semibold text-sm sm:text-base text-gray-800 break-words">{selectedBasvuru.anneAdSoyad}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-gray-500 text-xs font-medium uppercase tracking-wide">Meslek</Label>
+                          <p className="font-semibold text-sm sm:text-base text-gray-800 break-words flex items-center gap-2">
+                            <Briefcase className="h-4 w-4 text-pink-600 flex-shrink-0" />
+                            {selectedBasvuru.anneMeslek}
+                          </p>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-gray-500 text-xs font-medium uppercase tracking-wide">Cep Telefonu</Label>
+                          <p className="font-semibold text-sm sm:text-base text-gray-800 flex items-center gap-2">
+                            <Phone className="h-4 w-4 text-green-600 flex-shrink-0" />
+                            <a href={`tel:${selectedBasvuru.anneCepTel}`} className="hover:text-green-600 transition-colors">
+                              {formatPhone(selectedBasvuru.anneCepTel)}
+                            </a>
+                          </p>
+                        </div>
+                        {selectedBasvuru.anneIsAdresi && (
+                          <div className="space-y-1">
+                            <Label className="text-gray-500 text-xs font-medium uppercase tracking-wide">İş Adresi</Label>
+                            <p className="font-semibold text-sm sm:text-base text-gray-800 break-words">{selectedBasvuru.anneIsAdresi}</p>
+                          </div>
+                        )}
                       </div>
-                    )}
-                    {selectedBasvuru.contactNote && (
-                      <div className="sm:col-span-2">
-                        <Label className="text-gray-500 text-xs sm:text-sm">İletişim Notu</Label>
-                        <p className="font-semibold text-sm sm:text-base whitespace-pre-wrap break-words bg-gray-50 rounded-lg p-3 border border-gray-100">
-                          {selectedBasvuru.contactNote}
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                    </CardContent>
+                  </Card>
                 </div>
 
-                {/* Tarih Bilgileri */}
-                <div className="pt-3 sm:pt-4 border-t">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                    <div>
-                      <Label className="text-gray-500 text-xs sm:text-sm">Başvuru Tarihi</Label>
-                      <p className="font-semibold text-xs sm:text-sm">
-                        {new Date(selectedBasvuru.createdAt).toLocaleString('tr-TR')}
-                      </p>
+                {/* İletişim ve Tarih Bilgileri - Alt Kart */}
+                <Card className="border-0 shadow-md bg-white">
+                  <CardHeader className="bg-gradient-to-r from-gray-50 to-slate-50 border-b border-gray-100 pb-3">
+                    <CardTitle className="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-full bg-gradient-to-br from-gray-400 to-slate-500 flex items-center justify-center text-white">
+                        <Mail className="h-4 w-4" />
+                      </div>
+                      İletişim ve Sistem Bilgileri
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-4 sm:pt-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                      <div className="space-y-1">
+                        <Label className="text-gray-500 text-xs font-medium uppercase tracking-wide">E-posta</Label>
+                        <p className="font-semibold text-sm sm:text-base text-gray-800 break-all flex items-center gap-2">
+                          <Mail className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                          <a href={`mailto:${selectedBasvuru.email}`} className="hover:text-blue-600 transition-colors">
+                            {selectedBasvuru.email}
+                          </a>
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-gray-500 text-xs font-medium uppercase tracking-wide">Başvuru Tarihi</Label>
+                        <p className="font-semibold text-xs sm:text-sm text-gray-800 flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                          {new Date(selectedBasvuru.createdAt).toLocaleString('tr-TR')}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-gray-500 text-xs font-medium uppercase tracking-wide">Senkronizasyon Tarihi</Label>
+                        <p className="font-semibold text-xs sm:text-sm text-gray-800 flex items-center gap-2">
+                          <RefreshCw className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                          {new Date(selectedBasvuru.syncedAt).toLocaleString('tr-TR')}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <Label className="text-gray-500 text-xs sm:text-sm">Senkronizasyon Tarihi</Label>
-                      <p className="font-semibold text-xs sm:text-sm">
-                        {new Date(selectedBasvuru.syncedAt).toLocaleString('tr-TR')}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               </div>
             </CardContent>
           </Card>
