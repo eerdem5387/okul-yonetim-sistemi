@@ -74,7 +74,8 @@ export async function PATCH(
     console.error("Error updating basvuru contact status:", error)
 
     if (error && typeof error === 'object' && 'code' in error) {
-      if ((error as any).code === 'P2025') {
+      const prismaError = error as { code?: string }
+      if (prismaError.code === 'P2025') {
         return NextResponse.json(
           { error: "Başvuru bulunamadı" },
           { status: 404 }

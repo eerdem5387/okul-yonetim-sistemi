@@ -121,8 +121,6 @@ export default function IlerlemeDetayPage() {
   const [completionDate, setCompletionDate] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [staffId, setStaffId] = useState<string | null>(null)
-  const [hoveredTopic, setHoveredTopic] = useState<string | null>(null)
-  const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null)
 
   useEffect(() => {
     // URL parametresinden status filtresini oku
@@ -140,7 +138,6 @@ export default function IlerlemeDetayPage() {
         setStatusFilter("GECIKMELI_TAMAMLANDI")
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
   useEffect(() => {

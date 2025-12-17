@@ -224,7 +224,7 @@ export default function BasvurularPage() {
       endDate
     )
     fetchStats()
-  }, [currentPage, fetchBasvurular, startDate, endDate, contactFilter, searchTerm, selectedSinif, selectedOkul, selectedBabaMeslek, selectedAnneMeslek])
+  }, [currentPage, fetchBasvurular, fetchStats, startDate, endDate, contactFilter, searchTerm, selectedSinif, selectedOkul, selectedBabaMeslek, selectedAnneMeslek])
 
   const handleSearch = () => {
     setCurrentPage(1)

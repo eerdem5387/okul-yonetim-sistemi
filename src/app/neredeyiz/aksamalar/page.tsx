@@ -74,7 +74,6 @@ export default function AksamalarPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedGrade, setSelectedGrade] = useState<string>("")
   const [selectedSection, setSelectedSection] = useState<string>("")
-  const [selectedGradeForBulk, setSelectedGradeForBulk] = useState<string>("")
 
   useEffect(() => {
     fetchAcademicYears()
@@ -256,23 +255,6 @@ export default function AksamalarPage() {
     )
   )
 
-  // Sınıf bazlı toplu seçim
-  const handleGradeBulkSelect = (grade: string) => {
-    if (!grade) {
-      setSelectedGradeForBulk("")
-      return
-    }
-
-    setSelectedGradeForBulk(grade)
-    const gradeNum = parseInt(grade, 10)
-    const subjectsInGrade = subjects.filter((s) => s.grade === gradeNum)
-    const subjectIds = subjectsInGrade.map((s) => s.id)
-    
-    // Mevcut seçimlere ekle (duplicate'leri önle)
-    const newSelected = Array.from(new Set([...formData.affectedSubjects, ...subjectIds]))
-    setFormData({ ...formData, affectedSubjects: newSelected })
-  }
-
   // Tümünü seç/seçimi kaldır
   const handleSelectAll = () => {
     if (formData.affectedSubjects.length === filteredSubjects.length) {
@@ -328,7 +310,6 @@ export default function AksamalarPage() {
               setSearchQuery("")
               setSelectedGrade("")
               setSelectedSection("")
-              setSelectedGradeForBulk("")
             }}
             disabled={!selectedYearId}
             className="text-xs sm:text-sm"
@@ -455,7 +436,6 @@ export default function AksamalarPage() {
                             setSearchQuery("")
                             setSelectedGrade("")
                             setSelectedSection("")
-                            setSelectedGradeForBulk("")
                             setShowForm(true)
                           }}
                           className="text-xs sm:text-sm"
@@ -517,7 +497,6 @@ export default function AksamalarPage() {
                     setSearchQuery("")
                     setSelectedGrade("")
                     setSelectedSection("")
-                    setSelectedGradeForBulk("")
                   }}
                 >
                   <X className="h-4 w-4" />
@@ -843,7 +822,6 @@ export default function AksamalarPage() {
                       setSearchQuery("")
                       setSelectedGrade("")
                       setSelectedSection("")
-                      setSelectedGradeForBulk("")
                     }}
                     className="flex-1 sm:flex-initial text-xs sm:text-sm"
                   >
