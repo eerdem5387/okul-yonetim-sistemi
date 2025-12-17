@@ -1184,10 +1184,14 @@ export default function BasvurularPage() {
                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                               basvuru.contactStatus === "ILETISIME_GECILDI"
                                 ? "bg-green-100 text-green-700"
+                                : basvuru.contactStatus === "ILETISIME_GECILMEDI" && basvuru.lastContactedAt
+                                ? "bg-red-100 text-red-700"
                                 : "bg-yellow-100 text-yellow-700"
                             }`}>
                               {basvuru.contactStatus === "ILETISIME_GECILDI"
                                 ? "İletişime Geçildi"
+                                : basvuru.contactStatus === "ILETISIME_GECILMEDI" && basvuru.lastContactedAt
+                                ? "İletişime Geçilemedi"
                                 : "İletişime Geçilmedi"}
                             </span>
                           </div>
@@ -1403,17 +1407,23 @@ export default function BasvurularPage() {
                 <Card className={`border-2 shadow-md ${
                   selectedBasvuru.contactStatus === "ILETISIME_GECILDI" 
                     ? "border-green-200 bg-green-50/50" 
+                    : selectedBasvuru.contactStatus === "ILETISIME_GECILMEDI" && selectedBasvuru.lastContactedAt
+                    ? "border-red-200 bg-red-50/50"
                     : "border-yellow-200 bg-yellow-50/50"
                 }`}>
                   <CardHeader className={`pb-3 ${
                     selectedBasvuru.contactStatus === "ILETISIME_GECILDI" 
                       ? "bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100" 
+                      : selectedBasvuru.contactStatus === "ILETISIME_GECILMEDI" && selectedBasvuru.lastContactedAt
+                      ? "bg-gradient-to-r from-red-50 to-rose-50 border-b border-red-100"
                       : "bg-gradient-to-r from-yellow-50 to-amber-50 border-b border-yellow-100"
                   }`}>
                     <CardTitle className="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
                       <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
                         selectedBasvuru.contactStatus === "ILETISIME_GECILDI" 
                           ? "bg-green-500 text-white" 
+                          : selectedBasvuru.contactStatus === "ILETISIME_GECILMEDI" && selectedBasvuru.lastContactedAt
+                          ? "bg-red-500 text-white"
                           : "bg-yellow-500 text-white"
                       }`}>
                         <PhoneCall className="h-4 w-4" />
@@ -1427,11 +1437,15 @@ export default function BasvurularPage() {
                         <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold ${
                           selectedBasvuru.contactStatus === "ILETISIME_GECILDI"
                             ? "bg-green-100 text-green-700"
+                            : selectedBasvuru.contactStatus === "ILETISIME_GECILMEDI" && selectedBasvuru.lastContactedAt
+                            ? "bg-red-100 text-red-700"
                             : "bg-yellow-100 text-yellow-700"
                         }`}>
                           {selectedBasvuru.contactStatus === "ILETISIME_GECILDI"
                             ? "✓ İletişime Geçildi"
-                            : "⚠ İletişime Geçilemedi"}
+                            : selectedBasvuru.contactStatus === "ILETISIME_GECILMEDI" && selectedBasvuru.lastContactedAt
+                            ? "⚠ İletişime Geçilemedi"
+                            : "⚠ İletişime Geçilmedi"}
                         </span>
                       </div>
                       {selectedBasvuru.lastContactedAt && (
