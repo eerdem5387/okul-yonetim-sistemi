@@ -81,6 +81,7 @@ export async function POST(request: NextRequest) {
       subject,
       hireDate,
       notes,
+      createdByStaffId, // Ekleyen kişinin Staff ID'si (frontend'den gönderilmeli)
     } = body
 
     if (!firstName || !lastName || !tcNumber || !department) {
@@ -88,6 +89,20 @@ export async function POST(request: NextRequest) {
         { error: "Ad, soyad, TC kimlik no ve bölüm zorunludur" },
         { status: 400 }
       )
+    }
+
+    // Müdür ekleme kısıtlaması (Mantıksal Açık Çözüm #4)
+    if (department === "MUDUR" && createdByStaffId) {
+      const createdByStaff = await prisma.staff.findUnique({
+        where: { id: createdByStaffId },
+      })
+
+      if (createdByStaff && createdByStaff.department === "MUDUR") {
+        return NextResponse.json(
+          { error: "Müdür yetkisi ile yeni müdür eklenemez. Sadece Süper Admin (Yönetici) yeni müdür ekleyebilir." },
+          { status: 403 }
+        )
+      }
     }
 
     const staff = await prisma.staff.create({
@@ -102,6 +117,9 @@ export async function POST(request: NextRequest) {
         subject: subject || null,
         hireDate: hireDate ? new Date(hireDate) : null,
         notes: notes || null,
+        // İlk şifre TC No olacak (ilk girişte değiştirilecek)
+        password: null, // İlk girişte TC No ile giriş yapacak
+        isFirstLogin: true,
       },
     })
 

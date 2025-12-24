@@ -584,29 +584,6 @@ export default function BasvurularPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 sm:space-y-4">
-              {contactModal.status === "ILETISIME_GECILDI" && (
-                <div>
-                  <Label className="text-xs sm:text-sm mb-1.5 sm:mb-2 block">
-                    İletişime Geçen <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    type="text"
-                    value={contactModal.contactedBy}
-                    onChange={(e) =>
-                      setContactModal((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              contactedBy: e.target.value,
-                            }
-                          : prev
-                      )
-                    }
-                    className="w-full px-3 py-2 text-xs sm:text-sm"
-                    placeholder="Adınızı ve soyadınızı yazınız..."
-                  />
-                </div>
-              )}
               <div>
                 <Label className="text-xs sm:text-sm mb-1.5 sm:mb-2 block">
                   Not <span className="text-red-500">*</span>
@@ -647,19 +624,18 @@ export default function BasvurularPage() {
                 className="bg-blue-600 hover:bg-blue-700 text-white"
                 disabled={
                   isSavingContact ||
-                  !contactModal.note.trim() ||
-                  (contactModal.status === "ILETISIME_GECILDI" &&
-                    !contactModal.contactedBy.trim())
+                  !contactModal.note.trim()
                 }
                 onClick={async () => {
                   if (!contactModal.note.trim()) return
-                  if (
-                    contactModal.status === "ILETISIME_GECILDI" &&
-                    !contactModal.contactedBy.trim()
-                  )
-                    return
                   try {
                     setIsSavingContact(true)
+                    // ✅ Otomatik olarak mevcut kullanıcının adı soyadını al
+                    const staffName = typeof window !== "undefined" ? localStorage.getItem("staff_name") : null
+                    const contactedBy = contactModal.status === "ILETISIME_GECILDI" && staffName
+                      ? staffName.trim()
+                      : undefined
+                    
                     const response = await fetch(
                       `/api/basvurular/${contactModal.basvuru.id}`,
                       {
@@ -670,10 +646,7 @@ export default function BasvurularPage() {
                         body: JSON.stringify({
                           status: contactModal.status,
                           note: contactModal.note.trim(),
-                          contactedBy:
-                            contactModal.status === "ILETISIME_GECILDI"
-                              ? contactModal.contactedBy.trim()
-                              : undefined,
+                          contactedBy,
                         }),
                       }
                     )

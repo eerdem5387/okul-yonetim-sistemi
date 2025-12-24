@@ -135,12 +135,15 @@ export async function POST(request: NextRequest) {
     // Validasyon
     if (!ogrenciAdSoyad || !okul || !sinif || !veliAdSoyad || !veliTelefon || 
         teklifEdilenFiyat === undefined || okulFiyati === undefined || 
-        !gorusmeyiYapan || !durum) {
+        !durum) {
       return NextResponse.json(
         { error: "Tüm zorunlu alanlar doldurulmalıdır" },
         { status: 400 }
       )
     }
+    
+    // ✅ Görüşmeyi yapan otomatik olarak createdBy'den alınır
+    const gorusmeyiYapanFinal = gorusmeyiYapan || createdBy || "Sistem"
 
     if (!["OLUMLU", "OLUMSUZ", "BELIRSIZ"].includes(durum)) {
       return NextResponse.json(
@@ -165,7 +168,7 @@ export async function POST(request: NextRequest) {
         createdBy: createdBy || null,
         kayitlar: {
           create: {
-            gorusmeyiYapan,
+            gorusmeyiYapan: gorusmeyiYapanFinal,
             durum: durum as "OLUMLU" | "OLUMSUZ" | "BELIRSIZ",
             durumNotu: durumNotu || null,
             genelNot: genelNot || null,

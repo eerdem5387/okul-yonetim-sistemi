@@ -51,7 +51,9 @@ interface Subject {
         markedAt: string | null
         markedBy: string | null
         approvedBy: string | null
+        approvedAt: string | null
         reportedBy: string | null
+        reportedAt: string | null
         markedByStaff: {
           id: string
           firstName: string
@@ -87,6 +89,9 @@ interface Topic {
     markedAt: string | null
     markedBy: string | null
     approvedBy: string | null
+    approvedAt: string | null
+    reportedBy: string | null
+    reportedAt: string | null
     markedByStaff: {
       id: string
       firstName: string
@@ -99,10 +104,16 @@ interface Topic {
       lastName: string
       department: string
     } | null
+    reportedByStaff: {
+      id: string
+      firstName: string
+      lastName: string
+      department: string
+    } | null
   }>
 }
 
-type StatusFilter = "ALL" | "PLANLANDI" | "DEVAM_EDIYOR" | "TAMAMLANDI" | "ERTELENDI" | "ERKEN_TAMAMLANDI" | "GECIKMELI_TAMAMLANDI"
+type StatusFilter = "ALL" | "PLANLANDI" | "DEVAM_EDIYOR" | "TAMAMLANDI" | "ERTELENDI" | "ERKEN_TAMAMLANDI" | "GECIKMELI_TAMAMLANDI" | "ONAY_BEKLIYOR"
 
 export default function IlerlemeDetayPage() {
   const params = useParams()
@@ -169,10 +180,24 @@ export default function IlerlemeDetayPage() {
     if (!params.id) return
 
     try {
-      const response = await fetch(`/api/neredeyiz/subjects/${params.id}`)
+      // ✅ Rehberlik kullanıcısı kontrolü
+      const role = typeof window !== "undefined" ? localStorage.getItem("auth_role") : null
+      const staffId = typeof window !== "undefined" ? localStorage.getItem("staff_id") : null
+      
+      let url = `/api/neredeyiz/subjects/${params.id}`
+      // ✅ Rehberlik kullanıcısı için: counselorId parametresi ekle
+      if (role === "counselor" && staffId) {
+        url += `?counselorId=${staffId}`
+      }
+      
+      const response = await fetch(url)
       if (response.ok) {
         const data = await response.json()
         setSubject(data)
+      } else if (response.status === 403) {
+        const errorData = await response.json()
+        error(errorData.error || "Bu derse erişim yetkiniz bulunmamaktadır.")
+        router.push("/neredeyiz/ilerleme")
       } else {
         error("Ders yüklenirken hata oluştu!")
         router.push("/neredeyiz/ilerleme")
@@ -187,13 +212,25 @@ export default function IlerlemeDetayPage() {
   }
 
   const getTopicStatus = (topic: Topic): {
-    status: "PLANLANDI" | "DEVAM_EDIYOR" | "TAMAMLANDI" | "GECIKMELI" | "GECIKMELI_TAMAMLANDI" | "ERKEN_TAMAMLANDI"
+    status: "PLANLANDI" | "DEVAM_EDIYOR" | "TAMAMLANDI" | "GECIKMELI" | "GECIKMELI_TAMAMLANDI" | "ERKEN_TAMAMLANDI" | "ONAY_BEKLIYOR"
     label: string
     color: string
     icon: React.ComponentType<{ className?: string }>
   } => {
+    const progress = topic.progress?.[0]
+    
+    // ✅ PENDING_APPROVAL durumu kontrolü (Öncelikli)
+    if (progress?.status === "PENDING_APPROVAL") {
+      return {
+        status: "ONAY_BEKLIYOR",
+        label: "Onay Bekliyor",
+        color: "bg-purple-100 text-purple-800",
+        icon: Clock,
+      }
+    }
+    
     // Progress kaydı varsa ve TAMAMLANDI ise
-    if (topic.progress?.[0]?.status === "TAMAMLANDI") {
+    if (progress?.status === "TAMAMLANDI") {
       // Erken veya gecikmeli tamamlanma kontrolü
       if (topic.plannedEndDate && topic.progress[0].actualEndDate) {
         const plannedEnd = new Date(topic.plannedEndDate)
@@ -654,7 +691,7 @@ export default function IlerlemeDetayPage() {
               />
             </div>
             <div className="flex flex-wrap gap-2">
-              {(["ALL", "PLANLANDI", "DEVAM_EDIYOR", "TAMAMLANDI", "ERKEN_TAMAMLANDI", "GECIKMELI_TAMAMLANDI", "ERTELENDI"] as StatusFilter[]).map((filter) => {
+              {(["ALL", "PLANLANDI", "DEVAM_EDIYOR", "TAMAMLANDI", "ERKEN_TAMAMLANDI", "GECIKMELI_TAMAMLANDI", "ONAY_BEKLIYOR", "ERTELENDI"] as StatusFilter[]).map((filter) => {
                 const labels: Record<StatusFilter, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
                   ALL: { label: "Tümü", icon: BookOpen },
                   PLANLANDI: { label: "Planlandı", icon: Calendar },
@@ -662,6 +699,7 @@ export default function IlerlemeDetayPage() {
                   TAMAMLANDI: { label: "Tamamlandı", icon: CheckCircle2 },
                   ERKEN_TAMAMLANDI: { label: "Erken Tamamlandı", icon: CheckCircle2 },
                   GECIKMELI_TAMAMLANDI: { label: "Geç Tamamlandı", icon: AlertTriangle },
+                  ONAY_BEKLIYOR: { label: "Onay Bekliyor", icon: Clock },
                   ERTELENDI: { label: "Ertelendi", icon: XCircle },
                 }
                 const { label, icon: Icon } = labels[filter]
@@ -809,45 +847,93 @@ export default function IlerlemeDetayPage() {
                                       {new Date(topic.plannedEndDate).toLocaleDateString("tr-TR")}
                                     </p>
                                   )}
-                                  {topic.progress?.[0]?.actualEndDate && (
-                                    <p className={`text-xs mt-1 ${
-                                      getDelayDays(topic) && getDelayDays(topic)! > 0
-                                        ? "text-orange-600 font-medium"
-                                        : getEarlyDays(topic) && getEarlyDays(topic)! > 0
-                                        ? "text-emerald-600 font-medium"
-                                        : "text-green-600"
-                                    }`}>
-                                      Tamamlanma:{" "}
-                                      {new Date(topic.progress[0].actualEndDate).toLocaleDateString("tr-TR")}
-                                      {getDelayDays(topic) && getDelayDays(topic)! > 0 && (
-                                        <span className="ml-2">
-                                          ({getDelayDays(topic)} gün gecikme)
-                                        </span>
-                                      )}
-                                      {getEarlyDays(topic) && getEarlyDays(topic)! > 0 && (
-                                        <span className="ml-2">
-                                          ({getEarlyDays(topic)} gün erken)
-                                        </span>
-                                      )}
+                                  {/* ✅ Onay Bekliyor durumu */}
+                                  {topicStatus.status === "ONAY_BEKLIYOR" && topic.progress?.[0]?.reportedAt && (
+                                    <p className="text-xs mt-1 text-purple-600 font-medium">
+                                      {topic.progress[0].reportedByStaff 
+                                        ? `${topic.progress[0].reportedByStaff.firstName} ${topic.progress[0].reportedByStaff.lastName}`
+                                        : "Öğretmen"} tarafından tamamlandı olarak işaretlendi:{" "}
+                                      {new Date(topic.progress[0].reportedAt).toLocaleDateString("tr-TR", {
+                                        day: "numeric",
+                                        month: "long",
+                                        year: "numeric",
+                                        hour: "2-digit",
+                                        minute: "2-digit"
+                                      })}
                                     </p>
                                   )}
-                                  {/* Rehberlik danışmanı onay bilgisi */}
-                                  {topic.progress?.[0]?.markedByStaff && (
-                                    <p className="text-xs mt-1 text-blue-600 font-medium">
-                                      Rehberlik {topic.progress[0].markedByStaff.firstName} {topic.progress[0].markedByStaff.lastName} bu konunun tamamlandığını bildirmiştir
-                                    </p>
-                                  )}
-                                  {topic.progress?.[0]?.approvedByStaff && !topic.progress[0].markedByStaff && (
-                                    <p className="text-xs mt-1 text-blue-600 font-medium">
-                                      Rehberlik {topic.progress[0].approvedByStaff.firstName} {topic.progress[0].approvedByStaff.lastName} bu konunun tamamlandığını onaylamıştır
-                                    </p>
+                                  
+                                  {/* ✅ Tamamlandı durumu - Tarih bilgileri */}
+                                  {(topicStatus.status === "TAMAMLANDI" || 
+                                    topicStatus.status === "GECIKMELI_TAMAMLANDI" || 
+                                    topicStatus.status === "ERKEN_TAMAMLANDI") && 
+                                    topic.progress?.[0]?.actualEndDate && (
+                                    <div className="space-y-1 mt-1">
+                                      {/* Öğretmenin işaretleme tarihi */}
+                                      {topic.progress[0].reportedAt && (
+                                        <p className="text-xs text-blue-600 font-medium">
+                                          {topic.progress[0].reportedByStaff 
+                                            ? `${topic.progress[0].reportedByStaff.firstName} ${topic.progress[0].reportedByStaff.lastName}`
+                                            : "Öğretmen"} tarafından tamamlandı olarak işaretlendi:{" "}
+                                          {new Date(topic.progress[0].reportedAt).toLocaleDateString("tr-TR", {
+                                            day: "numeric",
+                                            month: "long",
+                                            year: "numeric",
+                                            hour: "2-digit",
+                                            minute: "2-digit"
+                                          })}
+                                        </p>
+                                      )}
+                                      
+                                      {/* Rehberlik uzmanının onay tarihi */}
+                                      {topic.progress[0].approvedAt && topic.progress[0].approvedByStaff && (
+                                        <p className="text-xs text-green-600 font-medium">
+                                          Rehberlik {topic.progress[0].approvedByStaff.firstName} {topic.progress[0].approvedByStaff.lastName} tarafından onaylandı:{" "}
+                                          {new Date(topic.progress[0].approvedAt).toLocaleDateString("tr-TR", {
+                                            day: "numeric",
+                                            month: "long",
+                                            year: "numeric",
+                                            hour: "2-digit",
+                                            minute: "2-digit"
+                                          })}
+                                        </p>
+                                      )}
+                                      
+                                      {/* Tamamlanma tarihi */}
+                                      <p className={`text-xs ${
+                                        getDelayDays(topic) && getDelayDays(topic)! > 0
+                                          ? "text-orange-600 font-medium"
+                                          : getEarlyDays(topic) && getEarlyDays(topic)! > 0
+                                          ? "text-emerald-600 font-medium"
+                                          : "text-gray-600"
+                                      }`}>
+                                        Tamamlanma Tarihi:{" "}
+                                        {new Date(topic.progress[0].actualEndDate).toLocaleDateString("tr-TR")}
+                                        {getDelayDays(topic) && getDelayDays(topic)! > 0 && (
+                                          <span className="ml-2">
+                                            ({getDelayDays(topic)} gün gecikme)
+                                          </span>
+                                        )}
+                                        {getEarlyDays(topic) && getEarlyDays(topic)! > 0 && (
+                                          <span className="ml-2">
+                                            ({getEarlyDays(topic)} gün erken)
+                                          </span>
+                                        )}
+                                      </p>
+                                    </div>
                                   )}
                                 </div>
                                 <Button
                                   size="sm"
                                   variant="outline"
                                   onClick={() => handleTopicComplete(topic.id)}
-                                  disabled={updatingTopicId === topic.id || topicStatus.status === "TAMAMLANDI" || topicStatus.status === "GECIKMELI_TAMAMLANDI" || topicStatus.status === "ERKEN_TAMAMLANDI"}
+                                  disabled={
+                                    updatingTopicId === topic.id || 
+                                    topicStatus.status === "TAMAMLANDI" || 
+                                    topicStatus.status === "GECIKMELI_TAMAMLANDI" || 
+                                    topicStatus.status === "ERKEN_TAMAMLANDI" ||
+                                    topicStatus.status === "ONAY_BEKLIYOR"
+                                  }
                                   className="text-xs sm:text-sm"
                                 >
                                   {updatingTopicId === topic.id ? (

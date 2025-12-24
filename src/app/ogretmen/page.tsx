@@ -10,7 +10,6 @@ import {
   BookOpen,
   Loader2,
   LogOut,
-  User,
   AlertTriangle,
   TrendingUp,
   Clock,
@@ -141,12 +140,32 @@ export default function OgretmenPage() {
   const [loading, setLoading] = useState(true)
   const [staffName, setStaffName] = useState<string>("")
   const [staffId, setStaffId] = useState<string | null>(null)
+  const [staffSubject, setStaffSubject] = useState<string | null>(null)
+interface MyScheduleItem {
+  id: string;
+  subjectName: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  room?: string | null;
+  class: {
+    id: string;
+    name: string;
+    grade: number;
+    section: string;
+  };
+}
+
+  const [mySchedule, setMySchedule] = useState<MyScheduleItem[]>([])
+  const [scheduleLoading, setScheduleLoading] = useState(true)
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const role = localStorage.getItem("auth_role")
       const id = localStorage.getItem("staff_id")
       const name = localStorage.getItem("staff_name")
+      
+      fetchMySchedule(id)
 
       if (role !== "teacher" || !id) {
         router.push("/login")
@@ -155,33 +174,60 @@ export default function OgretmenPage() {
 
       setStaffName(name || "")
       setStaffId(id)
+      fetchStaffInfo(id) // Öğretmen bilgilerini çek
       fetchAssignedSubjects(id)
       fetchDelayedTopics(id)
       fetchDashboardData(id)
 
-      // Sayfa focus olduğunda verileri yenile
+      // Sayfa focus olduğunda sadece kritik verileri yenile (5 dakika throttle)
+      let lastFetch = Date.now()
       const handleFocus = () => {
-        fetchAssignedSubjects(id)
-        fetchDelayedTopics(id)
-        fetchDashboardData(id)
+        const now = Date.now()
+        // En az 5 dakika geçmişse yenile
+        if (now - lastFetch > 300000) {
+          fetchAssignedSubjects(id)
+          fetchDelayedTopics(id)
+          fetchDashboardData(id)
+          lastFetch = now
+        }
       }
-
-      // Her 30 saniyede bir verileri yenile
-      const interval = setInterval(() => {
-        fetchAssignedSubjects(id)
-        fetchDelayedTopics(id)
-        fetchDashboardData(id)
-      }, 30000) // 30 saniye
 
       window.addEventListener("focus", handleFocus)
 
       return () => {
-        clearInterval(interval)
         window.removeEventListener("focus", handleFocus)
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const fetchStaffInfo = async (staffId: string) => {
+    try {
+      const response = await fetch(`/api/staff/${staffId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setStaffSubject(data.subject || null)
+      }
+    } catch (err) {
+      console.error("Error fetching staff info:", err)
+    }
+  }
+
+  const fetchMySchedule = async (teacherId: string | null) => {
+    if (!teacherId) return
+    try {
+      setScheduleLoading(true)
+      const response = await fetch(`/api/schedules/teacher?teacherId=${teacherId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setMySchedule(data.schedules || [])
+      }
+    } catch (err) {
+      console.error("Error fetching schedule:", err)
+    } finally {
+      setScheduleLoading(false)
+    }
+  }
 
   const fetchAssignedSubjects = async (staffId: string) => {
     try {
@@ -248,23 +294,41 @@ export default function OgretmenPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center">
-                <User className="h-6 w-6 text-white" />
+      <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            {/* Öğretmen Bilgileri */}
+            <div className="flex items-center gap-4">
+              <div className="h-16 w-16 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center border-2 border-white/30 shadow-lg">
+                <span className="text-white font-bold text-xl">
+                  {staffName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+                </span>
               </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">Öğretmen Paneli</h1>
-                <p className="text-sm text-gray-600">{staffName}</p>
+              <div className="text-white">
+                <h1 className="text-2xl font-bold mb-1">{staffName}</h1>
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full font-medium">
+                    Öğretmen
+                  </span>
+                  {staffSubject && (
+                    <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full font-medium">
+                      {staffSubject}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
+            {/* Aksiyonlar */}
             <div className="flex items-center gap-3">
               {staffId && (
                 <NotificationBell targetRole="OGRETMEN" targetUserId={staffId} />
               )}
-              <Button variant="outline" size="sm" onClick={handleLogout}>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleLogout}
+                className="bg-white/10 backdrop-blur-sm border-white/30 text-white hover:bg-white/20"
+              >
                 <LogOut className="h-4 w-4 mr-2" />
                 Çıkış Yap
               </Button>
@@ -276,6 +340,94 @@ export default function OgretmenPage() {
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <ToastContainer toasts={toasts} onClose={removeToast} />
+        
+        {/* Haftalık Ders Programım */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-blue-600" />
+              Haftalık Ders Programım
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {scheduleLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              </div>
+            ) : mySchedule.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                <p>Henüz ders programınız oluşturulmamış</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse border border-gray-300">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="border border-gray-300 p-2 text-xs font-semibold text-gray-700 w-32">
+                        Ders
+                      </th>
+                      {["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma"].map((day) => (
+                        <th key={day} className="border border-gray-300 p-2 text-xs font-semibold text-gray-700">
+                          {day}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { id: 1, label: "1. Ders", startTime: "08:00" },
+                      { id: 2, label: "2. Ders", startTime: "09:00" },
+                      { id: 3, label: "3. Ders", startTime: "10:00" },
+                      { id: 4, label: "4. Ders", startTime: "11:00" },
+                      { id: 5, label: "5. Ders", startTime: "12:00" },
+                      { id: 6, label: "6. Ders", startTime: "13:00" },
+                      { id: 7, label: "7. Ders", startTime: "14:00" },
+                      { id: 8, label: "8. Ders", startTime: "15:00" },
+                      { id: 9, label: "1. Etüt", startTime: "16:00" },
+                      { id: 10, label: "2. Etüt", startTime: "17:00" },
+                    ].map((lesson) => (
+                      <tr key={lesson.id}>
+                        <td className="border border-gray-300 p-2 text-xs font-semibold text-gray-700 bg-gray-50">
+                          {lesson.label}
+                        </td>
+                        {[1, 2, 3, 4, 5].map((dayIndex) => {
+                          const schedule = mySchedule.find(
+                            (s) => s.dayOfWeek === dayIndex && s.startTime === lesson.startTime
+                          );
+                          return (
+                            <td
+                              key={`${dayIndex}-${lesson.id}`}
+                              className={`border border-gray-300 p-2 ${
+                                schedule ? "bg-gradient-to-br from-blue-50 to-indigo-50" : "bg-white"
+                              }`}
+                            >
+                              {schedule ? (
+                                <div className="space-y-1">
+                                  <p className="text-xs font-semibold text-gray-900 truncate">
+                                    {schedule.subjectName}
+                                  </p>
+                                  <p className="text-[10px] text-blue-600 font-medium truncate">
+                                    {schedule.class?.name || `${schedule.class?.grade}-${schedule.class?.section}`}
+                                  </p>
+                                  {schedule.room && (
+                                    <p className="text-[10px] text-gray-500">{schedule.room}</p>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="text-center text-gray-300">-</div>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
         
         {/* Dashboard İstatistikleri */}
         {loading ? (

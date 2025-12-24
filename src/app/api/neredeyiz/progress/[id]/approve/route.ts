@@ -47,9 +47,29 @@ export async function POST(
       )
     }
 
-    // Progress kaydını bul
+    // Progress kaydını bul (subject ve class bilgileri ile)
     const progress = await prisma.progress.findUnique({
       where: { id: params.id },
+      include: {
+        topic: {
+          include: {
+            unit: {
+              include: {
+                subject: {
+                  include: {
+                    class: {
+                      select: {
+                        id: true,
+                        counselorId: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     })
 
     if (!progress) {
@@ -65,6 +85,35 @@ export async function POST(
         { status: 400 }
       )
     }
+
+    // ✅ Yetki kontrolü: Onaylayan kullanıcının bilgilerini al
+    const approver = await prisma.staff.findUnique({
+      where: { id: approvedBy },
+      select: {
+        id: true,
+        department: true,
+      },
+    })
+
+    if (!approver) {
+      return NextResponse.json(
+        { error: "Onaylayan kullanıcı bulunamadı" },
+        { status: 404 }
+      )
+    }
+
+    // ✅ Rehberlik kullanıcısı için: Sadece kendisine atanmış sınıfların konularını onaylayabilir
+    if (approver.department === "REHBERLIK") {
+      const subject = progress.topic.unit.subject
+      if (!subject.class || !subject.class.counselorId || subject.class.counselorId !== approvedBy) {
+        return NextResponse.json(
+          { error: "Bu konuyu onaylama yetkiniz bulunmamaktadır. Sadece size atanan sınıfların konularını onaylayabilirsiniz." },
+          { status: 403 }
+        )
+      }
+    }
+    // ✅ Sistem yöneticisi, müdür ve öğrenci işleri tüm konuları onaylayabilir
+    // (Bu durumlar için ek kontrol gerekmez)
 
     // Onayla
     const updatedProgress = await prisma.progress.update({

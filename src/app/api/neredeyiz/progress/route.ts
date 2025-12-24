@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
     const subjectId = searchParams.get("subjectId")
     const grade = searchParams.get("grade")
     const section = searchParams.get("section")
+    const counselorId = searchParams.get("counselorId") // ✅ Rehberlik kullanıcısı için filtreleme
 
     const where: Record<string, unknown> = {}
     
@@ -49,7 +50,30 @@ export async function GET(request: NextRequest) {
     if (status) {
       where.status = status as ProgressStatus
     }
-    if (subjectId) {
+    
+    // ✅ Rehberlik kullanıcısı için: Sadece kendisine atanmış sınıfların konularını göster
+    if (counselorId) {
+      // Önce kullanıcıya atanmış sınıfları bul
+      const assignedClasses = await prisma.class.findMany({
+        where: { counselorId },
+        select: { id: true },
+      })
+      const assignedClassIds = assignedClasses.map(c => c.id)
+      
+      // Eğer hiç sınıf atanmamışsa, boş sonuç döndür
+      if (assignedClassIds.length === 0) {
+        return NextResponse.json([])
+      }
+      
+      // Subject üzerinden filtrele (classId ile)
+      where.topic = {
+        unit: {
+          subject: {
+            classId: { in: assignedClassIds },
+          },
+        },
+      }
+    } else if (subjectId) {
       where.topic = {
         unit: {
           subjectId,

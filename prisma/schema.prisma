@@ -46,6 +46,7 @@ model Student {
   bookContracts    BookContract[]
   activities       Activity[]
   parentMeetings   ParentMeeting[]
+  classAssignments ClassStudent[] // Sınıf atamaları (FAZ 2)
 
   @@map("students")
 }
@@ -299,6 +300,7 @@ model ParentMeeting {
 
 // Personel Yönetimi - Okul Çalışanları
 enum StaffDepartment {
+  SUPER_ADMIN // Süper Admin (Sistem Yöneticisi)
   OGRETMEN // Öğretmen
   OGRENCI_ISLERI // Öğrenci İşleri
   MUDUR // Müdür
@@ -315,23 +317,32 @@ enum StaffDepartment {
 }
 
 model Staff {
-  id         String          @id @default(cuid())
-  firstName  String
-  lastName   String
-  tcNumber   String          @unique
-  email      String?
-  phone      String?
-  department StaffDepartment
-  position   String? // Pozisyon (Müdür, Müdür Yardımcısı, Sınıf Öğretmeni, vs.)
-  subject    String? // Branş/Ders (öğretmenler için)
-  isActive   Boolean         @default(true)
-  hireDate   DateTime? // İşe başlama tarihi
-  notes      String? // Notlar
-  createdAt  DateTime        @default(now())
-  updatedAt  DateTime        @updatedAt
+  id                 String          @id @default(cuid())
+  firstName          String
+  lastName           String
+  tcNumber           String          @unique
+  email              String?
+  phone              String?
+  department         StaffDepartment
+  position           String? // Pozisyon (Müdür, Müdür Yardımcısı, Sınıf Öğretmeni, vs.)
+  subject            String? // Branş/Ders (öğretmenler için)
+  isActive           Boolean         @default(true)
+  hireDate           DateTime? // İşe başlama tarihi
+  notes              String? // Notlar
+  
+  // Authentication fields (FAZ 1)
+  password           String? // Hashed password (bcrypt) - ilk eklemede null, ilk giriş sonrası set edilir
+  isFirstLogin       Boolean         @default(true) // İlk giriş mi?
+  mustChangePassword Boolean         @default(false) // Zorunlu şifre değişikliği bayrağı
+  lastLoginAt        DateTime? // Son giriş tarihi
+  
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
 
   // Relations
   subjectAssignments SubjectAssignment[]
+  assignedClasses    Class[]              @relation("ClassCounselor") // Rehberlik uzmanı olarak atandığı sınıflar
+  teacherSchedules   Schedule[]           @relation("TeacherSchedules") // Öğretmen ders programı
 
   @@index([tcNumber])
   @@index([department])
@@ -378,6 +389,7 @@ model AcademicYear {
   subjects    Subject[]
   holidays    Holiday[]
   disruptions Disruption[]
+  classes     Class[] // Akademik yıla ait sınıflar (FAZ 2)
 
   @@index([isActive])
   @@index([startDate, endDate])
@@ -438,12 +450,14 @@ model Subject {
   code           String? // Ders kodu
   grade          Int // Sınıf: 5, 6, 7, 8, 9, 10, 11, 12
   section        String? // Şube: "A", "B", "C", vb. (opsiyonel)
+  classId        String? // Sınıf bağlantısı (FAZ 3 - Neredeyiz entegrasyonu için)
   description    String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   // Relations
   academicYear AcademicYear        @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  class        Class?              @relation(fields: [classId], references: [id], onDelete: SetNull) // Opsiyonel sınıf bağlantısı
   units        Unit[]
   assignments  SubjectAssignment[]
 
@@ -452,6 +466,7 @@ model Subject {
   @@index([academicYearId, grade])
   @@index([academicYearId, grade, section])
   @@index([name, grade])
+  @@index([classId])
   @@map("subjects")
 }
 
@@ -665,4 +680,118 @@ model TeklifGorusmeKaydi {
   @@index([gorusmeTarihi])
   @@index([durum])
   @@map("teklif_gorusme_kayitlari")
+}
+
+// ============================================
+// FAZ 2: SINIF YÖNETİMİ MODÜLÜ
+// ============================================
+
+// Onay Durumu Enum
+enum ApprovalStatus {
+  PENDING // Onay Bekliyor
+  APPROVED // Onaylandı
+  REJECTED // Reddedildi
+}
+
+// Sınıf Modeli
+model Class {
+  id             String   @id @default(cuid())
+  name           String // "5/A", "10/B"
+  grade          Int // 5, 6, 7, 8, 9, 10, 11, 12
+  section        String // "A", "B", "C"
+  academicYearId String
+  counselorId    String? // Atanan Rehberlik Uzmanı (Staff ID)
+  description    String? // Sınıf hakkında notlar
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  academicYear AcademicYear   @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  counselor    Staff?         @relation("ClassCounselor", fields: [counselorId], references: [id], onDelete: SetNull)
+  students     ClassStudent[] // Sınıfa kayıtlı öğrenciler
+  schedules    Schedule[] // Sınıfın ders programı
+  subjects     Subject[] // Neredeyiz modülü için dersler (FAZ 3)
+
+  @@unique([academicYearId, name]) // Aynı akademik yılda aynı isimde sınıf olamaz
+  @@index([academicYearId])
+  @@index([counselorId])
+  @@index([grade])
+  @@index([academicYearId, grade])
+  @@map("classes")
+}
+
+// Sınıf-Öğrenci İlişkisi (Pivot Table)
+model ClassStudent {
+  id        String   @id @default(cuid())
+  classId   String
+  studentId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, studentId]) // Bir öğrenci aynı sınıfa birden fazla kez eklenemez
+  @@index([classId])
+  @@index([studentId])
+  @@map("class_students")
+}
+
+// Ders Programı
+model Schedule {
+  id          String   @id @default(cuid())
+  classId     String
+  subjectName String // "Matematik", "Fizik", "Türkçe"
+  teacherId   String // Dersi veren öğretmen (Staff ID)
+  dayOfWeek   Int // 1-5 (Pazartesi-Cuma) veya 1-7 (Pazartesi-Pazar)
+  startTime   String // "09:00"
+  endTime     String // "09:45"
+  room        String? // Sınıf/Derslik (örn: "5/A", "Laboratuvar")
+  notes       String? // Ders hakkında notlar
+  isActive    Boolean  @default(true) // Aktif mi? (Onay mekanizması için)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  class     Class              @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teacher   Staff              @relation("TeacherSchedules", fields: [teacherId], references: [id], onDelete: Cascade)
+  approvals ScheduleApproval[] // Onay talepleri
+
+  @@index([classId])
+  @@index([teacherId])
+  @@index([dayOfWeek])
+  @@index([classId, dayOfWeek])
+  @@map("schedules")
+}
+
+// Ders Programı Onay Talebi
+model ScheduleApproval {
+  id          String         @id @default(cuid())
+  scheduleId  String? // Mevcut schedule ID (UPDATE/DELETE için), CREATE için null
+  classId     String // İlgili sınıf
+  changeType  String // "CREATE", "UPDATE", "DELETE"
+  requestedBy String // Talebi oluşturan (Rehberlik uzmanı Staff ID)
+  status      ApprovalStatus @default(PENDING)
+  approvedBy  String? // Onaylayan (Müdür veya Yönetici Staff ID)
+  approvedAt  DateTime? // Onay tarihi
+  rejectedAt  DateTime? // Red tarihi
+  notes       String? // Onay/Red notları
+  
+  // Değişiklik detayları (JSON string olarak)
+  oldValue    String? // Eski değerler (UPDATE/DELETE için)
+  newValue    String? // Yeni değerler (CREATE/UPDATE için)
+  
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  // Relations
+  schedule Schedule? @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@index([scheduleId])
+  @@index([status])
+  @@index([requestedBy])
+  @@index([classId])
+  @@index([status, classId])
+  @@map("schedule_approvals")
 }

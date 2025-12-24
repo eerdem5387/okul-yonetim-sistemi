@@ -58,6 +58,7 @@ export async function PUT(
       durum,
       durumNotu,
       genelNot,
+      createdBy, // ✅ Otomatik kullanıcı adı için
     } = body
 
     // Mevcut teklif görüşmesini kontrol et
@@ -94,7 +95,7 @@ export async function PUT(
     })
 
     // Eğer yeni görüşme kaydı bilgileri varsa, yeni kayıt oluştur
-    if (gorusmeyiYapan && durum) {
+    if (durum) {
       if (!["OLUMLU", "OLUMSUZ", "BELIRSIZ"].includes(durum)) {
         return NextResponse.json(
           { error: "Geçersiz görüşme durumu" },
@@ -102,10 +103,13 @@ export async function PUT(
         )
       }
 
+      // ✅ Görüşmeyi yapan otomatik olarak createdBy'den alınır
+      const gorusmeyiYapanFinal = gorusmeyiYapan || createdBy || "Sistem"
+
       await prisma.teklifGorusmeKaydi.create({
         data: {
           teklifGorusmesiId: id,
-          gorusmeyiYapan,
+          gorusmeyiYapan: gorusmeyiYapanFinal,
           durum: durum as "OLUMLU" | "OLUMSUZ" | "BELIRSIZ",
           durumNotu: durumNotu || null,
           genelNot: genelNot || null,

@@ -240,12 +240,20 @@ export default function RaporlarPage() {
     if (!activeYearId) return
 
     try {
+      // ✅ Rehberlik kullanıcısı kontrolü
+      const role = typeof window !== "undefined" ? localStorage.getItem("auth_role") : null
+      const staffId = typeof window !== "undefined" ? localStorage.getItem("staff_id") : null
+      
       let url = `/api/neredeyiz/subjects?academicYearId=${activeYearId}`
       if (selectedGrade) {
         url += `&grade=${selectedGrade}`
       }
       if (selectedSection) {
         url += `&section=${selectedSection}`
+      }
+      // ✅ Rehberlik kullanıcısı için: Sadece kendisine atanmış sınıfların derslerini göster
+      if (role === "counselor" && staffId) {
+        url += `&counselorId=${staffId}`
       }
       
       const response = await fetch(url)

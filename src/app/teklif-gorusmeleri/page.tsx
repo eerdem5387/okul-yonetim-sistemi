@@ -715,7 +715,6 @@ function TeklifFormModal({
     teklifEdilenFiyat: teklif?.teklifEdilenFiyat.toString() || "",
     okulFiyati: teklif?.okulFiyati.toString() || "",
     // Yeni görüşme kaydı için
-    gorusmeyiYapan: "",
     durum: "" as "" | "OLUMLU" | "OLUMSUZ" | "BELIRSIZ",
     durumNotu: "",
     genelNot: "",
@@ -735,17 +734,19 @@ function TeklifFormModal({
     }
 
     // Eğer düzenleme yapılıyorsa ve yeni görüşme kaydı bilgileri varsa
-    if (teklif && (!formData.gorusmeyiYapan || !formData.durum)) {
-      showError("Düzenleme yaparken görüşme bilgileri zorunludur")
+    if (teklif && !formData.durum) {
+      showError("Düzenleme yaparken görüşme durumu zorunludur")
       return
     }
 
     try {
       setIsSubmitting(true)
-      const staffName = localStorage.getItem("staff_name") || "Sistem"
+      // ✅ Otomatik olarak mevcut kullanıcının adı soyadını al
+      const staffName = typeof window !== "undefined" ? localStorage.getItem("staff_name") : null
+      const gorusmeyiYapan = staffName || "Sistem"
 
       if (teklif) {
-        // Düzenleme
+        // Düzenleme - Yeni görüşme kaydı ekle
         const response = await fetch(`/api/teklif-gorusmeleri/${teklif.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -753,7 +754,9 @@ function TeklifFormModal({
             ...formData,
             teklifEdilenFiyat: parseFloat(formData.teklifEdilenFiyat),
             okulFiyati: parseFloat(formData.okulFiyati),
-            createdBy: staffName,
+            createdBy: staffName || "Sistem",
+            // ✅ Yeni görüşme kaydı için otomatik kullanıcı adı
+            gorusmeyiYapan: formData.durum ? gorusmeyiYapan : undefined,
           }),
         })
 
@@ -767,7 +770,9 @@ function TeklifFormModal({
             ...formData,
             teklifEdilenFiyat: parseFloat(formData.teklifEdilenFiyat),
             okulFiyati: parseFloat(formData.okulFiyati),
-            createdBy: staffName,
+            createdBy: staffName || "Sistem",
+            // ✅ Yeni görüşme kaydı için otomatik kullanıcı adı
+            gorusmeyiYapan: formData.durum ? gorusmeyiYapan : undefined,
           }),
         })
 
@@ -927,15 +932,6 @@ function TeklifFormModal({
                 <h3 className="text-lg font-semibold mb-4 text-gray-900">Yeni Görüşme Kaydı</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="gorusmeyiYapan">Görüşmeyi Yapan *</Label>
-                    <Input
-                      id="gorusmeyiYapan"
-                      value={formData.gorusmeyiYapan}
-                      onChange={(e) => setFormData({ ...formData, gorusmeyiYapan: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div>
                     <Label htmlFor="durum">Durum *</Label>
                     <select
                       id="durum"
@@ -978,15 +974,6 @@ function TeklifFormModal({
               <div>
                 <h3 className="text-lg font-semibold mb-4 text-gray-900">Görüşme Bilgileri</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="gorusmeyiYapan">Görüşmeyi Yapan *</Label>
-                    <Input
-                      id="gorusmeyiYapan"
-                      value={formData.gorusmeyiYapan}
-                      onChange={(e) => setFormData({ ...formData, gorusmeyiYapan: e.target.value })}
-                      required
-                    />
-                  </div>
                   <div>
                     <Label htmlFor="durum">Durum *</Label>
                     <select

@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma"
       const grade = searchParams.get("grade")
       const section = searchParams.get("section")
       const staffId = searchParams.get("staffId") // Öğretmen ID'si
+      const counselorId = searchParams.get("counselorId") // ✅ Rehberlik kullanıcısı için filtreleme
 
       const where: Record<string, unknown> = {}
 
@@ -21,6 +22,25 @@ import { prisma } from "@/lib/prisma"
       if (section) {
         where.section = section
       }
+      
+      // ✅ Rehberlik kullanıcısı için: Sadece kendisine atanmış sınıfların derslerini göster
+      if (counselorId) {
+        // Önce kullanıcıya atanmış sınıfları bul
+        const assignedClasses = await prisma.class.findMany({
+          where: { counselorId },
+          select: { id: true },
+        })
+        const assignedClassIds = assignedClasses.map(c => c.id)
+        
+        // Eğer hiç sınıf atanmamışsa, boş sonuç döndür
+        if (assignedClassIds.length === 0) {
+          return NextResponse.json([])
+        }
+        
+        // classId ile filtrele
+        where.classId = { in: assignedClassIds }
+      }
+      
       // Öğretmen ID'si varsa, sadece o öğretmene atanmış dersleri getir
       if (staffId) {
         where.assignments = {
@@ -90,7 +110,7 @@ import { prisma } from "@/lib/prisma"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { academicYearId, name, code, grade, section, description } = body
+    const { academicYearId, name, code, grade, section, description, classId } = body
 
     if (!academicYearId || !name || !grade) {
       return NextResponse.json(
@@ -111,6 +131,9 @@ export async function POST(request: NextRequest) {
     // Şube validasyonu (boş string ise null yap)
     const sectionValue = section && section.trim() !== "" ? section.trim() : null
 
+    // classId validasyonu (opsiyonel)
+    const classIdValue = classId && classId.trim() !== "" ? classId.trim() : null
+
     const subject = await prisma.subject.create({
       data: {
         academicYearId,
@@ -118,6 +141,7 @@ export async function POST(request: NextRequest) {
         code: code && code.trim() !== "" ? code.trim() : null,
         grade: gradeNum,
         section: sectionValue,
+        classId: classIdValue,
         description: description && description.trim() !== "" ? description.trim() : null,
       },
     })

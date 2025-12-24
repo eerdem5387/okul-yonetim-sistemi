@@ -15,7 +15,8 @@ import {
   Clock, 
   Loader2, 
   LogOut, 
-  User
+  User,
+  School
 } from "lucide-react"
 import { RehberlikSidebar } from "@/components/layout/rehberlik-sidebar"
 
@@ -65,7 +66,11 @@ export default function RehberlikPage() {
 
   const fetchPendingApprovals = async () => {
     try {
-      const response = await fetch("/api/neredeyiz/progress?status=PENDING_APPROVAL")
+      const staffId = typeof window !== "undefined" ? localStorage.getItem("staff_id") : null
+      if (!staffId) return
+      
+      // ✅ Rehberlik kullanıcısı için: Sadece kendisine atanmış sınıfların konularını göster
+      const response = await fetch(`/api/neredeyiz/progress?status=PENDING_APPROVAL&counselorId=${staffId}`)
       if (response.ok) {
         const data = await response.json()
         setPendingApprovals(data)
@@ -89,6 +94,7 @@ export default function RehberlikPage() {
 
   const quickLinks = [
     { name: "Neredeyiz?", href: "/rehberlik/neredeyiz", icon: Target, color: "from-blue-600 to-indigo-600" },
+    { name: "Sınıf Yönetimi", href: "/sinif-yonetimi", icon: School, color: "from-indigo-600 to-purple-600" },
     { name: "Gezi Yönetimi", href: "/rehberlik/gezi", icon: MapPin, color: "from-green-600 to-emerald-600" },
     { name: "Kulüp Yönetimi", href: "/rehberlik/clubs", icon: Users, color: "from-purple-600 to-pink-600" },
     { name: "IB Faaliyet Yönetimi", href: "/rehberlik/activities", icon: Award, color: "from-yellow-600 to-orange-600" },

@@ -42,7 +42,47 @@ export async function GET(
       )
     }
 
-    return NextResponse.json(topic)
+    // Progress kayıtlarındaki Staff ID'lerini topla
+    const staffIds = new Set<string>()
+    if (topic.progress && topic.progress.length > 0) {
+      const progress = topic.progress[0]
+      if (progress.markedBy) staffIds.add(progress.markedBy)
+      if (progress.approvedBy) staffIds.add(progress.approvedBy)
+      if (progress.reportedBy) staffIds.add(progress.reportedBy)
+    }
+
+    // Staff bilgilerini çek
+    const staffMembers = await prisma.staff.findMany({
+      where: {
+        id: { in: Array.from(staffIds) },
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        department: true,
+      },
+    })
+
+    // Staff bilgilerini map'e çevir
+    const staffMap = new Map(staffMembers.map((s) => [s.id, s]))
+
+    // Progress kayıtlarına Staff bilgilerini ekle
+    const topicWithStaff = {
+      ...topic,
+      progress: topic.progress.map((p) => ({
+        ...p,
+        markedByStaff: p.markedBy ? staffMap.get(p.markedBy) : null,
+        approvedByStaff: p.approvedBy ? staffMap.get(p.approvedBy) : null,
+        reportedByStaff: p.reportedBy ? staffMap.get(p.reportedBy) : null,
+        // ✅ Tarih alanlarını da ekle
+        reportedAt: p.reportedAt ? p.reportedAt.toISOString() : null,
+        approvedAt: p.approvedAt ? p.approvedAt.toISOString() : null,
+        markedAt: p.markedAt ? p.markedAt.toISOString() : null,
+      })),
+    }
+
+    return NextResponse.json(topicWithStaff)
   } catch (error) {
     console.error("Error fetching topic:", error)
     return NextResponse.json(

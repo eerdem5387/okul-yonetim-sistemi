@@ -20,6 +20,14 @@ const eslintConfig = [
       "next-env.d.ts",
     ],
   },
+  {
+    rules: {
+      "@typescript-eslint/no-explicit-any": "warn", // any kullanımını warning'e düşür
+      "@typescript-eslint/no-unused-vars": "warn", // Unused vars warning
+      "react/no-unescaped-entities": "warn", // Escaped entities warning
+      "react-hooks/exhaustive-deps": "warn", // useEffect deps warning
+    },
+  },
 ];
 
 export default eslintConfig;

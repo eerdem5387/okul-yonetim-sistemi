@@ -161,6 +161,15 @@ export default function VeliGorusmeleriPage() {
 
     setSubmitting(true)
     try {
+      // ✅ Otomatik olarak mevcut kullanıcının ID'sini al (API'de staff bilgisi çekilecek)
+      const staffId = typeof window !== "undefined" ? localStorage.getItem("staff_id") : null
+      
+      if (!staffId) {
+        error("Kullanıcı bilgisi bulunamadı. Lütfen tekrar giriş yapın.")
+        setSubmitting(false)
+        return
+      }
+      
       const url = editingMeeting
         ? `/api/parent-meetings/${editingMeeting.id}`
         : "/api/parent-meetings"
@@ -171,7 +180,10 @@ export default function VeliGorusmeleriPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          staffId, // ✅ API'de staff bilgisi çekilip counselorName olarak kaydedilecek
+        }),
       })
 
       if (response.ok) {
@@ -188,7 +200,7 @@ export default function VeliGorusmeleriPage() {
           studentId: "",
           meetingDate: new Date().toISOString().split("T")[0],
           notes: "",
-          counselorName: "",
+          counselorName: "", // State'te tutuluyor ama artık kullanılmıyor
         })
         setSelectedStudentId("")
         setStudentSearchTerm("")
@@ -301,7 +313,7 @@ export default function VeliGorusmeleriPage() {
               studentId: "",
               meetingDate: new Date().toISOString().split("T")[0],
               notes: "",
-              counselorName: "",
+              counselorName: "", // State'te tutuluyor ama artık kullanılmıyor
             })
             setSelectedStudentId("")
           }}
@@ -530,20 +542,6 @@ export default function VeliGorusmeleriPage() {
                       className="h-9 sm:h-10 text-xs sm:text-sm"
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="counselorName" className="text-xs sm:text-sm">
-                      Rehberlik Danışmanı (Opsiyonel)
-                    </Label>
-                    <Input
-                      id="counselorName"
-                      value={formData.counselorName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, counselorName: e.target.value })
-                      }
-                      placeholder="Danışman adı..."
-                      className="h-9 sm:h-10 text-xs sm:text-sm"
-                    />
-                  </div>
                 </div>
 
                 <div>
@@ -675,14 +673,13 @@ export default function VeliGorusmeleriPage() {
                               })}
                             </span>
                           </div>
-                          {meeting.counselorName && (
-                            <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-50 rounded-lg">
-                              <Users className="h-4 w-4 text-purple-600" />
-                              <span className="font-medium text-purple-700">
-                                {meeting.counselorName}
-                              </span>
-                            </div>
-                          )}
+                          {/* ✅ Görüşmeyi Yapan - Her zaman göster */}
+                          <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-50 rounded-lg">
+                            <Users className="h-4 w-4 text-purple-600" />
+                            <span className="font-medium text-purple-700">
+                              {meeting.counselorName || "Bilinmiyor"}
+                            </span>
+                          </div>
                         </div>
 
                         {/* Görüşme Notları */}

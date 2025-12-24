@@ -11,15 +11,17 @@ import {
   Users,
   Award,
   MessageSquare,
+  School,
   Menu,
   X,
   LogOut,
 } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 const navigation = [
   { name: "Dashboard", href: "/rehberlik", icon: LayoutDashboard },
   { name: "Neredeyiz?", href: "/rehberlik/neredeyiz", icon: Target },
+  { name: "Sınıf Yönetimi", href: "/sinif-yonetimi", icon: School },
   { name: "Gezi Yönetimi", href: "/rehberlik/gezi", icon: MapPin },
   { name: "Kulüp Yönetimi", href: "/rehberlik/clubs", icon: Users },
   { name: "IB Faaliyet Yönetimi", href: "/rehberlik/activities", icon: Award },
@@ -30,6 +32,14 @@ export function RehberlikSidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [staffName, setStaffName] = useState<string>("")
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const name = localStorage.getItem("staff_name")
+      setStaffName(name || "Rehberlik Uzmanı")
+    }
+  }, [])
 
   const handleLogout = () => {
     localStorage.removeItem("auth_role")
@@ -117,6 +127,19 @@ export function RehberlikSidebar() {
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-gray-100 bg-gradient-to-br from-gray-50 to-slate-50">
+          <div className="mb-3 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center flex-shrink-0">
+              <span className="text-white font-semibold text-sm">
+                {staffName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+              </span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900 truncate">
+                {staffName}
+              </p>
+              <p className="text-xs text-gray-500">Rehberlik</p>
+            </div>
+          </div>
           <Button
             variant="outline"
             size="sm"

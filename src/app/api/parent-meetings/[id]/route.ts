@@ -48,7 +48,7 @@ export async function PUT(
   try {
     const params = await context.params
     const body = await request.json()
-    const { meetingDate, notes, counselorName } = body
+    const { meetingDate, notes, counselorName, staffId } = body
 
     if (!meetingDate || !notes) {
       return NextResponse.json(
@@ -57,12 +57,29 @@ export async function PUT(
       )
     }
 
+    // ✅ Staff bilgisini çek (eğer staffId varsa ve counselorName yoksa)
+    let finalCounselorName = counselorName || null
+    if (staffId && !finalCounselorName) {
+      try {
+        const staff = await prisma.staff.findUnique({
+          where: { id: staffId },
+          select: { firstName: true, lastName: true },
+        })
+        if (staff) {
+          finalCounselorName = `${staff.firstName} ${staff.lastName}`
+        }
+      } catch (err) {
+        console.error("Error fetching staff:", err)
+        // Hata durumunda counselorName null kalır
+      }
+    }
+
     const meeting = await prisma.parentMeeting.update({
       where: { id: params.id },
       data: {
         meetingDate: new Date(meetingDate),
         notes,
-        counselorName: counselorName || null
+        counselorName: finalCounselorName
       },
       include: {
         student: {

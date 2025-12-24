@@ -23,9 +23,9 @@ export default function RootLayout({
 
     // Client-side'da auth kontrolü
     const storedRole = localStorage.getItem("auth_role")
-    let normalizedRole: "student_affairs" | "parent" | "teacher" | "counselor" | null = null
+    let normalizedRole: "admin" | "principal" | "student_affairs" | "parent" | "teacher" | "counselor" | null = null
 
-    if (storedRole === "student_affairs" || storedRole === "parent" || storedRole === "teacher" || storedRole === "counselor") {
+    if (storedRole === "admin" || storedRole === "principal" || storedRole === "student_affairs" || storedRole === "parent" || storedRole === "teacher" || storedRole === "counselor") {
       normalizedRole = storedRole
     } else if (storedRole) {
       // Eski veya geçersiz roller için localStorage temizle
@@ -71,7 +71,7 @@ export default function RootLayout({
     }
 
     // Login sayfası değilse ve yetkili rol yoksa login'e yönlendir
-    const allowedPaths = ["/login", "/parent", "/ib-viewer"]
+    const allowedPaths = ["/login", "/parent", "/ib-viewer", "/change-password"]
     const isAllowedPath = allowedPaths.some((p) => pathname?.startsWith(p))
     
     if (!isAllowedPath && !normalizedRole) {
@@ -84,8 +84,8 @@ export default function RootLayout({
     }
   }, [pathname, router])
 
-  // Login sayfası için özel layout
-  if (pathname === "/login") {
+  // Login ve Change Password sayfaları için özel layout
+  if (pathname === "/login" || pathname === "/change-password") {
     return (
       <html lang="tr">
         <head>
@@ -204,8 +204,9 @@ export default function RootLayout({
     )
   }
 
-  // Öğrenci İşleri için normal layout (sidebar ile)
-  if (authRole === "student_affairs") {
+  // Admin, Principal, Student Affairs, Counselor için normal layout (sidebar ile)
+  // Counselor /rehberlik dışındaki sayfalarda (örn: /sinif-yonetimi) normal sidebar kullanır
+  if (authRole === "admin" || authRole === "principal" || authRole === "student_affairs" || authRole === "counselor") {
     return (
       <html lang="tr">
         <head>

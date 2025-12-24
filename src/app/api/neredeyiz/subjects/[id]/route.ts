@@ -8,6 +8,9 @@ export async function GET(
 ) {
   try {
     const params = await context.params
+    const searchParams = request.nextUrl.searchParams
+    const counselorId = searchParams.get("counselorId") // ✅ Rehberlik kullanıcısı kontrolü
+    
     const subject = await prisma.subject.findUnique({
       where: { id: params.id },
       include: {
@@ -54,6 +57,31 @@ export async function GET(
       )
     }
 
+    // ✅ Rehberlik kullanıcısı kontrolü: Sadece kendisine atanmış sınıfların derslerine erişebilir
+    if (counselorId) {
+      // Subject'in classId'si var mı kontrol et
+      if (subject.classId) {
+        const classData = await prisma.class.findUnique({
+          where: { id: subject.classId },
+          select: { counselorId: true },
+        })
+        
+        if (!classData || classData.counselorId !== counselorId) {
+          return NextResponse.json(
+            { error: "Bu derse erişim yetkiniz bulunmamaktadır. Sadece size atanan sınıfların derslerini görüntüleyebilirsiniz." },
+            { status: 403 }
+          )
+        }
+      } else {
+        // classId yoksa, grade ve section ile kontrol et (eski sistem uyumluluğu)
+        // Bu durumda rehberlik kullanıcısı erişemez (çünkü sınıf ataması yok)
+        return NextResponse.json(
+          { error: "Bu derse erişim yetkiniz bulunmamaktadır. Sadece size atanan sınıfların derslerini görüntüleyebilirsiniz." },
+          { status: 403 }
+        )
+      }
+    }
+
     // Progress kayıtlarındaki Staff ID'lerini topla
     const staffIds = new Set<string>()
     subject.units.forEach((unit) => {
@@ -94,6 +122,10 @@ export async function GET(
             markedByStaff: p.markedBy ? staffMap.get(p.markedBy) : null,
             approvedByStaff: p.approvedBy ? staffMap.get(p.approvedBy) : null,
             reportedByStaff: p.reportedBy ? staffMap.get(p.reportedBy) : null,
+            // ✅ Tarih alanlarını da ekle
+            reportedAt: p.reportedAt ? p.reportedAt.toISOString() : null,
+            approvedAt: p.approvedAt ? p.approvedAt.toISOString() : null,
+            markedAt: p.markedAt ? p.markedAt.toISOString() : null,
           })),
         })),
       })),

@@ -86,12 +86,24 @@ export default function YonetimPage() {
     name: "",
     code: "",
     academicYearId: "",
+    classId: "",
     grade: "",
     section: "",
   })
 
+  const [classes, setClasses] = useState<Array<{
+    id: string
+    name: string
+    grade: number
+    section: string
+    academicYearId: string
+    students: Array<{ id: string }>
+    counselor: { firstName: string; lastName: string } | null
+  }>>([])
+
   useEffect(() => {
     fetchAcademicYears()
+    fetchClasses()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -120,13 +132,33 @@ export default function YonetimPage() {
     }
   }
 
+  const fetchClasses = async () => {
+    try {
+      const response = await fetch("/api/classes")
+      if (response.ok) {
+        const data = await response.json()
+        setClasses(data.classes || [])
+      }
+    } catch (err) {
+      console.error("Error fetching classes:", err)
+    }
+  }
+
   const fetchSubjects = async () => {
     if (!selectedYearId) return
 
     try {
-      const response = await fetch(
-        `/api/neredeyiz/subjects?academicYearId=${selectedYearId}`
-      )
+      // ✅ Rehberlik kullanıcısı kontrolü
+      const role = typeof window !== "undefined" ? localStorage.getItem("auth_role") : null
+      const staffId = typeof window !== "undefined" ? localStorage.getItem("staff_id") : null
+      
+      let url = `/api/neredeyiz/subjects?academicYearId=${selectedYearId}`
+      // ✅ Rehberlik kullanıcısı için: Sadece kendisine atanmış sınıfların derslerini göster
+      if (role === "counselor" && staffId) {
+        url += `&counselorId=${staffId}`
+      }
+      
+      const response = await fetch(url)
       if (response.ok) {
         const data = await response.json()
         setSubjects(data)
@@ -398,6 +430,7 @@ export default function YonetimPage() {
           academicYearId: selectedYearId,
           grade: gradeNum,
           section: subjectFormData.section.trim() !== "" ? subjectFormData.section.trim() : null,
+          classId: subjectFormData.classId.trim() !== "" ? subjectFormData.classId.trim() : null,
         }),
       })
 
@@ -414,6 +447,7 @@ export default function YonetimPage() {
           name: "",
           code: "",
           academicYearId: "",
+          classId: "",
           grade: "",
           section: "",
         })
@@ -717,6 +751,7 @@ export default function YonetimPage() {
                           name: "",
                           code: "",
                           academicYearId: selectedYearId,
+                          classId: "",
                           grade: "",
                           section: "",
                         })
@@ -795,6 +830,7 @@ export default function YonetimPage() {
                                   name: subject.name,
                                   code: subject.code || "",
                                   academicYearId: subject.academicYearId,
+                                  classId: "", // Düzenlemede classId yok, manuel girişte olabilir
                                   grade: subject.grade.toString(),
                                   section: subject.section || "",
                                 })
@@ -1177,6 +1213,7 @@ export default function YonetimPage() {
                         name: "",
                         code: "",
                         academicYearId: "",
+                        classId: "",
                         grade: "",
                         section: "",
                       })
@@ -1217,42 +1254,51 @@ export default function YonetimPage() {
                     className="h-9 sm:h-10 text-xs sm:text-sm"
                   />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  <div>
-                    <Label htmlFor="subjectGrade" className="text-xs sm:text-sm">
-                      Sınıf *
-                    </Label>
-                    <select
-                      id="subjectGrade"
-                      value={subjectFormData.grade}
-                      onChange={(e) =>
-                        setSubjectFormData({ ...subjectFormData, grade: e.target.value })
+                <div>
+                  <Label htmlFor="classSelect" className="text-xs sm:text-sm">
+                    Sınıf Seçimi *
+                  </Label>
+                  <select
+                    id="classSelect"
+                    value={subjectFormData.classId}
+                    onChange={(e) => {
+                      const selectedClass = classes.find(c => c.id === e.target.value)
+                      if (selectedClass) {
+                        setSubjectFormData({
+                          ...subjectFormData,
+                          classId: selectedClass.id,
+                          grade: String(selectedClass.grade),
+                          section: selectedClass.section,
+                          academicYearId: selectedClass.academicYearId
+                        })
+                      } else {
+                        setSubjectFormData({
+                          ...subjectFormData,
+                          classId: "",
+                          grade: "",
+                          section: ""
+                        })
                       }
-                      required
-                      className="w-full h-9 sm:h-10 px-3 py-2 border border-input bg-background rounded-md text-xs sm:text-sm focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Sınıf Seçin</option>
-                      {[5, 6, 7, 8, 9, 10, 11, 12].map((grade) => (
-                        <option key={grade} value={grade}>
-                          {grade}. Sınıf
+                    }}
+                    required
+                    className="w-full h-9 sm:h-10 px-3 py-2 border border-input bg-background rounded-md text-xs sm:text-sm focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Sınıf seçiniz</option>
+                    {classes
+                      .filter(c => c.academicYearId === selectedYearId)
+                      .sort((a, b) => a.grade === b.grade ? a.section.localeCompare(b.section) : a.grade - b.grade)
+                      .map((cls) => (
+                        <option key={cls.id} value={cls.id}>
+                          {cls.name} ({cls.students?.length || 0} öğrenci)
+                          {cls.counselor && ` - ${cls.counselor.firstName} ${cls.counselor.lastName}`}
                         </option>
                       ))}
-                    </select>
-                  </div>
-                  <div>
-                    <Label htmlFor="subjectSection" className="text-xs sm:text-sm">
-                      Şube (Opsiyonel)
-                    </Label>
-                    <Input
-                      id="subjectSection"
-                      value={subjectFormData.section}
-                      onChange={(e) =>
-                        setSubjectFormData({ ...subjectFormData, section: e.target.value })
-                      }
-                      placeholder="Örn: A, B, C"
-                      className="h-9 sm:h-10 text-xs sm:text-sm"
-                    />
-                  </div>
+                  </select>
+                  {subjectFormData.classId && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Seçilen: {subjectFormData.grade}. Sınıf - {subjectFormData.section} Şubesi
+                    </p>
+                  )}
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 pt-2">
                   <Button
@@ -1284,6 +1330,7 @@ export default function YonetimPage() {
                         name: "",
                         code: "",
                         academicYearId: "",
+                        classId: "",
                         grade: "",
                         section: "",
                       })

@@ -130,9 +130,17 @@ export default function AksamalarPage() {
     if (!selectedYearId) return
 
     try {
-      const response = await fetch(
-        `/api/neredeyiz/subjects?academicYearId=${selectedYearId}`
-      )
+      // ✅ Rehberlik kullanıcısı kontrolü
+      const role = typeof window !== "undefined" ? localStorage.getItem("auth_role") : null
+      const staffId = typeof window !== "undefined" ? localStorage.getItem("staff_id") : null
+      
+      let url = `/api/neredeyiz/subjects?academicYearId=${selectedYearId}`
+      // ✅ Rehberlik kullanıcısı için: Sadece kendisine atanmış sınıfların derslerini göster
+      if (role === "counselor" && staffId) {
+        url += `&counselorId=${staffId}`
+      }
+      
+      const response = await fetch(url)
       if (response.ok) {
         const data = await response.json()
         setSubjects(data)
