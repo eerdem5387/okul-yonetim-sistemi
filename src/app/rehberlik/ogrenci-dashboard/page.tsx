@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Sidebar } from "@/components/layout/sidebar"
+import { StudentSearch } from "@/components/ui/student-search"
 import {
   User,
   BookOpen,
@@ -16,6 +17,12 @@ import {
   CheckCircle,
   Clock,
   Loader2,
+  Plus,
+  Edit,
+  BarChart3,
+  PieChart,
+  Award,
+  XCircle,
 } from "lucide-react"
 
 interface Student {
@@ -213,32 +220,29 @@ export default function RehberlikOgrenciDashboardPage() {
           </div>
 
           {/* Öğrenci Seçimi ve Filtre */}
-          <Card>
-            <CardContent className="p-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="studentSelect">Öğrenci Seçin</Label>
-                  <select
-                    id="studentSelect"
-                    value={selectedStudentId}
-                    onChange={(e) => handleStudentChange(e.target.value)}
-                    className="w-full p-2 border rounded-md"
-                  >
-                    <option value="">Bir öğrenci seçin...</option>
-                    {students.map((student) => (
-                      <option key={student.id} value={student.id}>
-                        {student.firstName} {student.lastName} ({student.grade})
-                      </option>
-                    ))}
-                  </select>
+          <Card className="border-2 border-purple-100 shadow-sm">
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="studentSearch" className="text-sm font-semibold text-gray-700">
+                    Öğrenci Ara
+                  </Label>
+                  <StudentSearch
+                    students={students}
+                    selectedStudentId={selectedStudentId}
+                    onSelect={handleStudentChange}
+                    placeholder="Öğrenci adı, soyadı, TC veya sınıf ile ara..."
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="periodSelect">Zaman Periyodu</Label>
+                  <Label htmlFor="periodSelect" className="text-sm font-semibold text-gray-700">
+                    Zaman Periyodu
+                  </Label>
                   <select
                     id="periodSelect"
                     value={period}
                     onChange={(e) => handlePeriodChange(e.target.value)}
-                    className="w-full p-2 border rounded-md"
+                    className="w-full p-2.5 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
                     disabled={!selectedStudentId}
                   >
                     <option value="30days">Son 30 Gün</option>
@@ -272,21 +276,50 @@ export default function RehberlikOgrenciDashboardPage() {
 
           {dashboardData && !loading && (
             <>
-              {/* Öğrenci Bilgi Kartı */}
-              <Card className="bg-gradient-to-r from-purple-600 to-purple-700 text-white">
+              {/* Öğrenci Bilgi Kartı ve Hızlı Erişim */}
+              <Card className="bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-700 text-white shadow-lg">
                 <CardContent className="p-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
-                      <User className="h-8 w-8" />
+                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center shadow-lg">
+                        <User className="h-10 w-10" />
+                      </div>
+                      <div>
+                        <h2 className="text-3xl font-bold mb-1">
+                          {dashboardData.student.firstName}{" "}
+                          {dashboardData.student.lastName}
+                        </h2>
+                        <div className="flex items-center gap-4 text-purple-100">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4" />
+                            Sınıf: {dashboardData.student.grade}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <FileText className="h-4 w-4" />
+                            TC: {dashboardData.student.tcNumber}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <h2 className="text-2xl font-bold">
-                        {dashboardData.student.firstName}{" "}
-                        {dashboardData.student.lastName}
-                      </h2>
-                      <p className="text-purple-100">
-                        Sınıf: {dashboardData.student.grade}
-                      </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => router.push(`/rehberlik/sinavlar?studentId=${selectedStudentId}`)}
+                        className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                      >
+                        <FileText className="h-4 w-4 mr-1" />
+                        Sınav Sonucu
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => router.push(`/rehberlik/gorusler?studentId=${selectedStudentId}`)}
+                        className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                      >
+                        <MessageSquare className="h-4 w-4 mr-1" />
+                        Görüş Ekle
+                      </Button>
                     </div>
                   </div>
                 </CardContent>

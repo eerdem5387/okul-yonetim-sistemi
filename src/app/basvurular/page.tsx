@@ -803,7 +803,7 @@ export default function BasvurularPage() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 sm:h-5 sm:w-5" />
                 <Input
                   type="text"
-                  placeholder="Öğrenci adı, TC, email, okul veya veli adı ile ara..."
+                  placeholder="Öğrenci adı, soyadı veya TC ile ara..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSearch()}

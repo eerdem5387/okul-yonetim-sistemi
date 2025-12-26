@@ -17,15 +17,12 @@ export async function GET(request: NextRequest) {
     // Filtreleme koşulları (API ile aynı)
     const whereConditions: Array<Record<string, unknown>> = []
     
+    // Arama filtresi - Sadece öğrenci adı, soyadı ve TC ile arama
     if (search) {
       whereConditions.push({
         OR: [
           { ogrenciAdSoyad: { contains: search, mode: 'insensitive' as const } },
           { ogrenciTc: { contains: search } },
-          { email: { contains: search, mode: 'insensitive' as const } },
-          { okul: { contains: search, mode: 'insensitive' as const } },
-          { babaAdSoyad: { contains: search, mode: 'insensitive' as const } },
-          { anneAdSoyad: { contains: search, mode: 'insensitive' as const } },
         ]
       })
     }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
+import { StudentSearch } from "@/components/ui/student-search"
 import {
   User,
   BookOpen,
@@ -18,6 +19,10 @@ import {
   Clock,
   Award,
   Loader2,
+  Plus,
+  Edit,
+  BarChart3,
+  PieChart,
 } from "lucide-react"
 
 interface Student {
@@ -210,32 +215,29 @@ export default function OgretmenOgrenciDashboardPage() {
           </div>
 
           {/* Öğrenci Seçimi ve Filtre */}
-          <Card>
-            <CardContent className="p-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="studentSelect">Öğrenci Seçin</Label>
-                  <select
-                    id="studentSelect"
-                    value={selectedStudentId}
-                    onChange={(e) => handleStudentChange(e.target.value)}
-                    className="w-full p-2 border rounded-md"
-                  >
-                    <option value="">Bir öğrenci seçin...</option>
-                    {students.map((student) => (
-                      <option key={student.id} value={student.id}>
-                        {student.firstName} {student.lastName} ({student.grade})
-                      </option>
-                    ))}
-                  </select>
+          <Card className="border-2 border-blue-100 shadow-sm">
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="studentSearch" className="text-sm font-semibold text-gray-700">
+                    Öğrenci Ara
+                  </Label>
+                  <StudentSearch
+                    students={students}
+                    selectedStudentId={selectedStudentId}
+                    onSelect={handleStudentChange}
+                    placeholder="Öğrenci adı, soyadı, TC veya sınıf ile ara..."
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="periodSelect">Zaman Periyodu</Label>
+                  <Label htmlFor="periodSelect" className="text-sm font-semibold text-gray-700">
+                    Zaman Periyodu
+                  </Label>
                   <select
                     id="periodSelect"
                     value={period}
                     onChange={(e) => handlePeriodChange(e.target.value)}
-                    className="w-full p-2 border rounded-md"
+                    className="w-full p-2.5 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                     disabled={!selectedStudentId}
                   >
                     <option value="30days">Son 30 Gün</option>
@@ -269,21 +271,59 @@ export default function OgretmenOgrenciDashboardPage() {
 
           {dashboardData && !loading && (
             <>
-              {/* Öğrenci Bilgi Kartı */}
-              <Card className="bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+              {/* Öğrenci Bilgi Kartı ve Hızlı Erişim */}
+              <Card className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 text-white shadow-lg">
                 <CardContent className="p-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
-                      <User className="h-8 w-8" />
+                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center shadow-lg">
+                        <User className="h-10 w-10" />
+                      </div>
+                      <div>
+                        <h2 className="text-3xl font-bold mb-1">
+                          {dashboardData.student.firstName}{" "}
+                          {dashboardData.student.lastName}
+                        </h2>
+                        <div className="flex items-center gap-4 text-blue-100">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4" />
+                            Sınıf: {dashboardData.student.grade}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <FileText className="h-4 w-4" />
+                            TC: {dashboardData.student.tcNumber}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <h2 className="text-2xl font-bold">
-                        {dashboardData.student.firstName}{" "}
-                        {dashboardData.student.lastName}
-                      </h2>
-                      <p className="text-blue-100">
-                        Sınıf: {dashboardData.student.grade}
-                      </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => router.push(`/ogretmen/odevler?studentId=${selectedStudentId}`)}
+                        className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Ödev Ver
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => router.push(`/ogretmen/yoklama?studentId=${selectedStudentId}`)}
+                        className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                      >
+                        <Calendar className="h-4 w-4 mr-1" />
+                        Yoklama Al
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => router.push(`/ogretmen/gorusler?studentId=${selectedStudentId}`)}
+                        className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                      >
+                        <MessageSquare className="h-4 w-4 mr-1" />
+                        Görüş Ekle
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
@@ -292,7 +332,7 @@ export default function OgretmenOgrenciDashboardPage() {
               {/* İstatistik Kartları */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Ödev Tamamlama */}
-                <Card>
+                <Card className="hover:shadow-lg transition-shadow border-l-4 border-l-blue-500">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-medium flex items-center gap-2">
                       <BookOpen className="h-4 w-4 text-blue-600" />
@@ -300,17 +340,39 @@ export default function OgretmenOgrenciDashboardPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold text-blue-600">
-                      %{dashboardData.statistics.homeworkCompletionRate}
+                    <div className="flex items-baseline gap-2">
+                      <div className="text-3xl font-bold text-blue-600">
+                        %{dashboardData.statistics.homeworkCompletionRate}
+                      </div>
+                      {dashboardData.statistics.homeworkCompletionRate >= 80 ? (
+                        <TrendingUp className="h-5 w-5 text-green-600" />
+                      ) : dashboardData.statistics.homeworkCompletionRate >= 50 ? (
+                        <Clock className="h-5 w-5 text-orange-600" />
+                      ) : (
+                        <TrendingDown className="h-5 w-5 text-red-600" />
+                      )}
                     </div>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {dashboardData.statistics.completedHomeworks}/{dashboardData.statistics.totalHomeworks} ödev
+                    <div className="mt-2">
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-500"
+                          style={{ width: `${dashboardData.statistics.homeworkCompletionRate}%` }}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-2">
+                      {dashboardData.statistics.completedHomeworks}/{dashboardData.statistics.totalHomeworks} ödev tamamlandı
                     </p>
+                    {dashboardData.statistics.pendingHomeworks > 0 && (
+                      <p className="text-xs text-orange-600 mt-1 font-medium">
+                        {dashboardData.statistics.pendingHomeworks} ödev bekliyor
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
 
                 {/* Devam Oranı */}
-                <Card>
+                <Card className="hover:shadow-lg transition-shadow border-l-4 border-l-green-500">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-medium flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-green-600" />
@@ -318,17 +380,53 @@ export default function OgretmenOgrenciDashboardPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold text-green-600">
-                      %{dashboardData.statistics.attendanceRate}
+                    <div className="flex items-baseline gap-2">
+                      <div className="text-3xl font-bold text-green-600">
+                        %{dashboardData.statistics.attendanceRate}
+                      </div>
+                      {dashboardData.statistics.attendanceRate >= 90 ? (
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                      ) : dashboardData.statistics.attendanceRate >= 70 ? (
+                        <Clock className="h-5 w-5 text-orange-600" />
+                      ) : (
+                        <XCircle className="h-5 w-5 text-red-600" />
+                      )}
                     </div>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {dashboardData.statistics.presentCount}/{dashboardData.statistics.totalAttendances} ders
-                    </p>
+                    <div className="mt-2">
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-green-600 h-2 rounded-full transition-all duration-500"
+                          style={{ width: `${dashboardData.statistics.attendanceRate}%` }}
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-2 space-y-1">
+                      <p className="text-sm text-gray-600">
+                        <span className="font-medium text-green-700">{dashboardData.statistics.presentCount}</span> geldi
+                      </p>
+                      <div className="flex gap-2 text-xs">
+                        {dashboardData.statistics.absentCount > 0 && (
+                          <span className="text-red-600">
+                            {dashboardData.statistics.absentCount} gelmedi
+                          </span>
+                        )}
+                        {dashboardData.statistics.lateCount > 0 && (
+                          <span className="text-orange-600">
+                            {dashboardData.statistics.lateCount} geç
+                          </span>
+                        )}
+                        {dashboardData.statistics.excusedCount > 0 && (
+                          <span className="text-blue-600">
+                            {dashboardData.statistics.excusedCount} izinli
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
 
                 {/* Sınav Ortalaması */}
-                <Card>
+                <Card className="hover:shadow-lg transition-shadow border-l-4 border-l-purple-500">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-medium flex items-center gap-2">
                       <FileText className="h-4 w-4 text-purple-600" />
@@ -336,17 +434,36 @@ export default function OgretmenOgrenciDashboardPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold text-purple-600">
-                      {dashboardData.statistics.averageScore}
+                    <div className="flex items-baseline gap-2">
+                      <div className="text-3xl font-bold text-purple-600">
+                        {dashboardData.statistics.averageScore > 0 ? dashboardData.statistics.averageScore : "-"}
+                      </div>
+                      {dashboardData.statistics.averageScore >= 80 ? (
+                        <Award className="h-5 w-5 text-yellow-600" />
+                      ) : dashboardData.statistics.averageScore >= 60 ? (
+                        <BarChart3 className="h-5 w-5 text-purple-600" />
+                      ) : dashboardData.statistics.averageScore > 0 ? (
+                        <TrendingDown className="h-5 w-5 text-red-600" />
+                      ) : null}
                     </div>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {dashboardData.statistics.totalExams} sınav
+                    <p className="text-sm text-gray-600 mt-2">
+                      {dashboardData.statistics.totalExams} sınav sonucu
                     </p>
+                    {dashboardData.statistics.averageScore > 0 && (
+                      <div className="mt-2">
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-purple-600 h-2 rounded-full transition-all duration-500"
+                            style={{ width: `${(dashboardData.statistics.averageScore / 100) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
                 {/* Görüşler */}
-                <Card>
+                <Card className="hover:shadow-lg transition-shadow border-l-4 border-l-orange-500">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-medium flex items-center gap-2">
                       <MessageSquare className="h-4 w-4 text-orange-600" />
@@ -354,18 +471,42 @@ export default function OgretmenOgrenciDashboardPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex gap-2 items-baseline">
-                      <div className="text-2xl font-bold text-green-600">
-                        {dashboardData.statistics.positiveComments}
+                    <div className="flex gap-3 items-baseline">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-600">
+                          {dashboardData.statistics.positiveComments}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Olumlu</p>
                       </div>
-                      <span className="text-gray-400">/</span>
-                      <div className="text-2xl font-bold text-orange-600">
-                        {dashboardData.statistics.negativeComments}
+                      <div className="h-8 w-px bg-gray-300" />
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-orange-600">
+                          {dashboardData.statistics.negativeComments}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Gelişmeli</p>
                       </div>
                     </div>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Olumlu / Gelişmeli
-                    </p>
+                    {dashboardData.statistics.totalComments > 0 && (
+                      <div className="mt-3 pt-3 border-t">
+                        <div className="flex gap-2">
+                          <div
+                            className="h-2 bg-green-500 rounded-full"
+                            style={{
+                              width: `${(dashboardData.statistics.positiveComments / dashboardData.statistics.totalComments) * 100}%`
+                            }}
+                          />
+                          <div
+                            className="h-2 bg-orange-500 rounded-full"
+                            style={{
+                              width: `${(dashboardData.statistics.negativeComments / dashboardData.statistics.totalComments) * 100}%`
+                            }}
+                          />
+                        </div>
+                        <p className="text-xs text-gray-600 mt-1">
+                          Toplam {dashboardData.statistics.totalComments} görüş
+                        </p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -373,69 +514,110 @@ export default function OgretmenOgrenciDashboardPage() {
               {/* Detaylı Bilgiler - Tabs */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Son Ödevler */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <BookOpen className="h-5 w-5 text-blue-600" />
-                      Son Ödevler
-                    </CardTitle>
+                <Card className="hover:shadow-md transition-shadow">
+                  <CardHeader className="border-b bg-gradient-to-r from-blue-50 to-indigo-50">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <BookOpen className="h-5 w-5 text-blue-600" />
+                        Son Ödevler
+                      </CardTitle>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => router.push(`/ogretmen/odevler?studentId=${selectedStudentId}`)}
+                        className="text-xs"
+                      >
+                        Tümünü Gör
+                      </Button>
+                    </div>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="space-y-3 p-4">
                     {dashboardData.recentData.homeworks.length === 0 ? (
-                      <p className="text-gray-500 text-center py-4">
-                        Henüz ödev yok
-                      </p>
+                      <div className="text-center py-8">
+                        <BookOpen className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+                        <p className="text-gray-500">Henüz ödev yok</p>
+                      </div>
                     ) : (
-                      dashboardData.recentData.homeworks.slice(0, 5).map((hw) => (
-                        <div
-                          key={hw.id}
-                          className="flex items-start gap-3 p-3 border rounded-lg"
-                        >
-                          {hw.isCompleted ? (
-                            <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                          ) : (
-                            <Clock className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm">{hw.homework.title}</p>
-                            <p className="text-xs text-gray-600">
-                              {hw.homework.subject || "Genel"} • Son:{" "}
-                              {new Date(hw.homework.dueDate).toLocaleDateString("tr-TR")}
-                            </p>
+                      dashboardData.recentData.homeworks.slice(0, 5).map((hw) => {
+                        const isOverdue = new Date(hw.homework.dueDate) < new Date() && !hw.isCompleted
+                        return (
+                          <div
+                            key={hw.id}
+                            className={`flex items-start gap-3 p-3 border-2 rounded-lg transition-all hover:shadow-sm ${
+                              isOverdue ? "border-red-200 bg-red-50" : "border-gray-200 hover:border-blue-200"
+                            }`}
+                          >
+                            {hw.isCompleted ? (
+                              <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                            ) : (
+                              <Clock className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm text-gray-900">{hw.homework.title}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
+                                  {hw.homework.subject || "Genel"}
+                                </span>
+                                <span className={`text-xs ${isOverdue ? "text-red-600 font-medium" : "text-gray-600"}`}>
+                                  Son: {new Date(hw.homework.dueDate).toLocaleDateString("tr-TR")}
+                                </span>
+                              </div>
+                              {hw.isCompleted && hw.completedAt && (
+                                <p className="text-xs text-green-600 mt-1">
+                                  ✓ {new Date(hw.completedAt).toLocaleDateString("tr-TR")} tamamlandı
+                                </p>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))
+                        )
+                      })
                     )}
                   </CardContent>
                 </Card>
 
                 {/* Son Yoklamalar */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Calendar className="h-5 w-5 text-green-600" />
-                      Son Yoklamalar
-                    </CardTitle>
+                <Card className="hover:shadow-md transition-shadow">
+                  <CardHeader className="border-b bg-gradient-to-r from-green-50 to-emerald-50">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <Calendar className="h-5 w-5 text-green-600" />
+                        Son Yoklamalar
+                      </CardTitle>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => router.push(`/ogretmen/yoklama?studentId=${selectedStudentId}`)}
+                        className="text-xs"
+                      >
+                        Tümünü Gör
+                      </Button>
+                    </div>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="space-y-3 p-4">
                     {dashboardData.recentData.attendances.length === 0 ? (
-                      <p className="text-gray-500 text-center py-4">
-                        Henüz yoklama yok
-                      </p>
+                      <div className="text-center py-8">
+                        <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+                        <p className="text-gray-500">Henüz yoklama yok</p>
+                      </div>
                     ) : (
                       dashboardData.recentData.attendances.slice(0, 5).map((att) => (
                         <div
                           key={att.id}
-                          className="flex items-center justify-between p-3 border rounded-lg"
+                          className="flex items-center justify-between p-3 border-2 border-gray-200 rounded-lg hover:border-green-200 transition-all hover:shadow-sm"
                         >
-                          <div>
-                            <p className="font-medium text-sm">{att.lessonName}</p>
-                            <p className="text-xs text-gray-600">
-                              {new Date(att.date).toLocaleDateString("tr-TR")}
+                          <div className="flex-1">
+                            <p className="font-medium text-sm text-gray-900">{att.lessonName}</p>
+                            <p className="text-xs text-gray-600 mt-1">
+                              {new Date(att.date).toLocaleDateString("tr-TR", {
+                                weekday: "long",
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric"
+                              })}
                             </p>
                           </div>
                           <span
-                            className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                            className={`px-3 py-1.5 rounded-full text-xs font-semibold shadow-sm ${getStatusColor(
                               att.status
                             )}`}
                           >
@@ -448,86 +630,126 @@ export default function OgretmenOgrenciDashboardPage() {
                 </Card>
 
                 {/* Son Sınav Sonuçları */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <FileText className="h-5 w-5 text-purple-600" />
-                      Son Sınav Sonuçları
-                    </CardTitle>
+                <Card className="hover:shadow-md transition-shadow">
+                  <CardHeader className="border-b bg-gradient-to-r from-purple-50 to-pink-50">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <FileText className="h-5 w-5 text-purple-600" />
+                        Son Sınav Sonuçları
+                      </CardTitle>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => router.push(`/rehberlik/sinavlar?studentId=${selectedStudentId}`)}
+                        className="text-xs"
+                      >
+                        Tümünü Gör
+                      </Button>
+                    </div>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="space-y-3 p-4">
                     {dashboardData.recentData.examResults.length === 0 ? (
-                      <p className="text-gray-500 text-center py-4">
-                        Henüz sınav sonucu yok
-                      </p>
+                      <div className="text-center py-8">
+                        <FileText className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+                        <p className="text-gray-500">Henüz sınav sonucu yok</p>
+                      </div>
                     ) : (
-                      dashboardData.recentData.examResults.slice(0, 5).map((exam) => (
-                        <div
-                          key={exam.id}
-                          className="flex items-center justify-between p-3 border rounded-lg"
-                        >
-                          <div className="flex-1">
-                            <p className="font-medium text-sm">{exam.exam.name}</p>
-                            <p className="text-xs text-gray-600">
-                              {exam.exam.examType} •{" "}
-                              {new Date(exam.exam.examDate).toLocaleDateString("tr-TR")}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-lg font-bold text-purple-600">
-                              {exam.totalScore || "-"}
-                            </div>
-                            {exam.ranking && (
-                              <div className="text-xs text-gray-600">
-                                #{exam.ranking}
+                      dashboardData.recentData.examResults.slice(0, 5).map((exam) => {
+                        const score = exam.totalScore || 0
+                        const scoreColor = score >= 80 ? "text-green-600" : score >= 60 ? "text-purple-600" : "text-red-600"
+                        return (
+                          <div
+                            key={exam.id}
+                            className="flex items-center justify-between p-3 border-2 border-gray-200 rounded-lg hover:border-purple-200 transition-all hover:shadow-sm"
+                          >
+                            <div className="flex-1">
+                              <p className="font-medium text-sm text-gray-900">{exam.exam.name}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded">
+                                  {exam.exam.examType}
+                                </span>
+                                <span className="text-xs text-gray-600">
+                                  {new Date(exam.exam.examDate).toLocaleDateString("tr-TR")}
+                                </span>
                               </div>
-                            )}
+                            </div>
+                            <div className="text-right ml-4">
+                              <div className={`text-2xl font-bold ${scoreColor}`}>
+                                {exam.totalScore || "-"}
+                              </div>
+                              {exam.ranking && (
+                                <div className="text-xs text-gray-600 mt-1">
+                                  <Award className="h-3 w-3 inline mr-1" />
+                                  #{exam.ranking}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))
+                        )
+                      })
                     )}
                   </CardContent>
                 </Card>
 
                 {/* Son Görüşler */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <MessageSquare className="h-5 w-5 text-orange-600" />
-                      Son Görüşler
-                    </CardTitle>
+                <Card className="hover:shadow-md transition-shadow lg:col-span-2">
+                  <CardHeader className="border-b bg-gradient-to-r from-orange-50 to-amber-50">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <MessageSquare className="h-5 w-5 text-orange-600" />
+                        Son Görüşler
+                      </CardTitle>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => router.push(`/ogretmen/gorusler?studentId=${selectedStudentId}`)}
+                        className="text-xs"
+                      >
+                        Tümünü Gör
+                      </Button>
+                    </div>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="space-y-3 p-4">
                     {dashboardData.recentData.comments.length === 0 ? (
-                      <p className="text-gray-500 text-center py-4">
-                        Henüz görüş yok
-                      </p>
+                      <div className="text-center py-8">
+                        <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+                        <p className="text-gray-500">Henüz görüş yok</p>
+                      </div>
                     ) : (
-                      dashboardData.recentData.comments.slice(0, 5).map((comment) => (
-                        <div
-                          key={comment.id}
-                          className={`p-3 border-l-4 rounded-lg ${
-                            comment.isPositive ? "border-l-green-500 bg-green-50" : "border-l-orange-500 bg-orange-50"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            {comment.isPositive ? (
-                              <TrendingUp className="h-4 w-4 text-green-600" />
-                            ) : (
-                              <TrendingDown className="h-4 w-4 text-orange-600" />
-                            )}
-                            <span className="text-xs font-medium text-gray-600">
-                              {comment.staff.firstName} {comment.staff.lastName}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              • {new Date(comment.createdAt).toLocaleDateString("tr-TR")}
-                            </span>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {dashboardData.recentData.comments.slice(0, 6).map((comment) => (
+                          <div
+                            key={comment.id}
+                            className={`p-4 border-l-4 rounded-lg shadow-sm hover:shadow-md transition-shadow ${
+                              comment.isPositive
+                                ? "border-l-green-500 bg-green-50 hover:bg-green-100"
+                                : "border-l-orange-500 bg-orange-50 hover:bg-orange-100"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 mb-2">
+                              {comment.isPositive ? (
+                                <TrendingUp className="h-4 w-4 text-green-600" />
+                              ) : (
+                                <TrendingDown className="h-4 w-4 text-orange-600" />
+                              )}
+                              <span className="text-xs font-semibold text-gray-700">
+                                {comment.staff.firstName} {comment.staff.lastName}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                • {new Date(comment.createdAt).toLocaleDateString("tr-TR")}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-700 line-clamp-3">
+                              {comment.content}
+                            </p>
+                            <div className="mt-2">
+                              <span className="text-xs px-2 py-0.5 bg-white/50 rounded text-gray-600">
+                                {comment.commentType === "ACADEMIC" ? "Akademik" : comment.commentType === "BEHAVIORAL" ? "Davranış" : "Genel"}
+                              </span>
+                            </div>
                           </div>
-                          <p className="text-sm text-gray-700 line-clamp-2">
-                            {comment.content}
-                          </p>
-                        </div>
-                      ))
+                        ))}
+                      </div>
                     )}
                   </CardContent>
                 </Card>
