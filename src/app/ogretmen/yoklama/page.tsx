@@ -53,6 +53,7 @@ export default function TeacherAttendancePage() {
       fetchClasses()
       setLoading(false)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
 
   const fetchClasses = async () => {

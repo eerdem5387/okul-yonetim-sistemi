@@ -62,6 +62,7 @@ export default function TeacherHomeworkPage() {
       fetchHomeworks(id)
       fetchClasses()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
 
   const fetchHomeworks = async (teacherId: string) => {

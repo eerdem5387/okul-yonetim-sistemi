@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { MessageSquare, Plus, Calendar, ThumbsUp, ThumbsDown, Loader2, Edit, Trash2, Search } from "lucide-react"
+import { MessageSquare, Plus, Calendar, ThumbsUp, ThumbsDown, Loader2, Edit, Trash2 } from "lucide-react"
 import { StudentSearch } from "@/components/ui/student-search"
 
 interface StudentComment {
@@ -62,6 +62,7 @@ export default function OgretmenGoruslerPage() {
       fetchComments(id)
       fetchStudents()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
 
   const fetchComments = async (id: string) => {
