@@ -105,9 +105,7 @@ export default function LoginPage() {
 
   // Veli Erişimi
   const handleParentAccess = () => {
-    localStorage.setItem("auth_role", "parent")
-    router.push("/parent")
-    router.refresh()
+    router.push("/veli-login")
   }
 
   if (showIBViewer) {

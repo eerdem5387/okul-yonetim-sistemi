@@ -258,7 +258,7 @@ export default function OgretmenDersDetayPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     )
@@ -266,7 +266,7 @@ export default function OgretmenDersDetayPage() {
 
   if (!subject) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen">
         <Card>
           <CardContent className="py-12 text-center">
             <BookOpen className="h-12 w-12 text-gray-300 mx-auto mb-3" />
@@ -284,7 +284,8 @@ export default function OgretmenDersDetayPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-gray-50">
+        <div className="p-4 sm:p-6 lg:p-8">
       <ToastContainer toasts={toasts} onClose={removeToast} />
 
       {/* Header */}
@@ -442,6 +443,7 @@ export default function OgretmenDersDetayPage() {
           })}
         </div>
       )}
+        </div>
     </div>
   )
 }

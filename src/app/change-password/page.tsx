@@ -13,6 +13,8 @@ export default function ChangePasswordPage() {
   const [tcNumber, setTcNumber] = useState("")
   const [staffName, setStaffName] = useState("")
   const [isFirstLogin, setIsFirstLogin] = useState(false)
+  const [isParent, setIsParent] = useState(false)
+  const [parentId, setParentId] = useState("")
   const [oldPassword, setOldPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -25,7 +27,30 @@ export default function ChangePasswordPage() {
     const urlParams = new URLSearchParams(window.location.search)
     const tcFromUrl = urlParams.get("tc")
     const firstLoginFromUrl = urlParams.get("first") === "true"
+    const parentFromUrl = urlParams.get("parent") === "true"
 
+    // Veli mi?
+    if (parentFromUrl) {
+      const pId = localStorage.getItem("parent_id")
+      const studentName = localStorage.getItem("student_name")
+      const studentTc = localStorage.getItem("student_tc")
+      const savedParentName = localStorage.getItem("parent_name")
+      
+      if (!pId) {
+        router.push("/veli-login")
+        return
+      }
+      
+      setIsParent(true)
+      setParentId(pId)
+      setTcNumber(studentTc || "")
+      setStaffName(savedParentName || (studentName ? `${studentName} Velisi` : "Veli"))
+      setIsFirstLogin(true)
+      setPageLoading(false)
+      return
+    }
+
+    // Personel
     if (!tcFromUrl) {
       // URL'de TC yoksa, localStorage'dan dene
       const tempStaffId = localStorage.getItem("temp_staff_id") || localStorage.getItem("staff_id")
@@ -75,15 +100,27 @@ export default function ChangePasswordPage() {
     setLoading(true)
 
     try {
-      const response = await fetch("/api/auth/change-password", {
+      // Veli için farklı endpoint
+      const endpoint = isParent ? "/api/auth/parent-change-password" : "/api/auth/change-password"
+      
+      const body = isParent
+        ? {
+            parentId,
+            oldPassword: isFirstLogin ? tcNumber : oldPassword,
+            newPassword,
+            isFirstLogin,
+          }
+        : {
+            tcNumber,
+            oldPassword: isFirstLogin ? tcNumber : oldPassword,
+            newPassword,
+            isFirstLogin,
+          }
+
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tcNumber,
-          oldPassword: isFirstLogin ? tcNumber : oldPassword,
-          newPassword,
-          isFirstLogin,
-        }),
+        body: JSON.stringify(body),
       })
 
       if (response.ok) {
@@ -95,7 +132,19 @@ export default function ChangePasswordPage() {
         
         // Success - Login sayfasına yönlendir
         alert("Şifreniz başarıyla değiştirildi! Lütfen yeni şifrenizle giriş yapın.")
+        
+        if (isParent) {
+          // Veli girişe geri dön
+          localStorage.removeItem("auth_role")
+          localStorage.removeItem("auth_token")
+          localStorage.removeItem("parent_id")
+          localStorage.removeItem("parent_name")
+          localStorage.removeItem("student_tc")
+          localStorage.removeItem("student_name")
+          router.push("/veli-login")
+        } else {
         router.push("/login")
+        }
       } else {
         const errorData = await response.json()
         setError(errorData.error || "Şifre değiştirilirken bir hata oluştu")
@@ -132,7 +181,7 @@ export default function ChangePasswordPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-4">
       <Card className="w-full max-w-md shadow-2xl">
         <CardHeader className="text-center space-y-4 pb-6">
-          <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
+          <div className={`mx-auto w-16 h-16 bg-gradient-to-br ${isParent ? 'from-green-600 to-emerald-600' : 'from-blue-600 to-indigo-600'} rounded-2xl flex items-center justify-center shadow-lg`}>
             <Key className="h-8 w-8 text-white" />
           </div>
           <div>

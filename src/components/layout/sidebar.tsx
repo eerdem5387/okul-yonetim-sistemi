@@ -47,6 +47,12 @@ const allNavigation = [
   // Ders Programım - Sadece Öğretmen
   { name: "Ders Programım", href: "/ogretmen/ders-programim", icon: LayoutDashboard, roles: ["teacher"] },
   
+  // FAZ 2: Ödevler ve Yoklama - Sadece Öğretmen
+  { name: "Ödevlerim", href: "/ogretmen/odevler", icon: BookOpen, roles: ["teacher"] },
+  { name: "Yoklama", href: "/ogretmen/yoklama", icon: ClipboardList, roles: ["teacher"] },
+  { name: "Öğrenci Görüşleri", href: "/ogretmen/gorusler", icon: MessageSquare, roles: ["teacher"] },
+  { name: "Öğrenci Dashboard", href: "/ogretmen/ogrenci-dashboard", icon: LayoutDashboard, roles: ["teacher"] },
+  
   // Bursluluk Başvuruları - Admin, Müdür, Öğrenci İşleri
   { name: "Bursluluk Başvuruları", href: "/basvurular", icon: ClipboardList, roles: ["admin", "principal", "student_affairs"] },
   
@@ -70,6 +76,11 @@ const allNavigation = [
   
   // Veli Görüşmeleri - Rehberlik dahil
   { name: "Veli Görüşmeleri", href: "/veli-gorusmeleri", icon: MessageSquare, roles: ["admin", "principal", "student_affairs", "counselor"] },
+  
+  // FAZ 3: Sınav Yönetimi - Sadece Rehberlik
+  { name: "Sınav Yönetimi", href: "/rehberlik/sinavlar", icon: FileText, roles: ["counselor"] },
+  { name: "Öğrenci Görüşleri", href: "/rehberlik/gorusler", icon: MessageSquare, roles: ["counselor"] },
+  { name: "Öğrenci Dashboard", href: "/rehberlik/ogrenci-dashboard", icon: LayoutDashboard, roles: ["counselor"] },
   
   // Kayıt ve Sözleşmeler - Admin, Müdür, Öğrenci İşleri
   { name: "Yeni Kayıt", href: "/new-registration", icon: FileText, roles: ["admin", "principal", "student_affairs"] },

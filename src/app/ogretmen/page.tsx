@@ -9,7 +9,6 @@ import NotificationBell from "@/components/notifications/notification-bell"
 import {
   BookOpen,
   Loader2,
-  LogOut,
   AlertTriangle,
   TrendingUp,
   Clock,
@@ -273,19 +272,9 @@ interface MyScheduleItem {
     }
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem("auth_role")
-    localStorage.removeItem("auth_token")
-    localStorage.removeItem("staff_id")
-    localStorage.removeItem("staff_name")
-    localStorage.removeItem("staff_department")
-    router.push("/login")
-    router.refresh()
-  }
-
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     )
@@ -293,52 +282,31 @@ interface MyScheduleItem {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            {/* Öğretmen Bilgileri */}
-            <div className="flex items-center gap-4">
-              <div className="h-16 w-16 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center border-2 border-white/30 shadow-lg">
-                <span className="text-white font-bold text-xl">
-                  {staffName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
-                </span>
-              </div>
-              <div className="text-white">
-                <h1 className="text-2xl font-bold mb-1">{staffName}</h1>
-                <div className="flex flex-wrap items-center gap-2 text-sm">
-                  <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full font-medium">
-                    Öğretmen
-                  </span>
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 shadow-lg sticky top-0 z-10">
+          <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Hoş Geldiniz, {staffName}</h1>
+                <div className="flex flex-wrap items-center gap-2">
                   {staffSubject && (
-                    <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full font-medium">
+                    <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-sm font-medium text-white">
                       {staffSubject}
                     </span>
                   )}
                 </div>
               </div>
-            </div>
-            {/* Aksiyonlar */}
-            <div className="flex items-center gap-3">
               {staffId && (
-                <NotificationBell targetRole="OGRETMEN" targetUserId={staffId} />
+                <div className="flex items-center gap-3">
+                  <NotificationBell targetRole="OGRETMEN" targetUserId={staffId} />
+                </div>
               )}
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleLogout}
-                className="bg-white/10 backdrop-blur-sm border-white/30 text-white hover:bg-white/20"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Çıkış Yap
-              </Button>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        {/* Content */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <ToastContainer toasts={toasts} onClose={removeToast} />
         
         {/* Haftalık Ders Programım */}

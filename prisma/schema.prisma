@@ -37,16 +37,21 @@ model Student {
   updatedAt        DateTime @default(now())
 
   // Relations
-  clubSelections   ClubSelection[]
-  newRegistrations NewRegistration[]
-  renewals         Renewal[]
-  uniformContracts UniformContract[]
-  mealContracts    MealContract[]
-  serviceContracts ServiceContract[]
-  bookContracts    BookContract[]
-  activities       Activity[]
-  parentMeetings   ParentMeeting[]
-  classAssignments ClassStudent[] // Sınıf atamaları (FAZ 2)
+  clubSelections      ClubSelection[]
+  newRegistrations    NewRegistration[]
+  renewals            Renewal[]
+  uniformContracts    UniformContract[]
+  mealContracts       MealContract[]
+  serviceContracts    ServiceContract[]
+  bookContracts       BookContract[]
+  activities          Activity[]
+  parentMeetings      ParentMeeting[]
+  classAssignments    ClassStudent[] // Sınıf atamaları (FAZ 2)
+  parents             ParentStudent[] // Veli ilişkileri (FAZ 1 - Genişletme)
+  homeworkAssignments HomeworkAssignment[] // Ödev atamaları (FAZ 2)
+  attendances         Attendance[] // Yoklamalar (FAZ 2)
+  examResults         ExamResult[] // Sınav sonuçları (FAZ 3)
+  comments            StudentComment[] // Öğretmen/Rehberlik görüşleri (FAZ 4)
 
   @@map("students")
 }
@@ -343,6 +348,11 @@ model Staff {
   subjectAssignments SubjectAssignment[]
   assignedClasses    Class[]              @relation("ClassCounselor") // Rehberlik uzmanı olarak atandığı sınıflar
   teacherSchedules   Schedule[]           @relation("TeacherSchedules") // Öğretmen ders programı
+  homeworks          Homework[]           @relation("TeacherHomeworks") // Öğretmenin ödevleri (FAZ 2)
+  attendances        Attendance[]         @relation("TeacherAttendances") // Öğretmenin yoklamaları (FAZ 2)
+  createdExams       Exam[]               @relation("ExamCreator") // Oluşturduğu sınavlar (FAZ 3)
+  enteredExamResults ExamResult[]         @relation("ExamResultEntry") // Girdiği sınav sonuçları (FAZ 3)
+  studentComments    StudentComment[]     @relation("StaffComments") // Yazdığı öğrenci görüşleri (FAZ 4)
 
   @@index([tcNumber])
   @@index([department])
@@ -711,6 +721,9 @@ model Class {
   students     ClassStudent[] // Sınıfa kayıtlı öğrenciler
   schedules    Schedule[] // Sınıfın ders programı
   subjects     Subject[] // Neredeyiz modülü için dersler (FAZ 3)
+  homeworks    Homework[] // Sınıfın ödevleri (FAZ 2)
+  attendances  Attendance[] // Sınıfın yoklamaları (FAZ 2)
+  exams        Exam[] // Sınıfın sınavları (FAZ 3)
 
   @@unique([academicYearId, name]) // Aynı akademik yılda aynı isimde sınıf olamaz
   @@index([academicYearId])
@@ -754,9 +767,10 @@ model Schedule {
   updatedAt   DateTime @updatedAt
 
   // Relations
-  class     Class              @relation(fields: [classId], references: [id], onDelete: Cascade)
-  teacher   Staff              @relation("TeacherSchedules", fields: [teacherId], references: [id], onDelete: Cascade)
-  approvals ScheduleApproval[] // Onay talepleri
+  class       Class              @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teacher     Staff              @relation("TeacherSchedules", fields: [teacherId], references: [id], onDelete: Cascade)
+  approvals   ScheduleApproval[] // Onay talepleri
+  attendances Attendance[] // Yoklamalar (FAZ 2)
 
   @@index([classId])
   @@index([teacherId])
@@ -794,4 +808,313 @@ model ScheduleApproval {
   @@index([classId])
   @@index([status, classId])
   @@map("schedule_approvals")
+}
+
+// ============================================
+// FAZ 1 - GENİŞLETME: VELİ GİRİŞ SİSTEMİ
+// ============================================
+
+// Veli Hesabı (Öğrenci TC bazlı)
+// Her öğrenci için bir veli hesabı oluşturulur
+// Anne ve baba aynı hesapla giriş yapar (aynı şifre)
+model Parent {
+  id                 String   @id @default(cuid())
+  studentTcNumber    String   @unique // Öğrencinin TC'si (giriş için kullanılır)
+  
+  // Authentication
+  password           String? // Hashed password (bcrypt) - ilk giriş sonrası set edilir
+  isFirstLogin       Boolean  @default(true) // İlk giriş mi?
+  mustChangePassword Boolean  @default(false) // Zorunlu şifre değişikliği
+  lastLoginAt        DateTime? // Son giriş tarihi
+  isActive           Boolean  @default(true) // Aktif mi?
+  
+  // İlişkiler
+  students           ParentStudent[] // Bu hesaba bağlı veliler (anne, baba, vasi)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([studentTcNumber])
+  @@index([isActive])
+  @@map("parents")
+}
+
+// Veli-Öğrenci İlişkisi (Pivot Table)
+// Bir Parent hesabına birden fazla veli bağlanabilir (anne, baba, vasi)
+model ParentStudent {
+  id        String         @id @default(cuid())
+  parentId  String // Parent hesabı (öğrenci TC bazlı)
+  studentId String // Öğrenci ID
+  relation  ParentRelation // ANNE, BABA, VASI
+  
+  // Veli bilgileri
+  parentName       String // Velinin adı soyadı
+  parentTcNumber   String // Velinin kendi TC'si
+  parentPhone      String? // Velinin telefonu
+  parentEmail      String? // Velinin e-postası
+  
+  // Relations
+  parent  Parent  @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([parentId, studentId, relation]) // Bir hesapta her veli tipi (anne/baba) bir kez olabilir
+  @@index([parentId])
+  @@index([studentId])
+  @@index([parentTcNumber])
+  @@map("parent_students")
+}
+
+// Veli-Öğrenci İlişki Tipi
+enum ParentRelation {
+  ANNE
+  BABA
+  VASI
+}
+
+// ============================================
+// FAZ 2: ÖDEVLENDİRME & YOKLAMA MODÜLÜ
+// ============================================
+
+// Ödev Modeli
+model Homework {
+  id          String   @id @default(cuid())
+  
+  // Ödev bilgileri
+  title       String // Ödev başlığı
+  description String @db.Text // Ödev açıklaması (detaylı)
+  dueDate     DateTime // Teslim tarihi
+  subject     String? // Ders adı (opsiyonel)
+  
+  // Öğretmen bilgileri
+  teacherId   String // Ödevi veren öğretmen
+  teacher     Staff    @relation("TeacherHomeworks", fields: [teacherId], references: [id], onDelete: Cascade)
+  
+  // Sınıf bilgileri
+  classId     String? // Sınıf (tüm sınıfa verilirse)
+  class       Class?   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  
+  // Ek bilgiler
+  attachmentUrl String? // Ek dosya URL'si (Vercel Blob)
+  isActive      Boolean @default(true) // Aktif mi?
+  
+  // İlişkiler
+  assignments HomeworkAssignment[] // Ödev atamaları (öğrenci bazlı)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([teacherId])
+  @@index([classId])
+  @@index([dueDate])
+  @@index([isActive])
+  @@map("homeworks")
+}
+
+// Ödev Ataması (Öğrenci Bazlı)
+model HomeworkAssignment {
+  id         String   @id @default(cuid())
+  
+  homeworkId String // Ödev ID
+  homework   Homework @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+  
+  studentId  String // Öğrenci ID
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  // Durum bilgileri
+  isCompleted   Boolean   @default(false) // Tamamlandı mı?
+  completedAt   DateTime? // Tamamlanma tarihi
+  completedBy   String?   // Kim tamamladı (öğretmen veya öğrenci)
+  note          String?   // Öğretmen notu
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([homeworkId, studentId]) // Bir öğrenci aynı ödevi birden fazla kez alamaz
+  @@index([homeworkId])
+  @@index([studentId])
+  @@index([isCompleted])
+  @@map("homework_assignments")
+}
+
+// Yoklama Modeli
+model Attendance {
+  id        String   @id @default(cuid())
+  
+  // Ders bilgileri
+  scheduleId String? // Ders programı ID (opsiyonel)
+  schedule   Schedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+  
+  classId    String // Sınıf ID
+  class      Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  
+  teacherId  String // Öğretmen ID
+  teacher    Staff    @relation("TeacherAttendances", fields: [teacherId], references: [id], onDelete: Cascade)
+  
+  // Yoklama bilgileri
+  date       DateTime // Yoklama tarihi
+  lessonName String // Ders adı
+  startTime  String // Ders başlangıç saati (HH:mm)
+  endTime    String // Ders bitiş saati (HH:mm)
+  
+  // Öğrenci yoklama durumu
+  studentId  String // Öğrenci ID
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  status     AttendanceStatus @default(PRESENT) // Durum: Geldi, Gelmedi, İzinli, Geç Kaldı
+  note       String? // Not (opsiyonel)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([scheduleId])
+  @@index([classId])
+  @@index([teacherId])
+  @@index([studentId])
+  @@index([date])
+  @@index([status])
+  @@map("attendances")
+}
+
+// Yoklama Durumu
+enum AttendanceStatus {
+  PRESENT // Geldi
+  ABSENT  // Gelmedi
+  LATE    // Geç Kaldı
+  EXCUSED // İzinli
+}
+
+// ============================================
+// FAZ 3: SINAV ANALİZİ MODÜLÜ
+// ============================================
+
+// Sınav Modeli
+model Exam {
+  id          String   @id @default(cuid())
+  
+  // Sınav bilgileri
+  name        String // "2024-2025 1. Dönem Deneme Sınavı"
+  examType    ExamType // YKS, LGS, KPSS, DIGER
+  examDate    DateTime // Sınav tarihi
+  grade       Int? // Hangi sınıf seviyesi (9, 10, 11, 12) - opsiyonel (tüm okul için null)
+  description String? @db.Text // Sınav hakkında açıklama
+  
+  // Sınıf bazlı sınav (opsiyonel)
+  classId     String? // Belirli bir sınıfa özel sınav
+  class       Class?   @relation(fields: [classId], references: [id], onDelete: SetNull)
+  
+  // Sınav detayları (JSON olarak saklanabilir veya ayrı alanlar)
+  subjects    Json? // Dersler ve puan türleri örn: {"TYT": {...}, "AYT": {...}}
+  
+  // Oluşturan
+  createdById String // Rehberlik uzmanı Staff ID
+  createdBy   Staff    @relation("ExamCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  
+  isActive    Boolean  @default(true)
+  
+  // İlişkiler
+  results     ExamResult[] // Sınav sonuçları
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([createdById])
+  @@index([grade])
+  @@index([classId])
+  @@index([examType])
+  @@index([examDate])
+  @@map("exams")
+}
+
+// Sınav Sonucu (Öğrenci Bazlı)
+model ExamResult {
+  id        String   @id @default(cuid())
+  
+  examId    String
+  exam      Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  // Sonuç bilgileri (JSON olarak saklanır - esneklik için)
+  // Örnek: {
+  //   "TYT": {"turkce": 35, "matematik": 30, "toplam": 120, "net": 98.5},
+  //   "AYT": {"matematik": 25, "fizik": 20, ...},
+  //   "totalScore": 450,
+  //   "ranking": 1250
+  // }
+  scores    Json // Sınav sonuçları (ders bazlı)
+  
+  // Genel bilgiler
+  totalScore   Float?  // Toplam puan
+  ranking      Int?    // Sıralama
+  percentile   Float?  // Yüzdelik dilim
+  
+  // Notlar
+  notes        String? @db.Text // Rehberlik notları
+  
+  // Kim girdi
+  enteredById  String // Rehberlik uzmanı Staff ID
+  enteredBy    Staff    @relation("ExamResultEntry", fields: [enteredById], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([examId, studentId]) // Bir öğrenci aynı sınava birden fazla kez girilemez
+  @@index([examId])
+  @@index([studentId])
+  @@index([totalScore])
+  @@index([ranking])
+  @@map("exam_results")
+}
+
+// Sınav Tipi
+enum ExamType {
+  YKS    // Yükseköğretim Kurumları Sınavı
+  LGS    // Liselere Geçiş Sınavı
+  KPSS   // Kamu Personeli Seçme Sınavı
+  DENEME // Deneme Sınavı
+  DIGER  // Diğer
+}
+
+// ============================================
+// FAZ 4: GÖRÜŞ GİRİŞİ MODÜLÜ
+// ============================================
+
+// Öğrenci Görüş/Yorum Modeli
+model StudentComment {
+  id        String   @id @default(cuid())
+  
+  // Öğrenci bilgisi
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  // Yazan kişi (Öğretmen veya Rehberlik)
+  staffId   String
+  staff     Staff    @relation("StaffComments", fields: [staffId], references: [id], onDelete: Cascade)
+  
+  // Görüş bilgileri
+  commentType CommentType // ACADEMIC, BEHAVIORAL, GENERAL
+  category    String?      // Ders adı veya alan (örn: "Matematik", "Sosyal Gelişim")
+  content     String       @db.Text // Görüş içeriği
+  isPositive  Boolean      @default(true) // Olumlu/Olumsuz
+  
+  // İlişkiler
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([studentId])
+  @@index([staffId])
+  @@index([commentType])
+  @@index([createdAt])
+  @@map("student_comments")
+}
+
+// Görüş Tipi
+enum CommentType {
+  ACADEMIC    // Akademik (Ders başarısı, not durumu)
+  BEHAVIORAL  // Davranışsal (Sınıf içi davranış, sosyal ilişkiler)
+  GENERAL     // Genel (Diğer gözlemler)
 }

@@ -3,6 +3,7 @@
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { Sidebar } from "@/components/layout/sidebar"
+import OgretmenSidebar from "@/components/layout/ogretmen-sidebar"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
@@ -38,17 +39,29 @@ export default function RootLayout({
 
     setAuthRole(normalizedRole)
     setIsLoading(false)
+  }, [])
+
+  // Auth kontrolü ve yönlendirme (pathname değiştiğinde)
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    if (isLoading) {
+      console.log("[Layout] ⏳ Loading, yönlendirme yapılmıyor")
+      return // Loading sırasında yönlendirme yapma
+    }
+
+    const storedRole = localStorage.getItem("auth_role")
+    const normalizedRole = storedRole === "admin" || storedRole === "principal" || storedRole === "student_affairs" || storedRole === "parent" || storedRole === "teacher" || storedRole === "counselor" ? storedRole : null
+
+    console.log("[Layout] 🔍 Auth Kontrolü - Pathname:", pathname, "StoredRole:", storedRole, "NormalizedRole:", normalizedRole, "AuthRole State:", authRole)
 
     // IB Viewer sayfaları için özel kontrol
     if (pathname?.startsWith("/ib-viewer")) {
       if (pathname === "/ib-viewer/login") {
-        // Login sayfasına herkes erişebilir
         return
       }
-      // IB Viewer sayfasına sadece token ile erişilebilir
       const ibToken = localStorage.getItem("ib_viewer_token")
       if (!ibToken) {
-        // Token yoksa ana login sayfasına yönlendir
+        console.log("[Layout] ❌ IB Viewer token yok, /login'e yönlendiriliyor")
         router.push("/login")
         return
       }
@@ -57,6 +70,7 @@ export default function RootLayout({
     // Öğretmen sayfaları için kontrol
     if (pathname?.startsWith("/ogretmen")) {
       if (normalizedRole !== "teacher") {
+        console.log("[Layout] ❌ Öğretmen sayfası ama role teacher değil, /login'e yönlendiriliyor")
         router.push("/login")
         return
       }
@@ -65,27 +79,40 @@ export default function RootLayout({
     // Rehberlik sayfaları için kontrol
     if (pathname?.startsWith("/rehberlik")) {
       if (normalizedRole !== "counselor") {
+        console.log("[Layout] ❌ Rehberlik sayfası ama role counselor değil, /login'e yönlendiriliyor")
         router.push("/login")
         return
       }
     }
 
-    // Login sayfası değilse ve yetkili rol yoksa login'e yönlendir
-    const allowedPaths = ["/login", "/parent", "/ib-viewer", "/change-password"]
-    const isAllowedPath = allowedPaths.some((p) => pathname?.startsWith(p))
+    // Veli sayfaları için kontrol (veli ve parent sayfaları)
+    if (pathname?.startsWith("/veli") || pathname === "/parent") {
+      console.log("[Layout] 👨‍👩‍👧 Veli sayfası kontrolü - Pathname:", pathname, "Role:", normalizedRole)
+      if (normalizedRole !== "parent") {
+        console.log("[Layout] ❌ Veli sayfası ama role parent değil! StoredRole:", storedRole, "/veli-login'e yönlendiriliyor")
+        router.push("/veli-login")
+        return
+      }
+      console.log("[Layout] ✅ Veli sayfası - Erişim izni var, yönlendirme yapılmıyor")
+      // Parent rolü varsa, erişim izni var
+      return
+    }
+
+    // Login sayfalarına herkes erişebilir
+    const allowedPaths = ["/login", "/veli-login", "/ib-viewer/login", "/change-password"]
+    const isAllowedPath = allowedPaths.some((p) => pathname === p || pathname?.startsWith(p))
     
+    console.log("[Layout] 📋 Allowed paths kontrolü - Pathname:", pathname, "IsAllowed:", isAllowedPath, "Role:", normalizedRole)
+    
+    // Login sayfası değilse ve yetkili rol yoksa login'e yönlendir
     if (!isAllowedPath && !normalizedRole) {
+      console.log("[Layout] ❌ Yetkisiz erişim, /login'e yönlendiriliyor")
       router.push("/login")
     }
+  }, [pathname, router, isLoading, authRole])
 
-    // Parent sayfasına sadece parent rolü erişebilsin
-    if (pathname === "/parent" && normalizedRole !== "parent") {
-      router.push("/login")
-    }
-  }, [pathname, router])
-
-  // Login ve Change Password sayfaları için özel layout
-  if (pathname === "/login" || pathname === "/change-password") {
+  // Login, Veli Login ve Change Password sayfaları için özel layout
+  if (pathname === "/login" || pathname === "/veli-login" || pathname === "/change-password") {
     return (
       <html lang="tr">
         <head>
@@ -113,25 +140,6 @@ export default function RootLayout({
         </head>
         <body className={inter.className}>
           {children}
-        </body>
-      </html>
-    )
-  }
-
-  // Veli paneli için özel layout (sidebar yok)
-  if (pathname === "/parent") {
-    return (
-      <html lang="tr">
-        <head>
-          <title>Veli Paneli - Okul Yönetim Sistemi</title>
-          <meta name="description" content="Veli öğrenci ve kulüp seçim paneli" />
-          <link rel="icon" href="/logo.png?v=2" type="image/png" />
-          <link rel="apple-touch-icon" href="/logo.png?v=2" />
-        </head>
-        <body className={inter.className}>
-          <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-            {children}
-          </div>
         </body>
       </html>
     )
@@ -170,7 +178,7 @@ export default function RootLayout({
     )
   }
 
-  // Öğretmen sayfaları için özel layout (sidebar yok)
+  // Öğretmen sayfaları için özel layout (sidebar ile)
   if (pathname?.startsWith("/ogretmen")) {
     return (
       <html lang="tr">
@@ -181,7 +189,12 @@ export default function RootLayout({
           <link rel="apple-touch-icon" href="/logo.png?v=2" />
         </head>
         <body className={inter.className}>
-          {children}
+          <div className="flex h-screen bg-gray-50 lg:flex-row">
+            <OgretmenSidebar />
+            <div className="flex-1 overflow-y-auto w-full lg:w-auto">
+              {children}
+            </div>
+          </div>
         </body>
       </html>
     )
@@ -194,6 +207,23 @@ export default function RootLayout({
         <head>
           <title>Rehberlik Paneli - Okul Yönetim Sistemi</title>
           <meta name="description" content="Rehberlik danışmanı yönetim paneli" />
+          <link rel="icon" href="/logo.png?v=2" type="image/png" />
+          <link rel="apple-touch-icon" href="/logo.png?v=2" />
+        </head>
+        <body className={inter.className}>
+          {children}
+        </body>
+      </html>
+    )
+  }
+
+  // Veli sayfaları için özel layout (kendi sidebar'ı var)
+  if (pathname?.startsWith("/veli") || pathname === "/parent") {
+    return (
+      <html lang="tr">
+        <head>
+          <title>Veli Paneli - Okul Yönetim Sistemi</title>
+          <meta name="description" content="Veli paneli ve öğrenci takip sistemi" />
           <link rel="icon" href="/logo.png?v=2" type="image/png" />
           <link rel="apple-touch-icon" href="/logo.png?v=2" />
         </head>
@@ -227,7 +257,29 @@ export default function RootLayout({
     )
   }
 
+  // Parent rolü için de layout render edilmeli (veli sayfaları için özel layout zaten yukarıda)
+  // Eğer parent rolü varsa ama veli sayfası değilse, yine de render et (yönlendirme useEffect'te yapılacak)
+  if (authRole === "parent") {
+    console.log("[Layout] ✅ Parent rolü var, layout render ediliyor")
+    // Veli sayfaları için özel layout zaten yukarıda kontrol edildi
+    // Buraya düşerse, muhtemelen bir hata var, ama yine de render et
+    return (
+      <html lang="tr">
+        <head>
+          <title>Veli Paneli - Okul Yönetim Sistemi</title>
+          <meta name="description" content="Veli paneli ve öğrenci takip sistemi" />
+          <link rel="icon" href="/logo.png?v=2" type="image/png" />
+          <link rel="apple-touch-icon" href="/logo.png?v=2" />
+        </head>
+        <body className={inter.className}>
+          {children}
+        </body>
+      </html>
+    )
+  }
+
   // Auth yoksa login'e yönlendir (bu durumda zaten yönlendirme yapıldı)
+  console.log("[Layout] ⚠️ Auth yok, yönlendirme ekranı gösteriliyor")
   return (
     <html lang="tr">
       <body className={inter.className}>

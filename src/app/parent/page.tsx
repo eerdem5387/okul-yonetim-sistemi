@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Search, Check, X, LogOut, AlertCircle, FileText } from "lucide-react"
+import { Check, X, AlertCircle, FileText } from "lucide-react"
 import { useRouter } from "next/navigation"
+import VeliSidebar from "@/components/layout/veli-sidebar"
 
 interface Student {
   id: string
@@ -25,27 +25,54 @@ interface Club {
 
 export default function ParentPage() {
   const router = useRouter()
-  const [students, setStudents] = useState<Student[]>([])
   const [clubs, setClubs] = useState<Club[]>([])
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
   const [selectedClubs, setSelectedClubs] = useState<string[]>([])
-  const [searchTerm, setSearchTerm] = useState("")
-  const [filteredStudents, setFilteredStudents] = useState<Student[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [loading, setLoading] = useState(true)
 
-  const fetchStudents = useCallback(async () => {
-    try {
-      const response = await fetch("/api/students?limit=1000")
-      if (!response.ok) throw new Error("Failed to fetch students")
-      const data = await response.json()
-      const studentsList = Array.isArray(data) ? data : (data.students || [])
-      setStudents(studentsList)
-    } catch (error) {
-      console.error("Error fetching students:", error)
-      setStudents([])
+  // Öğrenci bilgisini localStorage'dan al
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      // Auth kontrolü
+      const role = localStorage.getItem("auth_role")
+      console.log("[Parent Page] 🔍 Auth kontrolü - Role:", role)
+      
+      if (role !== "parent") {
+        console.log("[Parent Page] ❌ Role parent değil, /veli-login'e yönlendiriliyor")
+        router.push("/veli-login")
+        return
+      }
+
+      const studentId = localStorage.getItem("student_id")
+      const studentName = localStorage.getItem("student_name") || ""
+      const parentId = localStorage.getItem("parent_id")
+      
+      console.log("[Parent Page] 📋 LocalStorage - StudentId:", studentId, "ParentId:", parentId, "StudentName:", studentName)
+      
+      if (!parentId || !studentId) {
+        console.log("[Parent Page] ❌ ParentId veya StudentId eksik, /veli-login'e yönlendiriliyor")
+        router.push("/veli-login")
+        return
+      }
+      
+      console.log("[Parent Page] ✅ Auth kontrolü başarılı, öğrenci bilgileri yükleniyor")
+
+      // Öğrenci bilgisini oluştur
+      const student: Student = {
+        id: studentId,
+        firstName: studentName.split(" ")[0] || "",
+        lastName: studentName.split(" ").slice(1).join(" ") || "",
+        tcNumber: localStorage.getItem("student_tc") || "",
+        grade: "", // Grade bilgisi gerekirse API'den çekilebilir
+      }
+      
+      setSelectedStudent(student)
+      fetchStudentClubs(studentId)
+      setLoading(false)
     }
-  }, [])
+  }, [router])
 
   const fetchClubs = useCallback(async () => {
     try {
@@ -60,9 +87,8 @@ export default function ParentPage() {
   }, [])
 
   useEffect(() => {
-    fetchStudents()
     fetchClubs()
-  }, [fetchStudents, fetchClubs])
+  }, [fetchClubs])
 
   // Otomatik veri yenileme - Her 10 saniyede bir kulüp kontenjanlarını güncelle
   useEffect(() => {
@@ -77,28 +103,6 @@ export default function ParentPage() {
       return () => clearInterval(intervalId)
     }
   }, [selectedStudent, fetchClubs])
-
-  useEffect(() => {
-    if (searchTerm.length === 11) {
-      const filtered = students.filter(student => student.tcNumber === searchTerm)
-      setFilteredStudents(filtered)
-    } else {
-      setFilteredStudents([])
-    }
-  }, [searchTerm, students])
-
-  const handleTcSearchChange = (value: string) => {
-    const numericValue = value.replace(/\D/g, "")
-    if (numericValue.length <= 11) {
-      setSearchTerm(numericValue)
-    }
-  }
-
-  const handleStudentSelect = (student: Student) => {
-    setSelectedStudent(student)
-    // Öğrenci seçildiğinde mevcut kulüp seçimlerini yükle
-    fetchStudentClubs(student.id)
-  }
 
   const fetchStudentClubs = async (studentId: string, preserveCurrentSelections: boolean = false) => {
     try {
@@ -233,7 +237,6 @@ export default function ParentPage() {
         }
         setSelectedClubs([])
         setSelectedStudent(null)
-        setSearchTerm("")
       } else {
         const errorData = await response.json()
         if (errorData.error && errorData.fullClubs) {
@@ -251,129 +254,43 @@ export default function ParentPage() {
     }
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem("auth_role")
-    router.push("/login")
-    router.refresh()
-  }
-
   const handleViewClubProgram = () => {
     // PDF'i yeni sekmede aç
     window.open("/kulup-programi.pdf", "_blank")
   }
 
   return (
-    <div className="min-h-screen p-3 sm:p-4 md:p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-4 sm:mb-6 md:mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
-            <div className="flex-1">
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Veli Paneli</h1>
-              <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">Öğrenci seçin ve kulüp tercihlerinizi yapın</p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
-              <Button 
-                variant="outline" 
-                onClick={handleViewClubProgram}
-                className="w-full sm:w-auto h-10 sm:h-11 text-sm sm:text-base bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-700"
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                Kulüp Programı
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={handleLogout}
-                className="w-full sm:w-auto h-10 sm:h-11 text-sm sm:text-base"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Çıkış Yap
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          {/* Öğrenci Seçimi */}
-          <Card className="shadow-lg">
-            <CardHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4">
-              <CardTitle className="text-lg sm:text-xl">Öğrenci Seçimi</CardTitle>
-              <CardDescription className="text-xs sm:text-sm">Kulüp seçimi yapmak için öğrencinizi seçin</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6 pb-4 sm:pb-6">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="TC Kimlik No (11 hane)"
-                  value={searchTerm}
-                  onChange={(e) => handleTcSearchChange(e.target.value)}
-                  className="pl-10"
-                  maxLength={11}
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                />
+    <div className="flex h-screen bg-gray-50">
+      <VeliSidebar />
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-3 sm:p-4 md:p-6">
+          <div className="max-w-6xl mx-auto">
+            {/* Header */}
+            <div className="mb-4 sm:mb-6 md:mb-8">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
+                <div className="flex-1">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Kulüp Seçimi</h1>
+                  {selectedStudent && (
+                    <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">
+                      {selectedStudent.firstName} {selectedStudent.lastName} için kulüp tercihlerinizi yapın
+                    </p>
+                  )}
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
+                  <Button 
+                    variant="outline" 
+                    onClick={handleViewClubProgram}
+                    className="w-full sm:w-auto h-10 sm:h-11 text-sm sm:text-base bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-700"
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Kulüp Programı
+                  </Button>
+                </div>
               </div>
+            </div>
 
-              {searchTerm.length < 11 ? (
-                <div className="border rounded-lg p-6 sm:p-8 text-center text-gray-500 bg-gray-50">
-                  <Search className="h-8 w-8 sm:h-10 sm:w-10 mx-auto mb-3 text-gray-400" />
-                  <p className="text-sm sm:text-base font-medium mb-1">TC Kimlik Numarası Girişi</p>
-                  {searchTerm.length === 0 ? (
-                    <p className="text-xs sm:text-sm">Öğrencinizi bulmak için 11 haneli TC kimlik numarasını girin.</p>
-                  ) : (
-                    <p className="text-xs sm:text-sm">{11 - searchTerm.length} hane daha girmeniz gerekiyor.</p>
-                  )}
-                </div>
-              ) : (
-                <div className="border rounded-lg max-h-64 sm:max-h-96 overflow-y-auto custom-scrollbar">
-                  {filteredStudents.length > 0 ? (
-                    <div className="divide-y">
-                      {filteredStudents.map((student) => (
-                        <button
-                          key={student.id}
-                          onClick={() => handleStudentSelect(student)}
-                          className={`w-full p-3 sm:p-4 text-left hover:bg-blue-50 active:bg-blue-100 transition-colors touch-manipulation ${
-                            selectedStudent?.id === student.id ? "bg-blue-100 border-l-4 border-blue-600" : ""
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-gray-900 text-sm sm:text-base truncate">
-                                {student.firstName} {student.lastName}
-                              </p>
-                              <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
-                                {student.grade}
-                              </p>
-                            </div>
-                            {selectedStudent?.id === student.id && (
-                              <Check className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 flex-shrink-0" />
-                            )}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="p-6 sm:p-8 text-center text-gray-500">
-                      <p className="text-sm sm:text-base font-medium mb-1">Öğrenci bulunamadı</p>
-                      <p className="text-xs sm:text-sm">TC kimlik numarasını kontrol ederek tekrar deneyin</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {selectedStudent && (
-                <div className="p-3 sm:p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <p className="text-xs sm:text-sm font-semibold text-blue-900 mb-1">Seçili Öğrenci:</p>
-                  <p className="text-sm sm:text-base text-blue-700 font-medium">
-                    {selectedStudent.firstName} {selectedStudent.lastName} - {selectedStudent.grade}
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Kulüp Seçimi */}
-          <Card className="shadow-lg">
+        {/* Kulüp Seçimi */}
+          <Card className="shadow-lg max-w-4xl mx-auto">
             <CardHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1">
@@ -586,6 +503,7 @@ export default function ParentPage() {
               )}
             </CardContent>
           </Card>
+          </div>
         </div>
       </div>
 

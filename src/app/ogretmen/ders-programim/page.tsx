@@ -27,16 +27,23 @@ export default function TeacherSchedulePage() {
   const [weeklySchedule, setWeeklySchedule] = useState<{ [key: number]: Schedule[] }>({});
 
   useEffect(() => {
-    fetchSchedule();
+    if (typeof window !== "undefined") {
+      const teacherId = localStorage.getItem("staff_id");
+      if (teacherId) {
+        fetchSchedule(teacherId);
+      } else {
+        setLoading(false);
+      }
+    }
   }, []);
 
-  const fetchSchedule = async () => {
+  const fetchSchedule = async (teacherId: string) => {
     setLoading(true);
     try {
-      const response = await fetch("/api/schedules/teacher");
+      const response = await fetch(`/api/schedules/teacher?teacherId=${teacherId}`);
       if (response.ok) {
         const data = await response.json();
-        setSchedules(data.schedules);
+        setSchedules(data.schedules || []);
         
         // Organize by day
         const organized: { [key: number]: Schedule[] } = {
@@ -46,7 +53,7 @@ export default function TeacherSchedulePage() {
           4: [],
           5: [],
         };
-        data.schedules.forEach((schedule: Schedule) => {
+        (data.schedules || []).forEach((schedule: Schedule) => {
           organized[schedule.dayOfWeek].push(schedule);
         });
         setWeeklySchedule(organized);
@@ -71,7 +78,8 @@ export default function TeacherSchedulePage() {
   }
 
   return (
-    <div className="container mx-auto p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
+    <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
           <Calendar className="h-7 w-7 text-blue-600" />
@@ -181,6 +189,7 @@ export default function TeacherSchedulePage() {
           })}
         </div>
       )}
+        </div>
     </div>
   );
 }
