@@ -18,6 +18,7 @@ import {
   Bell,
   BarChart3,
   Hourglass,
+  GraduationCap,
 } from "lucide-react"
 import Link from "next/link"
 
@@ -834,22 +835,97 @@ interface MyScheduleItem {
           </Card>
         )}
 
+        {/* Yıllık Plan - Sınıf Bazında */}
         <div className="mb-6">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Atanmış Derslerim</h2>
-          <p className="text-gray-600 text-sm sm:text-base">Size atanmış dersleri ve yıllık planlarınızı görüntüleyebilirsiniz.</p>
-        </div>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Yıllık Planım</h2>
+              <p className="text-gray-600 text-sm sm:text-base">Sınıf bazında derslerinizi ve ilerleme durumunuzu görüntüleyin</p>
+            </div>
+          </div>
 
-        {subjects.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <BookOpen className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500 font-medium mb-1">Size henüz ders atanmamış</p>
-              <p className="text-gray-400 text-sm">Yönetici tarafından ders ataması yapıldığında burada görünecektir.</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {subjects.map((subject) => {
+          {subjects.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <BookOpen className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500 font-medium mb-1">Size henüz ders atanmamış</p>
+                <p className="text-gray-400 text-sm">Yönetici tarafından ders ataması yapıldığında burada görünecektir.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-6">
+              {/* Sınıflara göre grupla */}
+              {Array.from(new Set(subjects.map(s => `${s.grade}${s.section || ''}`))).sort().map((classKey) => {
+                const classSubjects = subjects.filter(s => `${s.grade}${s.section || ''}` === classKey)
+                const firstSubject = classSubjects[0]
+                const className = `${firstSubject.grade}. Sınıf${firstSubject.section ? ` ${firstSubject.section} Şubesi` : ''}`
+                
+                // Bu sınıf için toplam istatistikler
+                const allTopics = classSubjects.flatMap(s => (s.units || []).flatMap(u => u.topics || []))
+                const totalTopics = allTopics.length
+                const completedTopics = allTopics.filter(t => t.progress?.[0]?.status === "TAMAMLANDI").length
+                const inProgressTopics = allTopics.filter(t => t.progress?.[0]?.status === "DEVAM_EDIYOR").length
+                const pendingApprovalTopics = allTopics.filter(t => t.progress?.[0]?.status === "PENDING_APPROVAL").length
+                const classDelayedCount = delayedData?.groupedBySubject
+                  .filter(g => classSubjects.some(s => s.id === g.subject.id))
+                  .reduce((sum, g) => sum + g.delayedTopics.length, 0) || 0
+                const overallCompletionRate = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0
+
+                return (
+                  <Card key={classKey} className="border-2 border-blue-100 shadow-md">
+                    <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2">
+                            <GraduationCap className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
+                            {className}
+                          </CardTitle>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {classSubjects.length} ders • {totalTopics} konu
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-2xl sm:text-3xl font-bold text-blue-600">
+                            %{overallCompletionRate}
+                          </div>
+                          <p className="text-xs text-gray-600">Genel İlerleme</p>
+                        </div>
+                      </div>
+                      {/* Sınıf Genel İlerleme Çubuğu */}
+                      <div className="mt-3">
+                        <div className="w-full bg-gray-200 rounded-full h-3">
+                          <div
+                            className={`h-3 rounded-full transition-all duration-500 ${
+                              overallCompletionRate === 100
+                                ? "bg-green-600"
+                                : overallCompletionRate >= 75
+                                ? "bg-blue-600"
+                                : overallCompletionRate >= 50
+                                ? "bg-yellow-600"
+                                : "bg-orange-600"
+                            }`}
+                            style={{ width: `${overallCompletionRate}%` }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-gray-600 mt-2">
+                          <span>{completedTopics}/{totalTopics} tamamlandı</span>
+                          <div className="flex gap-3">
+                            {inProgressTopics > 0 && (
+                              <span className="text-yellow-600">• {inProgressTopics} devam ediyor</span>
+                            )}
+                            {pendingApprovalTopics > 0 && (
+                              <span className="text-orange-600">• {pendingApprovalTopics} onay bekliyor</span>
+                            )}
+                            {classDelayedCount > 0 && (
+                              <span className="text-red-600">• {classDelayedCount} gecikme</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-4 sm:p-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {classSubjects.map((subject) => {
               // Bu ders için gecikme sayısını bul
               const subjectDelayedCount =
                 delayedData?.groupedBySubject.find((g) => g.subject.id === subject.id)

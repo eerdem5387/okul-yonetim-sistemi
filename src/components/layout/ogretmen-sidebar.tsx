@@ -8,7 +8,6 @@ import {
   BookOpen,
   ClipboardList,
   MessageSquare,
-  LayoutDashboard,
   Calendar,
   AlertTriangle,
   LogOut,
@@ -71,7 +70,6 @@ export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
     { name: "Öğrenci Görüşleri", href: "/ogretmen/gorusler", icon: MessageSquare },
     { name: "Öğrenci Dashboard", href: "/ogretmen/ogrenci-dashboard", icon: GraduationCap },
     { name: "Gecikmeler", href: "/ogretmen/gecikmeler", icon: AlertTriangle },
-    { name: "Neredeyiz?", href: "/neredeyiz", icon: LayoutDashboard },
   ]
 
   return (

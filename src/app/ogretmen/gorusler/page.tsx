@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { MessageSquare, Plus, Calendar, ThumbsUp, ThumbsDown, Loader2, Edit, Trash2 } from "lucide-react"
+import { MessageSquare, Plus, Calendar, ThumbsUp, ThumbsDown, Loader2, Edit, Trash2, Search } from "lucide-react"
+import { StudentSearch } from "@/components/ui/student-search"
 
 interface StudentComment {
   id: string
@@ -79,13 +80,47 @@ export default function OgretmenGoruslerPage() {
 
   const fetchStudents = async () => {
     try {
-      const response = await fetch("/api/students/public")
-      if (response.ok) {
-        const data = await response.json()
-        setStudents(data.students || [])
+      // Önce öğretmenin sınıflarını al
+      const classesResponse = await fetch(`/api/teachers/${staffId}/classes`)
+      if (!classesResponse.ok) {
+        console.error("Error fetching teacher classes")
+        setStudents([])
+        return
       }
+
+      const classesData = await classesResponse.json()
+      const classes = classesData.classes || []
+
+      // Her sınıf için öğrencileri al
+      const allStudents: Student[] = []
+      for (const classItem of classes) {
+        try {
+          const classResponse = await fetch(`/api/classes/${classItem.id}`)
+          if (classResponse.ok) {
+            const classData = await classResponse.json()
+            const classStudents = classData.class?.students?.map(
+              (s: { student: Student }) => ({
+                ...s.student,
+                className: classItem.name, // Sınıf adını ekle
+              })
+            ) || []
+            allStudents.push(...classStudents)
+          }
+        } catch (error) {
+          console.error(`Error fetching students for class ${classItem.id}:`, error)
+        }
+      }
+
+      // Benzersiz öğrencileri al (aynı öğrenci birden fazla sınıfta olabilir)
+      const uniqueStudents = allStudents.filter(
+        (student, index, self) =>
+          index === self.findIndex((s) => s.id === student.id)
+      )
+
+      setStudents(uniqueStudents)
     } catch (error) {
       console.error("Error fetching students:", error)
+      setStudents([])
     }
   }
 
@@ -232,21 +267,18 @@ export default function OgretmenGoruslerPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="studentId">Öğrenci *</Label>
-                      <select
-                        id="studentId"
-                        value={formData.studentId}
-                        onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
-                        className="w-full p-2 border rounded-md"
-                        required
-                        disabled={!!editingId}
-                      >
-                        <option value="">Seçiniz</option>
-                        {students.map((student) => (
-                          <option key={student.id} value={student.id}>
-                            {student.firstName} {student.lastName} ({student.grade})
-                          </option>
-                        ))}
-                      </select>
+                      {students.length > 0 ? (
+                        <StudentSearch
+                          students={students}
+                          selectedStudentId={formData.studentId}
+                          onSelect={(studentId) => setFormData({ ...formData, studentId })}
+                          placeholder="Öğrenci adı veya soyadı ile ara..."
+                        />
+                      ) : (
+                        <div className="w-full p-3 border rounded-md bg-gray-50 text-gray-500 text-sm">
+                          {loading ? "Öğrenciler yükleniyor..." : "Henüz öğrenci bulunamadı. Önce size atanan sınıfların öğrencileri yüklenecek."}
+                        </div>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="commentType">Görüş Tipi *</Label>

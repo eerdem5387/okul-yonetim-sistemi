@@ -80,13 +80,18 @@ export default function TeacherHomeworkPage() {
 
   const fetchClasses = async () => {
     try {
-      const response = await fetch("/api/classes")
+      // Öğretmenin atandığı sınıfları getir
+      const response = await fetch(`/api/teachers/${staffId}/classes`)
       if (response.ok) {
         const data = await response.json()
         setClasses(data.classes || [])
+      } else {
+        // Fallback: Eğer API yoksa boş liste
+        setClasses([])
       }
     } catch (error) {
       console.error("Error fetching classes:", error)
+      setClasses([])
     }
   }
 
