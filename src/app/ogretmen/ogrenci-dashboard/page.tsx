@@ -19,10 +19,7 @@ import {
   Clock,
   Award,
   Loader2,
-  Plus,
-  Edit,
   BarChart3,
-  PieChart,
 } from "lucide-react"
 
 interface Student {

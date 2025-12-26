@@ -14,31 +14,14 @@ export default function VeliSidebar({ className }: VeliSidebarProps) {
   const pathname = usePathname()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [studentName, setStudentName] = useState("")
-  const [parentRelation, setParentRelation] = useState("")
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       // Öğrenci adını göster (veli adı yerine)
       const name = localStorage.getItem("student_name") || "Öğrenci"
-      const relation = localStorage.getItem("parent_relation") || ""
       setStudentName(name)
-      setParentRelation(relation)
     }
   }, [])
-
-  // Relation'ı Türkçeye çevir
-  const getRelationLabel = (relation: string) => {
-    switch (relation) {
-      case "ANNE":
-        return "Anne"
-      case "BABA":
-        return "Baba"
-      case "VASI":
-        return "Vasi"
-      default:
-        return "Veli"
-    }
-  }
 
   const handleLogout = () => {
     if (confirm("Çıkış yapmak istediğinizden emin misiniz?")) {

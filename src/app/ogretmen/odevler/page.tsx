@@ -261,7 +261,7 @@ export default function TeacherHomeworkPage() {
                     Henüz ödev vermediniz
                   </h3>
                   <p className="text-gray-600">
-                    "Yeni Ödev" butonuna tıklayarak ödev oluşturabilirsiniz
+                    &quot;Yeni Ödev&quot; butonuna tıklayarak ödev oluşturabilirsiniz
                   </p>
                 </CardContent>
               </Card>

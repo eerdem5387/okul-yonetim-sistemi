@@ -327,7 +327,7 @@ export default function OgretmenGoruslerPage() {
                     Henüz görüş eklenmedi
                   </h3>
                   <p className="text-gray-600">
-                    "Yeni Görüş" butonuna tıklayarak öğrencileriniz hakkında görüş ekleyebilirsiniz
+                    &quot;Yeni Görüş&quot; butonuna tıklayarak öğrencileriniz hakkında görüş ekleyebilirsiniz
                   </p>
                 </CardContent>
               </Card>

@@ -30,7 +30,6 @@ export default function ParentPage() {
   const [selectedClubs, setSelectedClubs] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
-  const [loading, setLoading] = useState(true)
 
   // Öğrenci bilgisini localStorage'dan al
   useEffect(() => {
@@ -70,7 +69,6 @@ export default function ParentPage() {
       
       setSelectedStudent(student)
       fetchStudentClubs(studentId)
-      setLoading(false)
     }
   }, [router])
 

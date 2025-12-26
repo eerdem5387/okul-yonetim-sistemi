@@ -302,7 +302,7 @@ export default function RehberlikSinavlarPage() {
                     Henüz sınav oluşturulmadı
                   </h3>
                   <p className="text-gray-600">
-                    "Yeni Sınav" butonuna tıklayarak sınav oluşturabilirsiniz
+                    &quot;Yeni Sınav&quot; butonuna tıklayarak sınav oluşturabilirsiniz
                   </p>
                 </CardContent>
               </Card>
