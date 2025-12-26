@@ -7,32 +7,29 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Save, Download } from "lucide-react"
 
-interface Student {
-  id: string
-  firstName: string
-  lastName: string
-  tcNumber: string
-  grade: string
-  address: string
-  birthDate: string
-  motherName: string
-  motherTc: string
-  motherPhone: string
-  motherAddress: string
-  motherOccupation: string
-  fatherName: string
-  fatherTc: string
-  fatherPhone: string
-  fatherAddress: string
-  fatherOccupation: string
-}
-
 export default function NewRegistrationPage() {
-  const [students, setStudents] = useState<Student[]>([])
   const [clubs, setClubs] = useState<{id: string, name: string}[]>([])
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
-  const [studentSearchTerm, setStudentSearchTerm] = useState("")
-  const [filteredStudents, setFilteredStudents] = useState<Student[]>([])
+  const [createdStudentId, setCreatedStudentId] = useState<string | null>(null)
+  
+  // Öğrenci Bilgileri Formu
+  const [studentFormData, setStudentFormData] = useState({
+    firstName: "",
+    lastName: "",
+    tcNumber: "",
+    birthDate: "",
+    grade: "",
+    address: "",
+    motherName: "",
+    motherTc: "",
+    motherPhone: "",
+    motherAddress: "",
+    motherOccupation: "",
+    fatherName: "",
+    fatherTc: "",
+    fatherPhone: "",
+    fatherAddress: "",
+    fatherOccupation: ""
+  })
 
   // Ana Sözleşme Form Verileri
   const [mainContractData, setMainContractData] = useState<{
@@ -190,29 +187,6 @@ export default function NewRegistrationPage() {
     }
   }
 
-  const fetchStudents = useCallback(async () => {
-    try {
-      // Sözleşme ekranlarında tüm öğrencileri (mezunlar hariç) çekmek için,
-      // pagination'ı yüksek bir limit ile kullanıyoruz.
-      const response = await fetch("/api/students?limit=1000")
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      const data = await response.json()
-
-      if (Array.isArray(data)) {
-        setStudents(data as Student[])
-      } else if (data.students) {
-        setStudents(data.students as Student[])
-      } else {
-        setStudents([])
-      }
-    } catch (error) {
-      console.error("Error fetching students:", error)
-      setStudents([])
-    }
-  }, [])
-
   const fetchClubs = useCallback(async () => {
     try {
       const response = await fetch("/api/clubs")
@@ -228,32 +202,17 @@ export default function NewRegistrationPage() {
   }, [])
 
   useEffect(() => {
-    fetchStudents()
     fetchClubs()
-  }, [fetchStudents, fetchClubs])
-
-  // Öğrenci arama filtresi
-  useEffect(() => {
-    if (studentSearchTerm.trim() === "") {
-      setFilteredStudents(students)
-    } else {
-      const filtered = students.filter(student =>
-        `${student.firstName} ${student.lastName}`.toLowerCase().includes(studentSearchTerm.toLowerCase()) ||
-        student.tcNumber.includes(studentSearchTerm) ||
-        student.grade.toLowerCase().includes(studentSearchTerm.toLowerCase())
-      )
-      setFilteredStudents(filtered)
-    }
-  }, [studentSearchTerm, students])
+  }, [fetchClubs])
 
   const handleSaveClubSelections = async () => {
-    if (!selectedStudent || !otherContractData.selectedClubs?.length) return
+    if (!createdStudentId || !otherContractData.selectedClubs?.length) return
 
     try {
       // Kulüp seçimlerini kaydet
       const clubSelections = otherContractData.selectedClubs.map(clubId => ({
         clubId,
-        studentId: selectedStudent.id
+        studentId: createdStudentId
       }))
 
       const response = await fetch("/api/clubs/students", {
@@ -282,24 +241,61 @@ export default function NewRegistrationPage() {
   }
 
   const handleDownloadCombinedPDF = async () => {
-    if (!selectedStudent) return
+    // Öğrenci bilgilerini kontrol et - zorunlu alanlar
+    if (!studentFormData.firstName || !studentFormData.lastName || !studentFormData.tcNumber || !studentFormData.grade || !studentFormData.birthDate) {
+      alert("⚠️ Lütfen öğrenci bilgilerini eksiksiz doldurun!\n\nZorunlu alanlar:\n- Ad\n- Soyad\n- TC Kimlik No\n- Doğum Tarihi\n- Sınıf")
+      return
+    }
+
+    // TC numarası kontrolü
+    if (studentFormData.tcNumber.length !== 11 || !/^\d+$/.test(studentFormData.tcNumber)) {
+      alert("⚠️ TC Kimlik Numarası 11 haneli olmalı ve sadece rakamlardan oluşmalıdır!")
+      return
+    }
 
     try {
-      // Önce sözleşmeleri kaydet
+      // Önce öğrenciyi oluştur (yeni kayıt için her zaman yeni öğrenci oluşturulur)
+      let studentId = createdStudentId
+      
+      if (!studentId) {
+        // Yeni öğrenci oluştur
+        const studentResponse = await fetch("/api/students", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(studentFormData)
+        })
+
+        if (!studentResponse.ok) {
+          const errorData = await studentResponse.json()
+          // TC numarası zaten varsa özel mesaj
+          if (errorData.error && errorData.error.includes("TC") && errorData.error.includes("unique")) {
+            alert("⚠️ Bu TC Kimlik Numarası ile kayıtlı bir öğrenci zaten mevcut!\n\nLütfen TC numarasını kontrol edin veya 'Kayıt Yenileme' sayfasını kullanın.")
+          } else {
+            alert(errorData.error || "Öğrenci oluşturulurken hata oluştu!")
+          }
+          return
+        }
+
+        const newStudent = await studentResponse.json()
+        studentId = newStudent.id
+        setCreatedStudentId(studentId)
+      }
+
+      // Sonra sözleşmeleri kaydet
       const contracts = [
         {
           type: "new-registration",
           data: {
-            studentId: selectedStudent.id,
+            studentId: studentId,
             contractData: {
               ...mainContractData,
-              studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
-              studentClass: selectedStudent.grade,
-              studentTC: selectedStudent.tcNumber,
-              studentBirthDate: formatDate(selectedStudent.birthDate),
-              contractStudentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
+              studentName: `${studentFormData.firstName} ${studentFormData.lastName}`,
+              studentClass: studentFormData.grade,
+              studentTC: studentFormData.tcNumber,
+              studentBirthDate: formatDate(studentFormData.birthDate),
+              contractStudentName: `${studentFormData.firstName} ${studentFormData.lastName}`,
               contractParentName: "",
-              address: selectedStudent.address
+              address: studentFormData.address
             },
             selectedClubs: mainContractData.selectedClubs
           }
@@ -307,10 +303,10 @@ export default function NewRegistrationPage() {
         {
           type: "uniform",
           data: {
-            studentId: selectedStudent.id,
+            studentId: studentId,
             contractData: {
-              studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
-              tcNumber: selectedStudent.tcNumber,
+              studentName: `${studentFormData.firstName} ${studentFormData.lastName}`,
+              tcNumber: studentFormData.tcNumber,
               uniformSize: otherContractData.uniformSize,
               uniformPrice: otherContractData.uniformPrice,
               deliveryDate: otherContractData.uniformDeliveryDate,
@@ -321,10 +317,10 @@ export default function NewRegistrationPage() {
         {
           type: "meal",
           data: {
-            studentId: selectedStudent.id,
+            studentId: studentId,
             contractData: {
-              studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
-              tcNumber: selectedStudent.tcNumber,
+              studentName: `${studentFormData.firstName} ${studentFormData.lastName}`,
+              tcNumber: studentFormData.tcNumber,
               mealPeriods: otherContractData.mealPeriods,
               mealPrice: otherContractData.mealPrice
             }
@@ -333,10 +329,10 @@ export default function NewRegistrationPage() {
         {
           type: "book",
           data: {
-            studentId: selectedStudent.id,
+            studentId: studentId,
             contractData: {
-              studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
-              tcNumber: selectedStudent.tcNumber,
+              studentName: `${studentFormData.firstName} ${studentFormData.lastName}`,
+              tcNumber: studentFormData.tcNumber,
               bookSet: otherContractData.bookSet,
               deliveryDate: otherContractData.bookDeliveryDate
             }
@@ -345,13 +341,13 @@ export default function NewRegistrationPage() {
         {
           type: "service",
           data: {
-            studentId: selectedStudent.id,
+            studentId: studentId,
             contractData: {
-              studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
-              tcNumber: selectedStudent.tcNumber,
+              studentName: `${studentFormData.firstName} ${studentFormData.lastName}`,
+              tcNumber: studentFormData.tcNumber,
               serviceRegion: otherContractData.serviceRegion,
               servicePrice: otherContractData.servicePrice,
-              address: selectedStudent.address
+              address: studentFormData.address
             }
           }
         }
@@ -410,11 +406,42 @@ export default function NewRegistrationPage() {
           const url = window.URL.createObjectURL(blob)
           const a = document.createElement("a")
           a.href = url
-          a.download = `tum-sozlesmeler-${selectedStudent.firstName}-${selectedStudent.lastName}.pdf`
+          a.download = `tum-sozlesmeler-${studentFormData.firstName}-${studentFormData.lastName}.pdf`
           document.body.appendChild(a)
           a.click()
           window.URL.revokeObjectURL(url)
           document.body.removeChild(a)
+          
+          // Başarı mesajı
+          alert(`✅ Kayıt başarıyla tamamlandı!\n\n` +
+            `Öğrenci: ${studentFormData.firstName} ${studentFormData.lastName}\n` +
+            `TC: ${studentFormData.tcNumber}\n\n` +
+            `✓ Öğrenci sisteme eklendi\n` +
+            `✓ Sözleşmeler kaydedildi\n` +
+            `✓ Öğrenci "Geçmiş Sözleşmeler" sayfasında görünecek\n` +
+            `✓ Öğrenci "Öğrenci Yönetimi" sayfasında görünecek\n\n` +
+            `PDF dosyası indirildi.`)
+          
+          // Formu temizle
+          setStudentFormData({
+            firstName: "",
+            lastName: "",
+            tcNumber: "",
+            birthDate: "",
+            grade: "",
+            address: "",
+            motherName: "",
+            motherTc: "",
+            motherPhone: "",
+            motherAddress: "",
+            motherOccupation: "",
+            fatherName: "",
+            fatherTc: "",
+            fatherPhone: "",
+            fatherAddress: "",
+            fatherOccupation: ""
+          })
+          setCreatedStudentId(null)
         } else {
           alert("PDF oluşturulurken hata oluştu!")
         }
@@ -435,90 +462,204 @@ export default function NewRegistrationPage() {
       </div>
 
       <div className="max-w-6xl mx-auto space-y-6">
-        {/* Öğrenci Seçimi */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Öğrenci Seçimi</CardTitle>
-            <CardDescription>Kayıt yapılacak öğrenciyi seçin</CardDescription>
+        {/* Öğrenci Bilgileri Formu */}
+        <Card className="border-2 border-blue-500 shadow-lg">
+          <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+            <CardTitle className="text-2xl text-blue-700">Yeni Öğrenci Bilgileri</CardTitle>
+            <CardDescription className="text-base mt-2">
+              <strong>Önemli:</strong> Yeni kayıt yapılacak öğrenci sistemde bulunmamalıdır. 
+              Lütfen öğrencinin tüm bilgilerini eksiksiz girin. Kayıt tamamlandığında öğrenci 
+              otomatik olarak sisteme eklenecek ve hem geçmiş sözleşmelerde hem de öğrenci yönetimi sayfasında görünecektir.
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="mb-6">
-              <Label htmlFor="studentSearch">Öğrenci Ara ve Seçin *</Label>
-              <Input
-                id="studentSearch"
-                placeholder="Öğrenci adı, TC veya sınıf ara..."
-                value={studentSearchTerm}
-                onChange={(e) => setStudentSearchTerm(e.target.value)}
-                className="mb-2"
-              />
-              <select
-                id="studentSelect"
-                value={selectedStudent?.id || ""}
-                onChange={(e) => {
-                  const student = students.find(s => s.id === e.target.value)
-                  setSelectedStudent(student || null)
-                  if (student) {
-                    const formattedBirthDate = formatDate(student.birthDate)
-                    setMainContractData(prev => ({
-                      ...prev,
-                      studentName: `${student.firstName} ${student.lastName}`,
-                      studentTC: student.tcNumber,
-                      studentClass: student.grade,
-                      studentBirthDate: formattedBirthDate,
-                      contractStudentName: `${student.firstName} ${student.lastName}`,
-                      contractParentName: ""
-                    }))
-                  }
-                }}
-                className="w-full h-11 px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl text-sm text-gray-900 transition-all duration-200 hover:border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 focus:outline-none cursor-pointer"
-                required
-              >
-                <option value="">Öğrenci seçin...</option>
-                {filteredStudents.map((student) => (
-                  <option key={student.id} value={student.id}>
-                    {student.firstName} {student.lastName} - {student.tcNumber} - {student.grade}
-                  </option>
-                ))}
-              </select>
-              {filteredStudents.length === 0 && studentSearchTerm && (
-                <p className="text-sm text-gray-500 mt-2">Arama kriterlerinize uygun öğrenci bulunamadı.</p>
-              )}
-              {!students.length && (
-                <p className="text-sm text-gray-500 mt-1">
-                  Önce <a href="/students" className="text-blue-600 hover:underline">Öğrenci Yönetimi</a> sayfasından öğrenci ekleyin.
-                </p>
-              )}
-            </div>
-
-            {selectedStudent && (
-              <div className="p-4 bg-gray-50 rounded">
-                <h3 className="font-medium mb-2">Seçilen Öğrenci Bilgileri</h3>
-                <p><strong>Ad Soyad:</strong> {selectedStudent.firstName} {selectedStudent.lastName}</p>
-                <p><strong>TC Kimlik No:</strong> {selectedStudent.tcNumber}</p>
-                <p><strong>Sınıf:</strong> {selectedStudent.grade}</p>
-                <p><strong>Adres:</strong> {selectedStudent.address}</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+            <div className="space-y-6">
+              {/* Öğrenci Temel Bilgileri */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Öğrenci Temel Bilgileri</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <h4 className="font-medium">Öğrenci Anne Bilgileri</h4>
-                    <p className="text-sm text-gray-600">{selectedStudent.motherName} • TC: {selectedStudent.motherTc}</p>
-                    <p className="text-sm text-gray-600">Tel: {selectedStudent.motherPhone}</p>
-                    <p className="text-sm text-gray-600">Adres: {selectedStudent.motherAddress}</p>
-                    <p className="text-sm text-gray-600">Meslek: {selectedStudent.motherOccupation}</p>
+                    <Label htmlFor="firstName">Ad *</Label>
+                    <Input
+                      id="firstName"
+                      value={studentFormData.firstName}
+                      onChange={(e) => {
+                        setStudentFormData({ ...studentFormData, firstName: e.target.value })
+                        setMainContractData(prev => ({
+                          ...prev,
+                          studentName: `${e.target.value} ${studentFormData.lastName}`,
+                          contractStudentName: `${e.target.value} ${studentFormData.lastName}`
+                        }))
+                      }}
+                      required
+                    />
                   </div>
                   <div>
-                    <h4 className="font-medium">Öğrenci Baba Bilgileri</h4>
-                    <p className="text-sm text-gray-600">{selectedStudent.fatherName} • TC: {selectedStudent.fatherTc}</p>
-                    <p className="text-sm text-gray-600">Tel: {selectedStudent.fatherPhone}</p>
-                    <p className="text-sm text-gray-600">Adres: {selectedStudent.fatherAddress}</p>
-                    <p className="text-sm text-gray-600">Meslek: {selectedStudent.fatherOccupation}</p>
+                    <Label htmlFor="lastName">Soyad *</Label>
+                    <Input
+                      id="lastName"
+                      value={studentFormData.lastName}
+                      onChange={(e) => {
+                        setStudentFormData({ ...studentFormData, lastName: e.target.value })
+                        setMainContractData(prev => ({
+                          ...prev,
+                          studentName: `${studentFormData.firstName} ${e.target.value}`,
+                          contractStudentName: `${studentFormData.firstName} ${e.target.value}`
+                        }))
+                      }}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="tcNumber">TC Kimlik No *</Label>
+                    <Input
+                      id="tcNumber"
+                      value={studentFormData.tcNumber}
+                      onChange={(e) => {
+                        setStudentFormData({ ...studentFormData, tcNumber: e.target.value })
+                        setMainContractData(prev => ({ ...prev, studentTC: e.target.value }))
+                      }}
+                      maxLength={11}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="birthDate">Doğum Tarihi *</Label>
+                    <Input
+                      id="birthDate"
+                      type="date"
+                      value={studentFormData.birthDate}
+                      onChange={(e) => {
+                        setStudentFormData({ ...studentFormData, birthDate: e.target.value })
+                        setMainContractData(prev => ({ ...prev, studentBirthDate: e.target.value }))
+                      }}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="grade">Sınıf *</Label>
+                    <Input
+                      id="grade"
+                      value={studentFormData.grade}
+                      onChange={(e) => {
+                        setStudentFormData({ ...studentFormData, grade: e.target.value })
+                        setMainContractData(prev => ({ ...prev, studentClass: e.target.value }))
+                      }}
+                      placeholder="Örn: 9, 10, 11, 12"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="address">Adres</Label>
+                    <Input
+                      id="address"
+                      value={studentFormData.address}
+                      onChange={(e) => setStudentFormData({ ...studentFormData, address: e.target.value })}
+                    />
                   </div>
                 </div>
               </div>
-            )}
+
+              {/* Anne Bilgileri */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Anne Bilgileri</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="motherName">Anne Adı Soyadı</Label>
+                    <Input
+                      id="motherName"
+                      value={studentFormData.motherName}
+                      onChange={(e) => setStudentFormData({ ...studentFormData, motherName: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="motherTc">Anne TC Kimlik No</Label>
+                    <Input
+                      id="motherTc"
+                      value={studentFormData.motherTc}
+                      onChange={(e) => setStudentFormData({ ...studentFormData, motherTc: e.target.value })}
+                      maxLength={11}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="motherPhone">Anne Telefon</Label>
+                    <Input
+                      id="motherPhone"
+                      value={studentFormData.motherPhone}
+                      onChange={(e) => setStudentFormData({ ...studentFormData, motherPhone: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="motherAddress">Anne Adres</Label>
+                    <Input
+                      id="motherAddress"
+                      value={studentFormData.motherAddress}
+                      onChange={(e) => setStudentFormData({ ...studentFormData, motherAddress: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="motherOccupation">Anne Meslek</Label>
+                    <Input
+                      id="motherOccupation"
+                      value={studentFormData.motherOccupation}
+                      onChange={(e) => setStudentFormData({ ...studentFormData, motherOccupation: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Baba Bilgileri */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Baba Bilgileri</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="fatherName">Baba Adı Soyadı</Label>
+                    <Input
+                      id="fatherName"
+                      value={studentFormData.fatherName}
+                      onChange={(e) => setStudentFormData({ ...studentFormData, fatherName: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="fatherTc">Baba TC Kimlik No</Label>
+                    <Input
+                      id="fatherTc"
+                      value={studentFormData.fatherTc}
+                      onChange={(e) => setStudentFormData({ ...studentFormData, fatherTc: e.target.value })}
+                      maxLength={11}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="fatherPhone">Baba Telefon</Label>
+                    <Input
+                      id="fatherPhone"
+                      value={studentFormData.fatherPhone}
+                      onChange={(e) => setStudentFormData({ ...studentFormData, fatherPhone: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="fatherAddress">Baba Adres</Label>
+                    <Input
+                      id="fatherAddress"
+                      value={studentFormData.fatherAddress}
+                      onChange={(e) => setStudentFormData({ ...studentFormData, fatherAddress: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="fatherOccupation">Baba Meslek</Label>
+                    <Input
+                      id="fatherOccupation"
+                      value={studentFormData.fatherOccupation}
+                      onChange={(e) => setStudentFormData({ ...studentFormData, fatherOccupation: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        {selectedStudent && (
+        {studentFormData.firstName && studentFormData.lastName && studentFormData.tcNumber && studentFormData.grade && (
           <>
             {/* Ana Sözleşme Formu */}
             <Card>
@@ -1113,7 +1254,7 @@ export default function NewRegistrationPage() {
                       <Label htmlFor="studentName">Öğrenci Ad Soyad</Label>
                       <Input
                         id="studentName"
-                        value={selectedStudent ? `${selectedStudent.firstName} ${selectedStudent.lastName}` : ""}
+                        value={`${studentFormData.firstName} ${studentFormData.lastName}`}
                         disabled
                         className="bg-gray-100"
                       />
@@ -1122,7 +1263,7 @@ export default function NewRegistrationPage() {
                       <Label htmlFor="studentGrade">Sınıfı</Label>
                       <Input
                         id="studentGrade"
-                        value={selectedStudent?.grade || ""}
+                        value={studentFormData.grade}
                         disabled
                         className="bg-gray-100"
                       />
@@ -1204,7 +1345,7 @@ export default function NewRegistrationPage() {
                     <Label htmlFor="studentAddress">Adres</Label>
                     <Input
                       id="studentAddress"
-                      value={selectedStudent?.address || ""}
+                      value={studentFormData.address}
                       disabled
                       className="bg-gray-100"
                     />
