@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,7 +9,6 @@ import { LogIn, Users, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 
 export default function VeliLoginPage() {
-  const router = useRouter()
   const [studentTcNumber, setStudentTcNumber] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
@@ -71,14 +69,13 @@ export default function VeliLoginPage() {
         // İlk giriş kontrolü
         if (data.parent.isFirstLogin) {
           console.log("[Veli Login] 🔄 İlk giriş, /change-password'e yönlendiriliyor")
-          router.push("/change-password?parent=true")
+          window.location.href = `/change-password?parent=true`
           return
         }
         
-        // Ana panele yönlendir
+        // Ana panele yönlendir - window.location.href kullanarak tam sayfa yenileme
         console.log("[Veli Login] 🏠 /veli/panel'e yönlendiriliyor")
-        router.push("/veli/panel")
-        router.refresh()
+        window.location.href = "/veli/panel"
       } else {
         const errorData = await response.json()
         setError(errorData.error || "TC Kimlik numarası veya şifre hatalı!")

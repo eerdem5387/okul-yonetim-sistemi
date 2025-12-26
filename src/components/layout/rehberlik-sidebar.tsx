@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -30,7 +30,6 @@ const navigation = [
 
 export function RehberlikSidebar() {
   const pathname = usePathname()
-  const router = useRouter()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [staffName, setStaffName] = useState<string>("")
 
@@ -42,13 +41,14 @@ export function RehberlikSidebar() {
   }, [])
 
   const handleLogout = () => {
-    localStorage.removeItem("auth_role")
-    localStorage.removeItem("auth_token")
-    localStorage.removeItem("staff_id")
-    localStorage.removeItem("staff_name")
-    localStorage.removeItem("staff_department")
-    router.push("/login")
-    router.refresh()
+    if (confirm("Çıkış yapmak istediğinizden emin misiniz?")) {
+      localStorage.removeItem("auth_role")
+      localStorage.removeItem("auth_token")
+      localStorage.removeItem("staff_id")
+      localStorage.removeItem("staff_name")
+      localStorage.removeItem("staff_department")
+      window.location.href = "/login"
+    }
   }
 
   return (

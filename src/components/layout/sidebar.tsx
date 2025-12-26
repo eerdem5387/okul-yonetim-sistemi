@@ -29,8 +29,6 @@ import {
   GraduationCap
 } from "lucide-react"
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-
 const allNavigation = [
   // Dashboard - Tüm roller (Öğretmen hariç)
   { name: "Dashboard", href: "/", icon: LayoutDashboard, roles: ["admin", "principal", "student_affairs", "counselor"] },
@@ -94,7 +92,6 @@ const allNavigation = [
 
 export function Sidebar() {
   const pathname = usePathname()
-  const router = useRouter()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [currentRole, setCurrentRole] = useState<string | null>(null)
   const [staffName, setStaffName] = useState<string>("")
@@ -115,16 +112,17 @@ export function Sidebar() {
   })
 
   const handleLogout = () => {
-    localStorage.removeItem("auth_role")
-    localStorage.removeItem("auth_token")
-    localStorage.removeItem("staff_id")
-    localStorage.removeItem("staff_name")
-    localStorage.removeItem("staff_department")
-    localStorage.removeItem("ib_viewer_token")
-    localStorage.removeItem("ib_viewer_id")
-    localStorage.removeItem("ib_viewer_name")
-    router.push("/login")
-    router.refresh()
+    if (confirm("Çıkış yapmak istediğinizden emin misiniz?")) {
+      localStorage.removeItem("auth_role")
+      localStorage.removeItem("auth_token")
+      localStorage.removeItem("staff_id")
+      localStorage.removeItem("staff_name")
+      localStorage.removeItem("staff_department")
+      localStorage.removeItem("ib_viewer_token")
+      localStorage.removeItem("ib_viewer_id")
+      localStorage.removeItem("ib_viewer_name")
+      window.location.href = "/login"
+    }
   }
 
   return (

@@ -130,20 +130,22 @@ export default function ChangePasswordPage() {
         localStorage.removeItem("temp_tc")
         localStorage.removeItem("is_first_login")
         
-        // Success - Login sayfasına yönlendir
-        alert("Şifreniz başarıyla değiştirildi! Lütfen yeni şifrenizle giriş yapın.")
-        
         if (isParent) {
-          // Veli girişe geri dön
-          localStorage.removeItem("auth_role")
-          localStorage.removeItem("auth_token")
-          localStorage.removeItem("parent_id")
-          localStorage.removeItem("parent_name")
-          localStorage.removeItem("student_tc")
-          localStorage.removeItem("student_name")
-          router.push("/veli-login")
+          // Veli için - localStorage'da zaten parent bilgileri var, direkt panele yönlendir
+          alert("Şifreniz başarıyla değiştirildi!")
+          window.location.href = "/veli/panel"
         } else {
-        router.push("/login")
+          // Personel için - localStorage'da role ve diğer bilgiler var, role'e göre yönlendir
+          const role = localStorage.getItem("auth_role")
+          alert("Şifreniz başarıyla değiştirildi!")
+          
+          if (role === "teacher") {
+            window.location.href = "/ogretmen"
+          } else if (role === "counselor") {
+            window.location.href = "/rehberlik"
+          } else {
+            window.location.href = "/"
+          }
         }
       } else {
         const errorData = await response.json()

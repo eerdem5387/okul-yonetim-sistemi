@@ -63,11 +63,33 @@ export async function POST(request: NextRequest) {
         )
       }
       
+      // Rol belirleme (ilk giriş için de)
+      let role: "admin" | "principal" | "teacher" | "counselor" | "student_affairs" = "teacher"
+      
+      if (staff.department === "SUPER_ADMIN") {
+        role = "admin"
+      } else if (staff.department === "MUDUR") {
+        role = "principal"
+      } else if (staff.department === "MUDUR_YARDIMCISI") {
+        role = "student_affairs"
+      } else if (staff.department === "REHBERLIK") {
+        role = "counselor"
+      } else if (staff.department === "OGRENCI_ISLERI") {
+        role = "student_affairs"
+      } else if (staff.department === "OGRETMEN") {
+        role = "teacher"
+      }
+
+      // Token oluştur
+      const token = `${role}_${staff.id}_${Date.now()}`
+      
       // İlk giriş başarılı - kullanıcıyı şifre değiştirme ekranına yönlendir
       return NextResponse.json({
         success: true,
         isFirstLogin: true,
         mustChangePassword: true,
+        token,
+        role,
         staffId: staff.id,
         staffName: `${staff.firstName} ${staff.lastName}`,
         department: staff.department,

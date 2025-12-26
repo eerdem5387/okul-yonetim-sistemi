@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import {
   Home,
   BookOpen,
@@ -27,7 +27,6 @@ interface OgretmenSidebarProps {
 
 export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
   const pathname = usePathname()
-  const router = useRouter()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const [staffName, setStaffName] = useState("")
@@ -60,8 +59,7 @@ export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
       localStorage.removeItem("staff_id")
       localStorage.removeItem("staff_name")
       localStorage.removeItem("staff_department")
-      router.push("/login")
-      router.refresh()
+      window.location.href = "/login"
     }
   }
 

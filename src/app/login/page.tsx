@@ -39,29 +39,40 @@ export default function LoginPage() {
         
         // İlk giriş kontrolü
         if (data.isFirstLogin) {
-          router.push(`/change-password?first=true&tc=${tcNumber.trim()}`)
+          localStorage.setItem("auth_role", data.role)
+          localStorage.setItem("auth_token", data.token)
+          localStorage.setItem("staff_id", data.staffId)
+          localStorage.setItem("staff_name", data.staffName)
+          localStorage.setItem("staff_department", data.department)
+          window.location.href = `/change-password?first=true&tc=${tcNumber.trim()}`
           return
         }
         
-        // Normal giriş
+        // Normal giriş - localStorage'a kaydet
         localStorage.setItem("auth_role", data.role)
         localStorage.setItem("auth_token", data.token)
         localStorage.setItem("staff_id", data.staffId)
         localStorage.setItem("staff_name", data.staffName)
         localStorage.setItem("staff_department", data.department)
         
-        // Rol bazlı yönlendirme
+        // Rol bazlı yönlendirme - window.location.href kullanarak tam sayfa yenileme
         if (data.role === "teacher") {
-          router.push("/ogretmen")
+          window.location.href = "/ogretmen"
         } else if (data.role === "counselor") {
-          router.push("/rehberlik")
+          window.location.href = "/rehberlik"
         } else {
-          router.push("/")
+          window.location.href = "/"
         }
-        router.refresh()
       } else {
         const errorData = await response.json()
         setError(errorData.error || "TC Kimlik numarası veya şifre hatalı!")
+        
+        // Login başarısız olduğunda localStorage'ı temizle
+        localStorage.removeItem("auth_role")
+        localStorage.removeItem("auth_token")
+        localStorage.removeItem("staff_id")
+        localStorage.removeItem("staff_name")
+        localStorage.removeItem("staff_department")
       }
     } catch (error) {
       console.error("Login error:", error)
@@ -89,8 +100,7 @@ export default function LoginPage() {
         localStorage.setItem("ib_viewer_token", data.token)
         localStorage.setItem("ib_viewer_id", data.viewer.id)
         localStorage.setItem("ib_viewer_name", data.viewer.fullName)
-        router.push("/ib-viewer")
-        router.refresh()
+        window.location.href = "/ib-viewer"
       } else {
         const errorData = await response.json()
         setError(errorData.error || "Kullanıcı adı veya şifre hatalı!")

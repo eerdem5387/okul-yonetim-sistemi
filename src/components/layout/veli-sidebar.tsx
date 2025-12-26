@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { Home, User, BookOpen, Calendar, FileText, MessageSquare, LogOut, ChevronLeft, ChevronRight, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -12,7 +12,6 @@ interface VeliSidebarProps {
 
 export default function VeliSidebar({ className }: VeliSidebarProps) {
   const pathname = usePathname()
-  const router = useRouter()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [studentName, setStudentName] = useState("")
   const [parentRelation, setParentRelation] = useState("")
@@ -47,9 +46,11 @@ export default function VeliSidebar({ className }: VeliSidebarProps) {
       localStorage.removeItem("auth_token")
       localStorage.removeItem("parent_id")
       localStorage.removeItem("parent_name")
-      localStorage.removeItem("parent_tc")
-      router.push("/login")
-      router.refresh()
+      localStorage.removeItem("parent_relation")
+      localStorage.removeItem("student_id")
+      localStorage.removeItem("student_name")
+      localStorage.removeItem("student_tc")
+      window.location.href = "/veli-login"
     }
   }
 
