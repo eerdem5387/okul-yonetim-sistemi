@@ -20,6 +20,7 @@ import {
   Award,
   Loader2,
   BarChart3,
+  Plus,
 } from "lucide-react"
 
 interface Student {
