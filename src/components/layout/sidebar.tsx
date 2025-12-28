@@ -62,6 +62,7 @@ const allNavigation = [
   
   // Öğrenci Yönetimi - Admin, Müdür, Öğrenci İşleri
   { name: "Öğrenci Yönetimi", href: "/students", icon: UserPlus, roles: ["admin", "principal", "student_affairs"] },
+  { name: "Öğrenci Dashboard", href: "/ogrenci-dashboard", icon: LayoutDashboard, roles: ["admin", "principal", "student_affairs"] },
   
   // Personel Yönetimi - Admin, Müdür, Öğrenci İşleri
   { name: "Personel Yönetimi", href: "/personel", icon: Briefcase, roles: ["admin", "principal", "student_affairs"] },
