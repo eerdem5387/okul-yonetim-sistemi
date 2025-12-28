@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label"
 import { Save, Download, Users, Clock, TrendingUp, GraduationCap } from "lucide-react"
 
 const siniflar = [
-  "4. Sınıf",
   "5. Sınıf",
   "6. Sınıf",
   "7. Sınıf",
@@ -16,6 +15,7 @@ const siniflar = [
   "9. Sınıf",
   "10. Sınıf",
   "11. Sınıf",
+  "12. Sınıf",
 ]
 
 export default function NewRegistrationPage() {
@@ -551,32 +551,30 @@ export default function NewRegistrationPage() {
         </div>
 
         {/* Sınıf Bazında İstatistikler */}
-        {Object.keys(stats.sinifStats).length > 0 && (
-          <Card className="border-0 shadow-lg">
-            <CardHeader className="pb-3 sm:pb-4">
-              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <GraduationCap className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
-                Sınıf Bazında Kayıtlar
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 sm:gap-3">
-                {siniflar.map((sinif) => {
-                  const count = stats.sinifStats[sinif] || 0
-                  return (
-                    <div
-                      key={sinif}
-                      className="p-2 sm:p-3 rounded-lg border-2 border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all"
-                    >
-                      <p className="text-xs text-gray-600 mb-1 truncate">{sinif}</p>
-                      <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">{count}</p>
-                    </div>
-                  )
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        <Card className="border-0 shadow-lg">
+          <CardHeader className="pb-3 sm:pb-4">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <GraduationCap className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+              Sınıf Bazında Kayıtlar
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 sm:gap-3">
+              {siniflar.map((sinif) => {
+                const count = stats.sinifStats[sinif] || 0
+                return (
+                  <div
+                    key={sinif}
+                    className="p-2 sm:p-3 rounded-lg border-2 border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all"
+                  >
+                    <p className="text-xs text-gray-600 mb-1 truncate">{sinif}</p>
+                    <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">{count}</p>
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
         {/* Öğrenci Bilgileri Formu */}
         <Card className="border-2 border-blue-500 shadow-lg">
           <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
