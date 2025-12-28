@@ -112,10 +112,29 @@ export default function OgrenciDashboardPage() {
 
   const fetchStudents = async () => {
     try {
-      const response = await fetch("/api/students/public")
+      // Tüm öğrencileri çek (limit ile)
+      const response = await fetch("/api/students?limit=1000")
       if (response.ok) {
         const data = await response.json()
-        setStudents(data.students || [])
+        // API response formatını kontrol et
+        const studentsList = Array.isArray(data) ? data : (data.students || [])
+        // Sadece gerekli alanları map et
+        const formattedStudents: Student[] = studentsList.map((s: {
+          id: string
+          firstName: string
+          lastName: string
+          grade?: string | null
+          tcNumber?: string | null
+        }) => ({
+          id: s.id,
+          firstName: s.firstName,
+          lastName: s.lastName,
+          grade: s.grade || "",
+          tcNumber: s.tcNumber || "",
+        }))
+        setStudents(formattedStudents)
+      } else {
+        console.error("Failed to fetch students:", response.statusText)
       }
     } catch (error) {
       console.error("Error fetching students:", error)
