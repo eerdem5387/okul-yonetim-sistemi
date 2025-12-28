@@ -5,11 +5,31 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Save, Download } from "lucide-react"
+import { Save, Download, Users, Clock, TrendingUp, GraduationCap } from "lucide-react"
+
+const siniflar = [
+  "4. Sınıf",
+  "5. Sınıf",
+  "6. Sınıf",
+  "7. Sınıf",
+  "8. Sınıf",
+  "9. Sınıf",
+  "10. Sınıf",
+  "11. Sınıf",
+]
 
 export default function NewRegistrationPage() {
   const [clubs, setClubs] = useState<{id: string, name: string}[]>([])
   const [createdStudentId, setCreatedStudentId] = useState<string | null>(null)
+  
+  // İstatistikler
+  const [stats, setStats] = useState({
+    total: 0,
+    today: 0,
+    thisWeek: 0,
+    thisMonth: 0,
+    sinifStats: {} as Record<string, number>,
+  })
   
   // Öğrenci Bilgileri Formu
   const [studentFormData, setStudentFormData] = useState({
@@ -201,9 +221,22 @@ export default function NewRegistrationPage() {
     }
   }, [])
 
+  const fetchStats = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/new-registrations/stats`)
+      if (response.ok) {
+        const data = await response.json()
+        setStats(data)
+      }
+    } catch (error) {
+      console.error("Error fetching stats:", error)
+    }
+  }, [])
+
   useEffect(() => {
     fetchClubs()
-  }, [fetchClubs])
+    fetchStats()
+  }, [fetchClubs, fetchStats])
 
   const handleSaveClubSelections = async () => {
     if (!createdStudentId || !otherContractData.selectedClubs?.length) return
@@ -442,6 +475,9 @@ export default function NewRegistrationPage() {
             fatherOccupation: ""
           })
           setCreatedStudentId(null)
+          
+          // İstatistikleri yenile
+          await fetchStats()
         } else {
           alert("PDF oluşturulurken hata oluştu!")
         }
@@ -455,13 +491,92 @@ export default function NewRegistrationPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Yeni Kayıt Sözleşmesi</h1>
-        <p className="text-gray-600 mt-2">Yeni öğrenci kayıt sözleşmesini oluşturun</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-3 sm:p-4 md:p-6 lg:p-8">
+      {/* Page Header */}
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Yeni Kayıt Sözleşmesi</h1>
+        <p className="text-gray-600 mt-2 text-sm sm:text-base">Yeni öğrenci kayıt sözleşmesini oluşturun</p>
       </div>
 
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
+        {/* İstatistik Kartları */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+          <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white">
+            <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+              <div className="flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <p className="text-blue-100 text-xs sm:text-sm font-medium mb-1 truncate">Toplam Kayıt</p>
+                  <p className="text-xl sm:text-2xl lg:text-3xl font-bold">{stats.total}</p>
+                </div>
+                <Users className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 text-blue-200 flex-shrink-0 ml-2" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-lg bg-gradient-to-br from-green-600 to-emerald-600 text-white">
+            <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+              <div className="flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <p className="text-green-100 text-xs sm:text-sm font-medium mb-1 truncate">Bugün</p>
+                  <p className="text-xl sm:text-2xl lg:text-3xl font-bold">{stats.today}</p>
+                </div>
+                <Clock className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 text-green-200 flex-shrink-0 ml-2" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-lg bg-gradient-to-br from-orange-600 to-amber-600 text-white">
+            <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+              <div className="flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <p className="text-orange-100 text-xs sm:text-sm font-medium mb-1 truncate">Bu Hafta</p>
+                  <p className="text-xl sm:text-2xl lg:text-3xl font-bold">{stats.thisWeek}</p>
+                </div>
+                <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 text-orange-200 flex-shrink-0 ml-2" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-lg bg-gradient-to-br from-purple-600 to-pink-600 text-white">
+            <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+              <div className="flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <p className="text-purple-100 text-xs sm:text-sm font-medium mb-1 truncate">Bu Ay</p>
+                  <p className="text-xl sm:text-2xl lg:text-3xl font-bold">{stats.thisMonth}</p>
+                </div>
+                <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 text-purple-200 flex-shrink-0 ml-2" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Sınıf Bazında İstatistikler */}
+        {Object.keys(stats.sinifStats).length > 0 && (
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="pb-3 sm:pb-4">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <GraduationCap className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+                Sınıf Bazında Kayıtlar
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 sm:gap-3">
+                {siniflar.map((sinif) => {
+                  const count = stats.sinifStats[sinif] || 0
+                  return (
+                    <div
+                      key={sinif}
+                      className="p-2 sm:p-3 rounded-lg border-2 border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all"
+                    >
+                      <p className="text-xs text-gray-600 mb-1 truncate">{sinif}</p>
+                      <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">{count}</p>
+                    </div>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
         {/* Öğrenci Bilgileri Formu */}
         <Card className="border-2 border-blue-500 shadow-lg">
           <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
