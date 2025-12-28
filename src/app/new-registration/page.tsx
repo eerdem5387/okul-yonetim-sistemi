@@ -651,16 +651,23 @@ export default function NewRegistrationPage() {
                   </div>
                   <div>
                     <Label htmlFor="grade">Sınıf *</Label>
-                    <Input
+                    <select
                       id="grade"
                       value={studentFormData.grade}
                       onChange={(e) => {
                         setStudentFormData({ ...studentFormData, grade: e.target.value })
                         setMainContractData(prev => ({ ...prev, studentClass: e.target.value }))
                       }}
-                      placeholder="Örn: 9, 10, 11, 12"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       required
-                    />
+                    >
+                      <option value="">Sınıf Seçiniz</option>
+                      {[5, 6, 7, 8, 9, 10, 11, 12].map((grade) => (
+                        <option key={grade} value={grade.toString()}>
+                          {grade}. Sınıf
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <Label htmlFor="address">Adres</Label>
