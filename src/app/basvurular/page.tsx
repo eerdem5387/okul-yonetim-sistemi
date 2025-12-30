@@ -76,6 +76,7 @@ export default function BasvurularPage() {
   const [selectedOkul, setSelectedOkul] = useState("")
   const [selectedBabaMeslek, setSelectedBabaMeslek] = useState("")
   const [selectedAnneMeslek, setSelectedAnneMeslek] = useState("")
+  const [selectedSinavGunu, setSelectedSinavGunu] = useState("")
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
   const [showFilters, setShowFilters] = useState(false)
@@ -87,6 +88,8 @@ export default function BasvurularPage() {
     today: 0,
     thisWeek: 0,
     thisMonth: 0,
+    saturdayCount: 0, // 10 Ocak Cumartesi
+    sundayCount: 0,   // 11 Ocak Pazar
     sinifStats: {} as Record<string, number>,
     topOkullar: [] as Array<{ okul: string; count: number }>,
     topBabaMeslekler: [] as Array<{ meslek: string; count: number }>,
@@ -133,6 +136,7 @@ export default function BasvurularPage() {
     okul: string = "",
     babaMeslek: string = "",
     anneMeslek: string = "",
+    sinavGunu: string = "",
     startDateParam: string = "",
     endDateParam: string = "",
     contactStatusParam: "" | "ILETISIME_GECILDI" | "ILETISIME_GECILMEDI_NOT_CONTACTED" | "ILETISIME_GECILMEDI_FAILED" = ""
@@ -157,6 +161,9 @@ export default function BasvurularPage() {
       }
       if (anneMeslek) {
         params.append("anneMeslek", anneMeslek)
+      }
+      if (sinavGunu) {
+        params.append("sinavGunu", sinavGunu)
       }
       if (startDateParam) {
         params.append("startDate", startDateParam)
@@ -220,11 +227,13 @@ export default function BasvurularPage() {
       selectedOkul, 
       selectedBabaMeslek, 
       selectedAnneMeslek,
+      selectedSinavGunu,
       startDate,
-      endDate
+      endDate,
+      contactFilter
     )
     fetchStats()
-  }, [currentPage, fetchBasvurular, fetchStats, startDate, endDate, contactFilter, searchTerm, selectedSinif, selectedOkul, selectedBabaMeslek, selectedAnneMeslek])
+  }, [currentPage, fetchBasvurular, fetchStats, startDate, endDate, contactFilter, searchTerm, selectedSinif, selectedOkul, selectedBabaMeslek, selectedAnneMeslek, selectedSinavGunu])
 
   const handleSearch = () => {
     setCurrentPage(1)
@@ -235,8 +244,10 @@ export default function BasvurularPage() {
       selectedOkul, 
       selectedBabaMeslek, 
       selectedAnneMeslek,
+      selectedSinavGunu,
       startDate,
-      endDate
+      endDate,
+      contactFilter
     )
     fetchStats()
   }
@@ -246,6 +257,7 @@ export default function BasvurularPage() {
     newOkul?: string, 
     newBabaMeslek?: string, 
     newAnneMeslek?: string,
+    newSinavGunu?: string,
     newStartDate?: string,
     newEndDate?: string,
     newContactStatus?: "" | "ILETISIME_GECILDI" | "ILETISIME_GECILMEDI_NOT_CONTACTED" | "ILETISIME_GECILMEDI_FAILED"
@@ -255,6 +267,7 @@ export default function BasvurularPage() {
     const okulToUse = newOkul !== undefined ? newOkul : selectedOkul
     const babaMeslekToUse = newBabaMeslek !== undefined ? newBabaMeslek : selectedBabaMeslek
     const anneMeslekToUse = newAnneMeslek !== undefined ? newAnneMeslek : selectedAnneMeslek
+    const sinavGunuToUse = newSinavGunu !== undefined ? newSinavGunu : selectedSinavGunu
     const startDateToUse = newStartDate !== undefined ? newStartDate : startDate
     const endDateToUse = newEndDate !== undefined ? newEndDate : endDate
     const contactStatusToUse = newContactStatus !== undefined ? newContactStatus : contactFilter
@@ -266,6 +279,7 @@ export default function BasvurularPage() {
       okulToUse, 
       babaMeslekToUse, 
       anneMeslekToUse,
+      sinavGunuToUse,
       startDateToUse,
       endDateToUse,
       contactStatusToUse
@@ -279,15 +293,16 @@ export default function BasvurularPage() {
     setSelectedOkul("")
     setSelectedBabaMeslek("")
     setSelectedAnneMeslek("")
+    setSelectedSinavGunu("")
     setStartDate("")
     setEndDate("")
     setContactFilter("")
     setCurrentPage(1)
-    fetchBasvurular(1, "", "", "", "", "", "", "", "")
+    fetchBasvurular(1, "", "", "", "", "", "", "", "", "")
     fetchStats()
   }
 
-  const hasActiveFilters = searchTerm || selectedSinif || selectedOkul || selectedBabaMeslek || selectedAnneMeslek || startDate || endDate || contactFilter
+  const hasActiveFilters = searchTerm || selectedSinif || selectedOkul || selectedBabaMeslek || selectedAnneMeslek || selectedSinavGunu || startDate || endDate || contactFilter
 
   const handleExport = async () => {
     try {
@@ -307,6 +322,9 @@ export default function BasvurularPage() {
       }
       if (selectedAnneMeslek) {
         params.append("anneMeslek", selectedAnneMeslek)
+      }
+      if (selectedSinavGunu) {
+        params.append("sinavGunu", selectedSinavGunu)
       }
       if (startDate) {
         params.append("startDate", startDate)
@@ -414,8 +432,10 @@ export default function BasvurularPage() {
         selectedOkul, 
         selectedBabaMeslek, 
         selectedAnneMeslek,
+        selectedSinavGunu,
         startDate,
-        endDate
+        endDate,
+        contactFilter
       )
       await fetchAllBasvurular()
       await fetchStats()
@@ -452,8 +472,10 @@ export default function BasvurularPage() {
         selectedOkul, 
         selectedBabaMeslek, 
         selectedAnneMeslek,
+        selectedSinavGunu,
         startDate,
-        endDate
+        endDate,
+        contactFilter
       )
       await fetchAllBasvurular()
       await fetchStats()
@@ -664,6 +686,7 @@ export default function BasvurularPage() {
                       selectedOkul,
                       selectedBabaMeslek,
                       selectedAnneMeslek,
+                      selectedSinavGunu,
                       startDate,
                       endDate,
                       contactFilter
@@ -690,7 +713,7 @@ export default function BasvurularPage() {
       )}
 
       {/* İstatistik Kartları */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-4 mb-4 sm:mb-6">
         <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white">
           <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
             <div className="flex items-center justify-between">
@@ -735,6 +758,30 @@ export default function BasvurularPage() {
                 <p className="text-xl sm:text-2xl lg:text-3xl font-bold">{stats.thisMonth}</p>
               </div>
               <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 text-purple-200 flex-shrink-0 ml-2" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-teal-600 to-cyan-600 text-white">
+          <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+            <div className="flex items-center justify-between">
+              <div className="min-w-0 flex-1">
+                <p className="text-teal-100 text-xs sm:text-sm font-medium mb-1 truncate">10 Ocak Cumartesi</p>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold">{stats.saturdayCount}</p>
+              </div>
+              <Calendar className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 text-teal-200 flex-shrink-0 ml-2" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-rose-600 to-pink-600 text-white">
+          <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+            <div className="flex items-center justify-between">
+              <div className="min-w-0 flex-1">
+                <p className="text-rose-100 text-xs sm:text-sm font-medium mb-1 truncate">11 Ocak Pazar</p>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold">{stats.sundayCount}</p>
+              </div>
+              <Calendar className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 text-rose-200 flex-shrink-0 ml-2" />
             </div>
           </CardContent>
         </Card>
@@ -803,7 +850,7 @@ export default function BasvurularPage() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 sm:h-5 sm:w-5" />
                 <Input
                   type="text"
-                  placeholder="Öğrenci adı, soyadı veya TC ile ara..."
+                  placeholder="Öğrenci adı ve soyadı ile ara..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -866,6 +913,26 @@ export default function BasvurularPage() {
                         {sinif}
                       </option>
                     ))}
+                  </select>
+                </div>
+
+                <div>
+                  <Label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2 block">
+                    <Calendar className="h-3 w-3 sm:h-4 sm:w-4 inline mr-1" />
+                    Sınav Günü
+                  </Label>
+                  <select
+                    value={selectedSinavGunu}
+                    onChange={(e) => {
+                      const newValue = e.target.value
+                      setSelectedSinavGunu(newValue)
+                      handleFilterChange(undefined, undefined, undefined, undefined, newValue)
+                    }}
+                    className="w-full h-9 sm:h-10 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Tüm Günler</option>
+                    <option value="Cumartesi">10 Ocak Cumartesi</option>
+                    <option value="Pazar">11 Ocak Pazar</option>
                   </select>
                 </div>
 
@@ -1007,6 +1074,21 @@ export default function BasvurularPage() {
                         handleFilterChange("")
                       }}
                       className="hover:text-blue-900 ml-0.5"
+                    >
+                      <X className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                    </button>
+                  </span>
+                )}
+                {selectedSinavGunu && (
+                  <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-0.5 sm:py-1 bg-teal-100 text-teal-700 rounded-full text-xs sm:text-sm">
+                    <span className="hidden sm:inline">Sınav Günü: </span>
+                    {selectedSinavGunu === "Cumartesi" ? "10 Ocak Cumartesi" : "11 Ocak Pazar"}
+                    <button
+                      onClick={() => {
+                        setSelectedSinavGunu("")
+                        handleFilterChange(undefined, undefined, undefined, undefined, "")
+                      }}
+                      className="hover:text-teal-900 ml-0.5"
                     >
                       <X className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                     </button>

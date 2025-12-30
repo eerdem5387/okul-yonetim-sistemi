@@ -15,19 +15,17 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate') || ''
     const endDate = searchParams.get('endDate') || ''
     const contactStatus = searchParams.get('contactStatus') || ''
+    const sinavGunu = searchParams.get('sinavGunu') || ''
     
     const skip = (page - 1) * limit
 
     // Arama ve filtreleme koşulları
     const whereConditions: Array<Record<string, unknown>> = []
     
-    // Arama filtresi - Sadece öğrenci adı, soyadı ve TC ile arama
+    // Arama filtresi - Sadece öğrenci adı ve soyadı ile arama
     if (search) {
       whereConditions.push({
-        OR: [
-          { ogrenciAdSoyad: { contains: search, mode: 'insensitive' as const } },
-          { ogrenciTc: { contains: search } },
-        ]
+        ogrenciAdSoyad: { contains: search, mode: 'insensitive' as const }
       })
     }
     
@@ -74,6 +72,30 @@ export async function GET(request: NextRequest) {
     } else if (contactStatus === 'ILETISIME_GECILMEDI') {
       // Eski filtreleme için geriye dönük uyumluluk - tüm ILETISIME_GECILMEDI'leri getir
       whereConditions.push({ contactStatus: 'ILETISIME_GECILMEDI' })
+    }
+    
+    // Sınav günü filtresi
+    if (sinavGunu) {
+      if (sinavGunu === 'Cumartesi') {
+        // Cumartesi günü için - "Cumartesi" veya "10 Ocak" içeren kayıtlar
+        whereConditions.push({
+          OR: [
+            { sinavGunu: { contains: 'Cumartesi', mode: 'insensitive' as const } },
+            { sinavGunu: { contains: '10 Ocak', mode: 'insensitive' as const } },
+          ]
+        })
+      } else if (sinavGunu === 'Pazar') {
+        // Pazar günü için - "Pazar" veya "11 Ocak" içeren kayıtlar
+        whereConditions.push({
+          OR: [
+            { sinavGunu: { contains: 'Pazar', mode: 'insensitive' as const } },
+            { sinavGunu: { contains: '11 Ocak', mode: 'insensitive' as const } },
+          ]
+        })
+      } else {
+        // Diğer durumlar için direkt eşleşme
+        whereConditions.push({ sinavGunu: { contains: sinavGunu, mode: 'insensitive' as const } })
+      }
     }
     
     // Tarih filtresi

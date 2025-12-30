@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
         babaMeslek: true,
         anneMeslek: true,
         createdAt: true,
+        sinavGunu: true,
       }
     })
     
@@ -73,11 +74,25 @@ export async function GET(request: NextRequest) {
     const weekCount = basvurular.filter(b => new Date(b.createdAt) >= thisWeek).length
     const monthCount = basvurular.filter(b => new Date(b.createdAt) >= thisMonth).length
     
+    // Gün bazında sayım (10 Ocak Cumartesi ve 11 Ocak Pazar)
+    // sinavGunu alanında "10 Ocak Cumartesi", "11 Ocak Pazar" veya sadece "Cumartesi", "Pazar" olabilir
+    const saturdayCount = basvurular.filter(b => {
+      const gun = b.sinavGunu || ''
+      return gun.includes('Cumartesi') || gun.includes('10 Ocak')
+    }).length
+    
+    const sundayCount = basvurular.filter(b => {
+      const gun = b.sinavGunu || ''
+      return gun.includes('Pazar') || gun.includes('11 Ocak')
+    }).length
+    
     return NextResponse.json({
       total: basvurular.length,
       today: todayCount,
       thisWeek: weekCount,
       thisMonth: monthCount,
+      saturdayCount, // 10 Ocak Cumartesi
+      sundayCount,   // 11 Ocak Pazar
       sinifStats,
       topOkullar: Object.entries(okulStats)
         .sort(([, a], [, b]) => b - a)
