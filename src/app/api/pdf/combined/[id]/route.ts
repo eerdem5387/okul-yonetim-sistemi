@@ -1,18 +1,37 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { generatePDF, generateCombinedContractHTML } from "@/lib/pdf-generator"
 
+// GET handler for testing route availability
+export async function GET(
+    request: NextRequest,
+    context: { params: Promise<{ id: string }> }
+) {
+    try {
+        const params = await context.params
+        return NextResponse.json({ 
+            message: "PDF Combined route is available",
+            id: params.id 
+        })
+    } catch (error) {
+        return NextResponse.json({ error: "Route error" }, { status: 500 })
+    }
+}
+
 export async function POST(
-    request: Request,
+    request: NextRequest,
     context: { params: Promise<{ id: string }> }
 ) {
     try {
         const params = await context.params
         
         // ID kontrolü
-        if (!params.id) {
+        if (!params || !params.id) {
+            console.error("PDF Combined Route: Missing ID parameter", { params })
             return NextResponse.json({ error: "Contract ID is required" }, { status: 400 })
         }
+        
+        console.log("PDF Combined Route: Processing request for ID:", params.id)
 
         let body
         try {
