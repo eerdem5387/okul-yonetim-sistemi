@@ -238,7 +238,6 @@ export default function VeliPanelPage() {
             </CardContent>
           </Card>
         </div>
-      </div>
     </div>
   )
 }

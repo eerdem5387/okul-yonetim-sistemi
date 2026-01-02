@@ -500,7 +500,6 @@ export default function ParentPage() {
           </Card>
           </div>
         </div>
-      </div>
 
       {/* Onay Modal */}
       {showConfirmModal && (
