@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import VeliSidebar from "@/components/layout/veli-sidebar"
 import { Users, BookOpen, Calendar, FileText, MessageSquare, Loader2, User } from "lucide-react"
 import Link from "next/link"
 
@@ -73,19 +72,14 @@ export default function VeliPanelPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen">
-        <VeliSidebar />
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-green-600" />
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-green-600" />
       </div>
     )
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <VeliSidebar />
-      <div className="flex-1 overflow-y-auto">
+    <div className="min-h-screen bg-gray-50">
         <div className="container mx-auto p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
           {/* Header */}
           <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 rounded-xl p-6 text-white shadow-lg">

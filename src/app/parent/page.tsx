@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Check, X, AlertCircle, FileText } from "lucide-react"
 import { useRouter } from "next/navigation"
-import VeliSidebar from "@/components/layout/veli-sidebar"
 
 interface Student {
   id: string
@@ -258,9 +257,7 @@ export default function ParentPage() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <VeliSidebar />
-      <div className="flex-1 overflow-y-auto">
+    <div className="min-h-screen bg-gray-50">
         <div className="p-3 sm:p-4 md:p-6">
           <div className="max-w-6xl mx-auto">
             {/* Header */}

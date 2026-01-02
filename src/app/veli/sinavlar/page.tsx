@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import VeliSidebar from "@/components/layout/veli-sidebar"
 import { FileText, Calendar, TrendingUp, Loader2, Award } from "lucide-react"
 
 interface ExamResult {
@@ -90,19 +89,14 @@ export default function VeliSinavlarPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen">
-        <VeliSidebar />
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-green-600" />
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-green-600" />
       </div>
     )
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <VeliSidebar />
-      <div className="flex-1 overflow-y-auto">
+    <div className="min-h-screen bg-gray-50">
         <div className="container mx-auto p-6 space-y-6">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
@@ -199,7 +193,6 @@ export default function VeliSinavlarPage() {
             )}
           </div>
         </div>
-      </div>
     </div>
   )
 }

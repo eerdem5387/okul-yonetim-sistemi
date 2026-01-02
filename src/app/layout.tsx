@@ -281,7 +281,7 @@ export default function RootLayout({
         </head>
         <body className={inter.className}>
           <div className="flex h-screen bg-gray-50">
-            <VeliSidebar />
+            <VeliSidebar key="veli-sidebar" />
             <div className="flex-1 overflow-y-auto">
               {children}
             </div>
