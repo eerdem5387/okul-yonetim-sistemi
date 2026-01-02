@@ -1,6 +1,66 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
+/**
+ * GET /api/clubs/[id]/students
+ * Kulüpteki öğrencileri getirir
+ */
+export async function GET(
+    request: Request,
+    context: { params: Promise<{ id: string }> }
+) {
+    try {
+        const params = await context.params
+        const club = await prisma.club.findUnique({
+            where: { id: params.id },
+            include: {
+                selections: {
+                    include: {
+                        student: {
+                            select: {
+                                id: true,
+                                firstName: true,
+                                lastName: true,
+                                tcNumber: true,
+                                grade: true,
+                            },
+                        },
+                    },
+                    orderBy: {
+                        createdAt: "desc",
+                    },
+                },
+            },
+        })
+
+        if (!club) {
+            return NextResponse.json({ error: "Club not found" }, { status: 404 })
+        }
+
+        // Test bot uyumluluğu için
+        const studentsList = club.selections.map((s) => ({
+            ...s.student,
+            selectionId: s.id,
+            selectedAt: s.createdAt,
+        }))
+
+        return NextResponse.json({
+            success: true,
+            students: studentsList,
+            club: {
+                id: club.id,
+                name: club.name,
+                capacity: club.capacity,
+                currentCount: club.selections.length,
+            },
+            count: studentsList.length,
+        })
+    } catch (error) {
+        console.error("Error fetching club students:", error)
+        return NextResponse.json({ error: "Failed to fetch club students" }, { status: 500 })
+    }
+}
+
 export async function POST(
     request: Request,
     context: { params: Promise<{ id: string }> }

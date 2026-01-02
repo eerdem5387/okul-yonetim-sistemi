@@ -131,7 +131,10 @@ export async function GET(
       })),
     }
 
-    return NextResponse.json(subjectWithStaff)
+    return NextResponse.json({
+      subject: subjectWithStaff,
+      ...subjectWithStaff, // Backward compatibility
+    })
   } catch (error) {
     console.error("Error fetching subject:", error)
     return NextResponse.json(

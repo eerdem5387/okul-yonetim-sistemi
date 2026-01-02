@@ -8,7 +8,20 @@ export async function POST(
 ) {
     try {
         const params = await context.params
-        const body = await request.json()
+        
+        // ID kontrolü
+        if (!params.id) {
+            return NextResponse.json({ error: "Contract ID is required" }, { status: 400 })
+        }
+
+        let body
+        try {
+            body = await request.json()
+        } catch (e) {
+            // Body yoksa veya parse edilemezse, default değerler kullan
+            body = {}
+        }
+        
         const { contractTypes, mainContractData, otherContractData, selectedClubs } = body
 
         // Önce sözleşmeyi bul, sonra öğrenciyi ve tüm yan sözleşmeleri al

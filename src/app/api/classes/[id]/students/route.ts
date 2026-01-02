@@ -3,6 +3,74 @@ import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 
 /**
+ * GET /api/classes/[id]/students
+ * Sınıftaki öğrencileri getirir
+ * 
+ * Yetki: Yönetici, Müdür, Öğrenci İşleri, Rehberlik
+ */
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const params = await context.params
+    const { id: classId } = params
+
+    // Sınıf kontrolü
+    const classData = await prisma.class.findUnique({
+      where: { id: classId },
+    })
+
+    if (!classData) {
+      return NextResponse.json(
+        { error: "Sınıf bulunamadı" },
+        { status: 404 }
+      )
+    }
+
+    // Sınıftaki öğrencileri getir
+    const classStudents = await prisma.classStudent.findMany({
+      where: { classId },
+      include: {
+        student: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            tcNumber: true,
+            grade: true,
+            birthDate: true,
+            phone: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: {
+        student: {
+          firstName: "asc",
+        },
+      },
+    })
+
+    return NextResponse.json({
+      students: classStudents.map((cs) => cs.student),
+      class: {
+        id: classData.id,
+        name: classData.name,
+        grade: classData.grade,
+        section: classData.section,
+      },
+    })
+  } catch (error) {
+    console.error("Error fetching class students:", error)
+    return NextResponse.json(
+      { error: "Öğrenciler getirilirken bir hata oluştu" },
+      { status: 500 }
+    )
+  }
+}
+
+/**
  * POST /api/classes/[id]/students
  * Sınıfa öğrenci ekler
  * 

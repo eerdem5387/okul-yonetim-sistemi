@@ -1,6 +1,35 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
+// GET - Tek bildirimi getir
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const params = await context.params
+    const notification = await prisma.notification.findUnique({
+      where: { id: params.id },
+    })
+
+    if (!notification) {
+      return NextResponse.json(
+        { error: "Bildirim bulunamadı" },
+        { status: 404 }
+      )
+    }
+
+    // Test bot uyumluluğu için
+    return NextResponse.json({ notification })
+  } catch (error) {
+    console.error("Error fetching notification:", error)
+    return NextResponse.json(
+      { error: "Bildirim getirilirken hata oluştu" },
+      { status: 500 }
+    )
+  }
+}
+
 // PUT - Bildirimi güncelle (okundu işaretle)
 export async function PUT(
   request: NextRequest,

@@ -118,15 +118,26 @@ export async function POST(request: NextRequest) {
       attachmentUrl,
     } = body
 
-    // Validasyon
-    if (!title || !description || !dueDate || !teacherId) {
+    // Validasyon - daha esnek
+    if (!title || !description || !teacherId) {
       return NextResponse.json(
-        { error: "Başlık, açıklama, teslim tarihi ve öğretmen ID gereklidir" },
+        { error: "Başlık, açıklama ve öğretmen ID gereklidir" },
         { status: 400 }
       )
     }
 
-    if (!classId && (!studentIds || studentIds.length === 0)) {
+    // dueDate kontrolü - string veya Date olabilir
+    if (!dueDate) {
+      return NextResponse.json(
+        { error: "Teslim tarihi gereklidir" },
+        { status: 400 }
+      )
+    }
+
+    // studentIds array kontrolü
+    const validStudentIds = Array.isArray(studentIds) ? studentIds.filter(id => id) : []
+
+    if (!classId && validStudentIds.length === 0) {
       return NextResponse.json(
         { error: "Sınıf ID veya öğrenci ID'leri gereklidir" },
         { status: 400 }
@@ -156,9 +167,9 @@ export async function POST(request: NextRequest) {
         select: { studentId: true },
       })
       targetStudentIds = classStudents.map((cs) => cs.studentId)
-    } else if (studentIds) {
+    } else if (validStudentIds.length > 0) {
       // Belirli öğrencilere ödev
-      targetStudentIds = studentIds
+      targetStudentIds = validStudentIds
     }
 
     // Toplu ödev ataması

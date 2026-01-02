@@ -134,6 +134,12 @@ export async function DELETE(
     })
   } catch (error) {
     console.error("Error deleting comment:", error)
+    if (error instanceof Error && error.message.includes("Record to delete does not exist")) {
+      return NextResponse.json(
+        { error: "Görüş bulunamadı" },
+        { status: 404 }
+      )
+    }
     return NextResponse.json(
       { error: "Görüş silinirken bir hata oluştu" },
       { status: 500 }

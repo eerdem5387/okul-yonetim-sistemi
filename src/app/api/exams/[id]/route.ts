@@ -125,6 +125,12 @@ export async function DELETE(
   try {
     const { id } = await context.params
 
+    // Önce sınav sonuçlarını sil (cascade delete çalışmazsa)
+    await prisma.examResult.deleteMany({
+      where: { examId: id },
+    })
+
+    // Sonra sınavı sil
     await prisma.exam.delete({
       where: { id },
     })
@@ -135,6 +141,12 @@ export async function DELETE(
     })
   } catch (error) {
     console.error("Error deleting exam:", error)
+    if (error instanceof Error && error.message.includes("Record to delete does not exist")) {
+      return NextResponse.json(
+        { error: "Sınav bulunamadı" },
+        { status: 404 }
+      )
+    }
     return NextResponse.json(
       { error: "Sınav silinirken bir hata oluştu" },
       { status: 500 }

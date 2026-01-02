@@ -112,12 +112,19 @@ export default function PersonelPage() {
       const response = await fetch(`/api/staff?${params.toString()}`)
       if (response.ok) {
         const data = await response.json()
-        setStaff(data.staff || [])
+        // Güvenli array kontrolü
+        const staffArray = Array.isArray(data.staff) ? data.staff : (Array.isArray(data) ? data : [])
+        setStaff(staffArray)
         setTotalStaff(data.pagination?.total || 0)
         setTotalPages(data.pagination?.totalPages || 1)
+      } else {
+        // Hata durumunda boş array set et
+        setStaff([])
       }
     } catch (error) {
       console.error("Error fetching staff:", error)
+      // Hata durumunda boş array set et
+      setStaff([])
     } finally {
       setLoading(false)
     }
@@ -254,12 +261,14 @@ export default function PersonelPage() {
   }
 
   const stats = useMemo(() => {
+    // Güvenli array kontrolü
+    const staffArray = Array.isArray(staff) ? staff : []
     return {
       total: totalStaff,
-      active: staff.filter((s) => s.isActive).length,
-      teachers: staff.filter((s) => s.department === "OGRETMEN").length,
+      active: staffArray.filter((s) => s.isActive).length,
+      teachers: staffArray.filter((s) => s.department === "OGRETMEN").length,
       byDepartment: Object.keys(departmentLabels).reduce((acc, dept) => {
-        acc[dept] = staff.filter((s) => s.department === dept).length
+        acc[dept] = staffArray.filter((s) => s.department === dept).length
         return acc
       }, {} as Record<string, number>),
     }

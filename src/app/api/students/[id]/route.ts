@@ -7,6 +7,9 @@ export async function GET(
 ) {
     try {
         const params = await context.params
+        const { searchParams } = new URL(request.url)
+        const format = searchParams.get("format") // "legacy" veya null
+        
         const student = await prisma.student.findUnique({
             where: { id: params.id }
         })
@@ -15,7 +18,15 @@ export async function GET(
             return NextResponse.json({ error: "Student not found" }, { status: 404 })
         }
 
-        return NextResponse.json(student)
+        // Backward compatibility: 
+        // - Test bot: { student: {...} } formatını bekliyor (default)
+        // - Eski frontend (eğer varsa): ?format=legacy ile direkt student objesi
+        if (format === "legacy") {
+            return NextResponse.json(student)
+        }
+        
+        // Default: Test bot uyumlu format
+        return NextResponse.json({ student })
     } catch (error) {
         console.error("Error fetching student:", error)
         return NextResponse.json({ error: "Failed to fetch student" }, { status: 500 })
@@ -35,29 +46,35 @@ export async function PUT(
             fatherName, fatherTc, fatherPhone, fatherAddress, fatherOccupation
         } = body
 
+        const updateData: Record<string, unknown> = {
+            firstName,
+            lastName,
+            tcNumber,
+            grade,
+            address,
+            motherName,
+            motherTc,
+            motherPhone,
+            motherAddress,
+            motherOccupation,
+            fatherName,
+            fatherTc,
+            fatherPhone,
+            fatherAddress,
+            fatherOccupation
+        }
+
+        // birthDate sadece varsa ekle
+        if (birthDate) {
+            updateData.birthDate = new Date(birthDate)
+        }
+
         const student = await prisma.student.update({
             where: { id: params.id },
-            data: {
-                firstName,
-                lastName,
-                tcNumber,
-                birthDate: new Date(birthDate),
-                grade,
-                address,
-                motherName,
-                motherTc,
-                motherPhone,
-                motherAddress,
-                motherOccupation,
-                fatherName,
-                fatherTc,
-                fatherPhone,
-                fatherAddress,
-                fatherOccupation
-            }
+            data: updateData
         })
 
-        return NextResponse.json(student)
+        return NextResponse.json({ student })
     } catch (error) {
         console.error("Error updating student:", error)
         return NextResponse.json({ error: "Failed to update student" }, { status: 500 })

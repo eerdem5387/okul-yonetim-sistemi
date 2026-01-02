@@ -38,7 +38,10 @@ export async function GET(
       )
     }
 
-    return NextResponse.json(academicYear)
+    return NextResponse.json({
+      academicYear,
+      ...academicYear, // Backward compatibility
+    })
   } catch (error) {
     console.error("Error fetching academic year:", error)
     return NextResponse.json(

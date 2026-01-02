@@ -161,7 +161,11 @@ export async function POST(
       })
     }
 
-    return NextResponse.json(updatedProgress)
+    return NextResponse.json({
+      success: true,
+      progress: updatedProgress,
+      ...updatedProgress, // Backward compatibility
+    })
   } catch (error) {
     console.error("Error approving progress:", error)
     return NextResponse.json(

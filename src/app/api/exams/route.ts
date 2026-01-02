@@ -119,19 +119,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Kapsam kontrolü
-    if (scope === "GRADE" && !grade) {
-      return NextResponse.json(
-        { error: "Sınıf seviyesi bazlı sınavlar için grade gereklidir" },
-        { status: 400 }
-      )
+    // Kapsam kontrolü - daha esnek
+    if (scope === "GRADE") {
+      if (!grade || grade === "" || grade === null) {
+        return NextResponse.json(
+          { error: "Sınıf seviyesi bazlı sınavlar için grade gereklidir" },
+          { status: 400 }
+        )
+      }
     }
 
-    if (scope === "CLASS" && !classId) {
-      return NextResponse.json(
-        { error: "Sınıf bazlı sınavlar için classId gereklidir" },
-        { status: 400 }
-      )
+    if (scope === "CLASS") {
+      if (!classId || classId === "" || classId === null) {
+        return NextResponse.json(
+          { error: "Sınıf bazlı sınavlar için classId gereklidir" },
+          { status: 400 }
+        )
+      }
     }
 
     // Sınav oluştur
@@ -140,7 +144,7 @@ export async function POST(request: NextRequest) {
         name,
         examType,
         examDate: new Date(examDate),
-        grade: scope === "WHOLE_SCHOOL" ? null : parseInt(grade),
+        grade: scope === "WHOLE_SCHOOL" ? null : (grade ? parseInt(String(grade)) : null),
         classId: scope === "CLASS" ? classId : null,
         description,
         subjects: subjects || null,

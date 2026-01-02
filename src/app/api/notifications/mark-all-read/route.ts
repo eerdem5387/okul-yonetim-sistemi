@@ -7,24 +7,22 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { targetRole, targetUserId } = body
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const where: any = { isRead: false }
+    // Where clause'u düzgün oluştur
+    const whereConditions: Record<string, unknown> = {
+      isRead: false
+    }
 
+    // targetRole ve targetUserId varsa ekle
     if (targetRole) {
-      where.OR = [{ targetRole: targetRole }, { targetRole: null }]
+      whereConditions.targetRole = targetRole
     }
 
     if (targetUserId) {
-      where.AND = [
-        ...(where.AND || []),
-        {
-          OR: [{ targetUserId: targetUserId }, { targetUserId: null }],
-        },
-      ]
+      whereConditions.targetUserId = targetUserId
     }
 
     const result = await prisma.notification.updateMany({
-      where,
+      where: whereConditions,
       data: {
         isRead: true,
         updatedAt: new Date(),
@@ -32,6 +30,7 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json({
+      success: true,
       message: "Tüm bildirimler okundu olarak işaretlendi",
       count: result.count,
     })

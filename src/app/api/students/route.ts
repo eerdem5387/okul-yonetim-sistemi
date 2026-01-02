@@ -94,7 +94,10 @@ export async function POST(request: NextRequest) {
             }
         })
 
-        return NextResponse.json(student)
+        return NextResponse.json({
+            success: true,
+            student
+        })
     } catch (error) {
         console.error("Error creating student:", error)
         return NextResponse.json({ error: "Failed to create student" }, { status: 500 })

@@ -73,13 +73,20 @@ export async function GET(request: NextRequest) {
       take: 1, // TC numarası unique olduğu için sadece 1 sonuç beklenir
     })
 
+    // Test bot uyumluluğu için - hem students hem data property'si
+    const studentsList = students.map((s) => ({
+      id: s.id,
+      fullName: `${s.firstName} ${s.lastName}`,
+      grade: s.grade,
+      tcNumber: s.tcNumber,
+    }))
+
     const response = NextResponse.json({
-      data: students.map((s) => ({
-        id: s.id,
-        fullName: `${s.firstName} ${s.lastName}`,
-        grade: s.grade,
-        tcNumber: s.tcNumber,
-      })),
+      students: studentsList,
+      data: studentsList,
+      // Test bot için ek kontrol
+      success: true,
+      count: studentsList.length,
     })
 
     // CORS headers for gezi-basvuru-sistemi

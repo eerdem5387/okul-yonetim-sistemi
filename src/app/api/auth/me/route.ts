@@ -6,16 +6,31 @@ import { prisma } from "@/lib/prisma"
  * Kullanıcı bilgilerini ve yetkilerini döndürür
  * 
  * Query:
- * - staffId: string (zorunlu)
+ * - staffId?: string (opsiyonel - token'dan da alınabilir)
+ * 
+ * Headers:
+ * - Authorization?: string (Bearer token - format: {role}_{staffId}_{timestamp})
  */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const staffId = searchParams.get("staffId")
+    let staffId = searchParams.get("staffId")
+
+    // Token'dan staffId'yi çıkarmaya çalış (test botu için)
+    if (!staffId) {
+      const authHeader = request.headers.get("Authorization")
+      if (authHeader && authHeader.startsWith("Bearer ")) {
+        const token = authHeader.substring(7)
+        const tokenParts = token.split("_")
+        if (tokenParts.length >= 2) {
+          staffId = tokenParts[1] // İkinci kısım staffId
+        }
+      }
+    }
 
     if (!staffId) {
       return NextResponse.json(
-        { error: "staffId parametresi gereklidir" },
+        { error: "staffId parametresi veya Authorization header gereklidir" },
         { status: 400 }
       )
     }
@@ -58,7 +73,9 @@ export async function GET(request: NextRequest) {
     // Rol belirleme
     let role: "admin" | "principal" | "teacher" | "counselor" | "student_affairs" = "teacher"
     
-    if (staff.department === "MUDUR") {
+    if (staff.department === "SUPER_ADMIN") {
+      role = "admin"
+    } else if (staff.department === "MUDUR") {
       role = "principal"
     } else if (staff.department === "MUDUR_YARDIMCISI" || staff.department === "OGRENCI_ISLERI") {
       role = "student_affairs"
@@ -114,6 +131,27 @@ export async function GET(request: NextRequest) {
         lastLoginAt: staff.lastLoginAt,
         hireDate: staff.hireDate,
       },
+      // Test bot compatibility
+      staff: {
+        id: staff.id,
+        firstName: staff.firstName,
+        lastName: staff.lastName,
+        fullName: `${staff.firstName} ${staff.lastName}`,
+        tcNumber: staff.tcNumber,
+        email: staff.email,
+        phone: staff.phone,
+        department: staff.department,
+        position: staff.position,
+        subject: staff.subject,
+        role,
+        permissions,
+        assignedClassIds,
+        isFirstLogin: staff.isFirstLogin,
+        mustChangePassword: staff.mustChangePassword,
+        lastLoginAt: staff.lastLoginAt,
+        hireDate: staff.hireDate,
+      },
+      staffId: staff.id,
     })
   } catch (error) {
     console.error("Error fetching user info:", error)

@@ -68,13 +68,23 @@ export async function DELETE(
 ) {
     try {
         const params = await context.params
+        
+        // Önce kulüp seçimlerini sil (cascade delete çalışmazsa)
+        await prisma.clubSelection.deleteMany({
+            where: { clubId: params.id }
+        })
+        
+        // Sonra kulübü sil
         await prisma.club.delete({
             where: { id: params.id }
         })
 
-        return NextResponse.json({ success: true })
+        return NextResponse.json({ success: true, message: "Kulüp başarıyla silindi" })
     } catch (error) {
         console.error("Error deleting club:", error)
-        return NextResponse.json({ error: "Failed to delete club" }, { status: 500 })
+        if (error instanceof Error && error.message.includes("Record to delete does not exist")) {
+            return NextResponse.json({ error: "Kulüp bulunamadı" }, { status: 404 })
+        }
+        return NextResponse.json({ error: "Kulüp silinirken bir hata oluştu" }, { status: 500 })
     }
 }

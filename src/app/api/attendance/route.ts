@@ -135,15 +135,23 @@ export async function POST(request: NextRequest) {
       attendances,
     } = body
 
-    // Validasyon
-    if (!classId || !teacherId || !date || !lessonName || !startTime || !endTime) {
+    // Validasyon - daha esnek
+    if (!classId || !teacherId || !date) {
       return NextResponse.json(
-        { error: "Sınıf, öğretmen, tarih, ders adı, başlangıç ve bitiş saati gereklidir" },
+        { error: "Sınıf, öğretmen ve tarih gereklidir" },
         { status: 400 }
       )
     }
 
-    if (!attendances || attendances.length === 0) {
+    // lessonName, startTime, endTime opsiyonel olabilir
+    const lessonNameValue = lessonName || "Ders"
+    const startTimeValue = startTime || "09:00"
+    const endTimeValue = endTime || "10:00"
+
+    // attendances array kontrolü
+    const validAttendances = Array.isArray(attendances) ? attendances.filter(att => att && att.studentId && att.status) : []
+
+    if (validAttendances.length === 0) {
       return NextResponse.json(
         { error: "En az bir öğrenci yoklama durumu gereklidir" },
         { status: 400 }
@@ -152,14 +160,14 @@ export async function POST(request: NextRequest) {
 
     // Toplu yoklama oluştur
     const createdAttendances = await prisma.attendance.createMany({
-      data: attendances.map((att: { studentId: string; status: string; note?: string }) => ({
+      data: validAttendances.map((att: { studentId: string; status: string; note?: string }) => ({
         scheduleId: scheduleId || null,
         classId,
         teacherId,
         date: new Date(date),
-        lessonName,
-        startTime,
-        endTime,
+        lessonName: lessonNameValue,
+        startTime: startTimeValue,
+        endTime: endTimeValue,
         studentId: att.studentId,
         status: att.status as "PRESENT" | "ABSENT" | "LATE" | "EXCUSED",
         note: att.note || null,

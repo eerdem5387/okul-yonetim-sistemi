@@ -8,15 +8,28 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const academicYearId = searchParams.get("academicYearId")
 
-    if (!academicYearId) {
-      return NextResponse.json(
-        { error: "Akademik yıl ID zorunludur" },
-        { status: 400 }
-      )
+    // academicYearId opsiyonel - eğer verilmezse aktif akademik yılın tatillerini getir
+    const whereCondition: { academicYearId?: string } = {}
+    
+    if (academicYearId) {
+      whereCondition.academicYearId = academicYearId
+    } else {
+      // Aktif akademik yılı bul
+      const activeYear = await prisma.academicYear.findFirst({
+        where: { isActive: true },
+        select: { id: true },
+      })
+      
+      if (activeYear) {
+        whereCondition.academicYearId = activeYear.id
+      } else {
+        // Aktif yıl yoksa boş liste döndür
+        return NextResponse.json([])
+      }
     }
 
     const holidays = await prisma.holiday.findMany({
-      where: { academicYearId },
+      where: whereCondition,
       orderBy: {
         startDate: "asc",
       },

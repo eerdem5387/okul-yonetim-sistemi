@@ -147,6 +147,12 @@ export async function DELETE(
   try {
     const { id } = await context.params
 
+    // Önce ödev atamalarını sil (cascade delete çalışmazsa)
+    await prisma.homeworkAssignment.deleteMany({
+      where: { homeworkId: id },
+    })
+
+    // Sonra ödevi sil
     await prisma.homework.delete({
       where: { id },
     })
@@ -157,6 +163,12 @@ export async function DELETE(
     })
   } catch (error) {
     console.error("Error deleting homework:", error)
+    if (error instanceof Error && error.message.includes("Record to delete does not exist")) {
+      return NextResponse.json(
+        { error: "Ödev bulunamadı" },
+        { status: 404 }
+      )
+    }
     return NextResponse.json(
       { error: "Ödev silinirken bir hata oluştu" },
       { status: 500 }
