@@ -424,90 +424,90 @@ export default function NewRegistrationPage() {
         return
       }
       
-      if (allSuccessful) {
-        // Ana sözleşme ID'sini al
-        const mainContractResponse = await responses[0].json()
-        const contractId = mainContractResponse.id || mainContractResponse.newRegistration?.id
-        
-        if (!contractId) {
-          alert("⚠️ Sözleşme kaydedildi ancak ID alınamadı!")
-          return
-        }
+      // Tüm sözleşmeler başarıyla kaydedildi
+      // Ana sözleşme ID'sini al
+      const mainContractResponse = await responses[0].json()
+      const contractId = mainContractResponse.id || mainContractResponse.newRegistration?.id
+      
+      if (!contractId) {
+        alert("⚠️ Sözleşme kaydedildi ancak ID alınamadı!")
+        return
+      }
 
-        // Seçili kulüplerin detaylarını al (mainContractData'dan)
-        const selectedClubsForPDF = (mainContractData.selectedClubs || [])
-          .map((clubId: string) => {
-            const club = clubs.find(c => c.id === clubId)
-            return club ? { id: club.id, name: club.name } : null
-          })
-          .filter((club): club is { id: string; name: string } => club !== null)
-
-        // PDF'i indir
-        const pdfResponse = await fetch(`/api/pdf/combined/${contractId}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contractTypes: [
-              "new-registration",
-              "uniform",
-              "meal",
-              "book",
-              ...(otherContractData.usesService ? ["service"] : [])
-            ],
-            mainContractData: mainContractData,
-            otherContractData: otherContractData,
-            selectedClubs: selectedClubsForPDF.length > 0 ? selectedClubsForPDF : undefined
-          })
+      // Seçili kulüplerin detaylarını al (mainContractData'dan)
+      const selectedClubsForPDF = (mainContractData.selectedClubs || [])
+        .map((clubId: string) => {
+          const club = clubs.find(c => c.id === clubId)
+          return club ? { id: club.id, name: club.name } : null
         })
+        .filter((club): club is { id: string; name: string } => club !== null)
 
-        if (pdfResponse.ok) {
-          const blob = await pdfResponse.blob()
-          const url = window.URL.createObjectURL(blob)
-          const a = document.createElement("a")
-          a.href = url
-          a.download = `tum-sozlesmeler-${studentFormData.firstName}-${studentFormData.lastName}.pdf`
-          document.body.appendChild(a)
-          a.click()
-          window.URL.revokeObjectURL(url)
-          document.body.removeChild(a)
-          
-          // Başarı mesajı
-          alert(`✅ Kayıt başarıyla tamamlandı!\n\n` +
-            `Öğrenci: ${studentFormData.firstName} ${studentFormData.lastName}\n` +
-            `TC: ${studentFormData.tcNumber}\n\n` +
-            `✓ Öğrenci sisteme eklendi\n` +
-            `✓ Sözleşmeler kaydedildi\n` +
-            `✓ Öğrenci "Geçmiş Sözleşmeler" sayfasında görünecek\n` +
-            `✓ Öğrenci "Öğrenci Yönetimi" sayfasında görünecek\n\n` +
-            `PDF dosyası indirildi.`)
-          
-          // Formu temizle
-          setStudentFormData({
-            firstName: "",
-            lastName: "",
-            tcNumber: "",
-            birthDate: "",
-            grade: "",
-            address: "",
-            motherName: "",
-            motherTc: "",
-            motherPhone: "",
-            motherAddress: "",
-            motherOccupation: "",
-            fatherName: "",
-            fatherTc: "",
-            fatherPhone: "",
-            fatherAddress: "",
-            fatherOccupation: ""
-          })
-          setCreatedStudentId(null)
-          
-          // İstatistikleri yenile
-          await fetchStats()
-        } else {
-          const errorData = await pdfResponse.json().catch(() => ({}))
-          alert(`⚠️ PDF oluşturulurken hata oluştu!\n\n${errorData.error || errorData.details || "Bilinmeyen hata"}`)
-        }
+      // PDF'i indir
+      const pdfResponse = await fetch(`/api/pdf/combined/${contractId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contractTypes: [
+            "new-registration",
+            "uniform",
+            "meal",
+            "book",
+            ...(otherContractData.usesService ? ["service"] : [])
+          ],
+          mainContractData: mainContractData,
+          otherContractData: otherContractData,
+          selectedClubs: selectedClubsForPDF.length > 0 ? selectedClubsForPDF : undefined
+        })
+      })
+
+      if (pdfResponse.ok) {
+        const blob = await pdfResponse.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = `tum-sozlesmeler-${studentFormData.firstName}-${studentFormData.lastName}.pdf`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+        
+        // Başarı mesajı
+        alert(`✅ Kayıt başarıyla tamamlandı!\n\n` +
+          `Öğrenci: ${studentFormData.firstName} ${studentFormData.lastName}\n` +
+          `TC: ${studentFormData.tcNumber}\n\n` +
+          `✓ Öğrenci sisteme eklendi\n` +
+          `✓ Sözleşmeler kaydedildi\n` +
+          `✓ Öğrenci "Geçmiş Sözleşmeler" sayfasında görünecek\n` +
+          `✓ Öğrenci "Öğrenci Yönetimi" sayfasında görünecek\n\n` +
+          `PDF dosyası indirildi.`)
+        
+        // Formu temizle
+        setStudentFormData({
+          firstName: "",
+          lastName: "",
+          tcNumber: "",
+          birthDate: "",
+          grade: "",
+          address: "",
+          motherName: "",
+          motherTc: "",
+          motherPhone: "",
+          motherAddress: "",
+          motherOccupation: "",
+          fatherName: "",
+          fatherTc: "",
+          fatherPhone: "",
+          fatherAddress: "",
+          fatherOccupation: ""
+        })
+        setCreatedStudentId(null)
+        
+        // İstatistikleri yenile
+        await fetchStats()
+      } else {
+        const errorData = await pdfResponse.json().catch(() => ({}))
+        alert(`⚠️ PDF oluşturulurken hata oluştu!\n\n${errorData.error || errorData.details || "Bilinmeyen hata"}`)
+      }
     } catch (error) {
       console.error("Error downloading PDF:", error)
       alert("PDF indirilirken hata oluştu!")
