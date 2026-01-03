@@ -44,49 +44,64 @@ export async function GET(request: NextRequest) {
       }
     })
     
-    // Debug: Toplam kayıt sayısını logla
-    const totalCountInDB = await prisma.newRegistration.count()
-    const validCount = registrations.length
-    console.log(`[Stats] Total registrations in DB: ${totalCountInDB}, Valid (with student): ${validCount}`)
-    
-    // Eğer fark varsa, detaylı log
-    // Not: studentId zorunlu olduğu için student: null kontrolü yapılamaz
-    // Ancak geçersiz studentId'leri kontrol edebiliriz
-    if (totalCountInDB !== validCount) {
-      // Tüm kayıtları çek
-      const allRegistrations = await prisma.newRegistration.findMany({
-        select: {
-          id: true,
-          createdAt: true,
-          studentId: true
+    // Debug: Toplam kayıt sayısını logla (sadece development'ta)
+    if (process.env.NODE_ENV === 'development') {
+      const totalCountInDB = await prisma.newRegistration.count()
+      const validCount = registrations.length
+      console.log(`[Stats] Total registrations in DB: ${totalCountInDB}, Valid (with student): ${validCount}`)
+      
+      // Eğer fark varsa, detaylı log
+      if (totalCountInDB !== validCount) {
+        const allRegistrations = await prisma.newRegistration.findMany({
+          select: {
+            id: true,
+            createdAt: true,
+            studentId: true
+          }
+        })
+        
+        const studentIds = allRegistrations.map(r => r.studentId)
+        const validStudents = await prisma.student.findMany({
+          where: {
+            id: { in: studentIds }
+          },
+          select: { id: true }
+        })
+        
+        const validStudentIds = new Set(validStudents.map(s => s.id))
+        const invalidRegistrations = allRegistrations.filter(r => !validStudentIds.has(r.studentId))
+        
+        if (invalidRegistrations.length > 0) {
+          console.log(`[Stats] Found ${invalidRegistrations.length} registrations without valid student:`, invalidRegistrations)
         }
-      })
-      
-      // Tüm student ID'lerini topla
-      const studentIds = allRegistrations.map(r => r.studentId)
-      
-      // Geçerli student'ları toplu olarak kontrol et
-      const validStudents = await prisma.student.findMany({
-        where: {
-          id: { in: studentIds }
-        },
-        select: { id: true }
-      })
-      
-      const validStudentIds = new Set(validStudents.map(s => s.id))
-      const invalidRegistrations = allRegistrations.filter(r => !validStudentIds.has(r.studentId))
-      
-      if (invalidRegistrations.length > 0) {
-        console.log(`[Stats] Found ${invalidRegistrations.length} registrations without valid student:`, invalidRegistrations)
       }
     }
     
     // Sınıf bazında sayım
     const sinifStats: Record<string, number> = {}
+    // Önce tüm sınıfları 0 ile başlat (5-12. Sınıf)
+    for (let i = 5; i <= 12; i++) {
+      sinifStats[`${i}. Sınıf`] = 0
+    }
+    
+    // Kayıtları say
     registrations.forEach(r => {
-      const grade = r.student?.grade || 'Belirtilmemiş'
-      const sinif = `${grade}. Sınıf`
-      sinifStats[sinif] = (sinifStats[sinif] || 0) + 1
+      const grade = r.student?.grade || ''
+      // Grade formatını kontrol et (örn: "5. Sınıf" veya "5")
+      let sinif = ''
+      if (grade.includes('Sınıf')) {
+        sinif = grade
+      } else if (grade) {
+        // Sadece sayı varsa "5. Sınıf" formatına çevir
+        const gradeNum = parseInt(grade.replace(/\D/g, ''))
+        if (gradeNum >= 5 && gradeNum <= 12) {
+          sinif = `${gradeNum}. Sınıf`
+        }
+      }
+      
+      if (sinif && sinifStats.hasOwnProperty(sinif)) {
+        sinifStats[sinif] = (sinifStats[sinif] || 0) + 1
+      }
     })
     
     // Bugün, bu hafta, bu ay
@@ -116,13 +131,20 @@ export async function GET(request: NextRequest) {
       return createdAt >= thisMonth
     }).length
     
-    return NextResponse.json({
+    const responseData = {
       total: registrations.length,
       today: todayCount,
       thisWeek: thisWeekCount,
       thisMonth: thisMonthCount,
       sinifStats,
-    })
+    }
+    
+    // Debug log (sadece development'ta)
+    if (process.env.NODE_ENV === 'development') {
+      console.log("[Stats API] Returning stats:", JSON.stringify(responseData, null, 2))
+    }
+    
+    return NextResponse.json(responseData)
   } catch (error) {
     console.error("Error fetching new registration stats:", error)
     return NextResponse.json(

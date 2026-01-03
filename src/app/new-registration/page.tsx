@@ -226,7 +226,21 @@ export default function NewRegistrationPage() {
       const response = await fetch(`/api/new-registrations/stats`)
       if (response.ok) {
         const data = await response.json()
-        setStats(data)
+        // API response formatını kontrol et ve state'e set et
+        if (data && typeof data === 'object') {
+          setStats({
+            total: data.total || 0,
+            today: data.today || 0,
+            thisWeek: data.thisWeek || 0,
+            thisMonth: data.thisMonth || 0,
+            sinifStats: data.sinifStats || {}
+          })
+        } else {
+          console.error("[New Registration] Invalid stats data format:", data)
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        console.error("[New Registration] Stats API error:", response.status, errorData)
       }
     } catch (error) {
       console.error("Error fetching stats:", error)
