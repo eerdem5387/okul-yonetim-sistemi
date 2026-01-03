@@ -263,7 +263,7 @@ export default function NewRegistrationsListPage() {
               </div>
 
               {/* Ödeme Bilgileri */}
-              {(contractData.announcedTuitionFee || contractData.studentTuitionFee) && (
+              {(contractData.announcedTuitionFee != null || contractData.studentTuitionFee != null) && (
                 <div>
                   <h3 className="text-lg font-semibold mb-3">Öğrenim Ücreti</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
