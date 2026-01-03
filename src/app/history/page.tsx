@@ -523,9 +523,13 @@ export default function HistoryPage() {
                         <span className="text-xs sm:text-sm text-gray-500 flex-shrink-0">
                           {new Date(contract.createdAt).toLocaleDateString('tr-TR')}
                         </span>
-                        {contract.contractData && typeof contract.contractData === 'object' && 'registrationResponsible' in contract.contractData && contract.contractData.registrationResponsible && (
+                        {contract.contractData && 
+                         typeof contract.contractData === 'object' && 
+                         'registrationResponsible' in contract.contractData && 
+                         contract.contractData.registrationResponsible && 
+                         typeof contract.contractData.registrationResponsible === 'string' && (
                           <span className="text-xs sm:text-sm text-blue-600 flex-shrink-0">
-                            Kayıt: {String(contract.contractData.registrationResponsible)}
+                            Kayıt: {contract.contractData.registrationResponsible}
                           </span>
                         )}
                       </div>
