@@ -46,6 +46,8 @@ export async function PUT(
     }
 
     // Güncelle
+    // Eğer öğretmen bir işlem yapıyorsa (tamamlandı veya tamamlanmadı), completedBy set edilir
+    // Bu sayede "işlem yapılmamış" (completedBy null) ile "tamamlanmadı" (completedBy var ama isCompleted false) ayırt edilebilir
     const updatedAssignment = await prisma.homeworkAssignment.update({
       where: {
         homeworkId_studentId: {
@@ -55,8 +57,8 @@ export async function PUT(
       },
       data: {
         isCompleted,
-        completedAt: isCompleted ? new Date() : null,
-        completedBy: isCompleted ? completedBy : null,
+        completedAt: isCompleted ? new Date() : (completedBy ? new Date() : null), // Tamamlanmadı durumunda da tarih set edilir
+        completedBy: completedBy || null, // Öğretmen işlem yaptıysa completedBy set edilir
         note,
       },
       include: {

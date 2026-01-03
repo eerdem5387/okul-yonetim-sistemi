@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { BookOpen, Plus, Calendar, Users, CheckCircle, XCircle, Loader2, Edit, Trash2, X } from "lucide-react"
+import { BookOpen, Plus, Calendar, Users, CheckCircle, XCircle, Loader2, Edit, Trash2, X, Clock } from "lucide-react"
 
 interface Homework {
   id: string
@@ -25,6 +25,7 @@ interface Homework {
     id: string
     isCompleted: boolean
     completedAt: string | null
+    completedBy: string | null
     student: {
       id: string
       firstName: string
@@ -323,7 +324,7 @@ export default function TeacherHomeworkPage() {
     setSelectedHomework(homework)
   }
 
-  const handleToggleCompletion = async (assignmentId: string, studentId: string, currentStatus: boolean) => {
+  const handleToggleCompletion = async (assignmentId: string, studentId: string, isCompleted: boolean) => {
     if (!selectedHomework) return
 
     setUpdatingAssignmentId(assignmentId)
@@ -333,7 +334,7 @@ export default function TeacherHomeworkPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           studentId,
-          isCompleted: !currentStatus,
+          isCompleted,
           completedBy: staffId,
         }),
       })
@@ -757,61 +758,99 @@ export default function TeacherHomeworkPage() {
                       Bu ödeve atanmış öğrenci bulunmamaktadır.
                     </div>
                   ) : (
-                    selectedHomework.assignments.map((assignment) => (
-                      <div
-                        key={assignment.id}
-                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-                      >
-                        <div className="flex items-center gap-3 flex-1">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                            assignment.isCompleted ? "bg-green-100" : "bg-gray-100"
-                          }`}>
-                            {assignment.isCompleted ? (
-                              <CheckCircle className="h-5 w-5 text-green-600" />
-                            ) : (
-                              <XCircle className="h-5 w-5 text-gray-400" />
-                            )}
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-medium text-gray-900">
-                              {assignment.student.firstName} {assignment.student.lastName}
-                            </p>
-                            {assignment.isCompleted && assignment.completedAt && (
-                              <p className="text-xs text-gray-500 mt-1">
-                                Tamamlandı: {new Date(assignment.completedAt).toLocaleDateString("tr-TR", {
-                                  year: "numeric",
-                                  month: "long",
-                                  day: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit"
-                                })}
+                    selectedHomework.assignments.map((assignment) => {
+                      // İşlem yapılmış mı kontrolü: completedBy null değilse öğretmen bir işlem yapmış demektir
+                      const hasAction = assignment.completedBy !== null
+                      return (
+                        <div
+                          key={assignment.id}
+                          className={`flex items-center justify-between p-4 border-2 rounded-lg transition-colors ${
+                            assignment.isCompleted
+                              ? "bg-green-50 border-green-200"
+                              : hasAction
+                              ? "bg-red-50 border-red-200"
+                              : "bg-white border-gray-200 hover:bg-gray-50"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 flex-1">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                              assignment.isCompleted 
+                                ? "bg-green-100" 
+                                : hasAction
+                                ? "bg-red-100"
+                                : "bg-gray-100"
+                            }`}>
+                              {assignment.isCompleted ? (
+                                <CheckCircle className="h-5 w-5 text-green-600" />
+                              ) : hasAction ? (
+                                <XCircle className="h-5 w-5 text-red-600" />
+                              ) : (
+                                <Clock className="h-5 w-5 text-gray-400" />
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-medium text-gray-900">
+                                {assignment.student.firstName} {assignment.student.lastName}
                               </p>
-                            )}
+                              {assignment.isCompleted && assignment.completedAt && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                  Tamamlandı: {new Date(assignment.completedAt).toLocaleDateString("tr-TR", {
+                                    year: "numeric",
+                                    month: "long",
+                                    day: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit"
+                                  })}
+                                </p>
+                              )}
+                              {!hasAction && (
+                                <p className="text-xs text-gray-400 mt-1 italic">(İşlem yapılmadı)</p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant={assignment.isCompleted ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => handleToggleCompletion(assignment.id, assignment.student.id, true)}
+                              disabled={updatingAssignmentId === assignment.id}
+                              className={assignment.isCompleted 
+                                ? "bg-green-600 text-white border-green-700 hover:bg-green-700 font-semibold" 
+                                : "bg-white text-gray-600 border-gray-300 hover:bg-green-50 hover:border-green-300 hover:text-green-700"
+                              }
+                            >
+                              {updatingAssignmentId === assignment.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <CheckCircle className="h-4 w-4 mr-1" />
+                                  Tamamlandı
+                                </>
+                              )}
+                            </Button>
+                            <Button
+                              variant={!assignment.isCompleted && hasAction ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => handleToggleCompletion(assignment.id, assignment.student.id, false)}
+                              disabled={updatingAssignmentId === assignment.id}
+                              className={!assignment.isCompleted && hasAction
+                                ? "bg-red-600 text-white border-red-700 hover:bg-red-700 font-semibold" 
+                                : "bg-white text-gray-600 border-gray-300 hover:bg-red-50 hover:border-red-300 hover:text-red-700"
+                              }
+                            >
+                              {updatingAssignmentId === assignment.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <XCircle className="h-4 w-4 mr-1" />
+                                  Tamamlanmadı
+                                </>
+                              )}
+                            </Button>
                           </div>
                         </div>
-                        <Button
-                          variant={assignment.isCompleted ? "outline" : "default"}
-                          size="sm"
-                          onClick={() => handleToggleCompletion(assignment.id, assignment.student.id, assignment.isCompleted)}
-                          disabled={updatingAssignmentId === assignment.id}
-                          className={assignment.isCompleted ? "bg-green-50 text-green-700 border-green-300 hover:bg-green-100" : "bg-blue-600 hover:bg-blue-700"}
-                        >
-                          {updatingAssignmentId === assignment.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : assignment.isCompleted ? (
-                            <>
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Tamamlandı
-                            </>
-                          ) : (
-                            <>
-                              <XCircle className="h-4 w-4 mr-1" />
-                              Tamamlanmadı
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    ))
+                      )
+                    })
                   )}
                 </div>
               </CardContent>

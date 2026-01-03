@@ -141,16 +141,8 @@ export default function TeacherAttendancePage() {
         const data = await response.json()
         const studentList = data.students || []
         setStudents(studentList)
-        
-        // Tüm öğrenciler için varsayılan olarak "PRESENT" durumunu ayarla
-        const defaultAttendances: Record<string, AttendanceRecord> = {}
-        studentList.forEach((student: Student) => {
-          defaultAttendances[student.id] = {
-            studentId: student.id,
-            status: "PRESENT",
-          }
-        })
-        setAttendances(defaultAttendances)
+        // Varsayılan durum yok - öğretmen her öğrenci için manuel olarak seçim yapacak
+        setAttendances({})
       }
     } catch (error) {
       console.error("Error fetching students:", error)
@@ -435,50 +427,62 @@ export default function TeacherAttendancePage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {students.map((student, index) => (
-                        <div
-                          key={student.id}
-                          className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className="text-gray-500 font-mono w-8">{index + 1}.</span>
-                            <div>
-                              <span className="font-medium text-gray-900">
-                                {student.firstName} {student.lastName}
-                              </span>
-                              {student.grade && (
-                                <span className="text-sm text-gray-500 ml-2">({student.grade})</span>
-                              )}
+                      {students.map((student, index) => {
+                        const attendanceStatus = attendances[student.id]?.status
+                        return (
+                          <div
+                            key={student.id}
+                            className={`flex items-center justify-between p-4 border-2 rounded-lg transition-colors ${
+                              attendanceStatus === "PRESENT"
+                                ? "bg-green-50 border-green-200"
+                                : attendanceStatus === "ABSENT"
+                                ? "bg-red-50 border-red-200"
+                                : "bg-white border-gray-200 hover:bg-gray-50"
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="text-gray-500 font-mono w-8">{index + 1}.</span>
+                              <div>
+                                <span className="font-medium text-gray-900">
+                                  {student.firstName} {student.lastName}
+                                </span>
+                                {student.grade && (
+                                  <span className="text-sm text-gray-500 ml-2">({student.grade})</span>
+                                )}
+                                {!attendanceStatus && (
+                                  <span className="text-xs text-gray-400 ml-2 italic">(İşlem yapılmadı)</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleStatusChange(student.id, "PRESENT")}
+                                className={`px-4 py-2 rounded-md text-sm font-medium border transition-all ${
+                                  attendanceStatus === "PRESENT"
+                                    ? "bg-green-600 text-white border-green-700 shadow-sm font-semibold"
+                                    : "bg-white text-gray-600 border-gray-300 hover:bg-green-50 hover:border-green-300 hover:text-green-700"
+                                }`}
+                              >
+                                <CheckCircle className="h-4 w-4 inline mr-1" />
+                                Katıldı
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleStatusChange(student.id, "ABSENT")}
+                                className={`px-4 py-2 rounded-md text-sm font-medium border transition-all ${
+                                  attendanceStatus === "ABSENT"
+                                    ? "bg-red-600 text-white border-red-700 shadow-sm font-semibold"
+                                    : "bg-white text-gray-600 border-gray-300 hover:bg-red-50 hover:border-red-300 hover:text-red-700"
+                                }`}
+                              >
+                                <XCircle className="h-4 w-4 inline mr-1" />
+                                Katılmadı
+                              </button>
                             </div>
                           </div>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => handleStatusChange(student.id, "PRESENT")}
-                              className={`px-4 py-2 rounded-md text-sm font-medium border transition-all ${
-                                attendances[student.id]?.status === "PRESENT"
-                                  ? "bg-green-100 text-green-800 border-green-300 shadow-sm"
-                                  : "bg-white text-gray-600 border-gray-300 hover:bg-green-50 hover:border-green-300"
-                              }`}
-                            >
-                              <CheckCircle className="h-4 w-4 inline mr-1" />
-                              Katıldı
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleStatusChange(student.id, "ABSENT")}
-                              className={`px-4 py-2 rounded-md text-sm font-medium border transition-all ${
-                                attendances[student.id]?.status === "ABSENT"
-                                  ? "bg-red-100 text-red-800 border-red-300 shadow-sm"
-                                  : "bg-white text-gray-600 border-gray-300 hover:bg-red-50 hover:border-red-300"
-                              }`}
-                            >
-                              <XCircle className="h-4 w-4 inline mr-1" />
-                              Katılmadı
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </CardContent>
                 </Card>
@@ -487,7 +491,12 @@ export default function TeacherAttendancePage() {
               {/* Kaydet Butonu */}
               {students.length > 0 && (
                 <div className="flex justify-end">
-                  <Button type="submit" size="lg" disabled={loading} className="min-w-[200px]">
+                  <Button 
+                    type="submit" 
+                    size="lg" 
+                    disabled={loading || Object.keys(attendances).length === 0} 
+                    className="min-w-[200px]"
+                  >
                     {loading ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -497,6 +506,11 @@ export default function TeacherAttendancePage() {
                       "Yoklamayı Kaydet"
                     )}
                   </Button>
+                  {Object.keys(attendances).length === 0 && (
+                    <p className="text-sm text-gray-500 mt-2 text-right w-full">
+                      Lütfen en az bir öğrenci için yoklama durumu seçin
+                    </p>
+                  )}
                 </div>
               )}
             </>
