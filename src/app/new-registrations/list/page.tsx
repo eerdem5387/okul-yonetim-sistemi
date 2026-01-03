@@ -282,10 +282,110 @@ export default function NewRegistrationsListPage() {
               {/* Diğer Bilgiler */}
               <div>
                 <h3 className="text-lg font-semibold mb-3">Diğer Bilgiler</h3>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <pre className="text-xs overflow-auto">
-                    {JSON.stringify(contractData, null, 2)}
-                  </pre>
+                <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-lg border border-gray-200">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {Object.entries(contractData)
+                      .filter(([key]) => {
+                        // Zaten gösterilen alanları filtrele
+                        const excludedKeys = [
+                          'studentClass', 'studentBirthDate', 'contractNo', 
+                          'registrationDate', 'registrationResponsible',
+                          'announcedTuitionFee', 'studentTuitionFee'
+                        ]
+                        return !excludedKeys.includes(key)
+                      })
+                      .map(([key, value]) => {
+                        // Key'i Türkçe'ye çevir
+                        const labelMap: Record<string, string> = {
+                          'address': 'Adres',
+                          'studentTC': 'Öğrenci TC Kimlik No',
+                          'downPayment': 'Peşinat',
+                          'studentName': 'Öğrenci Adı',
+                          'contractDate': 'Sözleşme Tarihi',
+                          'installments': 'Taksitler',
+                          'servicePrice': 'Servis Ücreti',
+                          'studentTotal': 'Öğrenci Toplam',
+                          'otherDiscount': 'Diğer İndirim',
+                          'registrarName': 'Kayıt Memuru',
+                          'selectedClubs': 'Seçilen Kulüpler',
+                          'serviceRegion': 'Servis Bölgesi',
+                          'announcedTotal': 'İlan Edilen Toplam',
+                          'studentBookFee': 'Öğrenci Kitap Ücreti',
+                          'studentMealFee': 'Öğrenci Yemek Ücreti',
+                          'parentSignature': 'Veli İmzası',
+                          'schoolLicenseNo': 'Okul Lisans No',
+                          'siblingDiscount': 'Kardeş İndirimi',
+                          'announcedBookFee': 'İlan Edilen Kitap Ücreti',
+                          'announcedMealFee': 'İlan Edilen Yemek Ücreti',
+                          'studentCourseFee': 'Öğrenci Kurs Ücreti',
+                          'corporateDiscount': 'Kurumsal İndirim',
+                          'studentServiceFee': 'Öğrenci Servis Ücreti',
+                          'announcedCourseFee': 'İlan Edilen Kurs Ücreti',
+                          'contractParentName': 'Sözleşme Veli Adı',
+                          'registrarSignature': 'Kayıt Memuru İmzası'
+                        }
+                        
+                        const label = labelMap[key] || key
+                        let displayValue: string = safeString(value)
+                        
+                        // Özel formatlamalar
+                        if (key === 'installments' && Array.isArray(value)) {
+                          displayValue = value.length > 0 
+                            ? `${value.length} taksit` 
+                            : 'Taksit yok'
+                        } else if (key === 'selectedClubs' && Array.isArray(value)) {
+                          displayValue = value.length > 0 
+                            ? value.join(', ') 
+                            : 'Kulüp seçilmemiş'
+                        } else if (typeof value === 'boolean') {
+                          displayValue = value ? 'Evet' : 'Hayır'
+                        } else if (key.includes('Signature') && value) {
+                          displayValue = 'İmzalı'
+                        } else if (key.includes('Fee') || key.includes('Price') || key.includes('Total') || key === 'downPayment') {
+                          const numValue = typeof value === 'string' ? parseFloat(value) : typeof value === 'number' ? value : 0
+                          if (!isNaN(numValue) && numValue > 0) {
+                            displayValue = new Intl.NumberFormat('tr-TR', {
+                              style: 'currency',
+                              currency: 'TRY',
+                              minimumFractionDigits: 0
+                            }).format(numValue)
+                          } else {
+                            displayValue = 'Belirtilmemiş'
+                          }
+                        } else if (key === 'address' && !value) {
+                          displayValue = 'Belirtilmemiş'
+                        }
+                        
+                        const isEmpty = !value || (typeof value === 'string' && value.trim() === '') || 
+                                       (Array.isArray(value) && value.length === 0) ||
+                                       displayValue === 'Belirtilmemiş' || displayValue === 'Taksit yok' || 
+                                       displayValue === 'Kulüp seçilmemiş'
+                        
+                        return (
+                          <div 
+                            key={key} 
+                            className={`bg-white p-4 rounded-lg border transition-all ${
+                              isEmpty 
+                                ? 'border-gray-100 bg-gray-50/50' 
+                                : 'border-gray-200 shadow-sm hover:shadow-md hover:border-blue-200'
+                            }`}
+                          >
+                            <Label className={`text-xs font-semibold uppercase tracking-wide mb-1 block ${
+                              isEmpty ? 'text-gray-400' : 'text-gray-500'
+                            }`}>
+                              {label}
+                            </Label>
+                            <p className={`text-sm font-medium break-words ${
+                              isEmpty 
+                                ? 'text-gray-400 italic' 
+                                : 'text-gray-900'
+                            }`}>
+                              {displayValue}
+                            </p>
+                          </div>
+                        )
+                      })}
+                  </div>
                 </div>
               </div>
             </CardContent>
