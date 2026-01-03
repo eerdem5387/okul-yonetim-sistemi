@@ -3,6 +3,31 @@ import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 
 /**
+ * İki zaman aralığının çakışıp çakışmadığını kontrol eder
+ * @param start1 İlk aralığın başlangıç saati (HH:MM formatında)
+ * @param end1 İlk aralığın bitiş saati (HH:MM formatında)
+ * @param start2 İkinci aralığın başlangıç saati (HH:MM formatında)
+ * @param end2 İkinci aralığın bitiş saati (HH:MM formatında)
+ * @returns true eğer çakışma varsa
+ */
+function hasTimeConflict(start1: string, end1: string, start2: string, end2: string): boolean {
+  // Zamanları dakikaya çevir (örn: "09:00" -> 540)
+  const timeToMinutes = (time: string): number => {
+    const [hours, minutes] = time.split(':').map(Number)
+    return hours * 60 + minutes
+  }
+
+  const start1Min = timeToMinutes(start1)
+  const end1Min = timeToMinutes(end1)
+  const start2Min = timeToMinutes(start2)
+  const end2Min = timeToMinutes(end2)
+
+  // Çakışma kontrolü: İki aralık çakışıyor mu?
+  // Çakışma: (start1 < end2 && end1 > start2)
+  return start1Min < end2Min && end1Min > start2Min
+}
+
+/**
  * GET /api/schedules
  * Ders programını döndürür
  * 
@@ -135,6 +160,47 @@ export async function POST(request: NextRequest) {
     if (!teacher || teacher.department !== "OGRETMEN") {
       return NextResponse.json(
         { error: "Geçerli bir öğretmen seçiniz" },
+        { status: 400 }
+      )
+    }
+
+    // Öğretmenin aynı gün ve saatte başka bir sınıfta dersi var mı kontrol et
+    const conflictingSchedules = await prisma.schedule.findMany({
+      where: {
+        teacherId,
+        dayOfWeek,
+        isActive: true,
+      },
+      include: {
+        class: {
+          select: {
+            name: true,
+            grade: true,
+            section: true,
+          },
+        },
+      },
+    })
+
+    // Çakışan dersleri bul
+    const conflicts = conflictingSchedules.filter((schedule) =>
+      hasTimeConflict(schedule.startTime, schedule.endTime, startTime, endTime)
+    )
+
+    if (conflicts.length > 0) {
+      const conflictInfo = conflicts.map((c) => 
+        `${c.class.name} sınıfında ${c.startTime}-${c.endTime} saatleri arasında ${c.subjectName} dersi`
+      ).join(', ')
+
+      return NextResponse.json(
+        { 
+          error: `Bu öğretmen ${dayOfWeek === 1 ? 'Pazartesi' : dayOfWeek === 2 ? 'Salı' : dayOfWeek === 3 ? 'Çarşamba' : dayOfWeek === 4 ? 'Perşembe' : dayOfWeek === 5 ? 'Cuma' : dayOfWeek === 6 ? 'Cumartesi' : 'Pazar'} günü ${startTime}-${endTime} saatleri arasında zaten ders vermektedir. Çakışan dersler: ${conflictInfo}`,
+          conflicts: conflicts.map(c => ({
+            class: c.class.name,
+            subject: c.subjectName,
+            time: `${c.startTime}-${c.endTime}`,
+          })),
+        },
         { status: 400 }
       )
     }
