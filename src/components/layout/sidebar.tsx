@@ -35,14 +35,15 @@ const allNavigation = [
   
   // Neredeyiz - Admin, Müdür, Öğrenci İşleri, Rehberlik
   { name: "Neredeyiz?", href: "/neredeyiz", icon: Target, roles: ["admin", "principal", "student_affairs", "counselor"] },
-  // Neredeyiz - Öğretmen (özel sayfa)
-  { name: "Neredeyiz?", href: "/ogretmen/neredeyiz", icon: Target, roles: ["teacher"] },
   
   // Sınıf Yönetimi - YENI MODÜL
   { name: "Sınıf Yönetimi", href: "/sinif-yonetimi", icon: School, roles: ["admin", "principal", "student_affairs", "counselor"] },
   
   // Onay Paneli - Sadece Admin ve Müdür
   { name: "Onay Paneli", href: "/onay-paneli", icon: ClipboardList, roles: ["admin", "principal"] },
+  
+  // Neredeyiz - Öğretmen (özel sayfa) - En üstte
+  { name: "Neredeyiz?", href: "/ogretmen/neredeyiz", icon: Target, roles: ["teacher"] },
   
   // Ders Programım - Sadece Öğretmen
   { name: "Ders Programım", href: "/ogretmen/ders-programim", icon: LayoutDashboard, roles: ["teacher"] },
