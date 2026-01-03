@@ -48,20 +48,7 @@ export async function PUT(
         } = body
 
         // Kullanıcı rolünü kontrol et (sadece admin öğrenim ücreti alanlarını güncelleyebilir)
-        const authHeader = request.headers.get("authorization")
-        const token = authHeader?.replace("Bearer ", "") || null
-        let userRole: string | null = null
-        
-        if (token) {
-            try {
-                // Token'dan rol bilgisini al (localStorage'dan gelen token için)
-                // Bu basit bir implementasyon, production'da JWT decode kullanılmalı
-                const role = request.headers.get("x-user-role") || null
-                userRole = role
-            } catch (e) {
-                console.error("Error parsing token:", e)
-            }
-        }
+        // Frontend'den gelen role bilgisini header'dan al
 
         const updateData: Record<string, unknown> = {
             firstName,

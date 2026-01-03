@@ -50,18 +50,35 @@ export async function GET(request: NextRequest) {
     console.log(`[Stats] Total registrations in DB: ${totalCountInDB}, Valid (with student): ${validCount}`)
     
     // Eğer fark varsa, detaylı log
+    // Not: studentId zorunlu olduğu için student: null kontrolü yapılamaz
+    // Ancak geçersiz studentId'leri kontrol edebiliriz
     if (totalCountInDB !== validCount) {
-      const invalidRegistrations = await prisma.newRegistration.findMany({
-        where: {
-          student: null
-        },
+      // Tüm kayıtları çek
+      const allRegistrations = await prisma.newRegistration.findMany({
         select: {
           id: true,
           createdAt: true,
           studentId: true
         }
       })
-      console.log(`[Stats] Found ${invalidRegistrations.length} registrations without valid student:`, invalidRegistrations)
+      
+      // Tüm student ID'lerini topla
+      const studentIds = allRegistrations.map(r => r.studentId)
+      
+      // Geçerli student'ları toplu olarak kontrol et
+      const validStudents = await prisma.student.findMany({
+        where: {
+          id: { in: studentIds }
+        },
+        select: { id: true }
+      })
+      
+      const validStudentIds = new Set(validStudents.map(s => s.id))
+      const invalidRegistrations = allRegistrations.filter(r => !validStudentIds.has(r.studentId))
+      
+      if (invalidRegistrations.length > 0) {
+        console.log(`[Stats] Found ${invalidRegistrations.length} registrations without valid student:`, invalidRegistrations)
+      }
     }
     
     // Sınıf bazında sayım
