@@ -1,0 +1,467 @@
+"use client"
+
+import { useState, useEffect, useCallback } from "react"
+import { useRouter } from "next/navigation"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Search, Filter, ArrowLeft, Eye, Download, Calendar, User, GraduationCap } from "lucide-react"
+
+interface NewRegistration {
+  id: string
+  studentId: string
+  contractData: Record<string, unknown>
+  createdAt: string
+  updatedAt: string
+  student: {
+    id: string
+    firstName: string
+    lastName: string
+    tcNumber: string
+    grade?: string | null
+  } | null
+}
+
+export default function NewRegistrationsListPage() {
+  const router = useRouter()
+  const [registrations, setRegistrations] = useState<NewRegistration[]>([])
+  const [filteredRegistrations, setFilteredRegistrations] = useState<NewRegistration[]>([])
+  const [selectedRegistration, setSelectedRegistration] = useState<NewRegistration | null>(null)
+  const [loading, setLoading] = useState(true)
+  
+  // Filtreleme state'leri
+  const [searchTerm, setSearchTerm] = useState("")
+  const [filterGrade, setFilterGrade] = useState("all")
+  const [filterDate, setFilterDate] = useState("all")
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
+
+  const gradeOptions = ["5. Sınıf", "6. Sınıf", "7. Sınıf", "8. Sınıf", "9. Sınıf", "10. Sınıf", "11. Sınıf", "12. Sınıf", "all"]
+
+  const fetchRegistrations = useCallback(async () => {
+    try {
+      setLoading(true)
+      const response = await fetch("/api/new-registrations")
+      if (response.ok) {
+        const data = await response.json()
+        // Sadece geçerli student'ı olan kayıtları filtrele
+        const validRegistrations = Array.isArray(data) 
+          ? data.filter((r: NewRegistration) => r.student !== null)
+          : []
+        setRegistrations(validRegistrations)
+        setFilteredRegistrations(validRegistrations)
+      } else {
+        console.error("Error fetching registrations:", response.status)
+      }
+    } catch (error) {
+      console.error("Error fetching registrations:", error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchRegistrations()
+  }, [fetchRegistrations])
+
+  // Filtreleme
+  useEffect(() => {
+    let filtered = registrations
+
+    // Arama filtresi
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase()
+      filtered = filtered.filter(reg => {
+        if (!reg.student) return false
+        return (
+          reg.student.firstName.toLowerCase().includes(searchLower) ||
+          reg.student.lastName.toLowerCase().includes(searchLower) ||
+          reg.student.tcNumber.includes(searchTerm)
+        )
+      })
+    }
+
+    // Sınıf filtresi
+    if (filterGrade !== "all") {
+      filtered = filtered.filter(reg => {
+        if (!reg.student) return false
+        const contractData = reg.contractData as Record<string, unknown>
+        const studentClass = contractData.studentClass || reg.student.grade || ""
+        const gradeNum = filterGrade.replace(". Sınıf", "").trim()
+        return String(studentClass).includes(gradeNum) || String(reg.student.grade || "").includes(gradeNum)
+      })
+    }
+
+    // Tarih filtresi
+    if (filterDate === "today") {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      filtered = filtered.filter(reg => {
+        const createdAt = new Date(reg.createdAt)
+        createdAt.setHours(0, 0, 0, 0)
+        return createdAt.getTime() === today.getTime()
+      })
+    } else if (filterDate === "week") {
+      const weekAgo = new Date()
+      weekAgo.setDate(weekAgo.getDate() - 7)
+      filtered = filtered.filter(reg => new Date(reg.createdAt) >= weekAgo)
+    } else if (filterDate === "month") {
+      const monthAgo = new Date()
+      monthAgo.setMonth(monthAgo.getMonth() - 1)
+      filtered = filtered.filter(reg => new Date(reg.createdAt) >= monthAgo)
+    } else if (filterDate === "custom" && startDate && endDate) {
+      const start = new Date(startDate)
+      start.setHours(0, 0, 0, 0)
+      const end = new Date(endDate)
+      end.setHours(23, 59, 59, 999)
+      filtered = filtered.filter(reg => {
+        const createdAt = new Date(reg.createdAt)
+        return createdAt >= start && createdAt <= end
+      })
+    }
+
+    setFilteredRegistrations(filtered)
+  }, [registrations, searchTerm, filterGrade, filterDate, startDate, endDate])
+
+  const formatDate = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleDateString('tr-TR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    } catch {
+      return dateString
+    }
+  }
+
+  const handleViewDetails = (registration: NewRegistration) => {
+    setSelectedRegistration(registration)
+  }
+
+  const handleDownloadPDF = async (registrationId: string) => {
+    try {
+      const response = await fetch(`/api/pdf/combined/${registrationId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({})
+      })
+
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `yeni-kayit-${registrationId}.pdf`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+      } else {
+        alert("PDF indirme başarısız oldu!")
+      }
+    } catch (error) {
+      console.error("Error downloading PDF:", error)
+      alert("PDF indirme sırasında bir hata oluştu!")
+    }
+  }
+
+  if (selectedRegistration) {
+    const contractData = selectedRegistration.contractData as Record<string, unknown>
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-3 sm:p-4 md:p-6 lg:p-8">
+        <div className="max-w-6xl mx-auto">
+          <Button
+            onClick={() => setSelectedRegistration(null)}
+            variant="outline"
+            className="mb-4"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Geri Dön
+          </Button>
+
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Kayıt Detayları</span>
+                <Button
+                  onClick={() => handleDownloadPDF(selectedRegistration.id)}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  PDF İndir
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Öğrenci Bilgileri */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <User className="h-5 w-5 text-blue-600" />
+                  Öğrenci Bilgileri
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm text-gray-600">Ad Soyad</Label>
+                    <p className="font-medium">
+                      {selectedRegistration.student?.firstName} {selectedRegistration.student?.lastName}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-gray-600">TC Kimlik No</Label>
+                    <p className="font-medium">{selectedRegistration.student?.tcNumber}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-gray-600">Sınıf</Label>
+                    <p className="font-medium">{String(contractData.studentClass || selectedRegistration.student?.grade || "Belirtilmemiş")}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-gray-600">Doğum Tarihi</Label>
+                    <p className="font-medium">{String(contractData.studentBirthDate || "Belirtilmemiş")}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sözleşme Bilgileri */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <GraduationCap className="h-5 w-5 text-blue-600" />
+                  Sözleşme Bilgileri
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm text-gray-600">Sözleşme No</Label>
+                    <p className="font-medium">{String(contractData.contractNo || "Belirtilmemiş")}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-gray-600">Kayıt Tarihi</Label>
+                    <p className="font-medium">{formatDate(selectedRegistration.createdAt)}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-gray-600">Kayıt Sorumlusu</Label>
+                    <p className="font-medium">{String(contractData.registrationResponsible || "Belirtilmemiş")}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-gray-600">Kayıt/Kayıt Yenileme Tarihi</Label>
+                    <p className="font-medium">{String(contractData.registrationDate || "Belirtilmemiş")}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Ödeme Bilgileri */}
+              {(contractData.announcedTuitionFee || contractData.studentTuitionFee) && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Öğrenim Ücreti</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm text-gray-600">Kurumun İlan Ettiği Ücret</Label>
+                      <p className="font-medium">{String(contractData.announcedTuitionFee || "Belirtilmemiş")}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm text-gray-600">Öğrenci İçin Belirlenen Ücret</Label>
+                      <p className="font-medium">{String(contractData.studentTuitionFee || "Belirtilmemiş")}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Diğer Bilgiler */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3">Diğer Bilgiler</h3>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <pre className="text-xs overflow-auto">
+                    {JSON.stringify(contractData, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-3 sm:p-4 md:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+          <div>
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Yeni Kayıtlar</h1>
+            <p className="text-gray-600 mt-2 text-sm sm:text-base">Yapılan tüm yeni kayıtları görüntüleyin</p>
+          </div>
+          <Button
+            onClick={() => router.push('/new-registration')}
+            variant="outline"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Geri Dön
+          </Button>
+        </div>
+
+        {/* Filtreleme */}
+        <Card className="mb-4 sm:mb-6 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="h-5 w-5 text-blue-600" />
+              Filtreleme
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <Label htmlFor="search">Arama</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="search"
+                    placeholder="Öğrenci adı, soyadı veya TC"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="grade">Sınıf</Label>
+                <select
+                  id="grade"
+                  value={filterGrade}
+                  onChange={(e) => setFilterGrade(e.target.value)}
+                  className="w-full h-10 px-3 py-2 border border-input bg-background rounded-md"
+                >
+                  <option value="all">Tüm Sınıflar</option>
+                  {gradeOptions.filter(g => g !== "all").map((grade) => (
+                    <option key={grade} value={grade}>{grade}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label htmlFor="dateFilter">Tarih Filtresi</Label>
+                <select
+                  id="dateFilter"
+                  value={filterDate}
+                  onChange={(e) => setFilterDate(e.target.value)}
+                  className="w-full h-10 px-3 py-2 border border-input bg-background rounded-md"
+                >
+                  <option value="all">Tüm Tarihler</option>
+                  <option value="today">Bugün</option>
+                  <option value="week">Son 7 Gün</option>
+                  <option value="month">Son 30 Gün</option>
+                  <option value="custom">Özel Tarih Aralığı</option>
+                </select>
+              </div>
+              {filterDate === "custom" && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label htmlFor="startDate">Başlangıç</Label>
+                    <Input
+                      id="startDate"
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="endDate">Bitiş</Label>
+                    <Input
+                      id="endDate"
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Kayıt Listesi */}
+        {loading ? (
+          <Card>
+            <CardContent className="text-center py-12">
+              <p className="text-gray-500">Yükleniyor...</p>
+            </CardContent>
+          </Card>
+        ) : filteredRegistrations.length > 0 ? (
+          <div className="space-y-3">
+            {filteredRegistrations.map((registration) => {
+              const contractData = registration.contractData as Record<string, unknown>
+              return (
+                <Card key={registration.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleViewDetails(registration)}>
+                  <CardContent className="p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <User className="h-5 w-5 text-blue-600" />
+                          <h3 className="font-semibold text-lg">
+                            {registration.student?.firstName} {registration.student?.lastName}
+                          </h3>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm text-gray-600">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">TC:</span>
+                            <span>{registration.student?.tcNumber}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <GraduationCap className="h-4 w-4" />
+                            <span>{String(contractData.studentClass || registration.student?.grade || "Belirtilmemiş")}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            <span>{formatDate(registration.createdAt)}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleViewDetails(registration)
+                          }}
+                          variant="outline"
+                          size="sm"
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          Detay
+                        </Button>
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDownloadPDF(registration.id)
+                          }}
+                          variant="outline"
+                          size="sm"
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          PDF
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        ) : (
+          <Card>
+            <CardContent className="text-center py-12">
+              <p className="text-gray-500">
+                {searchTerm || filterGrade !== "all" || filterDate !== "all"
+                  ? "Filtre kriterlerinize uygun kayıt bulunamadı."
+                  : "Henüz kayıt bulunmuyor."}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
+  )
+}
+

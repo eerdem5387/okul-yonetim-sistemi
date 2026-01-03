@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Save, Download, Users, Clock, TrendingUp, GraduationCap } from "lucide-react"
+import { Save, Download, Users, Clock, TrendingUp, GraduationCap, List } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 const siniflar = [
   "5. Sınıf",
@@ -19,6 +20,7 @@ const siniflar = [
 ]
 
 export default function NewRegistrationPage() {
+  const router = useRouter()
   const [clubs, setClubs] = useState<{id: string, name: string}[]>([])
   const [createdStudentId, setCreatedStudentId] = useState<string | null>(null)
   
@@ -542,9 +544,18 @@ export default function NewRegistrationPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-3 sm:p-4 md:p-6 lg:p-8">
       {/* Page Header */}
-      <div className="mb-4 sm:mb-6">
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Yeni Kayıt Sözleşmesi</h1>
-        <p className="text-gray-600 mt-2 text-sm sm:text-base">Yeni öğrenci kayıt sözleşmesini oluşturun</p>
+      <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Yeni Kayıt Sözleşmesi</h1>
+          <p className="text-gray-600 mt-2 text-sm sm:text-base">Yeni öğrenci kayıt sözleşmesini oluşturun</p>
+        </div>
+        <Button
+          onClick={() => router.push('/new-registrations/list')}
+          className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
+        >
+          <List className="h-4 w-4 mr-2" />
+          Kayıtları Görüntüle
+        </Button>
       </div>
 
       <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">

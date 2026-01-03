@@ -12,9 +12,17 @@ export async function GET(
             include: {
                 student: {
                     select: {
+                        id: true,
                         firstName: true,
                         lastName: true,
-                        tcNumber: true
+                        tcNumber: true,
+                        grade: true,
+                        birthDate: true,
+                        address: true,
+                        motherName: true,
+                        motherPhone: true,
+                        fatherName: true,
+                        fatherPhone: true
                     }
                 }
             }
