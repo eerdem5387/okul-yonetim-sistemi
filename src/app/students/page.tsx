@@ -385,7 +385,9 @@ export default function StudentsPage() {
               fatherTc: "",
               fatherPhone: "",
               fatherAddress: "",
-              fatherOccupation: ""
+              fatherOccupation: "",
+              announcedTuitionFee: "",
+              studentTuitionFee: ""
             })
           }}
         >
@@ -424,7 +426,9 @@ export default function StudentsPage() {
                       fatherTc: "",
                       fatherPhone: "",
                       fatherAddress: "",
-                      fatherOccupation: ""
+                      fatherOccupation: "",
+                      announcedTuitionFee: "",
+                      studentTuitionFee: ""
                     })
                   }}
                   className="flex-shrink-0"
