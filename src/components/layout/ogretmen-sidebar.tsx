@@ -17,6 +17,7 @@ import {
   GraduationCap,
   Menu,
   X,
+  Target,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -64,6 +65,7 @@ export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
 
   const navigation = [
     { name: "Ana Sayfa", href: "/ogretmen", icon: Home },
+    { name: "Neredeyiz?", href: "/ogretmen/neredeyiz", icon: Target },
     { name: "Ders Programım", href: "/ogretmen/ders-programim", icon: Calendar },
     { name: "Ödev Yönetimi", href: "/ogretmen/odevler", icon: BookOpen },
     { name: "Yoklama Al", href: "/ogretmen/yoklama", icon: ClipboardList },
