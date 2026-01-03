@@ -73,8 +73,9 @@ export async function POST(request: NextRequest) {
             fatherName, fatherTc, fatherPhone, fatherAddress, fatherOccupation
         } = body
 
-        // Validasyon
-        if (!firstName || !lastName || !tcNumber) {
+        // Validasyon - Prisma schema'da zorunlu alanlar
+        // Boş string kontrolü (trim ile)
+        if (!firstName?.trim() || !lastName?.trim() || !tcNumber?.trim()) {
             return NextResponse.json({ 
                 error: "firstName, lastName, and tcNumber are required" 
             }, { status: 400 })
@@ -109,22 +110,25 @@ export async function POST(request: NextRequest) {
 
         const student = await prisma.student.create({
             data: {
-                firstName,
-                lastName,
-                tcNumber,
+                firstName: firstName.trim(),
+                lastName: lastName.trim(),
+                tcNumber: tcNumber.trim(),
                 birthDate: parsedBirthDate,
-                grade: grade || null,
-                address: address || null,
-                motherName: motherName || null,
-                motherTc: motherTc || null,
-                motherPhone: motherPhone || null,
-                motherAddress: motherAddress || null,
-                motherOccupation: motherOccupation || null,
-                fatherName: fatherName || null,
-                fatherTc: fatherTc || null,
-                fatherPhone: fatherPhone || null,
-                fatherAddress: fatherAddress || null,
-                fatherOccupation: fatherOccupation || null
+                grade: grade?.trim() || "",
+                address: address?.trim() || "",
+                motherName: motherName?.trim() || "",
+                motherTc: motherTc?.trim() || "",
+                motherPhone: motherPhone?.trim() || "",
+                motherAddress: motherAddress?.trim() || "",
+                motherOccupation: motherOccupation?.trim() || "",
+                fatherName: fatherName?.trim() || "",
+                fatherTc: fatherTc?.trim() || "",
+                fatherPhone: fatherPhone?.trim() || "",
+                fatherAddress: fatherAddress?.trim() || "",
+                fatherOccupation: fatherOccupation?.trim() || "",
+                // Opsiyonel alanlar
+                phone: body.phone?.trim() || null,
+                email: body.email?.trim() || null
             }
         })
 
@@ -134,12 +138,30 @@ export async function POST(request: NextRequest) {
         })
     } catch (error) {
         console.error("Error creating student:", error)
+        console.error("Error details:", JSON.stringify(error, Object.getOwnPropertyNames(error)))
+        
         const errorMessage = error instanceof Error ? error.message : "Unknown error"
         
         // Prisma unique constraint hatası
-        if (error instanceof Error && error.message.includes("Unique constraint")) {
+        if (error instanceof Error && (
+            error.message.includes("Unique constraint") || 
+            error.message.includes("Unique constraint failed") ||
+            error.message.includes("P2002")
+        )) {
             return NextResponse.json({ 
                 error: "A student with this TC Number already exists",
+                details: errorMessage
+            }, { status: 400 })
+        }
+        
+        // Prisma validation hatası
+        if (error instanceof Error && (
+            error.message.includes("Invalid value") ||
+            error.message.includes("P2003") ||
+            error.message.includes("Foreign key constraint")
+        )) {
+            return NextResponse.json({ 
+                error: "Invalid data provided",
                 details: errorMessage
             }, { status: 400 })
         }
