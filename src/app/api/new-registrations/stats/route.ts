@@ -20,21 +20,19 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    // Sadece geçerli student'ı olan kayıtları say (student silinmiş olabilir)
-    const baseWhere: Record<string, unknown> = {
-      student: {
-        isNot: null
-      }
-    }
+    // Tüm yeni kayıtları çek (student bilgisiyle birlikte)
+    // Not: studentId zorunlu olduğu için tüm kayıtların student'ı olmalı
+    // Ancak student silinmiş olabilir, bu yüzden include ile kontrol ediyoruz
+    const whereClause: Record<string, unknown> = {}
     
     // Tarih filtresi ekle
     if (Object.keys(dateFilter).length > 0) {
-      baseWhere.createdAt = dateFilter
+      whereClause.createdAt = dateFilter
     }
     
-    // Tüm yeni kayıtları çek (sadece geçerli student'ı olanlar)
-    const registrations = await prisma.newRegistration.findMany({
-      where: baseWhere,
+    // Tüm yeni kayıtları çek
+    const allRegistrations = await prisma.newRegistration.findMany({
+      where: whereClause,
       include: {
         student: {
           select: {
@@ -44,35 +42,20 @@ export async function GET(request: NextRequest) {
       }
     })
     
+    // Sadece geçerli student'ı olan kayıtları filtrele
+    const registrations = allRegistrations.filter(r => r.student !== null)
+    
     // Debug: Toplam kayıt sayısını logla (sadece development'ta)
     if (process.env.NODE_ENV === 'development') {
-      const totalCountInDB = await prisma.newRegistration.count()
+      const totalCountInDB = allRegistrations.length
       const validCount = registrations.length
       console.log(`[Stats] Total registrations in DB: ${totalCountInDB}, Valid (with student): ${validCount}`)
       
       // Eğer fark varsa, detaylı log
       if (totalCountInDB !== validCount) {
-        const allRegistrations = await prisma.newRegistration.findMany({
-          select: {
-            id: true,
-            createdAt: true,
-            studentId: true
-          }
-        })
-        
-        const studentIds = allRegistrations.map(r => r.studentId)
-        const validStudents = await prisma.student.findMany({
-          where: {
-            id: { in: studentIds }
-          },
-          select: { id: true }
-        })
-        
-        const validStudentIds = new Set(validStudents.map(s => s.id))
-        const invalidRegistrations = allRegistrations.filter(r => !validStudentIds.has(r.studentId))
-        
+        const invalidRegistrations = allRegistrations.filter(r => !r.student)
         if (invalidRegistrations.length > 0) {
-          console.log(`[Stats] Found ${invalidRegistrations.length} registrations without valid student:`, invalidRegistrations)
+          console.log(`[Stats] Found ${invalidRegistrations.length} registrations without valid student:`, invalidRegistrations.map(r => ({ id: r.id, studentId: r.studentId })))
         }
       }
     }
@@ -86,16 +69,20 @@ export async function GET(request: NextRequest) {
     
     // Kayıtları say
     registrations.forEach(r => {
-      const grade = r.student?.grade || ''
+      if (!r.student) return // Güvenlik kontrolü
+      
+      const grade = r.student.grade || ''
       // Grade formatını kontrol et (örn: "5. Sınıf" veya "5")
       let sinif = ''
-      if (grade.includes('Sınıf')) {
-        sinif = grade
-      } else if (grade) {
-        // Sadece sayı varsa "5. Sınıf" formatına çevir
-        const gradeNum = parseInt(grade.replace(/\D/g, ''))
-        if (gradeNum >= 5 && gradeNum <= 12) {
-          sinif = `${gradeNum}. Sınıf`
+      if (grade && typeof grade === 'string') {
+        if (grade.includes('Sınıf')) {
+          sinif = grade
+        } else {
+          // Sadece sayı varsa "5. Sınıf" formatına çevir
+          const gradeNum = parseInt(grade.replace(/\D/g, ''))
+          if (!isNaN(gradeNum) && gradeNum >= 5 && gradeNum <= 12) {
+            sinif = `${gradeNum}. Sınıf`
+          }
         }
       }
       
@@ -147,8 +134,25 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(responseData)
   } catch (error) {
     console.error("Error fetching new registration stats:", error)
+    console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace")
+    console.error("Error details:", JSON.stringify(error, Object.getOwnPropertyNames(error)))
+    
+    const errorMessage = error instanceof Error ? error.message : "Unknown error"
+    
+    // Prisma hataları için özel mesaj
+    if (error instanceof Error && (
+      error.message.includes("Prisma") ||
+      error.message.includes("P2002") ||
+      error.message.includes("P2003")
+    )) {
+      return NextResponse.json(
+        { error: "Veritabanı hatası oluştu", details: errorMessage },
+        { status: 500 }
+      )
+    }
+    
     return NextResponse.json(
-      { error: "İstatistikler alınırken bir hata oluştu" },
+      { error: "İstatistikler alınırken bir hata oluştu", details: errorMessage },
       { status: 500 }
     )
   }
