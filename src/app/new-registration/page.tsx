@@ -238,6 +238,17 @@ export default function NewRegistrationPage() {
     fetchStats()
   }, [fetchClubs, fetchStats])
 
+  // Kullanıcı adını otomatik doldur (sadece bir kez)
+  useEffect(() => {
+    const staffName = localStorage.getItem("staff_name")
+    if (staffName && !mainContractData.registrationResponsible) {
+      setMainContractData(prev => ({
+        ...prev,
+        registrationResponsible: staffName
+      }))
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleSaveClubSelections = async () => {
     if (!createdStudentId || !otherContractData.selectedClubs?.length) return
 

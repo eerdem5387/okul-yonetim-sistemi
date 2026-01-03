@@ -25,6 +25,8 @@ interface Student {
   fatherPhone: string
   fatherAddress: string
   fatherOccupation: string
+  announcedTuitionFee?: string | null
+  studentTuitionFee?: string | null
 }
 
 export default function StudentsPage() {
@@ -37,6 +39,7 @@ export default function StudentsPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingStudent, setEditingStudent] = useState<Student | null>(null)
   const [confirmPromote, setConfirmPromote] = useState(false)
+  const [userRole, setUserRole] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -53,10 +56,20 @@ export default function StudentsPage() {
     fatherTc: "",
     fatherPhone: "",
     fatherAddress: "",
-    fatherOccupation: ""
+    fatherOccupation: "",
+    announcedTuitionFee: "",
+    studentTuitionFee: ""
   })
 
   const gradeOptions = ["5. Sınıf", "6. Sınıf", "7. Sınıf", "8. Sınıf", "9. Sınıf", "10. Sınıf", "11. Sınıf", "12. Sınıf", "Mezun"]
+
+  // Kullanıcı rolünü kontrol et
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const role = localStorage.getItem("auth_role")
+      setUserRole(role)
+    }
+  }, [])
 
   // Her kelimenin ilk harfini büyük, diğerlerini küçük yapan fonksiyon
   const capitalizeWords = (text: string): string => {
@@ -133,6 +146,7 @@ export default function StudentsPage() {
         method,
         headers: {
           "Content-Type": "application/json",
+          "x-user-role": userRole || "",
         },
         body: JSON.stringify(formData),
       })
@@ -157,7 +171,9 @@ export default function StudentsPage() {
           fatherTc: "",
           fatherPhone: "",
           fatherAddress: "",
-          fatherOccupation: ""
+          fatherOccupation: "",
+          announcedTuitionFee: "",
+          studentTuitionFee: ""
         })
         alert(editingStudent ? "Öğrenci başarıyla güncellendi!" : "Öğrenci başarıyla eklendi!")
         // Listeyi yenile
@@ -200,7 +216,9 @@ export default function StudentsPage() {
       fatherTc: student.fatherTc,
       fatherPhone: student.fatherPhone,
       fatherAddress: student.fatherAddress,
-      fatherOccupation: student.fatherOccupation
+      fatherOccupation: student.fatherOccupation,
+      announcedTuitionFee: student.announcedTuitionFee || "",
+      studentTuitionFee: student.studentTuitionFee || ""
     })
     setShowForm(true)
   }
@@ -638,6 +656,37 @@ export default function StudentsPage() {
                 </div>
               </div>
 
+              {/* Öğrenim Ücreti - Sadece Admin */}
+              {userRole === "admin" && (
+                <div className="border-t pt-3 sm:pt-4">
+                  <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Öğrenim Ücreti</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div>
+                      <Label htmlFor="announcedTuitionFee" className="text-xs sm:text-sm">Kurumun İlan Ettiği Ücret</Label>
+                      <Input
+                        id="announcedTuitionFee"
+                        type="text"
+                        value={formData.announcedTuitionFee}
+                        onChange={(e) => setFormData({ ...formData, announcedTuitionFee: e.target.value })}
+                        placeholder="Örn: 50.000 TL"
+                        className="h-9 sm:h-10 text-xs sm:text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="studentTuitionFee" className="text-xs sm:text-sm">Öğrenci İçin Belirlenen Ücret</Label>
+                      <Input
+                        id="studentTuitionFee"
+                        type="text"
+                        value={formData.studentTuitionFee}
+                        onChange={(e) => setFormData({ ...formData, studentTuitionFee: e.target.value })}
+                        placeholder="Örn: 45.000 TL"
+                        className="h-9 sm:h-10 text-xs sm:text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex flex-col sm:flex-row gap-2 pt-2">
                 <Button type="submit" size="sm" className="w-full sm:w-auto text-xs sm:text-sm">
                   <Save className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
@@ -662,7 +711,9 @@ export default function StudentsPage() {
                     fatherTc: "",
                     fatherPhone: "",
                     fatherAddress: "",
-                    fatherOccupation: ""
+                    fatherOccupation: "",
+                    announcedTuitionFee: "",
+                    studentTuitionFee: ""
                   })
                 }} className="w-full sm:w-auto text-xs sm:text-sm">
                   İptal

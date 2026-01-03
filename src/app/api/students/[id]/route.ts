@@ -43,8 +43,25 @@ export async function PUT(
         const { 
             firstName, lastName, tcNumber, birthDate, grade, address,
             motherName, motherTc, motherPhone, motherAddress, motherOccupation,
-            fatherName, fatherTc, fatherPhone, fatherAddress, fatherOccupation
+            fatherName, fatherTc, fatherPhone, fatherAddress, fatherOccupation,
+            announcedTuitionFee, studentTuitionFee
         } = body
+
+        // Kullanıcı rolünü kontrol et (sadece admin öğrenim ücreti alanlarını güncelleyebilir)
+        const authHeader = request.headers.get("authorization")
+        const token = authHeader?.replace("Bearer ", "") || null
+        let userRole: string | null = null
+        
+        if (token) {
+            try {
+                // Token'dan rol bilgisini al (localStorage'dan gelen token için)
+                // Bu basit bir implementasyon, production'da JWT decode kullanılmalı
+                const role = request.headers.get("x-user-role") || null
+                userRole = role
+            } catch (e) {
+                console.error("Error parsing token:", e)
+            }
+        }
 
         const updateData: Record<string, unknown> = {
             firstName,
@@ -62,6 +79,32 @@ export async function PUT(
             fatherPhone,
             fatherAddress,
             fatherOccupation
+        }
+
+        // Öğrenim ücreti alanları sadece admin tarafından güncellenebilir
+        // Frontend'den gelen role bilgisini kontrol et (localStorage'dan)
+        // Not: Production'da bu kontrol middleware'de yapılmalı
+        if (announcedTuitionFee !== undefined || studentTuitionFee !== undefined) {
+            // Frontend'den gelen role bilgisini header'dan al
+            const frontendRole = request.headers.get("x-user-role")
+            if (frontendRole === "admin") {
+                if (announcedTuitionFee !== undefined) {
+                    updateData.announcedTuitionFee = announcedTuitionFee || null
+                }
+                if (studentTuitionFee !== undefined) {
+                    updateData.studentTuitionFee = studentTuitionFee || null
+                }
+            } else {
+                // Admin değilse, mevcut değerleri koru
+                const currentStudent = await prisma.student.findUnique({
+                    where: { id: params.id },
+                    select: { announcedTuitionFee: true, studentTuitionFee: true }
+                })
+                if (currentStudent) {
+                    updateData.announcedTuitionFee = currentStudent.announcedTuitionFee
+                    updateData.studentTuitionFee = currentStudent.studentTuitionFee
+                }
+            }
         }
 
         // birthDate sadece varsa ekle

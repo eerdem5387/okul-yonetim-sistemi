@@ -20,11 +20,21 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    const where = Object.keys(dateFilter).length > 0 ? { createdAt: dateFilter } : {}
+    // Sadece geçerli student'ı olan kayıtları say (student silinmiş olabilir)
+    const baseWhere: Record<string, unknown> = {
+      student: {
+        isNot: null
+      }
+    }
     
-    // Tüm yeni kayıtları çek
+    // Tarih filtresi ekle
+    if (Object.keys(dateFilter).length > 0) {
+      baseWhere.createdAt = dateFilter
+    }
+    
+    // Tüm yeni kayıtları çek (sadece geçerli student'ı olanlar)
     const registrations = await prisma.newRegistration.findMany({
-      where,
+      where: baseWhere,
       include: {
         student: {
           select: {
@@ -33,6 +43,26 @@ export async function GET(request: NextRequest) {
         }
       }
     })
+    
+    // Debug: Toplam kayıt sayısını logla
+    const totalCountInDB = await prisma.newRegistration.count()
+    const validCount = registrations.length
+    console.log(`[Stats] Total registrations in DB: ${totalCountInDB}, Valid (with student): ${validCount}`)
+    
+    // Eğer fark varsa, detaylı log
+    if (totalCountInDB !== validCount) {
+      const invalidRegistrations = await prisma.newRegistration.findMany({
+        where: {
+          student: null
+        },
+        select: {
+          id: true,
+          createdAt: true,
+          studentId: true
+        }
+      })
+      console.log(`[Stats] Found ${invalidRegistrations.length} registrations without valid student:`, invalidRegistrations)
+    }
     
     // Sınıf bazında sayım
     const sinifStats: Record<string, number> = {}

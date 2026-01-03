@@ -95,6 +95,26 @@ export async function POST(
             return NextResponse.json({ error: "Student not found" }, { status: 404 })
         }
 
+        // Student verilerini güvenli şekilde hazırla
+        const safeStudent = {
+            firstName: student.firstName || "",
+            lastName: student.lastName || "",
+            tcNumber: student.tcNumber || "",
+            grade: student.grade || "",
+            address: student.address || "",
+            birthDate: student.birthDate ? student.birthDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            motherName: student.motherName || "",
+            motherTc: student.motherTc || "",
+            motherPhone: student.motherPhone || "",
+            motherAddress: student.motherAddress || "",
+            motherOccupation: student.motherOccupation || "",
+            fatherName: student.fatherName || "",
+            fatherTc: student.fatherTc || "",
+            fatherPhone: student.fatherPhone || "",
+            fatherAddress: student.fatherAddress || "",
+            fatherOccupation: student.fatherOccupation || ""
+        }
+
         // Öğrencinin tüm yan sözleşmelerini çek
         const [uniformContract, mealContract, serviceContract, bookContract] = await Promise.all([
             prisma.uniformContract.findFirst({ where: { studentId }, orderBy: { createdAt: 'desc' } }),
@@ -156,10 +176,12 @@ export async function POST(
         }
 
         // Kulüp seçimlerini hazırla (frontend'den gelen veya veritabanından)
-        const clubsForPDF = selectedClubs || student.clubSelections.map(selection => ({
-            id: selection.club.id,
-            name: selection.club.name
-        }))
+        const clubsForPDF = selectedClubs || (student.clubSelections && Array.isArray(student.clubSelections) 
+            ? student.clubSelections.map(selection => ({
+                id: selection.club?.id || "",
+                name: selection.club?.name || ""
+            })).filter(club => club.id && club.name)
+            : [])
 
         // Hangi sözleşmeler PDF'e dahil edilecek?
         const derivedTypes: string[] = []
@@ -170,45 +192,75 @@ export async function POST(
         const typesForPdf = Array.isArray(contractTypes) && contractTypes.length > 0 ? contractTypes : derivedTypes
 
         // Tüm sözleşmeleri birleştir
-        const combinedHTML = generateCombinedContractHTML({
-            student: {
-                firstName: student.firstName,
-                lastName: student.lastName,
-                tcNumber: student.tcNumber,
-                grade: student.grade,
-                address: student.address,
-                birthDate: student.birthDate.toISOString().split('T')[0], // Date'i string'e çevir
-                motherName: student.motherName,
-                motherTc: student.motherTc,
-                motherPhone: student.motherPhone,
-                motherAddress: student.motherAddress,
-                motherOccupation: student.motherOccupation,
-                fatherName: student.fatherName,
-                fatherTc: student.fatherTc,
-                fatherPhone: student.fatherPhone,
-                fatherAddress: student.fatherAddress,
-                fatherOccupation: student.fatherOccupation
-            },
-            contractTypes: typesForPdf,
-            mainContractData: finalMainContractData,
-            otherContractData: finalOtherContractData,
-            selectedClubs: clubsForPDF.length > 0 ? clubsForPDF : undefined
-        })
+        let combinedHTML: string
+        try {
+            combinedHTML = generateCombinedContractHTML({
+                student: safeStudent,
+                contractTypes: typesForPdf,
+                mainContractData: finalMainContractData,
+                otherContractData: finalOtherContractData,
+                selectedClubs: clubsForPDF.length > 0 ? clubsForPDF : undefined
+            })
+        } catch (htmlError) {
+            console.error("Error generating HTML:", htmlError)
+            return NextResponse.json({
+                error: "Failed to generate PDF HTML",
+                details: htmlError instanceof Error ? htmlError.message : "Unknown error"
+            }, { status: 500 })
+        }
 
-        const pdf = await generatePDF(combinedHTML)
+        // PDF oluştur
+        let pdf: Buffer | Uint8Array
+        try {
+            const pdfResult = await generatePDF(combinedHTML)
+            // generatePDF Buffer veya Uint8Array döndürebilir
+            pdf = Buffer.isBuffer(pdfResult) ? pdfResult : Buffer.from(pdfResult)
+        } catch (pdfError) {
+            console.error("Error generating PDF:", pdfError)
+            return NextResponse.json({
+                error: "Failed to generate PDF",
+                details: pdfError instanceof Error ? pdfError.message : "Unknown error"
+            }, { status: 500 })
+        }
 
-        return new NextResponse(Buffer.from(pdf), {
+        return new NextResponse(pdf, {
             headers: {
                 'Content-Type': 'application/pdf',
-                'Content-Disposition': `attachment; filename="tum-sozlesmeler-${student.firstName}-${student.lastName}.pdf"`
+                'Content-Disposition': `attachment; filename="tum-sozlesmeler-${safeStudent.firstName}-${safeStudent.lastName}.pdf"`
             }
         })
     } catch (error) {
         console.error("Error generating combined PDF:", error)
+        console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace")
+        console.error("Error details:", JSON.stringify(error, Object.getOwnPropertyNames(error)))
+        
         const errorMessage = error instanceof Error ? error.message : "Unknown error"
+        const errorStack = error instanceof Error ? error.stack : undefined
+        
+        // Prisma hataları
+        if (error instanceof Error && error.message.includes("Record to find does not exist")) {
+            return NextResponse.json({
+                error: "Contract or student not found",
+                details: errorMessage
+            }, { status: 404 })
+        }
+        
+        // PDF generation hataları
+        if (error instanceof Error && (
+            error.message.includes("puppeteer") ||
+            error.message.includes("chromium") ||
+            error.message.includes("browser")
+        )) {
+            return NextResponse.json({
+                error: "PDF generation service error",
+                details: errorMessage
+            }, { status: 500 })
+        }
+        
         return NextResponse.json({
             error: "Failed to generate combined PDF",
-            details: errorMessage
+            details: errorMessage,
+            ...(process.env.NODE_ENV === "development" && errorStack ? { stack: errorStack } : {})
         }, { status: 500 })
     }
 }

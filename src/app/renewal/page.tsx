@@ -25,6 +25,8 @@ interface Student {
   fatherPhone: string
   fatherAddress: string
   fatherOccupation: string
+  announcedTuitionFee?: string | null
+  studentTuitionFee?: string | null
 }
 
 export default function RenewalPage() {
@@ -176,6 +178,38 @@ export default function RenewalPage() {
     fetchStudents()
     fetchClubs()
   }, [fetchStudents, fetchClubs])
+
+  // Kullanıcı adını otomatik doldur (sadece bir kez)
+  useEffect(() => {
+    const staffName = localStorage.getItem("staff_name")
+    if (staffName && !mainContractData.registrationResponsible) {
+      setMainContractData(prev => ({
+        ...prev,
+        registrationResponsible: staffName
+      }))
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Öğrenci seçildiğinde öğrenim ücreti bilgilerini otomatik doldur
+  useEffect(() => {
+    if (selectedStudent) {
+      // Öğrencinin güncel bilgilerini çek (öğrenim ücreti dahil)
+      fetch(`/api/students/${selectedStudent.id}?format=legacy`)
+        .then(res => res.json())
+        .then((student: Student) => {
+          if (student.announcedTuitionFee || student.studentTuitionFee) {
+            setMainContractData(prev => ({
+              ...prev,
+              announcedTuitionFee: student.announcedTuitionFee || prev.announcedTuitionFee,
+              studentTuitionFee: student.studentTuitionFee || prev.studentTuitionFee
+            }))
+          }
+        })
+        .catch(err => {
+          console.error("Error fetching student details:", err)
+        })
+    }
+  }, [selectedStudent?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSaveClubSelections = async () => {
     if (!selectedStudent || !otherContractData.selectedClubs?.length) return
@@ -513,7 +547,7 @@ export default function RenewalPage() {
               <select
                 id="studentSelect"
                 value={selectedStudent?.id || ""}
-                onChange={(e) => {
+                onChange={async (e) => {
                   const student = students.find(s => s.id === e.target.value)
                   setSelectedStudent(student || null)
                   if (student) {
@@ -527,6 +561,23 @@ export default function RenewalPage() {
                       contractStudentName: `${student.firstName} ${student.lastName}`,
                       contractParentName: ""
                     }))
+                    
+                    // Öğrencinin detaylarını çek (öğrenim ücreti dahil)
+                    try {
+                      const response = await fetch(`/api/students/${student.id}?format=legacy`)
+                      if (response.ok) {
+                        const studentDetails: Student = await response.json()
+                        if (studentDetails.announcedTuitionFee || studentDetails.studentTuitionFee) {
+                          setMainContractData(prev => ({
+                            ...prev,
+                            announcedTuitionFee: studentDetails.announcedTuitionFee || prev.announcedTuitionFee,
+                            studentTuitionFee: studentDetails.studentTuitionFee || prev.studentTuitionFee
+                          }))
+                        }
+                      }
+                    } catch (err) {
+                      console.error("Error fetching student details:", err)
+                    }
                   }
                 }}
                 className="w-full h-11 px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl text-sm text-gray-900 transition-all duration-200 hover:border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 focus:outline-none cursor-pointer"
