@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { BookOpen, Plus, Calendar, Users, CheckCircle, XCircle, Loader2 } from "lucide-react"
+import { BookOpen, Plus, Calendar, Users, CheckCircle, XCircle, Loader2, Edit, Trash2 } from "lucide-react"
 
 interface Homework {
   id: string
@@ -39,6 +39,7 @@ export default function TeacherHomeworkPage() {
   
   // Yeni ödev formu
   const [showForm, setShowForm] = useState(false)
+  const [editingHomeworkId, setEditingHomeworkId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -51,6 +52,7 @@ export default function TeacherHomeworkPage() {
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([])
   const [assignToAllClass, setAssignToAllClass] = useState(true)
   const [loadingStudents, setLoadingStudents] = useState(false)
+  const [deletingHomeworkId, setDeletingHomeworkId] = useState<string | null>(null)
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -132,69 +134,162 @@ export default function TeacherHomeworkPage() {
     }
   }
 
+  const handleEdit = async (homeworkId: string) => {
+    try {
+      setLoading(true)
+      const response = await fetch(`/api/homework/${homeworkId}`)
+      if (response.ok) {
+        const data = await response.json()
+        const homework = data.homework
+        
+        // Form verilerini doldur
+        setFormData({
+          title: homework.title,
+          description: homework.description,
+          dueDate: new Date(homework.dueDate).toISOString().split('T')[0],
+          subject: homework.subject || "",
+          classId: homework.classId || "",
+        })
+        
+        setEditingHomeworkId(homeworkId)
+        
+        // Düzenleme modunda öğrenci seçimini göstermiyoruz
+        setStudents([])
+        setSelectedStudentIds([])
+        setAssignToAllClass(true)
+        
+        setShowForm(true)
+      } else {
+        alert("Ödev bilgileri yüklenirken bir hata oluştu")
+      }
+    } catch (error) {
+      console.error("Error loading homework:", error)
+      alert("Ödev yüklenirken bir hata oluştu")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDelete = async (homeworkId: string) => {
+    if (!confirm("Bu ödevi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.")) {
+      return
+    }
+
+    setDeletingHomeworkId(homeworkId)
+    try {
+      const response = await fetch(`/api/homework/${homeworkId}`, {
+        method: "DELETE",
+      })
+
+      if (response.ok) {
+        alert("Ödev başarıyla silindi!")
+        fetchHomeworks(staffId)
+      } else {
+        const error = await response.json()
+        alert(error.error || "Ödev silinirken bir hata oluştu")
+      }
+    } catch (error) {
+      console.error("Error deleting homework:", error)
+      alert("Ödev silinirken bir hata oluştu")
+    } finally {
+      setDeletingHomeworkId(null)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
 
     try {
-      const requestBody: {
-        title: string
-        description: string
-        dueDate: string
-        subject: string
-        teacherId: string
-        classId?: string
-        studentIds?: string[]
-      } = {
-        title: formData.title,
-        description: formData.description,
-        dueDate: formData.dueDate,
-        subject: formData.subject,
-        teacherId: staffId,
-      }
-
-      // Eğer "Tüm sınıf" seçiliyse, classId gönder
-      // Değilse, seçilen öğrenci ID'lerini gönder
-      if (assignToAllClass && formData.classId) {
-        requestBody.classId = formData.classId
-      } else if (selectedStudentIds.length > 0) {
-        requestBody.studentIds = selectedStudentIds
-      } else {
-        alert("Lütfen en az bir öğrenci seçin veya 'Tüm sınıf' seçeneğini işaretleyin")
-        setLoading(false)
-        return
-      }
-
-      const response = await fetch("/api/homework", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
-      })
-
-      if (response.ok) {
-        alert("Ödev başarıyla oluşturuldu!")
-        setShowForm(false)
-        setFormData({
-          title: "",
-          description: "",
-          dueDate: "",
-          subject: "",
-          classId: "",
+      if (editingHomeworkId) {
+        // Düzenleme
+        const response = await fetch(`/api/homework/${editingHomeworkId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: formData.title,
+            description: formData.description,
+            dueDate: formData.dueDate,
+            subject: formData.subject,
+          }),
         })
-        setStudents([])
-        setSelectedStudentIds([])
-        setAssignToAllClass(true)
-        fetchHomeworks(staffId)
+
+        if (response.ok) {
+          alert("Ödev başarıyla güncellendi!")
+          setShowForm(false)
+          setEditingHomeworkId(null)
+          resetForm()
+          fetchHomeworks(staffId)
+        } else {
+          const error = await response.json()
+          alert(error.error || "Bir hata oluştu")
+        }
       } else {
-        const error = await response.json()
-        alert(error.error || "Bir hata oluştu")
+        // Yeni ödev oluşturma
+        const requestBody: {
+          title: string
+          description: string
+          dueDate: string
+          subject: string
+          teacherId: string
+          classId?: string
+          studentIds?: string[]
+        } = {
+          title: formData.title,
+          description: formData.description,
+          dueDate: formData.dueDate,
+          subject: formData.subject,
+          teacherId: staffId,
+        }
+
+        // Eğer "Tüm sınıf" seçiliyse, classId gönder
+        // Değilse, seçilen öğrenci ID'lerini gönder
+        if (assignToAllClass && formData.classId) {
+          requestBody.classId = formData.classId
+        } else if (selectedStudentIds.length > 0) {
+          requestBody.studentIds = selectedStudentIds
+        } else {
+          alert("Lütfen en az bir öğrenci seçin veya 'Tüm sınıf' seçeneğini işaretleyin")
+          setLoading(false)
+          return
+        }
+
+        const response = await fetch("/api/homework", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestBody),
+        })
+
+        if (response.ok) {
+          alert("Ödev başarıyla oluşturuldu!")
+          setShowForm(false)
+          resetForm()
+          fetchHomeworks(staffId)
+        } else {
+          const error = await response.json()
+          alert(error.error || "Bir hata oluştu")
+        }
       }
     } catch (error) {
-      console.error("Error creating homework:", error)
-      alert("Ödev oluşturulurken bir hata oluştu")
+      console.error("Error saving homework:", error)
+      alert("Ödev kaydedilirken bir hata oluştu")
     } finally {
       setLoading(false)
     }
+  }
+
+  const resetForm = () => {
+    setFormData({
+      title: "",
+      description: "",
+      dueDate: "",
+      subject: "",
+      classId: "",
+    })
+    setStudents([])
+    setSelectedStudentIds([])
+    setAssignToAllClass(true)
+    setEditingHomeworkId(null)
   }
 
   const handleStudentToggle = (studentId: string) => {
@@ -242,12 +337,19 @@ export default function TeacherHomeworkPage() {
                 <p className="text-blue-100 text-sm sm:text-base">Verdiğiniz ödevleri yönetin ve öğrenci tamamlama durumlarını takip edin</p>
               </div>
               <Button
-                onClick={() => setShowForm(!showForm)}
+                onClick={() => {
+                  if (showForm && editingHomeworkId) {
+                    resetForm()
+                    setShowForm(false)
+                  } else {
+                    setShowForm(!showForm)
+                  }
+                }}
                 className="bg-white text-blue-600 hover:bg-blue-50 shadow-lg"
                 size="lg"
               >
                 <Plus className="h-5 w-5 mr-2" />
-                Yeni Ödev Oluştur
+                {showForm && editingHomeworkId ? "İptal" : "Yeni Ödev Oluştur"}
               </Button>
             </div>
           </div>
@@ -259,7 +361,7 @@ export default function TeacherHomeworkPage() {
           {showForm && (
             <Card>
               <CardHeader>
-                <CardTitle>Yeni Ödev Oluştur</CardTitle>
+                <CardTitle>{editingHomeworkId ? "Ödevi Düzenle" : "Yeni Ödev Oluştur"}</CardTitle>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -307,13 +409,14 @@ export default function TeacherHomeworkPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="classId">Sınıf *</Label>
+                      <Label htmlFor="classId">Sınıf {!editingHomeworkId && "*"}</Label>
                       <select
                         id="classId"
                         value={formData.classId}
                         onChange={(e) => setFormData({ ...formData, classId: e.target.value })}
                         className="w-full p-2 border rounded-md"
-                        required
+                        disabled={!!editingHomeworkId}
+                        required={!editingHomeworkId}
                       >
                         <option value="">Sınıf Seçin</option>
                         {classes.map((c) => (
@@ -322,11 +425,14 @@ export default function TeacherHomeworkPage() {
                           </option>
                         ))}
                       </select>
+                      {editingHomeworkId && (
+                        <p className="text-xs text-gray-500">Düzenleme modunda sınıf ve öğrenci seçimi değiştirilemez</p>
+                      )}
                     </div>
                   </div>
 
                   {/* Öğrenci Seçimi */}
-                  {formData.classId && (
+                  {formData.classId && !editingHomeworkId && (
                     <div className="space-y-3 border-t pt-4">
                       <div className="flex items-center gap-2">
                         <input
@@ -391,21 +497,12 @@ export default function TeacherHomeworkPage() {
                   )}
 
                   <div className="flex gap-2">
-                    <Button type="submit" disabled={loading || (!!formData.classId && !assignToAllClass && selectedStudentIds.length === 0)}>
-                      Oluştur
+                    <Button type="submit" disabled={loading || (!editingHomeworkId && !!formData.classId && !assignToAllClass && selectedStudentIds.length === 0)}>
+                      {editingHomeworkId ? "Güncelle" : "Oluştur"}
                     </Button>
                     <Button type="button" variant="outline" onClick={() => {
                       setShowForm(false)
-                      setFormData({
-                        title: "",
-                        description: "",
-                        dueDate: "",
-                        subject: "",
-                        classId: "",
-                      })
-                      setStudents([])
-                      setSelectedStudentIds([])
-                      setAssignToAllClass(true)
+                      resetForm()
                     }}>
                       İptal
                     </Button>
@@ -461,9 +558,36 @@ export default function TeacherHomeworkPage() {
                               }`} />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2 truncate">
-                                {homework.title}
-                              </h3>
+                              <div className="flex items-start justify-between gap-2 mb-2">
+                                <h3 className="text-lg sm:text-xl font-bold text-gray-900 truncate flex-1">
+                                  {homework.title}
+                                </h3>
+                                <div className="flex gap-2 flex-shrink-0">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleEdit(homework.id)}
+                                    className="h-8 w-8 p-0 hover:bg-blue-100"
+                                    title="Düzenle"
+                                  >
+                                    <Edit className="h-4 w-4 text-blue-600" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDelete(homework.id)}
+                                    disabled={deletingHomeworkId === homework.id}
+                                    className="h-8 w-8 p-0 hover:bg-red-100"
+                                    title="Sil"
+                                  >
+                                    {deletingHomeworkId === homework.id ? (
+                                      <Loader2 className="h-4 w-4 text-red-600 animate-spin" />
+                                    ) : (
+                                      <Trash2 className="h-4 w-4 text-red-600" />
+                                    )}
+                                  </Button>
+                                </div>
+                              </div>
                               <p className="text-sm text-gray-600 mb-3 line-clamp-2">{homework.description}</p>
                               <div className="flex flex-wrap gap-3 sm:gap-4 text-xs sm:text-sm">
                                 {homework.subject && (
