@@ -226,12 +226,29 @@ export async function POST(
         // Buffer'ı Uint8Array'e çevir (BodyInit uyumluluğu için)
         const pdfArray = new Uint8Array(pdfBuffer)
 
+        // Dosya adını oluştur (Türkçe karakterleri ASCII'ye çevir)
+        const sanitizeFileName = (name: string): string => {
+            return name
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '') // Diyakritik işaretleri kaldır
+                .replace(/[^a-zA-Z0-9]/g, '-') // Özel karakterleri tire ile değiştir
+                .replace(/-+/g, '-') // Birden fazla tireyi tek tireye çevir
+                .replace(/^-|-$/g, '') // Başta ve sonda tire varsa kaldır
+        }
+        
+        const fileName = `tum-sozlesmeler-${sanitizeFileName(safeStudent.firstName)}-${sanitizeFileName(safeStudent.lastName)}.pdf`
+        
+        // RFC 5987 uyumlu dosya adı (UTF-8 encoding ile)
+        const encodedFileName = encodeURIComponent(fileName)
+        const asciiFileName = sanitizeFileName(`${safeStudent.firstName}-${safeStudent.lastName}`)
+
         // Response constructor'ını kullan (NextResponse yerine, type uyumluluğu için)
         // Response, Next.js API routes'da da çalışır ve NextResponse'dan daha esnek tip kontrolü yapar
+        // Header'larda sadece ASCII karakterler kullanılabilir, bu yüzden dosya adını encode ediyoruz
         return new Response(pdfArray, {
             headers: {
                 'Content-Type': 'application/pdf',
-                'Content-Disposition': `attachment; filename="tum-sozlesmeler-${safeStudent.firstName}-${safeStudent.lastName}.pdf"`
+                'Content-Disposition': `attachment; filename="${asciiFileName}.pdf"; filename*=UTF-8''${encodedFileName}`
             }
         })
     } catch (error) {
