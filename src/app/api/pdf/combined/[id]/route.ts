@@ -210,11 +210,11 @@ export async function POST(
         }
 
         // PDF oluştur
-        let pdfBuffer: Buffer | Uint8Array
+        let pdfBuffer: Buffer
         try {
-            const pdfResult = await generatePDF(combinedHTML)
-            // generatePDF Buffer veya Uint8Array döndürebilir
-            pdfBuffer = Buffer.isBuffer(pdfResult) ? pdfResult : Buffer.from(pdfResult)
+            const result = await generatePDF(combinedHTML)
+            // generatePDF Buffer döndürür (Puppeteer page.pdf())
+            pdfBuffer = Buffer.isBuffer(result) ? result : Buffer.from(result)
         } catch (pdfError) {
             console.error("Error generating PDF:", pdfError)
             return NextResponse.json({
@@ -223,10 +223,12 @@ export async function POST(
             }, { status: 500 })
         }
 
-        // NextResponse için Buffer'ı Uint8Array'e çevir
-        const pdfArray = pdfBuffer instanceof Buffer ? new Uint8Array(pdfBuffer) : pdfBuffer
+        // Buffer'ı Uint8Array'e çevir (BodyInit uyumluluğu için)
+        const pdfArray = new Uint8Array(pdfBuffer)
 
-        return new NextResponse(pdfArray, {
+        // Response constructor'ını kullan (NextResponse yerine, type uyumluluğu için)
+        // Response, Next.js API routes'da da çalışır ve NextResponse'dan daha esnek tip kontrolü yapar
+        return new Response(pdfArray, {
             headers: {
                 'Content-Type': 'application/pdf',
                 'Content-Disposition': `attachment; filename="tum-sozlesmeler-${safeStudent.firstName}-${safeStudent.lastName}.pdf"`
