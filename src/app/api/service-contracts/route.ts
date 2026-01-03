@@ -30,10 +30,24 @@ export async function POST(request: NextRequest) {
         const body = await request.json()
         const { studentId, contractData } = body
 
+        // Validasyon
+        if (!studentId) {
+            return NextResponse.json({ error: "studentId is required" }, { status: 400 })
+        }
+
+        // Öğrencinin var olup olmadığını kontrol et
+        const student = await prisma.student.findUnique({
+            where: { id: studentId }
+        })
+
+        if (!student) {
+            return NextResponse.json({ error: "Student not found" }, { status: 404 })
+        }
+
         const contract = await prisma.serviceContract.create({
             data: {
                 studentId,
-                contractData
+                contractData: contractData || {}
             },
             include: {
                 student: {
@@ -49,7 +63,11 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(contract)
     } catch (error) {
         console.error("Error creating service contract:", error)
-        return NextResponse.json({ error: "Failed to create service contract" }, { status: 500 })
+        const errorMessage = error instanceof Error ? error.message : "Unknown error"
+        return NextResponse.json({ 
+            error: "Failed to create service contract",
+            details: errorMessage
+        }, { status: 500 })
     }
 }
 

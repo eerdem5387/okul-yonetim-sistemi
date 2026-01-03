@@ -73,24 +73,51 @@ export async function POST(request: NextRequest) {
             fatherName, fatherTc, fatherPhone, fatherAddress, fatherOccupation
         } = body
 
+        // Validasyon
+        if (!firstName || !lastName || !tcNumber) {
+            return NextResponse.json({ 
+                error: "firstName, lastName, and tcNumber are required" 
+            }, { status: 400 })
+        }
+
+        // TC Number format kontrolü
+        if (tcNumber.length !== 11 || !/^\d+$/.test(tcNumber)) {
+            return NextResponse.json({ 
+                error: "TC Number must be 11 digits" 
+            }, { status: 400 })
+        }
+
+        // BirthDate kontrolü - null veya undefined olabilir
+        let parsedBirthDate: Date | null = null
+        if (birthDate) {
+            try {
+                parsedBirthDate = new Date(birthDate)
+                if (isNaN(parsedBirthDate.getTime())) {
+                    parsedBirthDate = null
+                }
+            } catch (e) {
+                parsedBirthDate = null
+            }
+        }
+
         const student = await prisma.student.create({
             data: {
                 firstName,
                 lastName,
                 tcNumber,
-                birthDate: new Date(birthDate),
-                grade,
-                address,
-                motherName,
-                motherTc,
-                motherPhone,
-                motherAddress,
-                motherOccupation,
-                fatherName,
-                fatherTc,
-                fatherPhone,
-                fatherAddress,
-                fatherOccupation
+                birthDate: parsedBirthDate,
+                grade: grade || null,
+                address: address || null,
+                motherName: motherName || null,
+                motherTc: motherTc || null,
+                motherPhone: motherPhone || null,
+                motherAddress: motherAddress || null,
+                motherOccupation: motherOccupation || null,
+                fatherName: fatherName || null,
+                fatherTc: fatherTc || null,
+                fatherPhone: fatherPhone || null,
+                fatherAddress: fatherAddress || null,
+                fatherOccupation: fatherOccupation || null
             }
         })
 
@@ -100,6 +127,19 @@ export async function POST(request: NextRequest) {
         })
     } catch (error) {
         console.error("Error creating student:", error)
-        return NextResponse.json({ error: "Failed to create student" }, { status: 500 })
+        const errorMessage = error instanceof Error ? error.message : "Unknown error"
+        
+        // Prisma unique constraint hatası
+        if (error instanceof Error && error.message.includes("Unique constraint")) {
+            return NextResponse.json({ 
+                error: "A student with this TC Number already exists",
+                details: errorMessage
+            }, { status: 400 })
+        }
+        
+        return NextResponse.json({ 
+            error: "Failed to create student",
+            details: errorMessage
+        }, { status: 500 })
     }
 }
