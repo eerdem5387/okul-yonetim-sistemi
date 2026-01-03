@@ -210,11 +210,11 @@ export async function POST(
         }
 
         // PDF oluştur
-        let pdf: Buffer | Uint8Array
+        let pdfBuffer: Buffer | Uint8Array
         try {
             const pdfResult = await generatePDF(combinedHTML)
             // generatePDF Buffer veya Uint8Array döndürebilir
-            pdf = Buffer.isBuffer(pdfResult) ? pdfResult : Buffer.from(pdfResult)
+            pdfBuffer = Buffer.isBuffer(pdfResult) ? pdfResult : Buffer.from(pdfResult)
         } catch (pdfError) {
             console.error("Error generating PDF:", pdfError)
             return NextResponse.json({
@@ -223,7 +223,10 @@ export async function POST(
             }, { status: 500 })
         }
 
-        return new NextResponse(pdf, {
+        // NextResponse için Buffer'ı Uint8Array'e çevir
+        const pdfArray = pdfBuffer instanceof Buffer ? new Uint8Array(pdfBuffer) : pdfBuffer
+
+        return new NextResponse(pdfArray, {
             headers: {
                 'Content-Type': 'application/pdf',
                 'Content-Disposition': `attachment; filename="tum-sozlesmeler-${safeStudent.firstName}-${safeStudent.lastName}.pdf"`
