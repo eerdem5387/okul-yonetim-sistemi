@@ -33,8 +33,10 @@ const allNavigation = [
   // Dashboard - Tüm roller (Öğretmen hariç)
   { name: "Dashboard", href: "/", icon: LayoutDashboard, roles: ["admin", "principal", "student_affairs", "counselor"] },
   
-  // Neredeyiz - Admin, Müdür, Öğrenci İşleri, Rehberlik, Öğretmen
-  { name: "Neredeyiz?", href: "/neredeyiz", icon: Target, roles: ["admin", "principal", "student_affairs", "counselor", "teacher"] },
+  // Neredeyiz - Admin, Müdür, Öğrenci İşleri, Rehberlik
+  { name: "Neredeyiz?", href: "/neredeyiz", icon: Target, roles: ["admin", "principal", "student_affairs", "counselor"] },
+  // Neredeyiz - Öğretmen (özel sayfa)
+  { name: "Neredeyiz?", href: "/ogretmen/neredeyiz", icon: Target, roles: ["teacher"] },
   
   // Sınıf Yönetimi - YENI MODÜL
   { name: "Sınıf Yönetimi", href: "/sinif-yonetimi", icon: School, roles: ["admin", "principal", "student_affairs", "counselor"] },
