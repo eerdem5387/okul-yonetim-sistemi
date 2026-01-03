@@ -39,6 +39,15 @@ export default function NewRegistrationsListPage() {
 
   const gradeOptions = ["5. Sınıf", "6. Sınıf", "7. Sınıf", "8. Sınıf", "9. Sınıf", "10. Sınıf", "11. Sınıf", "12. Sınıf", "all"]
 
+  // Type guard helper
+  const safeString = (value: unknown): string => {
+    if (value === null || value === undefined) return "Belirtilmemiş"
+    if (typeof value === "string") return value
+    if (typeof value === "number") return String(value)
+    if (typeof value === "boolean") return String(value)
+    return "Belirtilmemiş"
+  }
+
   const fetchRegistrations = useCallback(async () => {
     try {
       setLoading(true)
@@ -218,11 +227,11 @@ export default function NewRegistrationsListPage() {
                   </div>
                   <div>
                     <Label className="text-sm text-gray-600">Sınıf</Label>
-                    <p className="font-medium">{String(contractData.studentClass || selectedRegistration.student?.grade || "Belirtilmemiş")}</p>
+                    <p className="font-medium">{safeString(contractData.studentClass || selectedRegistration.student?.grade)}</p>
                   </div>
                   <div>
                     <Label className="text-sm text-gray-600">Doğum Tarihi</Label>
-                    <p className="font-medium">{String(contractData.studentBirthDate || "Belirtilmemiş")}</p>
+                    <p className="font-medium">{safeString(contractData.studentBirthDate)}</p>
                   </div>
                 </div>
               </div>
@@ -236,7 +245,7 @@ export default function NewRegistrationsListPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm text-gray-600">Sözleşme No</Label>
-                    <p className="font-medium">{String(contractData.contractNo || "Belirtilmemiş")}</p>
+                    <p className="font-medium">{safeString(contractData.contractNo)}</p>
                   </div>
                   <div>
                     <Label className="text-sm text-gray-600">Kayıt Tarihi</Label>
@@ -244,11 +253,11 @@ export default function NewRegistrationsListPage() {
                   </div>
                   <div>
                     <Label className="text-sm text-gray-600">Kayıt Sorumlusu</Label>
-                    <p className="font-medium">{String(contractData.registrationResponsible || "Belirtilmemiş")}</p>
+                    <p className="font-medium">{safeString(contractData.registrationResponsible)}</p>
                   </div>
                   <div>
                     <Label className="text-sm text-gray-600">Kayıt/Kayıt Yenileme Tarihi</Label>
-                    <p className="font-medium">{String(contractData.registrationDate || "Belirtilmemiş")}</p>
+                    <p className="font-medium">{safeString(contractData.registrationDate)}</p>
                   </div>
                 </div>
               </div>
@@ -260,11 +269,11 @@ export default function NewRegistrationsListPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label className="text-sm text-gray-600">Kurumun İlan Ettiği Ücret</Label>
-                      <p className="font-medium">{String(contractData.announcedTuitionFee || "Belirtilmemiş")}</p>
+                      <p className="font-medium">{safeString(contractData.announcedTuitionFee)}</p>
                     </div>
                     <div>
                       <Label className="text-sm text-gray-600">Öğrenci İçin Belirlenen Ücret</Label>
-                      <p className="font-medium">{String(contractData.studentTuitionFee || "Belirtilmemiş")}</p>
+                      <p className="font-medium">{safeString(contractData.studentTuitionFee)}</p>
                     </div>
                   </div>
                 </div>
@@ -411,7 +420,7 @@ export default function NewRegistrationsListPage() {
                           </div>
                           <div className="flex items-center gap-2">
                             <GraduationCap className="h-4 w-4" />
-                            <span>{String(contractData.studentClass || registration.student?.grade || "Belirtilmemiş")}</span>
+                            <span>{safeString(contractData.studentClass || registration.student?.grade)}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <Calendar className="h-4 w-4" />
