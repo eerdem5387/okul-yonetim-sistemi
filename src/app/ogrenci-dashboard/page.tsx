@@ -56,9 +56,15 @@ interface DashboardData {
       isCompleted: boolean
       completedAt: string | null
       homework: {
+        id: string
         title: string
+        description: string
         dueDate: string
         subject: string | null
+        teacher: {
+          firstName: string
+          lastName: string
+        }
       }
     }>
     attendances: Array<{
@@ -66,6 +72,10 @@ interface DashboardData {
       status: string
       date: string
       lessonName: string
+      teacher: {
+        firstName: string
+        lastName: string
+      }
     }>
     examResults: Array<{
       id: string
@@ -483,33 +493,88 @@ export default function OgrenciDashboardPage() {
                   <p className="text-gray-500 text-center py-4">Henüz ödev kaydı bulunmuyor</p>
                 ) : (
                   <div className="space-y-2">
-                    {dashboardData.recentData.homeworks.map((hw) => (
-                      <div
-                        key={hw.id}
-                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
-                      >
-                        <div className="flex-1">
-                          <p className="font-medium">{hw.homework.title}</p>
-                          <p className="text-sm text-gray-600">
-                            {hw.homework.subject && `${hw.homework.subject} • `}
-                            Teslim: {new Date(hw.homework.dueDate).toLocaleDateString("tr-TR")}
-                          </p>
+                    {dashboardData.recentData.homeworks.map((hw) => {
+                      const isOverdue = new Date(hw.homework.dueDate) < new Date() && !hw.isCompleted
+                      return (
+                        <div
+                          key={hw.id}
+                          className={`flex items-center justify-between p-4 border-2 rounded-lg transition-all ${
+                            isOverdue 
+                              ? "border-red-200 bg-red-50/50 hover:bg-red-50" 
+                              : hw.isCompleted
+                              ? "border-green-200 bg-green-50/50 hover:bg-green-50"
+                              : "border-gray-200 hover:bg-gray-50"
+                          }`}
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-start gap-3">
+                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                hw.isCompleted 
+                                  ? "bg-green-100" 
+                                  : isOverdue
+                                  ? "bg-red-100"
+                                  : "bg-blue-100"
+                              }`}>
+                                {hw.isCompleted ? (
+                                  <CheckCircle className={`h-5 w-5 ${
+                                    hw.isCompleted ? "text-green-600" : "text-blue-600"
+                                  }`} />
+                                ) : (
+                                  <BookOpen className={`h-5 w-5 ${
+                                    isOverdue ? "text-red-600" : "text-blue-600"
+                                  }`} />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-gray-900 mb-1">{hw.homework.title}</p>
+                                <div className="flex flex-wrap gap-2 text-xs text-gray-600 mb-1">
+                                  {hw.homework.subject && (
+                                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
+                                      {hw.homework.subject}
+                                    </span>
+                                  )}
+                                  <span className="flex items-center gap-1">
+                                    👤 {hw.homework.teacher.firstName} {hw.homework.teacher.lastName}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 text-xs">
+                                  <span className={`flex items-center gap-1 ${
+                                    isOverdue ? "text-red-600 font-medium" : "text-gray-600"
+                                  }`}>
+                                    <Calendar className="h-3 w-3" />
+                                    Teslim: {new Date(hw.homework.dueDate).toLocaleDateString("tr-TR")}
+                                    {isOverdue && " (Geçti)"}
+                                  </span>
+                                  {hw.isCompleted && hw.completedAt && (
+                                    <span className="text-green-600 flex items-center gap-1">
+                                      <CheckCircle className="h-3 w-3" />
+                                      {new Date(hw.completedAt).toLocaleDateString("tr-TR")}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 ml-4">
+                            {hw.isCompleted ? (
+                              <span className="px-3 py-1.5 bg-green-100 text-green-700 rounded-full text-sm font-medium flex items-center gap-1.5 whitespace-nowrap">
+                                <CheckCircle className="h-4 w-4" />
+                                Tamamlandı
+                              </span>
+                            ) : (
+                              <span className={`px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-1.5 whitespace-nowrap ${
+                                isOverdue 
+                                  ? "bg-red-100 text-red-700" 
+                                  : "bg-orange-100 text-orange-700"
+                              }`}>
+                                <Clock className="h-4 w-4" />
+                                {isOverdue ? "Gecikti" : "Bekliyor"}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {hw.isCompleted ? (
-                            <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium flex items-center gap-1">
-                              <CheckCircle className="h-4 w-4" />
-                              Tamamlandı
-                            </span>
-                          ) : (
-                            <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-medium flex items-center gap-1">
-                              <Clock className="h-4 w-4" />
-                              Bekliyor
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </CardContent>
@@ -531,21 +596,47 @@ export default function OgrenciDashboardPage() {
                     {dashboardData.recentData.attendances.map((att) => (
                       <div
                         key={att.id}
-                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
+                        className="flex items-center justify-between p-4 border-2 rounded-lg hover:bg-gray-50 transition-all"
                       >
-                        <div className="flex-1">
-                          <p className="font-medium">{att.lessonName}</p>
-                          <p className="text-sm text-gray-600">
-                            {new Date(att.date).toLocaleDateString("tr-TR", {
-                              weekday: "long",
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                            })}
-                          </p>
+                        <div className="flex items-start gap-3 flex-1">
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                            att.status === "PRESENT" 
+                              ? "bg-green-100" 
+                              : att.status === "ABSENT"
+                              ? "bg-red-100"
+                              : att.status === "LATE"
+                              ? "bg-orange-100"
+                              : "bg-blue-100"
+                          }`}>
+                            <Calendar className={`h-5 w-5 ${
+                              att.status === "PRESENT" 
+                                ? "text-green-600" 
+                                : att.status === "ABSENT"
+                                ? "text-red-600"
+                                : att.status === "LATE"
+                                ? "text-orange-600"
+                                : "text-blue-600"
+                            }`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-gray-900 mb-1">{att.lessonName}</p>
+                            <div className="flex flex-wrap gap-2 text-xs text-gray-600">
+                              <span className="flex items-center gap-1">
+                                👤 {att.teacher.firstName} {att.teacher.lastName}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                📅 {new Date(att.date).toLocaleDateString("tr-TR", {
+                                  weekday: "long",
+                                  year: "numeric",
+                                  month: "long",
+                                  day: "numeric",
+                                })}
+                              </span>
+                            </div>
+                          </div>
                         </div>
                         <span
-                          className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(
+                          className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap ${getStatusColor(
                             att.status
                           )}`}
                         >

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { BookOpen, Plus, Calendar, Users, CheckCircle, XCircle, Loader2, Edit, Trash2 } from "lucide-react"
+import { BookOpen, Plus, Calendar, Users, CheckCircle, XCircle, Loader2, Edit, Trash2, X } from "lucide-react"
 
 interface Homework {
   id: string
@@ -24,7 +24,9 @@ interface Homework {
   assignments: Array<{
     id: string
     isCompleted: boolean
+    completedAt: string | null
     student: {
+      id: string
       firstName: string
       lastName: string
     }
@@ -53,6 +55,8 @@ export default function TeacherHomeworkPage() {
   const [assignToAllClass, setAssignToAllClass] = useState(true)
   const [loadingStudents, setLoadingStudents] = useState(false)
   const [deletingHomeworkId, setDeletingHomeworkId] = useState<string | null>(null)
+  const [selectedHomework, setSelectedHomework] = useState<Homework | null>(null)
+  const [updatingAssignmentId, setUpdatingAssignmentId] = useState<string | null>(null)
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -315,6 +319,46 @@ export default function TeacherHomeworkPage() {
     return { total, completed, percentage }
   }
 
+  const handleHomeworkClick = (homework: Homework) => {
+    setSelectedHomework(homework)
+  }
+
+  const handleToggleCompletion = async (assignmentId: string, studentId: string, currentStatus: boolean) => {
+    if (!selectedHomework) return
+
+    setUpdatingAssignmentId(assignmentId)
+    try {
+      const response = await fetch(`/api/homework/${selectedHomework.id}/complete`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId,
+          isCompleted: !currentStatus,
+          completedBy: staffId,
+        }),
+      })
+
+      if (response.ok) {
+        // Ödev listesini güncelle
+        await fetchHomeworks(staffId)
+        // Modal'daki ödevi de güncelle
+        const updatedResponse = await fetch(`/api/homework/${selectedHomework.id}`)
+        if (updatedResponse.ok) {
+          const data = await updatedResponse.json()
+          setSelectedHomework(data.homework)
+        }
+      } else {
+        const error = await response.json()
+        alert(error.error || "Durum güncellenirken bir hata oluştu")
+      }
+    } catch (error) {
+      console.error("Error updating completion:", error)
+      alert("Durum güncellenirken bir hata oluştu")
+    } finally {
+      setUpdatingAssignmentId(null)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -531,13 +575,17 @@ export default function TeacherHomeworkPage() {
                 const stats = getCompletionStats(homework)
                 const isOverdue = new Date(homework.dueDate) < new Date() && stats.percentage < 100
                 return (
-                  <Card key={homework.id} className={`hover:shadow-xl transition-all duration-200 border-l-4 ${
+                  <Card 
+                  key={homework.id} 
+                  className={`hover:shadow-xl transition-all duration-200 border-l-4 cursor-pointer ${
                     stats.percentage === 100 
                       ? "border-l-green-500 bg-gradient-to-r from-green-50/50 to-white" 
                       : isOverdue
                       ? "border-l-red-500 bg-gradient-to-r from-red-50/50 to-white"
                       : "border-l-blue-500 bg-gradient-to-r from-blue-50/50 to-white"
-                  }`}>
+                  }`}
+                  onClick={() => handleHomeworkClick(homework)}
+                >
                     <CardContent className="p-5 sm:p-6">
                       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                         <div className="flex-1 min-w-0">
@@ -659,6 +707,117 @@ export default function TeacherHomeworkPage() {
             )}
           </div>
         </div>
+
+        {/* Ödev Detay Modal - Öğrenci Listesi */}
+        {selectedHomework && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedHomework(null)}>
+            <Card className="w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+              <CardHeader className="border-b bg-gradient-to-r from-blue-50 to-indigo-50 flex-shrink-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <CardTitle className="text-xl mb-2">{selectedHomework.title}</CardTitle>
+                    <div className="flex flex-wrap gap-2 text-sm text-gray-600">
+                      {selectedHomework.subject && (
+                        <span>📚 {selectedHomework.subject}</span>
+                      )}
+                      {selectedHomework.class && (
+                        <span>👥 {selectedHomework.class.name}</span>
+                      )}
+                      <span>📅 Teslim: {new Date(selectedHomework.dueDate).toLocaleDateString("tr-TR")}</span>
+                    </div>
+                    <p className="text-sm text-gray-700 mt-2">{selectedHomework.description}</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedHomework(null)}
+                    className="h-8 w-8 p-0"
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="flex-1 overflow-y-auto p-6">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Öğrenci Tamamlama Durumu</h3>
+                  <div className="flex items-center gap-4 text-sm">
+                    <span className="flex items-center gap-1 text-green-600">
+                      <CheckCircle className="h-4 w-4" />
+                      {selectedHomework.assignments.filter(a => a.isCompleted).length} Tamamlandı
+                    </span>
+                    <span className="flex items-center gap-1 text-red-600">
+                      <XCircle className="h-4 w-4" />
+                      {selectedHomework.assignments.filter(a => !a.isCompleted).length} Bekliyor
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {selectedHomework.assignments.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      Bu ödeve atanmış öğrenci bulunmamaktadır.
+                    </div>
+                  ) : (
+                    selectedHomework.assignments.map((assignment) => (
+                      <div
+                        key={assignment.id}
+                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3 flex-1">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                            assignment.isCompleted ? "bg-green-100" : "bg-gray-100"
+                          }`}>
+                            {assignment.isCompleted ? (
+                              <CheckCircle className="h-5 w-5 text-green-600" />
+                            ) : (
+                              <XCircle className="h-5 w-5 text-gray-400" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900">
+                              {assignment.student.firstName} {assignment.student.lastName}
+                            </p>
+                            {assignment.isCompleted && assignment.completedAt && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                Tamamlandı: {new Date(assignment.completedAt).toLocaleDateString("tr-TR", {
+                                  year: "numeric",
+                                  month: "long",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit"
+                                })}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          variant={assignment.isCompleted ? "outline" : "default"}
+                          size="sm"
+                          onClick={() => handleToggleCompletion(assignment.id, assignment.student.id, assignment.isCompleted)}
+                          disabled={updatingAssignmentId === assignment.id}
+                          className={assignment.isCompleted ? "bg-green-50 text-green-700 border-green-300 hover:bg-green-100" : "bg-blue-600 hover:bg-blue-700"}
+                        >
+                          {updatingAssignmentId === assignment.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : assignment.isCompleted ? (
+                            <>
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              Tamamlandı
+                            </>
+                          ) : (
+                            <>
+                              <XCircle className="h-4 w-4 mr-1" />
+                              Tamamlanmadı
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
     </div>
   )
 }

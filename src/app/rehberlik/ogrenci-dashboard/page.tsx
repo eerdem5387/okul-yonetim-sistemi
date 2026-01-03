@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { StudentSearch } from "@/components/ui/student-search"
+import { Input } from "@/components/ui/input"
 import {
   User,
   BookOpen,
@@ -17,6 +17,8 @@ import {
   CheckCircle,
   Clock,
   Loader2,
+  Search,
+  Users,
 } from "lucide-react"
 
 interface Student {
@@ -91,10 +93,14 @@ interface DashboardData {
 export default function RehberlikOgrenciDashboardPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
+  const [classes, setClasses] = useState<Array<{ id: string; name: string }>>([])
+  const [selectedClassId, setSelectedClassId] = useState("")
   const [students, setStudents] = useState<Student[]>([])
+  const [filteredStudents, setFilteredStudents] = useState<Student[]>([])
+  const [searchTerm, setSearchTerm] = useState("")
   const [selectedStudentId, setSelectedStudentId] = useState("")
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
-  const [period, setPeriod] = useState("30days")
+  const [loadingStudents, setLoadingStudents] = useState(false)
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -103,49 +109,81 @@ export default function RehberlikOgrenciDashboardPage() {
         router.push("/login")
         return
       }
-      fetchStudents()
+      fetchClasses()
     }
   }, [router])
 
-  const fetchStudents = async () => {
+  // Sınıf değiştiğinde öğrencileri getir
+  useEffect(() => {
+    if (selectedClassId) {
+      fetchStudents(selectedClassId)
+    } else {
+      setStudents([])
+      setFilteredStudents([])
+      setSelectedStudentId("")
+      setDashboardData(null)
+    }
+  }, [selectedClassId])
+
+  // Arama terimi değiştiğinde öğrencileri filtrele
+  useEffect(() => {
+    if (searchTerm.trim() === "") {
+      setFilteredStudents(students)
+    } else {
+      const searchLower = searchTerm.toLowerCase()
+      const filtered = students.filter(
+        (student) =>
+          student.firstName.toLowerCase().includes(searchLower) ||
+          student.lastName.toLowerCase().includes(searchLower) ||
+          `${student.firstName} ${student.lastName}`.toLowerCase().includes(searchLower)
+      )
+      setFilteredStudents(filtered)
+    }
+  }, [searchTerm, students])
+
+  const fetchClasses = async () => {
     try {
-      // Tüm öğrencileri çek (limit ile)
-      const response = await fetch("/api/students?limit=1000")
+      const response = await fetch("/api/classes")
       if (response.ok) {
         const data = await response.json()
-        // API response formatını kontrol et
-        const studentsList = Array.isArray(data) ? data : (data.students || [])
-        // Sadece gerekli alanları map et
-        const formattedStudents: Student[] = studentsList.map((s: {
-          id: string
-          firstName: string
-          lastName: string
-          grade?: string | null
-          tcNumber?: string | null
-        }) => ({
-          id: s.id,
-          firstName: s.firstName,
-          lastName: s.lastName,
-          grade: s.grade || "",
-          tcNumber: s.tcNumber || "",
-        }))
-        setStudents(formattedStudents)
+        setClasses(data.classes || [])
+      } else {
+        console.error("Failed to fetch classes:", response.statusText)
+      }
+    } catch (error) {
+      console.error("Error fetching classes:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchStudents = async (classId: string) => {
+    setLoadingStudents(true)
+    try {
+      const response = await fetch(`/api/classes/${classId}/students`)
+      if (response.ok) {
+        const data = await response.json()
+        const studentsList = data.students || []
+        setStudents(studentsList)
+        setFilteredStudents(studentsList)
       } else {
         console.error("Failed to fetch students:", response.statusText)
+        setStudents([])
+        setFilteredStudents([])
       }
     } catch (error) {
       console.error("Error fetching students:", error)
+      setStudents([])
+      setFilteredStudents([])
     } finally {
-      setLoading(false)
+      setLoadingStudents(false)
     }
   }
 
   const fetchDashboard = async (studentId: string) => {
     setLoading(true)
     try {
-      const response = await fetch(
-        `/api/students/${studentId}/dashboard?period=${period}`
-      )
+      const response = await fetch(`/api/students/${studentId}/dashboard`)
       if (response.ok) {
         const data = await response.json()
         setDashboardData(data)
@@ -166,13 +204,6 @@ export default function RehberlikOgrenciDashboardPage() {
       fetchDashboard(studentId)
     } else {
       setDashboardData(null)
-    }
-  }
-
-  const handlePeriodChange = (newPeriod: string) => {
-    setPeriod(newPeriod)
-    if (selectedStudentId) {
-      fetchDashboard(selectedStudentId)
     }
   }
 
@@ -206,7 +237,7 @@ export default function RehberlikOgrenciDashboardPage() {
     }
   }
 
-  if (loading && students.length === 0) {
+  if (loading && classes.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
@@ -227,37 +258,82 @@ export default function RehberlikOgrenciDashboardPage() {
             </p>
           </div>
 
-          {/* Öğrenci Seçimi ve Filtre */}
+          {/* Öğrenci Seçimi */}
           <Card className="border-2 border-purple-100 shadow-sm">
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="studentSearch" className="text-sm font-semibold text-gray-700">
-                    Öğrenci Ara
-                  </Label>
-                  <StudentSearch
-                    students={students}
-                    selectedStudentId={selectedStudentId}
-                    onSelect={handleStudentChange}
-                    placeholder="Öğrenci adı, soyadı, TC veya sınıf ile ara..."
-                  />
-                </div>
+            <CardHeader>
+              <CardTitle className="text-lg sm:text-xl">Öğrenci Seçimi</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {/* Sınıf Seçimi */}
                 <div className="space-y-2">
-                  <Label htmlFor="periodSelect" className="text-sm font-semibold text-gray-700">
-                    Zaman Periyodu
-                  </Label>
+                  <Label htmlFor="class">Sınıf *</Label>
                   <select
-                    id="periodSelect"
-                    value={period}
-                    onChange={(e) => handlePeriodChange(e.target.value)}
-                    className="w-full p-2.5 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
-                    disabled={!selectedStudentId}
+                    id="class"
+                    value={selectedClassId}
+                    onChange={(e) => setSelectedClassId(e.target.value)}
+                    className="w-full p-2 border rounded-md"
                   >
-                    <option value="30days">Son 30 Gün</option>
-                    <option value="thisMonth">Bu Ay</option>
-                    <option value="all">Tüm Zamanlar</option>
+                    <option value="">Sınıf Seçin</option>
+                    {classes.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
+
+                {/* Öğrenci Seçimi ve Arama */}
+                {selectedClassId && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="search">Öğrenci Ara (Ad Soyad)</Label>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Input
+                          id="search"
+                          type="text"
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          placeholder="Öğrenci adı veya soyadı ile ara..."
+                          className="pl-10"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="student">Öğrenci Seç *</Label>
+                      {loadingStudents ? (
+                        <div className="w-full p-3 border rounded-md bg-gray-50 text-gray-500 text-sm flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Öğrenciler yükleniyor...
+                        </div>
+                      ) : filteredStudents.length > 0 ? (
+                        <select
+                          id="student"
+                          value={selectedStudentId}
+                          onChange={(e) => handleStudentChange(e.target.value)}
+                          className="w-full p-2 border rounded-md"
+                        >
+                          <option value="">Öğrenci Seçin</option>
+                          {filteredStudents.map((student) => (
+                            <option key={student.id} value={student.id}>
+                              {student.firstName} {student.lastName}
+                              {student.grade && ` (${student.grade})`}
+                            </option>
+                          ))}
+                        </select>
+                      ) : searchTerm ? (
+                        <div className="w-full p-3 border rounded-md bg-gray-50 text-gray-500 text-sm">
+                          Arama kriterlerinize uygun öğrenci bulunamadı.
+                        </div>
+                      ) : (
+                        <div className="w-full p-3 border rounded-md bg-gray-50 text-gray-500 text-sm">
+                          Bu sınıfta öğrenci bulunmamaktadır.
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
