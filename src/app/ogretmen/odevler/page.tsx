@@ -47,6 +47,10 @@ export default function TeacherHomeworkPage() {
     classId: "",
   })
   const [classes, setClasses] = useState<Array<{ id: string; name: string }>>([])
+  const [students, setStudents] = useState<Array<{ id: string; firstName: string; lastName: string }>>([])
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([])
+  const [assignToAllClass, setAssignToAllClass] = useState(true)
+  const [loadingStudents, setLoadingStudents] = useState(false)
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -60,10 +64,20 @@ export default function TeacherHomeworkPage() {
 
       setStaffId(id)
       fetchHomeworks(id)
-      fetchClasses()
+      fetchClasses(id)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
+
+  // Sınıf değiştiğinde öğrencileri getir
+  useEffect(() => {
+    if (formData.classId) {
+      fetchStudents(formData.classId)
+    } else {
+      setStudents([])
+      setSelectedStudentIds([])
+    }
+  }, [formData.classId])
 
   const fetchHomeworks = async (teacherId: string) => {
     try {
@@ -79,10 +93,10 @@ export default function TeacherHomeworkPage() {
     }
   }
 
-  const fetchClasses = async () => {
+  const fetchClasses = async (teacherId: string) => {
     try {
       // Öğretmenin atandığı sınıfları getir
-      const response = await fetch(`/api/teachers/${staffId}/classes`)
+      const response = await fetch(`/api/teachers/${teacherId}/classes`)
       if (response.ok) {
         const data = await response.json()
         setClasses(data.classes || [])
@@ -96,18 +110,65 @@ export default function TeacherHomeworkPage() {
     }
   }
 
+  const fetchStudents = async (classId: string) => {
+    setLoadingStudents(true)
+    try {
+      const response = await fetch(`/api/classes/${classId}/students`)
+      if (response.ok) {
+        const data = await response.json()
+        setStudents(data.students || [])
+        // Tüm sınıf seçiliyse, tüm öğrencileri seç
+        if (assignToAllClass) {
+          setSelectedStudentIds(data.students?.map((s: { id: string }) => s.id) || [])
+        }
+      } else {
+        setStudents([])
+      }
+    } catch (error) {
+      console.error("Error fetching students:", error)
+      setStudents([])
+    } finally {
+      setLoadingStudents(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
 
     try {
+      const requestBody: {
+        title: string
+        description: string
+        dueDate: string
+        subject: string
+        teacherId: string
+        classId?: string
+        studentIds?: string[]
+      } = {
+        title: formData.title,
+        description: formData.description,
+        dueDate: formData.dueDate,
+        subject: formData.subject,
+        teacherId: staffId,
+      }
+
+      // Eğer "Tüm sınıf" seçiliyse, classId gönder
+      // Değilse, seçilen öğrenci ID'lerini gönder
+      if (assignToAllClass && formData.classId) {
+        requestBody.classId = formData.classId
+      } else if (selectedStudentIds.length > 0) {
+        requestBody.studentIds = selectedStudentIds
+      } else {
+        alert("Lütfen en az bir öğrenci seçin veya 'Tüm sınıf' seçeneğini işaretleyin")
+        setLoading(false)
+        return
+      }
+
       const response = await fetch("/api/homework", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          teacherId: staffId,
-        }),
+        body: JSON.stringify(requestBody),
       })
 
       if (response.ok) {
@@ -120,6 +181,9 @@ export default function TeacherHomeworkPage() {
           subject: "",
           classId: "",
         })
+        setStudents([])
+        setSelectedStudentIds([])
+        setAssignToAllClass(true)
         fetchHomeworks(staffId)
       } else {
         const error = await response.json()
@@ -130,6 +194,22 @@ export default function TeacherHomeworkPage() {
       alert("Ödev oluşturulurken bir hata oluştu")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleStudentToggle = (studentId: string) => {
+    if (selectedStudentIds.includes(studentId)) {
+      setSelectedStudentIds(selectedStudentIds.filter(id => id !== studentId))
+    } else {
+      setSelectedStudentIds([...selectedStudentIds, studentId])
+    }
+  }
+
+  const handleAssignToAllChange = (checked: boolean) => {
+    setAssignToAllClass(checked)
+    if (checked && students.length > 0) {
+      // Tüm öğrencileri seç
+      setSelectedStudentIds(students.map(s => s.id))
     }
   }
 
@@ -244,11 +324,89 @@ export default function TeacherHomeworkPage() {
                       </select>
                     </div>
                   </div>
+
+                  {/* Öğrenci Seçimi */}
+                  {formData.classId && (
+                    <div className="space-y-3 border-t pt-4">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="assignToAll"
+                          checked={assignToAllClass}
+                          onChange={(e) => handleAssignToAllChange(e.target.checked)}
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <Label htmlFor="assignToAll" className="font-semibold cursor-pointer">
+                          Tüm Sınıf
+                        </Label>
+                      </div>
+
+                      {loadingStudents ? (
+                        <div className="flex items-center justify-center py-8">
+                          <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                          <span className="ml-2 text-gray-600">Öğrenciler yükleniyor...</span>
+                        </div>
+                      ) : students.length > 0 ? (
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium text-gray-700">
+                            Öğrenci Seçimi {!assignToAllClass && "(En az bir öğrenci seçmelisiniz)"}
+                          </Label>
+                          <div className="max-h-60 overflow-y-auto border rounded-md p-3 bg-gray-50">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {students.map((student) => (
+                                <label
+                                  key={student.id}
+                                  className={`flex items-center gap-2 p-2 rounded-md cursor-pointer transition-colors ${
+                                    selectedStudentIds.includes(student.id)
+                                      ? "bg-blue-100 border-2 border-blue-500"
+                                      : "bg-white border-2 border-gray-200 hover:bg-gray-50"
+                                  } ${assignToAllClass ? "opacity-50 cursor-not-allowed" : ""}`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedStudentIds.includes(student.id)}
+                                    onChange={() => handleStudentToggle(student.id)}
+                                    disabled={assignToAllClass}
+                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                  />
+                                  <span className="text-sm font-medium">
+                                    {student.firstName} {student.lastName}
+                                  </span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                          {!assignToAllClass && (
+                            <p className="text-xs text-gray-500">
+                              Seçilen öğrenci sayısı: {selectedStudentIds.length} / {students.length}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-center py-4 text-gray-500">
+                          Bu sınıfta öğrenci bulunmamaktadır.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="flex gap-2">
-                    <Button type="submit" disabled={loading}>
+                    <Button type="submit" disabled={loading || (!!formData.classId && !assignToAllClass && selectedStudentIds.length === 0)}>
                       Oluştur
                     </Button>
-                    <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
+                    <Button type="button" variant="outline" onClick={() => {
+                      setShowForm(false)
+                      setFormData({
+                        title: "",
+                        description: "",
+                        dueDate: "",
+                        subject: "",
+                        classId: "",
+                      })
+                      setStudents([])
+                      setSelectedStudentIds([])
+                      setAssignToAllClass(true)
+                    }}>
                       İptal
                     </Button>
                   </div>

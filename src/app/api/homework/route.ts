@@ -160,16 +160,16 @@ export async function POST(request: NextRequest) {
     // Ödev atamalarını oluştur
     let targetStudentIds: string[] = []
 
-    if (classId) {
+    if (validStudentIds.length > 0) {
+      // Belirli öğrencilere ödev (classId varsa bile sadece seçilen öğrencilere atama yap)
+      targetStudentIds = validStudentIds
+    } else if (classId) {
       // Tüm sınıfa ödev - sınıftaki tüm öğrencileri getir
       const classStudents = await prisma.classStudent.findMany({
         where: { classId },
         select: { studentId: true },
       })
       targetStudentIds = classStudents.map((cs) => cs.studentId)
-    } else if (validStudentIds.length > 0) {
-      // Belirli öğrencilere ödev
-      targetStudentIds = validStudentIds
     }
 
     // Toplu ödev ataması
