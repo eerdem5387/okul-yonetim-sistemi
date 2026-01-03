@@ -6,8 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { MessageSquare, Plus, Calendar, ThumbsUp, ThumbsDown, Loader2, Edit, Trash2 } from "lucide-react"
-import { StudentSearch } from "@/components/ui/student-search"
+import { MessageSquare, Plus, Calendar, ThumbsUp, ThumbsDown, Loader2, Edit, Trash2, Users } from "lucide-react"
 
 interface StudentComment {
   id: string
@@ -37,15 +36,16 @@ export default function OgretmenGoruslerPage() {
   const [loading, setLoading] = useState(true)
   const [comments, setComments] = useState<StudentComment[]>([])
   const [students, setStudents] = useState<Student[]>([])
+  const [classes, setClasses] = useState<Array<{ id: string; name: string }>>([])
+  const [selectedClassId, setSelectedClassId] = useState("")
+  const [loadingStudents, setLoadingStudents] = useState(false)
   const [staffId, setStaffId] = useState("")
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     studentId: "",
     commentType: "ACADEMIC",
-    category: "",
     content: "",
-    isPositive: true,
   })
 
   useEffect(() => {
@@ -60,10 +60,21 @@ export default function OgretmenGoruslerPage() {
 
       setStaffId(id)
       fetchComments(id)
-      fetchStudents()
+      fetchClasses(id)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
+
+  // Sınıf değiştiğinde öğrencileri getir
+  useEffect(() => {
+    if (selectedClassId) {
+      fetchStudents(selectedClassId)
+    } else {
+      setStudents([])
+      setFormData({ ...formData, studentId: "" })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedClassId])
 
   const fetchComments = async (id: string) => {
     try {
@@ -79,49 +90,36 @@ export default function OgretmenGoruslerPage() {
     }
   }
 
-  const fetchStudents = async () => {
+  const fetchClasses = async (teacherId: string) => {
     try {
-      // Önce öğretmenin sınıflarını al
-      const classesResponse = await fetch(`/api/teachers/${staffId}/classes`)
-      if (!classesResponse.ok) {
-        console.error("Error fetching teacher classes")
+      const response = await fetch(`/api/teachers/${teacherId}/classes`)
+      if (response.ok) {
+        const data = await response.json()
+        setClasses(data.classes || [])
+      } else {
+        setClasses([])
+      }
+    } catch (error) {
+      console.error("Error fetching classes:", error)
+      setClasses([])
+    }
+  }
+
+  const fetchStudents = async (classId: string) => {
+    setLoadingStudents(true)
+    try {
+      const response = await fetch(`/api/classes/${classId}/students`)
+      if (response.ok) {
+        const data = await response.json()
+        setStudents(data.students || [])
+      } else {
         setStudents([])
-        return
       }
-
-      const classesData = await classesResponse.json()
-      const classes = classesData.classes || []
-
-      // Her sınıf için öğrencileri al
-      const allStudents: Student[] = []
-      for (const classItem of classes) {
-        try {
-          const classResponse = await fetch(`/api/classes/${classItem.id}`)
-          if (classResponse.ok) {
-            const classData = await classResponse.json()
-            const classStudents = classData.class?.students?.map(
-              (s: { student: Student }) => ({
-                ...s.student,
-                className: classItem.name, // Sınıf adını ekle
-              })
-            ) || []
-            allStudents.push(...classStudents)
-          }
-        } catch (error) {
-          console.error(`Error fetching students for class ${classItem.id}:`, error)
-        }
-      }
-
-      // Benzersiz öğrencileri al (aynı öğrenci birden fazla sınıfta olabilir)
-      const uniqueStudents = allStudents.filter(
-        (student, index, self) =>
-          index === self.findIndex((s) => s.id === student.id)
-      )
-
-      setStudents(uniqueStudents)
     } catch (error) {
       console.error("Error fetching students:", error)
       setStudents([])
+    } finally {
+      setLoadingStudents(false)
     }
   }
 
@@ -139,7 +137,9 @@ export default function OgretmenGoruslerPage() {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...formData,
+          studentId: formData.studentId,
+          commentType: formData.commentType,
+          content: formData.content,
           staffId,
         }),
       })
@@ -148,12 +148,12 @@ export default function OgretmenGoruslerPage() {
         alert(editingId ? "Görüş güncellendi!" : "Görüş başarıyla oluşturuldu!")
         setShowForm(false)
         setEditingId(null)
+        setSelectedClassId("")
+        setStudents([])
         setFormData({
           studentId: "",
           commentType: "ACADEMIC",
-          category: "",
           content: "",
-          isPositive: true,
         })
         fetchComments(staffId)
       } else {
@@ -173,10 +173,9 @@ export default function OgretmenGoruslerPage() {
     setFormData({
       studentId: comment.student.id,
       commentType: comment.commentType,
-      category: comment.category || "",
       content: comment.content,
-      isPositive: comment.isPositive,
     })
+    // Düzenleme modunda sınıf seçimini atla (öğrenci zaten seçili)
     setShowForm(true)
   }
 
@@ -237,12 +236,12 @@ export default function OgretmenGoruslerPage() {
               <Button
                 onClick={() => {
                   setEditingId(null)
+                  setSelectedClassId("")
+                  setStudents([])
                   setFormData({
                     studentId: "",
                     commentType: "ACADEMIC",
-                    category: "",
                     content: "",
-                    isPositive: true,
                   })
                   setShowForm(!showForm)
                 }}
@@ -265,72 +264,92 @@ export default function OgretmenGoruslerPage() {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Sınıf Seçimi */}
+                  <div className="space-y-2">
+                    <Label htmlFor="classId">Sınıf *</Label>
+                    <select
+                      id="classId"
+                      value={selectedClassId}
+                      onChange={(e) => setSelectedClassId(e.target.value)}
+                      className="w-full p-2 border rounded-md"
+                      required={!editingId}
+                      disabled={!!editingId}
+                    >
+                      <option value="">Sınıf Seçin</option>
+                      {classes.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                    {editingId && (
+                      <p className="text-xs text-gray-500">Düzenleme modunda sınıf değiştirilemez</p>
+                    )}
+                  </div>
+
+                  {/* Öğrenci Seçimi */}
+                  {selectedClassId && (
                     <div className="space-y-2">
                       <Label htmlFor="studentId">Öğrenci *</Label>
-                      {students.length > 0 ? (
-                        <StudentSearch
-                          students={students}
-                          selectedStudentId={formData.studentId}
-                          onSelect={(studentId) => setFormData({ ...formData, studentId })}
-                          placeholder="Öğrenci adı veya soyadı ile ara..."
-                        />
+                      {loadingStudents ? (
+                        <div className="w-full p-3 border rounded-md bg-gray-50 text-gray-500 text-sm flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Öğrenciler yükleniyor...
+                        </div>
+                      ) : students.length > 0 ? (
+                        <select
+                          id="studentId"
+                          value={formData.studentId}
+                          onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
+                          className="w-full p-2 border rounded-md"
+                          required
+                        >
+                          <option value="">Öğrenci Seçin</option>
+                          {students.map((student) => (
+                            <option key={student.id} value={student.id}>
+                              {student.firstName} {student.lastName}
+                              {student.grade && ` (${student.grade})`}
+                            </option>
+                          ))}
+                        </select>
                       ) : (
                         <div className="w-full p-3 border rounded-md bg-gray-50 text-gray-500 text-sm">
-                          {loading ? "Öğrenciler yükleniyor..." : "Henüz öğrenci bulunamadı. Önce size atanan sınıfların öğrencileri yüklenecek."}
+                          Bu sınıfta öğrenci bulunmamaktadır.
                         </div>
                       )}
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="commentType">Görüş Tipi *</Label>
-                      <select
-                        id="commentType"
-                        value={formData.commentType}
-                        onChange={(e) => setFormData({ ...formData, commentType: e.target.value })}
-                        className="w-full p-2 border rounded-md"
-                        required
-                      >
-                        <option value="ACADEMIC">📚 Akademik</option>
-                        <option value="BEHAVIORAL">🤝 Davranışsal</option>
-                        <option value="GENERAL">💬 Genel</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="category">Kategori (Ders/Alan)</Label>
-                      <Input
-                        id="category"
-                        value={formData.category}
-                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                        placeholder="Örn: Matematik, Sosyal Gelişim"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="isPositive">Değerlendirme *</Label>
-                      <select
-                        id="isPositive"
-                        value={formData.isPositive.toString()}
-                        onChange={(e) => setFormData({ ...formData, isPositive: e.target.value === "true" })}
-                        className="w-full p-2 border rounded-md"
-                        required
-                      >
-                        <option value="true">👍 Olumlu</option>
-                        <option value="false">👎 Gelişmeli</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="content">Görüş İçeriği *</Label>
-                    <textarea
-                      id="content"
-                      value={formData.content}
-                      onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                      placeholder="Öğrenci hakkındaki görüşünüzü yazın..."
-                      className="w-full min-h-[120px] p-3 border rounded-md"
-                      required
-                    />
-                  </div>
+                  )}
+
+                  {/* Görüş Tipi ve İçerik */}
+                  {formData.studentId && (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="commentType">Görüş Tipi *</Label>
+                        <select
+                          id="commentType"
+                          value={formData.commentType}
+                          onChange={(e) => setFormData({ ...formData, commentType: e.target.value })}
+                          className="w-full p-2 border rounded-md"
+                          required
+                        >
+                          <option value="ACADEMIC">📚 Akademik</option>
+                          <option value="BEHAVIORAL">🤝 Davranışsal</option>
+                          <option value="GENERAL">💬 Genel</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="content">Görüş İçeriği *</Label>
+                        <textarea
+                          id="content"
+                          value={formData.content}
+                          onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                          placeholder="Öğrenci hakkındaki görüşünüzü yazın..."
+                          className="w-full min-h-[120px] p-3 border rounded-md"
+                          required
+                        />
+                      </div>
+                    </>
+                  )}
                   <div className="flex gap-2">
                     <Button type="submit" disabled={loading}>
                       {editingId ? "Güncelle" : "Kaydet"}
@@ -341,6 +360,13 @@ export default function OgretmenGoruslerPage() {
                       onClick={() => {
                         setShowForm(false)
                         setEditingId(null)
+                        setSelectedClassId("")
+                        setStudents([])
+                        setFormData({
+                          studentId: "",
+                          commentType: "ACADEMIC",
+                          content: "",
+                        })
                       }}
                     >
                       İptal
@@ -392,11 +418,6 @@ export default function OgretmenGoruslerPage() {
                           <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full">
                             {getCommentTypeLabel(comment.commentType)}
                           </span>
-                          {comment.category && (
-                            <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">
-                              {comment.category}
-                            </span>
-                          )}
                           <span className="flex items-center gap-1 text-sm text-gray-600">
                             <Calendar className="h-4 w-4" />
                             {new Date(comment.createdAt).toLocaleDateString("tr-TR")}
