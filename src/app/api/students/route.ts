@@ -87,17 +87,24 @@ export async function POST(request: NextRequest) {
             }, { status: 400 })
         }
 
-        // BirthDate kontrolü - null veya undefined olabilir
-        let parsedBirthDate: Date | null = null
+        // BirthDate kontrolü - Prisma schema'da nullable değil, bu yüzden geçerli bir tarih gerekli
+        let parsedBirthDate: Date
         if (birthDate) {
             try {
-                parsedBirthDate = new Date(birthDate)
-                if (isNaN(parsedBirthDate.getTime())) {
-                    parsedBirthDate = null
+                const date = new Date(birthDate)
+                if (!isNaN(date.getTime())) {
+                    parsedBirthDate = date
+                } else {
+                    // Geçersiz tarih, default olarak bugünün tarihini kullan
+                    parsedBirthDate = new Date()
                 }
-            } catch (e) {
-                parsedBirthDate = null
+            } catch {
+                // Parse hatası, default olarak bugünün tarihini kullan
+                parsedBirthDate = new Date()
             }
+        } else {
+            // Tarih gönderilmemiş, default olarak bugünün tarihini kullan
+            parsedBirthDate = new Date()
         }
 
         const student = await prisma.student.create({

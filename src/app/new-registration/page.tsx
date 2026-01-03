@@ -310,7 +310,12 @@ export default function NewRegistrationPage() {
         }
 
         const newStudent = await studentResponse.json()
-        studentId = newStudent.id
+        // API response formatı: { success: true, student: {...} } veya direkt student objesi
+        studentId = newStudent.student?.id || newStudent.id
+        if (!studentId) {
+          alert("⚠️ Öğrenci oluşturuldu ancak ID alınamadı!")
+          return
+        }
         setCreatedStudentId(studentId)
       }
 
@@ -403,14 +408,35 @@ export default function NewRegistrationPage() {
 
       const allSuccessful = responses.every(response => response.ok)
       
+      if (!allSuccessful) {
+        // Hata detaylarını topla
+        const errorDetails = await Promise.all(
+          responses.map(async (response, index) => {
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => ({}))
+              return `${contracts[index].type}: ${errorData.error || errorData.details || "Bilinmeyen hata"}`
+            }
+            return null
+          })
+        )
+        const errorMessages = errorDetails.filter(msg => msg !== null)
+        alert(`⚠️ Sözleşmeler kaydedilirken hata oluştu!\n\n${errorMessages.join("\n")}`)
+        return
+      }
+      
       if (allSuccessful) {
         // Ana sözleşme ID'sini al
         const mainContractResponse = await responses[0].json()
-        const contractId = mainContractResponse.id
+        const contractId = mainContractResponse.id || mainContractResponse.newRegistration?.id
+        
+        if (!contractId) {
+          alert("⚠️ Sözleşme kaydedildi ancak ID alınamadı!")
+          return
+        }
 
-        // Seçili kulüplerin detaylarını al
-        const selectedClubsForPDF = otherContractData.selectedClubs
-          .map(clubId => {
+        // Seçili kulüplerin detaylarını al (mainContractData'dan)
+        const selectedClubsForPDF = (mainContractData.selectedClubs || [])
+          .map((clubId: string) => {
             const club = clubs.find(c => c.id === clubId)
             return club ? { id: club.id, name: club.name } : null
           })
@@ -479,11 +505,9 @@ export default function NewRegistrationPage() {
           // İstatistikleri yenile
           await fetchStats()
         } else {
-          alert("PDF oluşturulurken hata oluştu!")
+          const errorData = await pdfResponse.json().catch(() => ({}))
+          alert(`⚠️ PDF oluşturulurken hata oluştu!\n\n${errorData.error || errorData.details || "Bilinmeyen hata"}`)
         }
-      } else {
-        alert("Sözleşmeler kaydedilirken hata oluştu!")
-      }
     } catch (error) {
       console.error("Error downloading PDF:", error)
       alert("PDF indirilirken hata oluştu!")

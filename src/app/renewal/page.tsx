@@ -321,18 +321,136 @@ export default function RenewalPage() {
   }
 
   const handleDownloadCombinedPDF = async () => {
-    if (!selectedStudent) return
+    if (!selectedStudent) {
+      alert("⚠️ Lütfen önce bir öğrenci seçin!")
+      return
+    }
 
     try {
-      // Seçili kulüplerin detaylarını al
-      const selectedClubsForPDF = otherContractData.selectedClubs
-        .map(clubId => {
+      // Önce sözleşmeleri kaydet (eğer kaydedilmemişse)
+      // Tüm sözleşmeleri ayrı ayrı kaydet
+      const contracts = [
+        {
+          type: "renewal",
+          data: {
+            studentId: selectedStudent.id,
+            contractData: {
+              ...mainContractData,
+              studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
+              studentTC: selectedStudent.tcNumber,
+              studentClass: selectedStudent.grade,
+              studentBirthDate: formatDate(selectedStudent.birthDate),
+              contractStudentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
+              contractParentName: ""
+            },
+            selectedClubs: mainContractData.selectedClubs
+          }
+        },
+        {
+          type: "uniform",
+          data: {
+            studentId: selectedStudent.id,
+            contractData: {
+              studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
+              tcNumber: selectedStudent.tcNumber,
+              uniformSize: otherContractData.uniformSize,
+              uniformPrice: otherContractData.uniformPrice,
+              deliveryDate: otherContractData.uniformDeliveryDate,
+              uniformItems: otherContractData.uniformItems
+            }
+          }
+        },
+        {
+          type: "meal",
+          data: {
+            studentId: selectedStudent.id,
+            contractData: {
+              studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
+              tcNumber: selectedStudent.tcNumber,
+              mealPeriods: otherContractData.mealPeriods,
+              mealPrice: otherContractData.mealPrice
+            }
+          }
+        },
+        {
+          type: "book",
+          data: {
+            studentId: selectedStudent.id,
+            contractData: {
+              studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
+              tcNumber: selectedStudent.tcNumber,
+              bookSet: otherContractData.bookSet,
+              deliveryDate: otherContractData.bookDeliveryDate
+            }
+          }
+        },
+        ...(otherContractData.usesService ? [{
+          type: "service",
+          data: {
+            studentId: selectedStudent.id,
+            contractData: {
+              studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
+              tcNumber: selectedStudent.tcNumber,
+              serviceRegion: otherContractData.serviceRegion,
+              servicePrice: otherContractData.servicePrice,
+              address: selectedStudent.address
+            }
+          }
+        }] : [])
+      ]
+
+      // Tüm sözleşmeleri kaydet
+      const responses = await Promise.all(
+        contracts.map(contract => {
+          const endpoint = contract.type === "renewal" 
+            ? "/api/renewals" 
+            : `/api/${contract.type}-contracts`
+          
+          const requestBody = contract.type === "renewal" 
+            ? { ...contract.data, selectedClubs: mainContractData.selectedClubs }
+            : contract.data
+          
+          return fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(requestBody)
+          })
+        })
+      )
+
+      const allSuccessful = responses.every(response => response.ok)
+      
+      if (!allSuccessful) {
+        const errorResponses = responses.filter(r => !r.ok)
+        const errorMessages = await Promise.all(
+          errorResponses.map(async (r) => {
+            const errorData = await r.json().catch(() => ({}))
+            return errorData.error || "Bilinmeyen hata"
+          })
+        )
+        alert(`⚠️ Sözleşmeler kaydedilirken hata oluştu!\n\n${errorMessages.join("\n")}`)
+        return
+      }
+
+      // Ana sözleşme (renewal) ID'sini al
+      const mainContractResponse = await responses[0].json()
+      const contractId = mainContractResponse.id || mainContractResponse.renewal?.id
+
+      if (!contractId) {
+        alert("⚠️ Sözleşme ID'si alınamadı!")
+        return
+      }
+
+      // Seçili kulüplerin detaylarını al (mainContractData'dan)
+      const selectedClubsForPDF = (mainContractData.selectedClubs || [])
+        .map((clubId: string) => {
           const club = clubs.find(c => c.id === clubId)
           return club ? { id: club.id, name: club.name } : null
         })
         .filter((club): club is { id: string; name: string } => club !== null)
 
-      const response = await fetch(`/api/pdf/combined/${selectedStudent.id}`, {
+      // PDF'i indir
+      const response = await fetch(`/api/pdf/combined/${contractId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -359,11 +477,19 @@ export default function RenewalPage() {
         a.click()
         window.URL.revokeObjectURL(url)
         document.body.removeChild(a)
+        
+        alert(`✅ Kayıt yenileme başarıyla tamamlandı!\n\n` +
+          `Öğrenci: ${selectedStudent.firstName} ${selectedStudent.lastName}\n` +
+          `TC: ${selectedStudent.tcNumber}\n\n` +
+          `✓ Sözleşmeler kaydedildi\n` +
+          `✓ PDF dosyası indirildi.`)
       } else {
-        alert("PDF oluşturulurken hata oluştu!")
+        const errorData = await response.json().catch(() => ({}))
+        alert(`⚠️ PDF oluşturulurken hata oluştu!\n\n${errorData.error || errorData.details || "Bilinmeyen hata"}`)
       }
     } catch (error) {
       console.error("Error downloading PDF:", error)
+      alert("PDF indirilirken hata oluştu!")
     }
   }
 

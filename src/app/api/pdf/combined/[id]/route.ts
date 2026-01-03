@@ -13,7 +13,7 @@ export async function GET(
             message: "PDF Combined route is available",
             id: params.id 
         })
-    } catch (error) {
+    } catch {
         return NextResponse.json({ error: "Route error" }, { status: 500 })
     }
 }
@@ -36,7 +36,7 @@ export async function POST(
         let body
         try {
             body = await request.json()
-        } catch (e) {
+        } catch {
             // Body yoksa veya parse edilemezse, default değerler kullan
             body = {}
         }
@@ -61,10 +61,11 @@ export async function POST(
 
         let student = null
         let studentId = null
+        let renewalContract = null
 
         if (!contract) {
             // Renewal sözleşmesi olabilir
-            const renewalContract = await prisma.renewal.findUnique({
+            renewalContract = await prisma.renewal.findUnique({
                 where: { id: params.id },
                 include: {
                     student: {
@@ -137,9 +138,22 @@ export async function POST(
         }
 
         // Frontend'den gelen veya veritabanından çekilen verileri kullan
-        const finalOtherContractData = Object.keys(otherContractData || {}).length > 0
-            ? otherContractData
-            : otherContractDataFromDB
+        // Frontend'den gelen otherContractData varsa onu kullan, yoksa veritabanından çekilen verileri kullan
+        // Ama frontend'den gelen verileri önceliklendir
+        const finalOtherContractData = { ...otherContractDataFromDB, ...(otherContractData || {}) }
+        
+        // mainContractData'yı da birleştir (eğer frontend'den geliyorsa)
+        // Veritabanından gelen contractData'yı da kontrol et
+        let finalMainContractData = mainContractData || {}
+        
+        // Eğer contract bulunduysa, contractData'yı da birleştir
+        if (contract) {
+            const contractDataFromDB = contract.contractData as Record<string, unknown> || {}
+            finalMainContractData = { ...contractDataFromDB, ...finalMainContractData }
+        } else if (renewalContract) {
+            const renewalContractDataFromDB = renewalContract.contractData as Record<string, unknown> || {}
+            finalMainContractData = { ...renewalContractDataFromDB, ...finalMainContractData }
+        }
 
         // Kulüp seçimlerini hazırla (frontend'den gelen veya veritabanından)
         const clubsForPDF = selectedClubs || student.clubSelections.map(selection => ({
@@ -176,7 +190,7 @@ export async function POST(
                 fatherOccupation: student.fatherOccupation
             },
             contractTypes: typesForPdf,
-            mainContractData,
+            mainContractData: finalMainContractData,
             otherContractData: finalOtherContractData,
             selectedClubs: clubsForPDF.length > 0 ? clubsForPDF : undefined
         })

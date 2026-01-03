@@ -30,11 +30,25 @@ export async function POST(request: NextRequest) {
         const body = await request.json()
         const { studentId, contractData, selectedClubs } = body
 
+        // Validasyon
+        if (!studentId) {
+            return NextResponse.json({ error: "studentId is required" }, { status: 400 })
+        }
+
+        // Öğrencinin var olup olmadığını kontrol et
+        const student = await prisma.student.findUnique({
+            where: { id: studentId }
+        })
+
+        if (!student) {
+            return NextResponse.json({ error: "Student not found" }, { status: 404 })
+        }
+
         // Sözleşmeyi oluştur
         const renewal = await prisma.renewal.create({
             data: {
                 studentId,
-                contractData
+                contractData: contractData || {}
             },
             include: {
                 student: {
@@ -48,22 +62,30 @@ export async function POST(request: NextRequest) {
         })
 
         // Kulüp seçimlerini ekle
-        if (selectedClubs && selectedClubs.length > 0) {
-            const clubSelections = selectedClubs.map((clubId: string) => ({
-                clubId,
-                studentId
-            }))
+        if (selectedClubs && Array.isArray(selectedClubs) && selectedClubs.length > 0) {
+            const clubSelections = selectedClubs
+                .filter((clubId: string) => clubId && typeof clubId === 'string')
+                .map((clubId: string) => ({
+                    clubId,
+                    studentId
+                }))
 
-            await prisma.clubSelection.createMany({
-                data: clubSelections,
-                skipDuplicates: true
-            })
+            if (clubSelections.length > 0) {
+                await prisma.clubSelection.createMany({
+                    data: clubSelections,
+                    skipDuplicates: true
+                })
+            }
         }
 
         return NextResponse.json(renewal)
     } catch (error) {
         console.error("Error creating renewal:", error)
-        return NextResponse.json({ error: "Failed to create renewal" }, { status: 500 })
+        const errorMessage = error instanceof Error ? error.message : "Unknown error"
+        return NextResponse.json({ 
+            error: "Failed to create renewal",
+            details: errorMessage
+        }, { status: 500 })
     }
 }
 
