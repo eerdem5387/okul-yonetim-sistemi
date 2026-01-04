@@ -213,15 +213,29 @@ export async function POST(request: NextRequest) {
     // Şifre kontrolü
     let isValidPassword = false
 
+    // Trim yaparak karşılaştırma yap
+    const trimmedPassword = password?.trim() || ""
+    const trimmedStudentTc = studentTcNumber?.trim() || ""
+
+    console.log(`[Parent Login] Şifre kontrolü - Öğrenci TC: ${trimmedStudentTc}, Şifre: ${trimmedPassword}, Parent Password: ${parent.password ? 'VAR' : 'YOK'}`)
+
     if (!parent.password) {
       // İlk giriş: Öğrenci TC No ile giriş
-      isValidPassword = password === studentTcNumber
+      isValidPassword = trimmedPassword === trimmedStudentTc
+      console.log(`[Parent Login] İlk giriş kontrolü - Sonuç: ${isValidPassword}`)
     } else {
       // Sonraki girişler: Şifre kontrolü
-      isValidPassword = await bcrypt.compare(password, parent.password)
+      try {
+        isValidPassword = await bcrypt.compare(trimmedPassword, parent.password)
+        console.log(`[Parent Login] Şifre kontrolü (bcrypt) - Sonuç: ${isValidPassword}`)
+      } catch (bcryptError) {
+        console.error(`[Parent Login] Bcrypt hatası:`, bcryptError)
+        isValidPassword = false
+      }
     }
 
     if (!isValidPassword) {
+      console.error(`[Parent Login] Şifre kontrolü başarısız - Öğrenci TC: ${trimmedStudentTc}, Şifre: ${trimmedPassword}, Parent Password: ${parent.password ? 'VAR' : 'YOK'}`)
       return NextResponse.json(
         { error: "Öğrenci TC Kimlik No veya şifre hatalı" },
         { status: 401 }
