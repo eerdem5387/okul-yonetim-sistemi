@@ -172,15 +172,23 @@ export default function ParentPage() {
             return combined
           })
         } else {
-          // Öğrenci seçildiğinde: Veritabanındaki seçimleri yükle
+          // Öğrenci seçildiğinde veya kayıt sonrası: Veritabanındaki seçimleri yükle
           setSelectedClubs(dbClubIds)
         }
+        return dbClubIds // Başarılı durumda kulüp ID'lerini döndür
+      } else {
+        console.error("Failed to fetch student clubs:", response.statusText)
+        if (!preserveCurrentSelections) {
+          setSelectedClubs([])
+        }
+        return [] // Hata durumunda boş array döndür
       }
     } catch (error) {
       console.error("Error fetching student clubs:", error)
       if (!preserveCurrentSelections) {
         setSelectedClubs([])
       }
+      return [] // Hata durumunda boş array döndür
     }
   }
 
@@ -276,15 +284,24 @@ export default function ParentPage() {
       if (response.ok) {
         // Başarılı kayıt sonrası kulüp listesini yenile (kontejan güncellemesi için)
         await fetchClubs()
-        await fetchStudentClubs(selectedStudent.id)
         
-        if (selectedClubs.length === 0) {
+        // Kaydedilen kulüp sayısını sakla (state güncellenmeden önce)
+        const savedClubCount = selectedClubs.length
+        
+        // Öğrencinin güncel kulüp seçimlerini yükle (veritabanından)
+        // Bu işlem selectedClubs state'ini güncelleyecek
+        const updatedClubIds = await fetchStudentClubs(selectedStudent.id, false)
+        
+        // Başarı mesajını göster
+        if (savedClubCount === 0) {
           alert("✅ Öğrenci tüm kulüplerden başarıyla çıkarıldı!")
         } else {
-          alert("✅ Kulüp seçimleri başarıyla güncellendi!")
+          alert(`✅ Kulüp seçimleri başarıyla güncellendi! (${savedClubCount} kulüp)`)
         }
-        setSelectedClubs([])
-        setSelectedStudent(null)
+        
+        // Modal zaten kapatıldı (setShowConfirmModal(false) yukarıda)
+        // selectedStudent kalmalı, sadece selectedClubs fetchStudentClubs tarafından güncellenecek
+        // Artık sayfa normal görünümüne dönecek çünkü selectedStudent null değil
       } else {
         const errorData = await response.json()
         if (errorData.error && errorData.fullClubs) {
