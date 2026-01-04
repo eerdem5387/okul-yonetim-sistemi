@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   User,
@@ -17,6 +18,7 @@ import {
   Award,
   MapPin,
   FileText,
+  ChevronRight,
 } from "lucide-react"
 
 interface Student {
@@ -205,87 +207,100 @@ export default function VeliPanelPage() {
         {/* İstatistikler */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
           {/* Ödev Tamamlama */}
-          <Card className="border-l-4 border-l-blue-500">
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm text-gray-600">Ödevler</p>
-                <BookOpen className="h-5 w-5 text-blue-600" />
-              </div>
-              <div className="text-2xl sm:text-3xl font-bold text-gray-900">
-                %{dashboardData.statistics.homeworkCompletionRate}
-              </div>
-              <div className="mt-2 text-xs sm:text-sm text-gray-600">
-                {dashboardData.statistics.completedHomeworks} / {dashboardData.statistics.totalHomeworks} tamamlandı
-              </div>
-              <div className="mt-3 h-2 w-full bg-gray-200 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500"
-                  style={{
-                    width: `${dashboardData.statistics.homeworkCompletionRate}%`,
-                  }}
-                />
-              </div>
-            </CardContent>
-          </Card>
+          <Link href="/veli/odevler">
+            <Card className="border-l-4 border-l-blue-500 hover:shadow-lg transition-all cursor-pointer hover:scale-105">
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-gray-600">Ödevler</p>
+                  <BookOpen className="h-5 w-5 text-blue-600" />
+                </div>
+                <div className="text-2xl sm:text-3xl font-bold text-gray-900">
+                  %{dashboardData.statistics.homeworkCompletionRate}
+                </div>
+                <div className="mt-2 text-xs sm:text-sm text-gray-600">
+                  {dashboardData.statistics.completedHomeworks} / {dashboardData.statistics.totalHomeworks} tamamlandı
+                </div>
+                <div className="mt-3 h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500"
+                    style={{
+                      width: `${dashboardData.statistics.homeworkCompletionRate}%`,
+                    }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
 
           {/* Devam Durumu */}
-          <Card className="border-l-4 border-l-green-500">
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm text-gray-600">Devam</p>
-                <Calendar className="h-5 w-5 text-green-600" />
-              </div>
-              <div className="text-2xl sm:text-3xl font-bold text-gray-900">
-                %{dashboardData.statistics.attendanceRate}
-              </div>
-              <div className="mt-2 text-xs sm:text-sm text-gray-600">
-                {dashboardData.statistics.presentCount} / {dashboardData.statistics.totalAttendances} devam
-              </div>
-              <div className="mt-3 h-2 w-full bg-gray-200 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-green-500 to-emerald-500 transition-all duration-500"
-                  style={{
-                    width: `${dashboardData.statistics.attendanceRate}%`,
-                  }}
-                />
-              </div>
-            </CardContent>
-          </Card>
+          <Link href="/veli/yoklama">
+            <Card className="border-l-4 border-l-green-500 hover:shadow-lg transition-all cursor-pointer hover:scale-105">
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-gray-600">Devamsızlık</p>
+                  <Calendar className="h-5 w-5 text-green-600" />
+                </div>
+                <div className="text-2xl sm:text-3xl font-bold text-gray-900">
+                  %{dashboardData.statistics.attendanceRate}
+                </div>
+                <div className="mt-2 text-xs sm:text-sm text-gray-600">
+                  {dashboardData.statistics.presentCount} / {dashboardData.statistics.totalAttendances} devam
+                </div>
+                <div className="mt-3 h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-green-500 to-emerald-500 transition-all duration-500"
+                    style={{
+                      width: `${dashboardData.statistics.attendanceRate}%`,
+                    }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
 
           {/* Sınav Ortalaması */}
-          <Card className="border-l-4 border-l-purple-500">
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm text-gray-600">Ortalama</p>
-                <BarChart3 className="h-5 w-5 text-purple-600" />
-              </div>
-              <div className="text-2xl sm:text-3xl font-bold text-gray-900">
-                {dashboardData.statistics.averageScore}
-              </div>
-              <div className="mt-2 text-xs sm:text-sm text-gray-600">
-                {dashboardData.statistics.totalExams} sınav
-              </div>
-            </CardContent>
-          </Card>
+          <Link href="/veli/sinavlar">
+            <Card className="border-l-4 border-l-purple-500 hover:shadow-lg transition-all cursor-pointer hover:scale-105">
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-gray-600">Ortalama</p>
+                  <BarChart3 className="h-5 w-5 text-purple-600" />
+                </div>
+                <div className="text-2xl sm:text-3xl font-bold text-gray-900">
+                  {dashboardData.statistics.averageScore}
+                </div>
+                <div className="mt-2 text-xs sm:text-sm text-gray-600">
+                  {dashboardData.statistics.totalExams} sınav
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
 
           {/* Görüş İstatistikleri */}
-          <Card className="border-l-4 border-l-orange-500">
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm text-gray-600">Görüşler</p>
-                <MessageSquare className="h-5 w-5 text-orange-600" />
-              </div>
-              <div className="text-2xl sm:text-3xl font-bold text-gray-900">
-                {dashboardData.statistics.totalComments}
-              </div>
-              <div className="mt-2 text-xs sm:text-sm text-gray-600">
-                {dashboardData.statistics.positiveComments} olumlu, {dashboardData.statistics.negativeComments} gelişmeli
-              </div>
-            </CardContent>
-          </Card>
+          <Link href="/veli/gorusler">
+            <Card className="border-l-4 border-l-orange-500 hover:shadow-lg transition-all cursor-pointer hover:scale-105">
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-gray-600">Görüşler</p>
+                  <MessageSquare className="h-5 w-5 text-orange-600" />
+                </div>
+                <div className="text-2xl sm:text-3xl font-bold text-gray-900">
+                  {dashboardData.statistics.totalComments}
+                </div>
+                <div className="mt-2 text-xs sm:text-sm text-gray-600">
+                  {dashboardData.statistics.positiveComments} olumlu, {dashboardData.statistics.negativeComments} gelişmeli
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
 
           {/* IB Faaliyet İstatistikleri */}
-          <Card className="border-l-4 border-l-purple-500">
+          <Card 
+            className="border-l-4 border-l-purple-500 hover:shadow-lg transition-all cursor-pointer hover:scale-105"
+            onClick={() => {
+              document.getElementById("ib-faaliyetleri")?.scrollIntoView({ behavior: "smooth" })
+            }}
+          >
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-sm text-gray-600">IB Faaliyetleri</p>
@@ -303,12 +318,17 @@ export default function VeliPanelPage() {
 
         {/* Son Ödevler */}
         <Card className="border-0 shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-blue-600" />
-              Son Ödevler
-            </CardTitle>
-          </CardHeader>
+          <Link href="/veli/odevler">
+            <CardHeader className="hover:bg-blue-50/50 transition-colors cursor-pointer rounded-t-lg">
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="h-5 w-5 text-blue-600" />
+                  Son Ödevler
+                </div>
+                <ChevronRight className="h-5 w-5 text-gray-400" />
+              </CardTitle>
+            </CardHeader>
+          </Link>
           <CardContent>
             {dashboardData.recentData.homeworks.length === 0 ? (
               <p className="text-gray-500 text-center py-4">Henüz ödev kaydı bulunmuyor</p>
@@ -367,12 +387,17 @@ export default function VeliPanelPage() {
 
         {/* Son Yoklamalar */}
         <Card className="border-0 shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-green-600" />
-              Son Yoklamalar
-            </CardTitle>
-          </CardHeader>
+          <Link href="/veli/yoklama">
+            <CardHeader className="hover:bg-green-50/50 transition-colors cursor-pointer rounded-t-lg">
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-green-600" />
+                  Son Yoklamalar
+                </div>
+                <ChevronRight className="h-5 w-5 text-gray-400" />
+              </CardTitle>
+            </CardHeader>
+          </Link>
           <CardContent>
             {dashboardData.recentData.attendances.length === 0 ? (
               <p className="text-gray-500 text-center py-4">Henüz yoklama kaydı bulunmuyor</p>
@@ -419,12 +444,17 @@ export default function VeliPanelPage() {
 
         {/* Son Sınavlar */}
         <Card className="border-0 shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-purple-600" />
-              Son Sınavlar
-            </CardTitle>
-          </CardHeader>
+          <Link href="/veli/sinavlar">
+            <CardHeader className="hover:bg-purple-50/50 transition-colors cursor-pointer rounded-t-lg">
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-purple-600" />
+                  Son Sınavlar
+                </div>
+                <ChevronRight className="h-5 w-5 text-gray-400" />
+              </CardTitle>
+            </CardHeader>
+          </Link>
           <CardContent>
             {dashboardData.recentData.examResults.length === 0 ? (
               <p className="text-gray-500 text-center py-4">Henüz sınav kaydı bulunmuyor</p>
@@ -461,12 +491,17 @@ export default function VeliPanelPage() {
 
         {/* Son Görüşler */}
         <Card className="border-0 shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5 text-orange-600" />
-              Son Görüşler
-            </CardTitle>
-          </CardHeader>
+          <Link href="/veli/gorusler">
+            <CardHeader className="hover:bg-orange-50/50 transition-colors cursor-pointer rounded-t-lg">
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-orange-600" />
+                  Son Görüşler
+                </div>
+                <ChevronRight className="h-5 w-5 text-gray-400" />
+              </CardTitle>
+            </CardHeader>
+          </Link>
           <CardContent>
             {dashboardData.recentData.comments.length === 0 ? (
               <p className="text-gray-500 text-center py-4">Henüz görüş kaydı bulunmuyor</p>
@@ -511,7 +546,7 @@ export default function VeliPanelPage() {
         </Card>
 
         {/* IB Faaliyetleri */}
-        <Card className="border-0 shadow-lg">
+        <Card className="border-0 shadow-lg" id="ib-faaliyetleri">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Award className="h-5 w-5 text-purple-600" />

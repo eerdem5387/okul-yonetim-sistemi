@@ -57,17 +57,68 @@ export default function ParentPage() {
       
       console.log("[Parent Page] ✅ Auth kontrolü başarılı, öğrenci bilgileri yükleniyor")
 
-      // Öğrenci bilgisini oluştur
-      const student: Student = {
-        id: studentId,
-        firstName: studentName.split(" ")[0] || "",
-        lastName: studentName.split(" ").slice(1).join(" ") || "",
-        tcNumber: localStorage.getItem("student_tc") || "",
-        grade: "", // Grade bilgisi gerekirse API'den çekilebilir
+      // Öğrenci bilgisini API'den çek (grade bilgisi için)
+      const fetchStudentInfo = async () => {
+        try {
+          const studentsResponse = await fetch(`/api/parents/my-students?parentId=${parentId}`)
+          if (studentsResponse.ok) {
+            const studentsData = await studentsResponse.json()
+            const student = studentsData.students?.find((s: Student) => s.id === studentId) || studentsData.students?.[0]
+            
+            if (student) {
+              const studentInfo: Student = {
+                id: student.id,
+                firstName: student.firstName || studentName.split(" ")[0] || "",
+                lastName: student.lastName || studentName.split(" ").slice(1).join(" ") || "",
+                tcNumber: student.tcNumber || localStorage.getItem("student_tc") || "",
+                grade: student.grade || student.class?.name || "",
+              }
+              
+              setSelectedStudent(studentInfo)
+              fetchStudentClubs(studentInfo.id)
+            } else {
+              // API'den öğrenci bulunamazsa localStorage'dan oluştur
+              const studentInfo: Student = {
+                id: studentId,
+                firstName: studentName.split(" ")[0] || "",
+                lastName: studentName.split(" ").slice(1).join(" ") || "",
+                tcNumber: localStorage.getItem("student_tc") || "",
+                grade: "",
+              }
+              
+              setSelectedStudent(studentInfo)
+              fetchStudentClubs(studentId)
+            }
+          } else {
+            // API hatası durumunda localStorage'dan oluştur
+            const studentInfo: Student = {
+              id: studentId,
+              firstName: studentName.split(" ")[0] || "",
+              lastName: studentName.split(" ").slice(1).join(" ") || "",
+              tcNumber: localStorage.getItem("student_tc") || "",
+              grade: "",
+            }
+            
+            setSelectedStudent(studentInfo)
+            fetchStudentClubs(studentId)
+          }
+        } catch (error) {
+          console.error("Error fetching student info:", error)
+          // Hata durumunda localStorage'dan oluştur
+          const studentInfo: Student = {
+            id: studentId,
+            firstName: studentName.split(" ")[0] || "",
+            lastName: studentName.split(" ").slice(1).join(" ") || "",
+            tcNumber: localStorage.getItem("student_tc") || "",
+            grade: "",
+          }
+          
+          setSelectedStudent(studentInfo)
+          fetchStudentClubs(studentId)
+        }
       }
       
-      setSelectedStudent(student)
-      fetchStudentClubs(studentId)
+      fetchStudentInfo()
     }
   }, [router])
 
@@ -306,8 +357,9 @@ export default function ParentPage() {
             </CardHeader>
             <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6 pb-4 sm:pb-6">
               {!selectedStudent ? (
-                <div className="p-6 sm:p-8 text-center text-gray-500">
-                  <p className="text-sm sm:text-base">Lütfen önce bir öğrenci seçin</p>
+                <div className="p-6 sm:p-8 text-center">
+                  <div className="inline-block h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                  <p className="text-sm sm:text-base text-gray-500">Öğrenci bilgileri yükleniyor...</p>
                 </div>
               ) : (
                 <>
