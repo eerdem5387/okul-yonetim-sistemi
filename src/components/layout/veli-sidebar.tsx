@@ -38,12 +38,8 @@ export default function VeliSidebar({ className }: VeliSidebarProps) {
   }
 
   const navigation = [
-    { name: "Ana Sayfa", href: "/veli/panel", icon: Home },
+    { name: "Öğrencim", href: "/veli/panel", icon: User },
     { name: "Kulüp Seçimi", href: "/parent", icon: Users },
-    { name: "Ödevler", href: "/veli/odevler", icon: BookOpen },
-    { name: "Yoklama", href: "/veli/yoklama", icon: Calendar },
-    { name: "Sınavlar", href: "/veli/sinavlar", icon: FileText },
-    { name: "Görüşler", href: "/veli/gorusler", icon: MessageSquare },
   ]
 
   return (

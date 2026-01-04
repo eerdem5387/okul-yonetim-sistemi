@@ -19,6 +19,8 @@ import {
   BarChart3,
   Users,
   Search,
+  Award,
+  MapPin,
 } from "lucide-react"
 
 interface Student {
@@ -49,6 +51,8 @@ interface DashboardData {
     totalComments: number
     positiveComments: number
     negativeComments: number
+    totalActivities: number
+    verifiedActivities: number
   }
   recentData: {
     homeworks: Array<{
@@ -98,6 +102,17 @@ interface DashboardData {
         lastName: string
         department: string
       }
+    }>
+    activities: Array<{
+      id: string
+      type: string
+      title: string
+      description: string | null
+      activityDate: string
+      location: string | null
+      organizer: string | null
+      isVerified: boolean
+      verifiedAt: string | null
     }>
   }
 }
@@ -478,6 +493,22 @@ export default function OgrenciDashboardPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* IB Faaliyet İstatistikleri */}
+              <Card className="border-l-4 border-l-purple-500">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm text-gray-600">IB Faaliyetleri</p>
+                    <Award className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-bold text-gray-900">
+                    {dashboardData.statistics.totalActivities}
+                  </div>
+                  <div className="mt-2 text-xs sm:text-sm text-gray-600">
+                    {dashboardData.statistics.verifiedActivities} doğrulanmış
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             {/* Son Ödevler */}
@@ -739,6 +770,84 @@ export default function OgrenciDashboardPage() {
                         </p>
                       </div>
                     ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* IB Faaliyetleri */}
+            <Card className="border-0 shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Award className="h-5 w-5 text-purple-600" />
+                  IB Faaliyetleri
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {dashboardData.recentData.activities.length === 0 ? (
+                  <p className="text-gray-500 text-center py-4">Henüz IB faaliyet kaydı bulunmuyor</p>
+                ) : (
+                  <div className="space-y-2">
+                    {dashboardData.recentData.activities.map((activity) => {
+                      const activityTypeLabels: Record<string, string> = {
+                        ETKINLIK: "Etkinlik",
+                        GEZI: "Gezi",
+                        PROJE: "Proje",
+                        SINAV: "Sınav",
+                        YARISMA: "Yarışma",
+                        SEMINER: "Seminer",
+                        WORKSHOP: "Workshop",
+                        SPORT: "Spor",
+                        SANAT: "Sanat",
+                        SOSYAL: "Sosyal Sorumluluk",
+                        DIL: "Dil Faaliyeti",
+                        BILIM: "Bilim",
+                        DEGER: "Değerler Eğitimi",
+                        DIGER: "Diğer",
+                      }
+                      return (
+                        <div
+                          key={activity.id}
+                          className={`p-3 border rounded-lg ${
+                            activity.isVerified
+                              ? "bg-purple-50 border-purple-200"
+                              : "bg-gray-50 border-gray-200"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex items-center gap-2 flex-1">
+                              <Award className={`h-4 w-4 ${activity.isVerified ? "text-purple-600" : "text-gray-400"}`} />
+                              <p className="font-medium text-sm">{activity.title}</p>
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                                {activityTypeLabels[activity.type] || activity.type}
+                              </span>
+                              {activity.isVerified && (
+                                <div title="Doğrulanmış">
+                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                                </div>
+                              )}
+                            </div>
+                            <span className="text-xs text-gray-500">
+                              {new Date(activity.activityDate).toLocaleDateString("tr-TR")}
+                            </span>
+                          </div>
+                          {activity.description && (
+                            <p className="text-sm text-gray-700 mb-1">{activity.description}</p>
+                          )}
+                          <div className="flex items-center gap-3 text-xs text-gray-500 mt-2">
+                            {activity.location && (
+                              <span className="flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />
+                                {activity.location}
+                              </span>
+                            )}
+                            {activity.organizer && (
+                              <span>Organizatör: {activity.organizer}</span>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
               </CardContent>

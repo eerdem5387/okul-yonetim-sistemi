@@ -19,6 +19,8 @@ import {
   Loader2,
   Search,
   Users,
+  Award,
+  MapPin,
 } from "lucide-react"
 
 interface Student {
@@ -47,6 +49,8 @@ interface DashboardData {
     totalComments: number
     positiveComments: number
     negativeComments: number
+    totalActivities: number
+    verifiedActivities: number
   }
   recentData: {
     homeworks: Array<{
@@ -86,6 +90,17 @@ interface DashboardData {
         lastName: string
         department: string
       }
+    }>
+    activities: Array<{
+      id: string
+      type: string
+      title: string
+      description: string | null
+      activityDate: string
+      location: string | null
+      organizer: string | null
+      isVerified: boolean
+      verifiedAt: string | null
     }>
   }
 }
@@ -488,6 +503,24 @@ export default function RehberlikOgrenciDashboardPage() {
                     </p>
                   </CardContent>
                 </Card>
+
+                {/* IB Faaliyetleri */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <Award className="h-4 w-4 text-purple-600" />
+                      IB Faaliyetleri
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-purple-600">
+                      {dashboardData.statistics.totalActivities}
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {dashboardData.statistics.verifiedActivities} doğrulanmış
+                    </p>
+                  </CardContent>
+                </Card>
               </div>
 
               {/* Detaylı Bilgiler */}
@@ -648,6 +681,86 @@ export default function RehberlikOgrenciDashboardPage() {
                           </p>
                         </div>
                       ))
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* IB Faaliyetleri */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Award className="h-5 w-5 text-purple-600" />
+                      IB Faaliyetleri
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {dashboardData.recentData.activities.length === 0 ? (
+                      <p className="text-gray-500 text-center py-4">
+                        Henüz IB faaliyet kaydı yok
+                      </p>
+                    ) : (
+                      dashboardData.recentData.activities.slice(0, 5).map((activity) => {
+                        const activityTypeLabels: Record<string, string> = {
+                          ETKINLIK: "Etkinlik",
+                          GEZI: "Gezi",
+                          PROJE: "Proje",
+                          SINAV: "Sınav",
+                          YARISMA: "Yarışma",
+                          SEMINER: "Seminer",
+                          WORKSHOP: "Workshop",
+                          SPORT: "Spor",
+                          SANAT: "Sanat",
+                          SOSYAL: "Sosyal Sorumluluk",
+                          DIL: "Dil Faaliyeti",
+                          BILIM: "Bilim",
+                          DEGER: "Değerler Eğitimi",
+                          DIGER: "Diğer",
+                        }
+                        return (
+                          <div
+                            key={activity.id}
+                            className={`p-3 border-l-4 rounded-lg ${
+                              activity.isVerified ? "border-l-purple-500 bg-purple-50" : "border-l-gray-300 bg-gray-50"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <Award className={`h-4 w-4 ${activity.isVerified ? "text-purple-600" : "text-gray-400"}`} />
+                              <span className="text-xs font-medium text-gray-900">
+                                {activity.title}
+                              </span>
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                                {activityTypeLabels[activity.type] || activity.type}
+                              </span>
+                              {activity.isVerified && (
+                                <div title="Doğrulanmış">
+                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                                </div>
+                              )}
+                              <span className="text-xs text-gray-500 ml-auto">
+                                {new Date(activity.activityDate).toLocaleDateString("tr-TR")}
+                              </span>
+                            </div>
+                            {activity.description && (
+                              <p className="text-sm text-gray-700 line-clamp-2 mt-1">
+                                {activity.description}
+                              </p>
+                            )}
+                            {(activity.location || activity.organizer) && (
+                              <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
+                                {activity.location && (
+                                  <span className="flex items-center gap-1">
+                                    <MapPin className="h-3 w-3" />
+                                    {activity.location}
+                                  </span>
+                                )}
+                                {activity.organizer && (
+                                  <span>Organizatör: {activity.organizer}</span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })
                     )}
                   </CardContent>
                 </Card>

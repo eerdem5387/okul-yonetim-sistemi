@@ -169,6 +169,22 @@ export async function GET(
       take: 10,
     })
 
+    // IB Faaliyetleri (son 30 gün veya seçilen period)
+    const activities = await prisma.activity.findMany({
+      where: {
+        studentId: id,
+        ...(startDate && {
+          activityDate: {
+            gte: startDate,
+          },
+        }),
+      },
+      orderBy: {
+        activityDate: "desc",
+      },
+      take: 10,
+    })
+
     // İstatistikler
     const totalHomeworks = homeworks.length
     const completedHomeworks = homeworks.filter((h) => h.isCompleted).length
@@ -194,6 +210,10 @@ export async function GET(
     const positiveComments = comments.filter((c) => c.isPositive).length
     const negativeComments = comments.filter((c) => !c.isPositive).length
 
+    // IB Faaliyet istatistikleri
+    const totalActivities = activities.length
+    const verifiedActivities = activities.filter((a) => a.isVerified).length
+
     return NextResponse.json({
       student,
       statistics: {
@@ -212,12 +232,15 @@ export async function GET(
         totalComments: comments.length,
         positiveComments,
         negativeComments,
+        totalActivities,
+        verifiedActivities,
       },
       recentData: {
         homeworks,
         attendances,
         examResults,
         comments,
+        activities,
       },
     })
   } catch (error) {

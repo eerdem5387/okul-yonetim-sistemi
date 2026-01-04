@@ -23,6 +23,7 @@ import {
   Plus,
   Search,
   Users,
+  MapPin,
 } from "lucide-react"
 
 interface Student {
@@ -51,6 +52,8 @@ interface DashboardData {
     totalComments: number
     positiveComments: number
     negativeComments: number
+    totalActivities: number
+    verifiedActivities: number
   }
   recentData: {
     homeworks: Array<{
@@ -90,6 +93,17 @@ interface DashboardData {
         lastName: string
         department: string
       }
+    }>
+    activities: Array<{
+      id: string
+      type: string
+      title: string
+      description: string | null
+      activityDate: string
+      location: string | null
+      organizer: string | null
+      isVerified: boolean
+      verifiedAt: string | null
     }>
   }
 }
@@ -605,6 +619,24 @@ export default function OgretmenOgrenciDashboardPage() {
                     )}
                   </CardContent>
                 </Card>
+
+                {/* IB Faaliyetleri */}
+                <Card className="hover:shadow-lg transition-shadow border-l-4 border-l-purple-500">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <Award className="h-4 w-4 text-purple-600" />
+                      IB Faaliyetleri
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-purple-600">
+                      {dashboardData.statistics.totalActivities}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {dashboardData.statistics.verifiedActivities} doğrulanmış
+                    </p>
+                  </CardContent>
+                </Card>
               </div>
 
               {/* Detaylı Bilgiler - Tabs */}
@@ -845,6 +877,93 @@ export default function OgretmenOgrenciDashboardPage() {
                             </div>
                           </div>
                         ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* IB Faaliyetleri */}
+                <Card className="hover:shadow-md transition-shadow lg:col-span-2">
+                  <CardHeader className="border-b bg-gradient-to-r from-purple-50 to-indigo-50">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Award className="h-5 w-5 text-purple-600" />
+                      IB Faaliyetleri
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3 p-4">
+                    {dashboardData.recentData.activities.length === 0 ? (
+                      <div className="text-center py-8">
+                        <Award className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+                        <p className="text-gray-500">Henüz IB faaliyet kaydı yok</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {dashboardData.recentData.activities.slice(0, 6).map((activity) => {
+                          const activityTypeLabels: Record<string, string> = {
+                            ETKINLIK: "Etkinlik",
+                            GEZI: "Gezi",
+                            PROJE: "Proje",
+                            SINAV: "Sınav",
+                            YARISMA: "Yarışma",
+                            SEMINER: "Seminer",
+                            WORKSHOP: "Workshop",
+                            SPORT: "Spor",
+                            SANAT: "Sanat",
+                            SOSYAL: "Sosyal Sorumluluk",
+                            DIL: "Dil Faaliyeti",
+                            BILIM: "Bilim",
+                            DEGER: "Değerler Eğitimi",
+                            DIGER: "Diğer",
+                          }
+                          return (
+                            <div
+                              key={activity.id}
+                              className={`p-4 border-l-4 rounded-lg shadow-sm hover:shadow-md transition-shadow ${
+                                activity.isVerified
+                                  ? "border-l-purple-500 bg-purple-50 hover:bg-purple-100"
+                                  : "border-l-gray-300 bg-gray-50 hover:bg-gray-100"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 mb-2">
+                                <Award className={`h-4 w-4 ${activity.isVerified ? "text-purple-600" : "text-gray-400"}`} />
+                                <span className="text-xs font-semibold text-gray-900 flex-1">
+                                  {activity.title}
+                                </span>
+                                {activity.isVerified && (
+                                  <div title="Doğrulanmış">
+                                    <CheckCircle className="h-4 w-4 text-green-600" />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded">
+                                  {activityTypeLabels[activity.type] || activity.type}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  {new Date(activity.activityDate).toLocaleDateString("tr-TR")}
+                                </span>
+                              </div>
+                              {activity.description && (
+                                <p className="text-sm text-gray-700 line-clamp-2 mb-2">
+                                  {activity.description}
+                                </p>
+                              )}
+                              {(activity.location || activity.organizer) && (
+                                <div className="flex items-center gap-3 text-xs text-gray-500">
+                                  {activity.location && (
+                                    <span className="flex items-center gap-1">
+                                      <MapPin className="h-3 w-3" />
+                                      {activity.location}
+                                    </span>
+                                  )}
+                                  {activity.organizer && (
+                                    <span>Organizatör: {activity.organizer}</span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
                       </div>
                     )}
                   </CardContent>
