@@ -66,13 +66,21 @@ export default function HomePage() {
         fetch("/api/book-contracts")
       ])
       
+      // Her sözleşme türüne type bilgisini ekle
+      const newRegistrations = newRegRes.ok ? (await newRegRes.json()).map((c: { id: string; studentId: string; createdAt: string }) => ({ ...c, type: "new-registration" })) : []
+      const renewals = renewalRes.ok ? (await renewalRes.json()).map((c: { id: string; studentId: string; createdAt: string }) => ({ ...c, type: "renewal" })) : []
+      const uniforms = uniformRes.ok ? (await uniformRes.json()).map((c: { id: string; studentId: string; createdAt: string }) => ({ ...c, type: "uniform" })) : []
+      const meals = mealRes.ok ? (await mealRes.json()).map((c: { id: string; studentId: string; createdAt: string }) => ({ ...c, type: "meal" })) : []
+      const services = serviceRes.ok ? (await serviceRes.json()).map((c: { id: string; studentId: string; createdAt: string }) => ({ ...c, type: "service" })) : []
+      const books = bookRes.ok ? (await bookRes.json()).map((c: { id: string; studentId: string; createdAt: string }) => ({ ...c, type: "book" })) : []
+      
       const allContracts = [
-        ...(newRegRes.ok ? await newRegRes.json() : []),
-        ...(renewalRes.ok ? await renewalRes.json() : []),
-        ...(uniformRes.ok ? await uniformRes.json() : []),
-        ...(mealRes.ok ? await mealRes.json() : []),
-        ...(serviceRes.ok ? await serviceRes.json() : []),
-        ...(bookRes.ok ? await bookRes.json() : [])
+        ...newRegistrations,
+        ...renewals,
+        ...uniforms,
+        ...meals,
+        ...services,
+        ...books
       ]
       
       const today = new Date().toISOString().split('T')[0]

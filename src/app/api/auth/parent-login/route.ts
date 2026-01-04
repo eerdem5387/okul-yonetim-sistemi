@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Önce öğrenciyi bul
+    // Önce öğrenciyi bul (anne-baba bilgileri de dahil)
     const student = await prisma.student.findUnique({
       where: { tcNumber: studentTcNumber },
       select: {
@@ -35,10 +35,17 @@ export async function POST(request: NextRequest) {
         lastName: true,
         grade: true,
         tcNumber: true,
+        motherName: true,
+        motherTc: true,
+        motherPhone: true,
+        fatherName: true,
+        fatherTc: true,
+        fatherPhone: true,
       },
     })
 
     if (!student) {
+      console.error(`[Parent Login] Öğrenci bulunamadı - TC: ${studentTcNumber}`)
       return NextResponse.json(
         { error: "Öğrenci kaydı bulunamadı" },
         { status: 404 }
@@ -66,10 +73,133 @@ export async function POST(request: NextRequest) {
     })
 
     if (!parent) {
-      return NextResponse.json(
-        { error: "Veli hesabı bulunamadı" },
-        { status: 404 }
-      )
+      console.error(`[Parent Login] Veli hesabı bulunamadı - Öğrenci TC: ${studentTcNumber}`)
+      // Veli hesabı yoksa otomatik oluştur
+      try {
+        const newParent = await prisma.parent.create({
+          data: {
+            studentTcNumber: student.tcNumber,
+            isActive: true,
+          },
+          include: {
+            students: {
+              include: {
+                student: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    grade: true,
+                    tcNumber: true,
+                  },
+                },
+              },
+            },
+          },
+        })
+        console.log(`[Parent Login] Veli hesabı otomatik oluşturuldu - Öğrenci TC: ${studentTcNumber}`)
+        
+        // Anne ve baba bilgilerini ekle
+        if (student.motherName && student.motherTc) {
+          await prisma.parentStudent.create({
+            data: {
+              parentId: newParent.id,
+              studentId: student.id,
+              relation: "ANNE",
+              parentName: student.motherName,
+              parentTcNumber: student.motherTc,
+              parentPhone: student.motherPhone || undefined,
+            },
+          })
+        }
+        
+        if (student.fatherTc && student.fatherName) {
+          await prisma.parentStudent.create({
+            data: {
+              parentId: newParent.id,
+              studentId: student.id,
+              relation: "BABA",
+              parentName: student.fatherName,
+              parentTcNumber: student.fatherTc,
+              parentPhone: student.fatherPhone || undefined,
+            },
+          })
+        }
+        
+        // Yeni oluşturulan veli hesabı ile devam et
+        const updatedParent = await prisma.parent.findUnique({
+          where: { id: newParent.id },
+          include: {
+            students: {
+              include: {
+                student: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    grade: true,
+                    tcNumber: true,
+                  },
+                },
+              },
+            },
+          },
+        })
+        
+        if (!updatedParent) {
+          return NextResponse.json(
+            { error: "Veli hesabı oluşturulamadı" },
+            { status: 500 }
+          )
+        }
+        
+        // Şifre kontrolü (yeni hesap, password null olmalı)
+        const isValidPassword = password === studentTcNumber
+        
+        if (!isValidPassword) {
+          return NextResponse.json(
+            { error: "Öğrenci TC Kimlik No veya şifre hatalı" },
+            { status: 401 }
+          )
+        }
+        
+        // Son giriş tarihini güncelle
+        await prisma.parent.update({
+          where: { id: updatedParent.id },
+          data: { lastLoginAt: new Date() },
+        })
+        
+        // Token oluştur
+        const token = `parent_${updatedParent.id}_${Date.now()}`
+        
+        // Response
+        const parentsInfo = updatedParent.students.map((ps) => ({
+          name: ps.parentName,
+          tcNumber: ps.parentTcNumber,
+          phone: ps.parentPhone,
+          email: ps.parentEmail,
+          relation: ps.relation,
+        }))
+        
+        return NextResponse.json({
+          success: true,
+          token,
+          parent: {
+            id: updatedParent.id,
+            studentTcNumber: updatedParent.studentTcNumber,
+            isFirstLogin: updatedParent.isFirstLogin,
+            mustChangePassword: updatedParent.mustChangePassword,
+            parents: parentsInfo,
+            student: student,
+          },
+        })
+      } catch (createError) {
+        console.error(`[Parent Login] Veli hesabı oluşturma hatası:`, createError)
+        return NextResponse.json(
+          { error: "Veli hesabı bulunamadı ve oluşturulamadı" },
+          { status: 404 }
+        )
+      }
     }
 
     // Aktif kontrol
