@@ -349,7 +349,7 @@ export default function OgrenciDashboardPage() {
                         Bu sınıfta öğrenci bulunmamaktadır.
                       </div>
                     )}
-                  </div>
+                </div>
                 </>
               )}
             </div>
@@ -496,8 +496,8 @@ export default function OgrenciDashboardPage() {
                     {dashboardData.recentData.homeworks.map((hw) => {
                       const isOverdue = new Date(hw.homework.dueDate) < new Date() && !hw.isCompleted
                       return (
-                        <div
-                          key={hw.id}
+                      <div
+                        key={hw.id}
                           className={`flex items-center justify-between p-4 border-2 rounded-lg transition-all ${
                             isOverdue 
                               ? "border-red-200 bg-red-50/50 hover:bg-red-50" 
@@ -505,8 +505,8 @@ export default function OgrenciDashboardPage() {
                               ? "border-green-200 bg-green-50/50 hover:bg-green-50"
                               : "border-gray-200 hover:bg-gray-50"
                           }`}
-                        >
-                          <div className="flex-1">
+                      >
+                        <div className="flex-1">
                             <div className="flex items-start gap-3">
                               <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
                                 hw.isCompleted 
@@ -542,7 +542,7 @@ export default function OgrenciDashboardPage() {
                                     isOverdue ? "text-red-600 font-medium" : "text-gray-600"
                                   }`}>
                                     <Calendar className="h-3 w-3" />
-                                    Teslim: {new Date(hw.homework.dueDate).toLocaleDateString("tr-TR")}
+                            Teslim: {new Date(hw.homework.dueDate).toLocaleDateString("tr-TR")}
                                     {isOverdue && " (Geçti)"}
                                   </span>
                                   {hw.isCompleted && hw.completedAt && (
@@ -554,25 +554,25 @@ export default function OgrenciDashboardPage() {
                                 </div>
                               </div>
                             </div>
-                          </div>
+                        </div>
                           <div className="flex items-center gap-2 ml-4">
-                            {hw.isCompleted ? (
+                          {hw.isCompleted ? (
                               <span className="px-3 py-1.5 bg-green-100 text-green-700 rounded-full text-sm font-medium flex items-center gap-1.5 whitespace-nowrap">
-                                <CheckCircle className="h-4 w-4" />
-                                Tamamlandı
-                              </span>
-                            ) : (
+                              <CheckCircle className="h-4 w-4" />
+                              Tamamlandı
+                            </span>
+                          ) : (
                               <span className={`px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-1.5 whitespace-nowrap ${
                                 isOverdue 
                                   ? "bg-red-100 text-red-700" 
                                   : "bg-orange-100 text-orange-700"
                               }`}>
-                                <Clock className="h-4 w-4" />
+                              <Clock className="h-4 w-4" />
                                 {isOverdue ? "Gecikti" : "Bekliyor"}
-                              </span>
-                            )}
-                          </div>
+                            </span>
+                          )}
                         </div>
+                      </div>
                       )
                     })}
                   </div>
@@ -626,11 +626,11 @@ export default function OgrenciDashboardPage() {
                               </span>
                               <span className="flex items-center gap-1">
                                 📅 {new Date(att.date).toLocaleDateString("tr-TR", {
-                                  weekday: "long",
-                                  year: "numeric",
-                                  month: "long",
-                                  day: "numeric",
-                                })}
+                              weekday: "long",
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            })}
                               </span>
                             </div>
                           </div>

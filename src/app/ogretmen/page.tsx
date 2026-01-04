@@ -210,31 +210,31 @@ export default function OgretmenPage() {
         <ToastContainer toasts={toasts} onClose={removeToast} />
 
         {/* Hızlı Erişim Butonları */}
-        {delayedData && delayedData.summary.totalDelayedTopics > 0 && (
+            {delayedData && delayedData.summary.totalDelayedTopics > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
-            <Link href="/ogretmen/gecikmeler">
-              <Card className="cursor-pointer hover:shadow-lg transition-all duration-200 border-l-4 border-l-red-500 bg-gradient-to-r from-red-50 to-white">
-                <CardContent className="p-4 sm:p-5">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
-                      <AlertTriangle className="h-5 w-5 text-red-600" />
+              <Link href="/ogretmen/gecikmeler">
+                <Card className="cursor-pointer hover:shadow-lg transition-all duration-200 border-l-4 border-l-red-500 bg-gradient-to-r from-red-50 to-white">
+                  <CardContent className="p-4 sm:p-5">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
+                        <AlertTriangle className="h-5 w-5 text-red-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm sm:text-base text-gray-900">
+                          Gecikmeler
+                        </p>
+                        <p className="text-xs sm:text-sm text-gray-600">
+                          {delayedData.summary.totalDelayedTopics} konu
+                        </p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 flex-shrink-0" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm sm:text-base text-gray-900">
-                        Gecikmeler
-                      </p>
-                      <p className="text-xs sm:text-sm text-gray-600">
-                        {delayedData.summary.totalDelayedTopics} konu
-                      </p>
-                    </div>
-                    <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 flex-shrink-0" />
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
+                  </CardContent>
+                </Card>
+              </Link>
 
             <Link href="/ogretmen/neredeyiz">
-              <Card className="border-l-4 border-l-blue-500 bg-gradient-to-r from-blue-50 to-white cursor-pointer hover:shadow-lg transition-all duration-200">
+                <Card className="border-l-4 border-l-blue-500 bg-gradient-to-r from-blue-50 to-white cursor-pointer hover:shadow-lg transition-all duration-200">
                 <CardContent className="p-4 sm:p-5">
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">

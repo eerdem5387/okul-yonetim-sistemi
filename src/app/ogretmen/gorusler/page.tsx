@@ -98,12 +98,12 @@ export default function OgretmenGoruslerPage() {
         setClasses(data.classes || [])
       } else {
         setClasses([])
-      }
-    } catch (error) {
+          }
+        } catch (error) {
       console.error("Error fetching classes:", error)
       setClasses([])
-    }
-  }
+        }
+      }
 
   const fetchStudents = async (classId: string) => {
     setLoadingStudents(true)
@@ -323,31 +323,31 @@ export default function OgretmenGoruslerPage() {
                   {/* Görüş Tipi ve İçerik */}
                   {formData.studentId && (
                     <>
-                      <div className="space-y-2">
-                        <Label htmlFor="commentType">Görüş Tipi *</Label>
-                        <select
-                          id="commentType"
-                          value={formData.commentType}
-                          onChange={(e) => setFormData({ ...formData, commentType: e.target.value })}
-                          className="w-full p-2 border rounded-md"
-                          required
-                        >
-                          <option value="ACADEMIC">📚 Akademik</option>
-                          <option value="BEHAVIORAL">🤝 Davranışsal</option>
-                          <option value="GENERAL">💬 Genel</option>
-                        </select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="content">Görüş İçeriği *</Label>
-                        <textarea
-                          id="content"
-                          value={formData.content}
-                          onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                          placeholder="Öğrenci hakkındaki görüşünüzü yazın..."
-                          className="w-full min-h-[120px] p-3 border rounded-md"
-                          required
-                        />
-                      </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="commentType">Görüş Tipi *</Label>
+                      <select
+                        id="commentType"
+                        value={formData.commentType}
+                        onChange={(e) => setFormData({ ...formData, commentType: e.target.value })}
+                        className="w-full p-2 border rounded-md"
+                        required
+                      >
+                        <option value="ACADEMIC">📚 Akademik</option>
+                        <option value="BEHAVIORAL">🤝 Davranışsal</option>
+                        <option value="GENERAL">💬 Genel</option>
+                      </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="content">Görüş İçeriği *</Label>
+                    <textarea
+                      id="content"
+                      value={formData.content}
+                      onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                      placeholder="Öğrenci hakkındaki görüşünüzü yazın..."
+                      className="w-full min-h-[120px] p-3 border rounded-md"
+                      required
+                    />
+                  </div>
                     </>
                   )}
                   <div className="flex gap-2">

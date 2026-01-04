@@ -132,6 +132,78 @@ export async function POST(request: NextRequest) {
             }
         })
 
+        // Öğrenci oluşturulduktan sonra otomatik olarak veli hesabı oluştur
+        try {
+            // Her öğrenci için bir Parent hesabı oluştur (öğrenci TC bazlı)
+            const parentAccount = await prisma.parent.upsert({
+                where: { studentTcNumber: student.tcNumber },
+                update: {
+                    isActive: true,
+                },
+                create: {
+                    studentTcNumber: student.tcNumber,
+                    isActive: true,
+                },
+            })
+
+            // Anne bilgisi varsa ParentStudent'a ekle
+            if (student.motherName && student.motherTc) {
+                await prisma.parentStudent.upsert({
+                    where: {
+                        parentId_studentId_relation: {
+                            parentId: parentAccount.id,
+                            studentId: student.id,
+                            relation: "ANNE",
+                        },
+                    },
+                    update: {
+                        parentName: student.motherName,
+                        parentTcNumber: student.motherTc,
+                        parentPhone: student.motherPhone || undefined,
+                        parentEmail: undefined,
+                    },
+                    create: {
+                        parentId: parentAccount.id,
+                        studentId: student.id,
+                        relation: "ANNE",
+                        parentName: student.motherName,
+                        parentTcNumber: student.motherTc,
+                        parentPhone: student.motherPhone || undefined,
+                    },
+                })
+            }
+
+            // Baba bilgisi varsa ParentStudent'a ekle
+            if (student.fatherTc && student.fatherName) {
+                await prisma.parentStudent.upsert({
+                    where: {
+                        parentId_studentId_relation: {
+                            parentId: parentAccount.id,
+                            studentId: student.id,
+                            relation: "BABA",
+                        },
+                    },
+                    update: {
+                        parentName: student.fatherName,
+                        parentTcNumber: student.fatherTc,
+                        parentPhone: student.fatherPhone || undefined,
+                        parentEmail: undefined,
+                    },
+                    create: {
+                        parentId: parentAccount.id,
+                        studentId: student.id,
+                        relation: "BABA",
+                        parentName: student.fatherName,
+                        parentTcNumber: student.fatherTc,
+                        parentPhone: student.fatherPhone || undefined,
+                    },
+                })
+            }
+        } catch (parentError) {
+            // Veli hesabı oluşturma hatası öğrenci oluşturmayı engellemez, sadece log'lanır
+            console.error("Error creating parent account for student:", parentError)
+        }
+
         return NextResponse.json({
             success: true,
             student

@@ -161,9 +161,9 @@ export default function TeacherAttendancePage() {
   const handleDateChange = (date: string) => {
     setSelectedDate(date)
     setSelectedSchedule(null)
-    setStudents([])
-    setAttendances({})
-  }
+      setStudents([])
+      setAttendances({})
+    }
 
   const handleScheduleSelect = (schedule: Schedule) => {
     setSelectedSchedule(schedule)
@@ -253,55 +253,55 @@ export default function TeacherAttendancePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 shadow-lg">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-3 mb-2">
-              <Calendar className="h-7 w-7 sm:h-8 sm:w-8" />
-              Yoklama Yönetimi
-            </h1>
-            <p className="text-blue-100 text-sm sm:text-base">Öğrenci devam durumunu kaydedin ve takip edin</p>
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 shadow-lg">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-3 mb-2">
+                <Calendar className="h-7 w-7 sm:h-8 sm:w-8" />
+                Yoklama Yönetimi
+              </h1>
+              <p className="text-blue-100 text-sm sm:text-base">Öğrenci devam durumunu kaydedin ve takip edin</p>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
           {/* Sınıf ve Tarih Seçimi */}
-          <Card>
-            <CardHeader>
+            <Card>
+              <CardHeader>
               <CardTitle>Yoklama Bilgileri</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+              </CardHeader>
+              <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="class">Sınıf *</Label>
-                  <select
-                    id="class"
-                    value={selectedClass}
-                    onChange={(e) => handleClassChange(e.target.value)}
-                    className="w-full p-2 border rounded-md"
-                    required
-                  >
-                    <option value="">Sınıf Seçin</option>
-                    {classes.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="date">Tarih *</Label>
-                  <input
-                    id="date"
-                    type="date"
-                    value={selectedDate}
+                  <div className="space-y-2">
+                    <Label htmlFor="class">Sınıf *</Label>
+                    <select
+                      id="class"
+                      value={selectedClass}
+                      onChange={(e) => handleClassChange(e.target.value)}
+                      className="w-full p-2 border rounded-md"
+                      required
+                    >
+                      <option value="">Sınıf Seçin</option>
+                      {classes.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="date">Tarih *</Label>
+                    <input
+                      id="date"
+                      type="date"
+                      value={selectedDate}
                     onChange={(e) => handleDateChange(e.target.value)}
-                    className="w-full p-2 border rounded-md"
-                    required
-                  />
+                      className="w-full p-2 border rounded-md"
+                      required
+                    />
                   {selectedDate && (
                     <p className="text-sm text-gray-600 mt-1">
                       {dayName} günü
@@ -360,7 +360,7 @@ export default function TeacherAttendancePage() {
                           </div>
                         </button>
                       ))}
-                    </div>
+                  </div>
                   </div>
                 )}
               </CardContent>
@@ -369,31 +369,31 @@ export default function TeacherAttendancePage() {
 
           {/* Öğrenci Listesi ve Yoklama */}
           {selectedSchedule && (
-            <>
-              {/* İstatistikler */}
+              <>
+                {/* İstatistikler */}
               <div className="grid grid-cols-3 gap-4">
-                <Card>
-                  <CardContent className="p-4 text-center">
-                    <Users className="h-6 w-6 text-gray-600 mx-auto mb-2" />
-                    <div className="text-2xl font-bold">{stats.total}</div>
-                    <div className="text-xs text-gray-600">Toplam</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4 text-center">
-                    <CheckCircle className="h-6 w-6 text-green-600 mx-auto mb-2" />
-                    <div className="text-2xl font-bold text-green-600">{stats.present}</div>
+                  <Card>
+                    <CardContent className="p-4 text-center">
+                      <Users className="h-6 w-6 text-gray-600 mx-auto mb-2" />
+                      <div className="text-2xl font-bold">{stats.total}</div>
+                      <div className="text-xs text-gray-600">Toplam</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4 text-center">
+                      <CheckCircle className="h-6 w-6 text-green-600 mx-auto mb-2" />
+                      <div className="text-2xl font-bold text-green-600">{stats.present}</div>
                     <div className="text-xs text-gray-600">Katıldı</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4 text-center">
-                    <XCircle className="h-6 w-6 text-red-600 mx-auto mb-2" />
-                    <div className="text-2xl font-bold text-red-600">{stats.absent}</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4 text-center">
+                      <XCircle className="h-6 w-6 text-red-600 mx-auto mb-2" />
+                      <div className="text-2xl font-bold text-red-600">{stats.absent}</div>
                     <div className="text-xs text-gray-600">Katılmadı</div>
-                  </CardContent>
-                </Card>
-              </div>
+                    </CardContent>
+                  </Card>
+                </div>
 
               {/* Seçilen Ders Bilgisi */}
               <Card className="bg-blue-50 border-blue-200">
@@ -412,7 +412,7 @@ export default function TeacherAttendancePage() {
                 </CardContent>
               </Card>
 
-              {/* Yoklama Tablosu */}
+                {/* Yoklama Tablosu */}
               {loadingStudents ? (
                 <Card>
                   <CardContent className="p-12 text-center">
@@ -430,8 +430,8 @@ export default function TeacherAttendancePage() {
                       {students.map((student, index) => {
                         const attendanceStatus = attendances[student.id]?.status
                         return (
-                          <div
-                            key={student.id}
+                        <div
+                          key={student.id}
                             className={`flex items-center justify-between p-4 border-2 rounded-lg transition-colors ${
                               attendanceStatus === "PRESENT"
                                 ? "bg-green-50 border-green-200"
@@ -439,13 +439,13 @@ export default function TeacherAttendancePage() {
                                 ? "bg-red-50 border-red-200"
                                 : "bg-white border-gray-200 hover:bg-gray-50"
                             }`}
-                          >
-                            <div className="flex items-center gap-3">
-                              <span className="text-gray-500 font-mono w-8">{index + 1}.</span>
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-gray-500 font-mono w-8">{index + 1}.</span>
                               <div>
                                 <span className="font-medium text-gray-900">
-                                  {student.firstName} {student.lastName}
-                                </span>
+                              {student.firstName} {student.lastName}
+                            </span>
                                 {student.grade && (
                                   <span className="text-sm text-gray-500 ml-2">({student.grade})</span>
                                 )}
@@ -453,8 +453,8 @@ export default function TeacherAttendancePage() {
                                   <span className="text-xs text-gray-400 ml-2 italic">(İşlem yapılmadı)</span>
                                 )}
                               </div>
-                            </div>
-                            <div className="flex gap-2">
+                          </div>
+                          <div className="flex gap-2">
                               <button
                                 type="button"
                                 onClick={() => handleStatusChange(student.id, "PRESENT")}
@@ -488,7 +488,7 @@ export default function TeacherAttendancePage() {
                 </Card>
               )}
 
-              {/* Kaydet Butonu */}
+                {/* Kaydet Butonu */}
               {students.length > 0 && (
                 <div className="flex justify-end">
                   <Button 
@@ -513,10 +513,10 @@ export default function TeacherAttendancePage() {
                   )}
                 </div>
               )}
-            </>
-          )}
-        </form>
-      </div>
+              </>
+            )}
+          </form>
+        </div>
     </div>
   )
 }

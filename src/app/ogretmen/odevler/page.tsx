@@ -210,8 +210,8 @@ export default function TeacherHomeworkPage() {
         // Düzenleme
         const response = await fetch(`/api/homework/${editingHomeworkId}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
             title: formData.title,
             description: formData.description,
             dueDate: formData.dueDate,
@@ -263,16 +263,16 @@ export default function TeacherHomeworkPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(requestBody),
-        })
+      })
 
-        if (response.ok) {
-          alert("Ödev başarıyla oluşturuldu!")
-          setShowForm(false)
+      if (response.ok) {
+        alert("Ödev başarıyla oluşturuldu!")
+        setShowForm(false)
           resetForm()
-          fetchHomeworks(staffId)
-        } else {
-          const error = await response.json()
-          alert(error.error || "Bir hata oluştu")
+        fetchHomeworks(staffId)
+      } else {
+        const error = await response.json()
+        alert(error.error || "Bir hata oluştu")
         }
       }
     } catch (error) {
@@ -609,8 +609,8 @@ export default function TeacherHomeworkPage() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between gap-2 mb-2">
                                 <h3 className="text-lg sm:text-xl font-bold text-gray-900 truncate flex-1">
-                                  {homework.title}
-                                </h3>
+                                {homework.title}
+                              </h3>
                                 <div className="flex gap-2 flex-shrink-0">
                                   <Button
                                     variant="ghost"
