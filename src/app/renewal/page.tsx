@@ -757,11 +757,15 @@ export default function RenewalPage() {
                         value={mainContractData.announcedTuitionFee}
                         onChange={(e) => setMainContractData({ ...mainContractData, announcedTuitionFee: e.target.value })}
                         placeholder="0"
+                        readOnly
+                        className="bg-gray-100 cursor-not-allowed"
                       />
                       <Input
                         value={mainContractData.studentTuitionFee}
                         onChange={(e) => setMainContractData({ ...mainContractData, studentTuitionFee: e.target.value })}
                         placeholder="0"
+                        readOnly
+                        className="bg-gray-100 cursor-not-allowed"
                       />
                     </div>
 

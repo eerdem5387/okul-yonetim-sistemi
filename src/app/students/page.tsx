@@ -660,8 +660,8 @@ export default function StudentsPage() {
                 </div>
               </div>
 
-              {/* Öğrenim Ücreti - Sadece Admin */}
-              {userRole === "admin" && (
+              {/* Öğrenim Ücreti - Admin düzenleyebilir, Müdür ve Öğrenci İşleri salt okunur görebilir */}
+              {(userRole === "admin" || userRole === "principal" || userRole === "student_affairs") && (
                 <div className="border-t pt-3 sm:pt-4">
                   <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Öğrenim Ücreti</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -673,18 +673,20 @@ export default function StudentsPage() {
                         value={formData.announcedTuitionFee}
                         onChange={(e) => setFormData({ ...formData, announcedTuitionFee: e.target.value })}
                         placeholder="Örn: 50.000 TL"
-                        className="h-9 sm:h-10 text-xs sm:text-sm"
+                        readOnly={userRole !== "admin"}
+                        className={`h-9 sm:h-10 text-xs sm:text-sm ${userRole !== "admin" ? "bg-gray-100 cursor-not-allowed" : ""}`}
                       />
                     </div>
                     <div>
-                      <Label htmlFor="studentTuitionFee" className="text-xs sm:text-sm">Öğrenci İçin Belirlenen Ücret</Label>
+                      <Label htmlFor="studentTuitionFee" className="text-xs sm:text-sm">Öğrenciye için Belirlenen Ücret</Label>
                       <Input
                         id="studentTuitionFee"
                         type="text"
                         value={formData.studentTuitionFee}
                         onChange={(e) => setFormData({ ...formData, studentTuitionFee: e.target.value })}
                         placeholder="Örn: 45.000 TL"
-                        className="h-9 sm:h-10 text-xs sm:text-sm"
+                        readOnly={userRole !== "admin"}
+                        className={`h-9 sm:h-10 text-xs sm:text-sm ${userRole !== "admin" ? "bg-gray-100 cursor-not-allowed" : ""}`}
                       />
                     </div>
                   </div>
