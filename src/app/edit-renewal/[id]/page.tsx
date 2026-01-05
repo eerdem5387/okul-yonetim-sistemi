@@ -44,11 +44,21 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
   const [saving, setSaving] = useState(false)
   const [contractId, setContractId] = useState<string>("")
   const [studentId, setStudentId] = useState<string>("")
+  const [paramsResolved, setParamsResolved] = useState(false)
 
   useEffect(() => {
     const getParams = async () => {
-      const resolvedParams = await params
-      setContractId(resolvedParams.id)
+      try {
+        const resolvedParams = await params
+        const id = resolvedParams.id
+        console.log("[Edit Renewal] Resolved params ID:", id)
+        if (id) {
+          setContractId(id)
+          setParamsResolved(true)
+        }
+      } catch (error) {
+        console.error("[Edit Renewal] Error resolving params:", error)
+      }
     }
     getParams()
   }, [params])
@@ -102,10 +112,11 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
   }, [contractId])
 
   useEffect(() => {
-    if (contractId) {
+    if (contractId && paramsResolved) {
+      console.log("[Edit Renewal] Fetching contract with ID:", contractId)
       fetchContract()
     }
-  }, [contractId, fetchContract])
+  }, [contractId, paramsResolved, fetchContract])
 
   const handleSave = async () => {
     if (!contract || !studentId) return

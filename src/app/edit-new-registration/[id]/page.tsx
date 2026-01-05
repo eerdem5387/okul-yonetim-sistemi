@@ -45,11 +45,21 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
   const [saving, setSaving] = useState(false)
   const [contractId, setContractId] = useState<string>("")
   const [studentId, setStudentId] = useState<string>("")
+  const [paramsResolved, setParamsResolved] = useState(false)
 
   useEffect(() => {
     const getParams = async () => {
-      const resolvedParams = await params
-      setContractId(resolvedParams.id)
+      try {
+        const resolvedParams = await params
+        const id = resolvedParams.id
+        console.log("[Edit New Registration] Resolved params ID:", id)
+        if (id) {
+          setContractId(id)
+          setParamsResolved(true)
+        }
+      } catch (error) {
+        console.error("[Edit New Registration] Error resolving params:", error)
+      }
     }
     getParams()
   }, [params])
@@ -155,10 +165,11 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
   }, [contractId])
 
   useEffect(() => {
-    if (contractId) {
+    if (contractId && paramsResolved) {
+      console.log("[Edit New Registration] Fetching contract with ID:", contractId)
       fetchContract()
     }
-  }, [contractId, fetchContract])
+  }, [contractId, paramsResolved, fetchContract])
 
   const handleSave = async () => {
     if (!contract || !studentId) return

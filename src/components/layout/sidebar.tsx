@@ -76,7 +76,7 @@ const allNavigation = [
   // IB Faaliyet Yönetimi - Rehberlik dahil
   { name: "IB Faaliyet Yönetimi", href: "/activities", icon: Award, roles: ["admin", "principal", "student_affairs", "counselor"] },
   
-  // Veli Görüşmeleri - Rehberlik dahil
+  // Veli Görüşmeleri - Tüm roller için aynı sayfa (/veli-gorusmeleri)
   { name: "Veli Görüşmeleri", href: "/veli-gorusmeleri", icon: MessageSquare, roles: ["admin", "principal", "student_affairs", "counselor"] },
   
   // FAZ 3: Sınav Yönetimi - Sadece Rehberlik

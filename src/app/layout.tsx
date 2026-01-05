@@ -129,20 +129,33 @@ export default function RootLayout({
     }
 
     // Veli Görüşmeleri sayfası için özel kontrol (admin, principal, student_affairs, counselor erişebilir)
+    // BU SAYFA VELİ PANELİNE YÖNLENDİRME YAPMAZ - SADECE GÖRÜNTÜLEME MODUNDA
     if (pathname === "/veli-gorusmeleri") {
       if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "counselor") {
-        // Bu roller için erişim izni var
+        // Bu roller için erişim izni var - YÖNLENDİRME YOK
         return
       }
-      // Diğer roller için veli-login'e yönlendir
-      if (normalizedRole !== "parent") {
-        router.push("/veli-login")
+      // Parent rolü için de erişim izni var
+      if (normalizedRole === "parent") {
         return
       }
+      // Diğer roller için login'e yönlendir
+      router.push("/login")
       return
     }
 
-    // Veli sayfaları için kontrol (veli-gorusmeleri hariç)
+    // Admin Veli Görüşmeleri sayfası için kontrol (admin, principal, student_affairs erişebilir)
+    if (pathname === "/admin/veli-gorusmeleri") {
+      if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs") {
+        // Bu roller için erişim izni var - YÖNLENDİRME YOK
+        return
+      }
+      // Diğer roller için login'e yönlendir
+      router.push("/login")
+      return
+    }
+
+    // Veli sayfaları için kontrol (/veli-gorusmeleri ve /admin/veli-gorusmeleri hariç)
     if (pathname?.startsWith("/veli") || pathname === "/parent") {
       if (normalizedRole !== "parent") {
         router.push("/veli-login")
