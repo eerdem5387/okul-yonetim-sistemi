@@ -44,6 +44,7 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [contractId, setContractId] = useState<string>("")
+  const [studentId, setStudentId] = useState<string>("")
 
   useEffect(() => {
     const getParams = async () => {
@@ -62,17 +63,48 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
       if (!mainResponse.ok) return
       
       const mainData = await mainResponse.json()
-      setContract(mainData.contractData)
       
-      // Öğrenci ID'sini al
-      const studentId = mainData.studentId
+      // Öğrenci ID'sini al ve sakla
+      const fetchedStudentId = mainData.studentId
+      setStudentId(fetchedStudentId)
+      
+      // Öğrenci bilgilerini API'den al (güncel bilgiler için)
+      const studentResponse = await fetch(`/api/students/${fetchedStudentId}`)
+      let currentStudentData = null
+      if (studentResponse.ok) {
+        const studentData = await studentResponse.json()
+        currentStudentData = studentData.student || studentData
+      }
+      
+      // Sözleşme verisini al ve öğrenci bilgilerini güncel verilerle güncelle
+      const contractData = mainData.contractData || {}
+      
+      // Öğrenci bilgilerini güncel verilerle güncelle
+      const updatedContractData = {
+        ...contractData,
+        studentName: currentStudentData 
+          ? `${currentStudentData.firstName || ""} ${currentStudentData.lastName || ""}`.trim()
+          : contractData.studentName || "",
+        tcNumber: currentStudentData?.tcNumber || contractData.tcNumber || "",
+        grade: currentStudentData?.grade || contractData.grade || "",
+        address: currentStudentData?.address || contractData.address || "",
+        studentBirthDate: currentStudentData?.birthDate 
+          ? new Date(currentStudentData.birthDate).toISOString().split("T")[0]
+          : contractData.studentBirthDate || "",
+        parentName: currentStudentData?.motherName || contractData.parentName || "",
+        parentPhone: currentStudentData?.motherPhone || contractData.parentPhone || "",
+        parent2Name: currentStudentData?.fatherName || contractData.parent2Name || "",
+        parent2Phone: currentStudentData?.fatherPhone || contractData.parent2Phone || "",
+      }
+      
+      setContract(updatedContractData)
       
       // Tüm yan sözleşmeleri çek
       const [uniformRes, mealRes, serviceRes, bookRes] = await Promise.all([
-        fetch(`/api/uniform-contracts?studentId=${studentId}`),
-        fetch(`/api/meal-contracts?studentId=${studentId}`),
-        fetch(`/api/service-contracts?studentId=${studentId}`),
-        fetch(`/api/book-contracts?studentId=${studentId}`)
+        fetch(`/api/uniform-contracts?studentId=${fetchedStudentId}`),
+        fetch(`/api/meal-contracts?studentId=${fetchedStudentId}`),
+        fetch(`/api/service-contracts?studentId=${fetchedStudentId}`),
+        fetch(`/api/book-contracts?studentId=${fetchedStudentId}`)
       ])
       
       const [uniforms, meals, services, books] = await Promise.all([
@@ -129,10 +161,45 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
   }, [contractId, fetchContract])
 
   const handleSave = async () => {
-    if (!contract) return
+    if (!contract || !studentId) return
     
     setSaving(true)
     try {
+      // Öğrenci bilgilerini öğrenci yönetimine güncelle
+      const studentNameParts = contract.studentName?.split(" ") || []
+      const firstName = studentNameParts[0] || ""
+      const lastName = studentNameParts.slice(1).join(" ") || ""
+      
+      const studentUpdateData: Record<string, unknown> = {
+        firstName,
+        lastName,
+        tcNumber: contract.tcNumber || "",
+        grade: contract.grade || "",
+        address: contract.address || "",
+        motherName: contract.parentName || "",
+        motherPhone: contract.parentPhone || "",
+        fatherName: contract.parent2Name || "",
+        fatherPhone: contract.parent2Phone || "",
+      }
+      
+      if (contract.studentBirthDate) {
+        studentUpdateData.birthDate = contract.studentBirthDate
+      }
+      
+      // Öğrenci bilgilerini güncelle
+      const studentResponse = await fetch(`/api/students/${studentId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(studentUpdateData),
+      })
+      
+      if (!studentResponse.ok) {
+        console.error("Error updating student:", await studentResponse.text())
+        // Öğrenci güncellemesi başarısız olsa bile sözleşmeyi güncellemeye devam et
+      }
+      
       // Ana sözleşmeyi güncelle
       const response = await fetch(`/api/new-registrations/${contractId}`, {
         method: "PUT",
@@ -143,7 +210,7 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
       })
 
       if (response.ok) {
-        alert("Sözleşme başarıyla güncellendi!")
+        alert("Sözleşme ve öğrenci bilgileri başarıyla güncellendi!")
         window.location.href = "/history"
       } else {
         alert("Sözleşme güncellenirken bir hata oluştu.")

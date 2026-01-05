@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Save, Download } from "lucide-react"
+import { Save, Download, Users, Clock, TrendingUp, GraduationCap, List, Search } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 interface Student {
   id: string
@@ -29,10 +30,32 @@ interface Student {
   studentTuitionFee?: string | null
 }
 
+const siniflar = [
+  "5. Sınıf",
+  "6. Sınıf",
+  "7. Sınıf",
+  "8. Sınıf",
+  "9. Sınıf",
+  "10. Sınıf",
+  "11. Sınıf",
+  "12. Sınıf",
+]
+
 export default function RenewalPage() {
+  const router = useRouter()
   const [students, setStudents] = useState<Student[]>([])
   const [clubs, setClubs] = useState<{id: string, name: string}[]>([])
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
+  const [studentSearchTerm, setStudentSearchTerm] = useState("")
+  
+  // İstatistikler
+  const [stats, setStats] = useState({
+    total: 0,
+    today: 0,
+    thisWeek: 0,
+    thisMonth: 0,
+    sinifStats: {} as Record<string, number>,
+  })
 
   // Ana Sözleşme Form Verileri
   const [mainContractData, setMainContractData] = useState({
@@ -174,10 +197,37 @@ export default function RenewalPage() {
     }
   }, [])
 
+  const fetchStats = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/renewals/stats`)
+      if (response.ok) {
+        const data = await response.json()
+        // API response formatını kontrol et ve state'e set et
+        if (data && typeof data === 'object') {
+          setStats({
+            total: data.total || 0,
+            today: data.today || 0,
+            thisWeek: data.thisWeek || 0,
+            thisMonth: data.thisMonth || 0,
+            sinifStats: data.sinifStats || {}
+          })
+        } else {
+          console.error("[Renewal] Invalid stats data format:", data)
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        console.error("[Renewal] Stats API error:", response.status, errorData)
+      }
+    } catch (error) {
+      console.error("Error fetching stats:", error)
+    }
+  }, [])
+
   useEffect(() => {
     fetchStudents()
     fetchClubs()
-  }, [fetchStudents, fetchClubs])
+    fetchStats()
+  }, [fetchStudents, fetchClubs, fetchStats])
 
   // Kullanıcı adını otomatik doldur (sadece bir kez)
   useEffect(() => {
@@ -527,14 +577,145 @@ export default function RenewalPage() {
     }
   }
 
+  // Filtrelenmiş öğrenci listesi (ad-soyad ile arama)
+  const filteredStudents = students.filter(student => {
+    if (!studentSearchTerm.trim()) return false
+    const search = studentSearchTerm.toLowerCase().trim()
+    const fullName = `${student.firstName} ${student.lastName}`.toLowerCase()
+    return fullName.includes(search) || 
+           student.firstName.toLowerCase().includes(search) || 
+           student.lastName.toLowerCase().includes(search)
+  })
+
+  const handleStudentSelect = async (student: Student) => {
+    setSelectedStudent(student)
+    setStudentSearchTerm("") // Arama terimini temizle
+    
+    const formattedBirthDate = formatDate(student.birthDate)
+    setMainContractData(prev => ({
+      ...prev,
+      studentName: `${student.firstName} ${student.lastName}`,
+      studentTC: student.tcNumber,
+      studentClass: student.grade,
+      studentBirthDate: formattedBirthDate,
+      contractStudentName: `${student.firstName} ${student.lastName}`,
+      contractParentName: ""
+    }))
+    
+    // Öğrencinin detaylarını çek (öğrenim ücreti dahil)
+    try {
+      const response = await fetch(`/api/students/${student.id}?format=legacy`)
+      if (response.ok) {
+        const studentDetails: Student = await response.json()
+        if (studentDetails.announcedTuitionFee || studentDetails.studentTuitionFee) {
+          setMainContractData(prev => ({
+            ...prev,
+            announcedTuitionFee: studentDetails.announcedTuitionFee || prev.announcedTuitionFee,
+            studentTuitionFee: studentDetails.studentTuitionFee || prev.studentTuitionFee
+          }))
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching student details:", err)
+    }
+  }
+
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Kayıt Yenileme Sözleşmesi</h1>
-        <p className="text-gray-600 mt-2">Öğrenci kayıt yenileme sözleşmesini oluşturun</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Kayıt Yenileme Sözleşmesi</h1>
+            <p className="text-gray-600 mt-2 text-sm sm:text-base">Öğrenci kayıt yenileme sözleşmesini oluşturun</p>
+          </div>
+          <Button
+            onClick={() => router.push('/renewal/list')}
+            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            <List className="h-4 w-4 mr-2" />
+            Kayıtları Görüntüle
+          </Button>
+        </div>
       </div>
 
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
+        {/* İstatistik Kartları */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+          <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white">
+            <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+              <div className="flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <p className="text-blue-100 text-xs sm:text-sm font-medium mb-1 truncate">Toplam Kayıt</p>
+                  <p className="text-xl sm:text-2xl lg:text-3xl font-bold">{stats.total}</p>
+                </div>
+                <Users className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 text-blue-200 flex-shrink-0 ml-2" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-lg bg-gradient-to-br from-green-600 to-emerald-600 text-white">
+            <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+              <div className="flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <p className="text-green-100 text-xs sm:text-sm font-medium mb-1 truncate">Bugün</p>
+                  <p className="text-xl sm:text-2xl lg:text-3xl font-bold">{stats.today}</p>
+                </div>
+                <Clock className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 text-green-200 flex-shrink-0 ml-2" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-lg bg-gradient-to-br from-orange-600 to-amber-600 text-white">
+            <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+              <div className="flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <p className="text-orange-100 text-xs sm:text-sm font-medium mb-1 truncate">Bu Hafta</p>
+                  <p className="text-xl sm:text-2xl lg:text-3xl font-bold">{stats.thisWeek}</p>
+                </div>
+                <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 text-orange-200 flex-shrink-0 ml-2" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-lg bg-gradient-to-br from-purple-600 to-pink-600 text-white">
+            <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+              <div className="flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <p className="text-purple-100 text-xs sm:text-sm font-medium mb-1 truncate">Bu Ay</p>
+                  <p className="text-xl sm:text-2xl lg:text-3xl font-bold">{stats.thisMonth}</p>
+                </div>
+                <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 text-purple-200 flex-shrink-0 ml-2" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Sınıf Bazında İstatistikler */}
+        <Card className="border-0 shadow-lg">
+          <CardHeader className="pb-3 sm:pb-4">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <GraduationCap className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+              Sınıf Bazında Kayıtlar
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 sm:gap-3">
+              {siniflar.map((sinif) => {
+                const count = stats.sinifStats[sinif] || 0
+                return (
+                  <div
+                    key={sinif}
+                    className="p-2 sm:p-3 rounded-lg border-2 border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all"
+                  >
+                    <p className="text-xs text-gray-600 mb-1 truncate">{sinif}</p>
+                    <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">{count}</p>
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Öğrenci Seçimi */}
         <Card>
           <CardHeader>
@@ -543,56 +724,40 @@ export default function RenewalPage() {
           </CardHeader>
           <CardContent>
             <div className="mb-6">
-              <Label htmlFor="studentSelect">Öğrenci Seçin *</Label>
-              <select
-                id="studentSelect"
-                value={selectedStudent?.id || ""}
-                onChange={async (e) => {
-                  const student = students.find(s => s.id === e.target.value)
-                  setSelectedStudent(student || null)
-                  if (student) {
-                    const formattedBirthDate = formatDate(student.birthDate)
-                    setMainContractData(prev => ({
-                      ...prev,
-                      studentName: `${student.firstName} ${student.lastName}`,
-                      studentTC: student.tcNumber,
-                      studentClass: student.grade,
-                      studentBirthDate: formattedBirthDate,
-                      contractStudentName: `${student.firstName} ${student.lastName}`,
-                      contractParentName: ""
-                    }))
-                    
-                    // Öğrencinin detaylarını çek (öğrenim ücreti dahil)
-                    try {
-                      const response = await fetch(`/api/students/${student.id}?format=legacy`)
-                      if (response.ok) {
-                        const studentDetails: Student = await response.json()
-                        if (studentDetails.announcedTuitionFee || studentDetails.studentTuitionFee) {
-                          setMainContractData(prev => ({
-                            ...prev,
-                            announcedTuitionFee: studentDetails.announcedTuitionFee || prev.announcedTuitionFee,
-                            studentTuitionFee: studentDetails.studentTuitionFee || prev.studentTuitionFee
-                          }))
-                        }
-                      }
-                    } catch (err) {
-                      console.error("Error fetching student details:", err)
-                    }
-                  }
-                }}
-                className="w-full h-11 px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl text-sm text-gray-900 transition-all duration-200 hover:border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 focus:outline-none cursor-pointer"
-                required
-              >
-                <option value="">Öğrenci seçin...</option>
-                {students.map((student) => (
-                  <option key={student.id} value={student.id}>
-                    {student.firstName} {student.lastName} - {student.tcNumber} - {student.grade}
-                  </option>
-                ))}
-              </select>
-              {!students.length && (
+              <Label htmlFor="studentSearch">Öğrenci Ara (Ad Soyad) *</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  id="studentSearch"
+                  type="text"
+                  placeholder="Öğrenci adı veya soyadı ile ara..."
+                  value={studentSearchTerm}
+                  onChange={(e) => setStudentSearchTerm(e.target.value)}
+                  className="w-full h-11 pl-10 pr-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl text-sm text-gray-900 transition-all duration-200 hover:border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 focus:outline-none"
+                />
+              </div>
+              {studentSearchTerm && filteredStudents.length > 0 && (
+                <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                  {filteredStudents.slice(0, 10).map((student) => (
+                    <button
+                      key={student.id}
+                      type="button"
+                      onClick={() => handleStudentSelect(student)}
+                      className="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm"
+                    >
+                      {student.firstName} {student.lastName} - {student.grade} ({student.tcNumber})
+                    </button>
+                  ))}
+                </div>
+              )}
+              {studentSearchTerm && filteredStudents.length === 0 && (
                 <p className="text-sm text-gray-500 mt-1">
-                  Önce <a href="/students" className="text-blue-600 hover:underline">Öğrenci Yönetimi</a> sayfasından öğrenci ekleyin.
+                  Arama kriterinize uygun öğrenci bulunamadı.
+                </p>
+              )}
+              {!studentSearchTerm && (
+                <p className="text-sm text-gray-500 mt-1">
+                  Öğrenci adı veya soyadı ile arama yapın.
                 </p>
               )}
             </div>

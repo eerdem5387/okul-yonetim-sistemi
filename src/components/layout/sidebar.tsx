@@ -142,32 +142,26 @@ export function Sidebar() {
     // Rol kontrolü
     if (!item.roles.includes(currentRole)) return false
     
-    // Gezi Yönetimi için yetki kontrolü - TÜM ROLLER için
+    // Gezi Yönetimi için yetki kontrolü
     if (item.href === "/gezi" || item.href.startsWith("/gezi")) {
-      // Eğer hasGeziAccess açıkça false ise (yani kapatılmışsa) hiçbir rol için gösterilmez
-      if (hasGeziAccess === false) return false
+      // Admin, principal, student_affairs, counselor için her zaman göster
+      if (currentRole === "admin" || currentRole === "principal" || currentRole === "student_affairs" || currentRole === "counselor") {
+        return true
+      }
       
-      // Teacher için mutlaka hasGeziAccess true olmalı (null veya false ise gösterilmez)
+      // Teacher için mutlaka hasGeziAccess true olmalı
       if (currentRole === "teacher" && hasGeziAccess !== true) return false
-      
-      // Admin, principal, student_affairs, counselor için:
-      // - hasGeziAccess === true → göster
-      // - hasGeziAccess === null → göster (varsayılan erişim)
-      // - hasGeziAccess === false → gösterme (yukarıda zaten kontrol edildi)
     }
     
-    // IB Faaliyet Yönetimi için yetki kontrolü - TÜM ROLLER için
+    // IB Faaliyet Yönetimi için yetki kontrolü
     if (item.href === "/activities" || item.href.startsWith("/activities")) {
-      // Eğer hasIbAccess açıkça false ise (yani kapatılmışsa) hiçbir rol için gösterilmez
-      if (hasIbAccess === false) return false
+      // Admin, principal, student_affairs, counselor için her zaman göster
+      if (currentRole === "admin" || currentRole === "principal" || currentRole === "student_affairs" || currentRole === "counselor") {
+        return true
+      }
       
-      // Teacher için mutlaka hasIbAccess true olmalı (null veya false ise gösterilmez)
+      // Teacher için mutlaka hasIbAccess true olmalı
       if (currentRole === "teacher" && hasIbAccess !== true) return false
-      
-      // Admin, principal, student_affairs, counselor için:
-      // - hasIbAccess === true → göster
-      // - hasIbAccess === null → göster (varsayılan erişim)
-      // - hasIbAccess === false → gösterme (yukarıda zaten kontrol edildi)
     }
     
     return true

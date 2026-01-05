@@ -128,7 +128,21 @@ export default function RootLayout({
       return
     }
 
-    // Veli sayfaları için kontrol
+    // Veli Görüşmeleri sayfası için özel kontrol (admin, principal, student_affairs, counselor erişebilir)
+    if (pathname === "/veli-gorusmeleri") {
+      if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "counselor") {
+        // Bu roller için erişim izni var
+        return
+      }
+      // Diğer roller için veli-login'e yönlendir
+      if (normalizedRole !== "parent") {
+        router.push("/veli-login")
+        return
+      }
+      return
+    }
+
+    // Veli sayfaları için kontrol (veli-gorusmeleri hariç)
     if (pathname?.startsWith("/veli") || pathname === "/parent") {
       if (normalizedRole !== "parent") {
         router.push("/veli-login")
