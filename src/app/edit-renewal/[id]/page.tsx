@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { usePathname } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -39,32 +40,41 @@ interface ContractData {
 }
 
 export default function EditRenewalPage({ params }: { params: Promise<{ id: string }> }) {
+  const pathname = usePathname()
   const [contract, setContract] = useState<ContractData | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [contractId, setContractId] = useState<string>("")
   const [studentId, setStudentId] = useState<string>("")
-  const [paramsResolved, setParamsResolved] = useState(false)
 
+  // URL'den ID'yi al - daha güvenilir
   useEffect(() => {
-    const getParams = async () => {
+    const extractIdFromPath = async () => {
       try {
-        const resolvedParams = await params
-        const id = resolvedParams.id
-        console.log("[Edit Renewal] Resolved params ID:", id)
-        if (id) {
+        // Önce pathname'den ID'yi al
+        const pathId = pathname?.split('/').pop() || ""
+        
+        // Eğer pathname'den ID alınamazsa params'tan al
+        let id = pathId
+        if (!id || id === "edit-renewal") {
+          const resolvedParams = await params
+          id = resolvedParams.id
+        }
+        
+        console.log("[Edit Renewal] Contract ID:", id, "Pathname:", pathname)
+        
+        if (id && id !== contractId) {
           // Önceki contract verilerini temizle
           setContract(null)
           setLoading(true)
           setContractId(id)
-          setParamsResolved(true)
         }
       } catch (error) {
-        console.error("[Edit Renewal] Error resolving params:", error)
+        console.error("[Edit Renewal] Error extracting ID:", error)
       }
     }
-    getParams()
-  }, [params])
+    extractIdFromPath()
+  }, [pathname, params, contractId])
 
   const fetchContract = useCallback(async () => {
     try {
@@ -115,11 +125,11 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
   }, [contractId])
 
   useEffect(() => {
-    if (contractId && paramsResolved) {
+    if (contractId) {
       console.log("[Edit Renewal] Fetching contract with ID:", contractId)
       fetchContract()
     }
-  }, [contractId, paramsResolved, fetchContract])
+  }, [contractId, fetchContract])
 
   const handleSave = async () => {
     if (!contract || !studentId) return

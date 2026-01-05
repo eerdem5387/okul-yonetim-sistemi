@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { usePathname } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,23 +23,41 @@ interface ContractData {
 }
 
 export default function EditServicePage({ params }: { params: Promise<{ id: string }> }) {
+  const pathname = usePathname()
   const [contract, setContract] = useState<ContractData | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [contractId, setContractId] = useState<string>("")
   const [studentId, setStudentId] = useState<string>("")
 
+  // URL'den ID'yi al - daha güvenilir
   useEffect(() => {
-    const getParams = async () => {
-      const resolvedParams = await params
-      const id = resolvedParams.id
-      // Önceki contract verilerini temizle
-      setContract(null)
-      setLoading(true)
-      setContractId(id)
+    const extractIdFromPath = async () => {
+      try {
+        // Önce pathname'den ID'yi al
+        const pathId = pathname?.split('/').pop() || ""
+        
+        // Eğer pathname'den ID alınamazsa params'tan al
+        let id = pathId
+        if (!id || id === "edit-service") {
+          const resolvedParams = await params
+          id = resolvedParams.id
+        }
+        
+        console.log("[Edit Service] Contract ID:", id, "Pathname:", pathname)
+        
+        if (id && id !== contractId) {
+          // Önceki contract verilerini temizle
+          setContract(null)
+          setLoading(true)
+          setContractId(id)
+        }
+      } catch (error) {
+        console.error("[Edit Service] Error extracting ID:", error)
+      }
     }
-    getParams()
-  }, [params])
+    extractIdFromPath()
+  }, [pathname, params, contractId])
 
   const fetchContract = useCallback(async () => {
     try {
