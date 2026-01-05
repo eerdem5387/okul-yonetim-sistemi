@@ -27,7 +27,6 @@ import {
   Loader2,
   ArrowLeft,
 } from "lucide-react"
-import OgretmenSidebar from "@/components/layout/ogretmen-sidebar"
 
 type ActivityType =
   | "ETKINLIK"
@@ -152,24 +151,32 @@ export default function OgretmenIbYonetimiPage() {
       const role = localStorage.getItem("auth_role")
       const staffId = localStorage.getItem("staff_id")
       
-      if (role !== "teacher" || !staffId) {
-        router.push("/login")
+      // Admin, principal, student_affairs, counselor için varsayılan erişim var
+      if (role === "admin" || role === "principal" || role === "student_affairs" || role === "counselor") {
+        setHasAccess(true)
         return
       }
       
       // Teacher için yetki kontrolü
-      fetch(`/api/staff/${staffId}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.hasIbAccess) {
-            setHasAccess(true)
-          } else {
+      if (role === "teacher" && staffId) {
+        fetch(`/api/staff/${staffId}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.hasIbAccess) {
+              setHasAccess(true)
+            } else {
+              setHasAccess(false)
+              router.push("/ogretmen")
+            }
+          })
+          .catch(() => {
             setHasAccess(false)
-          }
-        })
-        .catch(() => {
-          setHasAccess(false)
-        })
+            router.push("/ogretmen")
+          })
+      } else {
+        setHasAccess(false)
+        router.push("/login")
+      }
     }
   }, [router])
 
@@ -229,6 +236,7 @@ export default function OgretmenIbYonetimiPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    // Evidence kontrolü
     if (!formData.evidence.trim()) {
       alert("Lütfen bir dosya yükleyin veya kanıt linki girin!")
       return
@@ -257,6 +265,7 @@ export default function OgretmenIbYonetimiPage() {
         participants: formData.participants ? parseInt(formData.participants) : null,
       }
 
+      // Tarih değişikliği koruması - PUT'ta activityDate göndermiyoruz
       if (editingActivity) {
         delete payload.activityDate
       }
@@ -300,9 +309,10 @@ export default function OgretmenIbYonetimiPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
+    // Dosya boyutu kontrolü (10MB)
     const maxSize = 10 * 1024 * 1024
     if (file.size > maxSize) {
-      alert("Dosya boyutu 10MB'dan büyük olamaz!")
+      alert("Dosya boyutu 10MB&apos;dan büyük olamaz!")
       return
     }
 
@@ -352,7 +362,7 @@ export default function OgretmenIbYonetimiPage() {
       type: activity.type,
       title: activity.title,
       description: activity.description || "",
-      activityDate: activity.activityDate.split("T")[0],
+      activityDate: activity.activityDate.split("T")[0], // Sadece görüntüleme için
       location: activity.location || "",
       organizer: activity.organizer || "",
       duration: activity.duration?.toString() || "",
@@ -361,6 +371,7 @@ export default function OgretmenIbYonetimiPage() {
       evidence: activity.evidence || "",
       notes: activity.notes || "",
     })
+    // Eğer evidence bir URL ise, uploadedFile'ı set et
     if (activity.evidence && activity.evidence.startsWith("http")) {
       setUploadedFile({
         name: activity.evidence.split("/").pop() || "Dosya",
@@ -392,6 +403,28 @@ export default function OgretmenIbYonetimiPage() {
     }
   }
 
+  const handleVerify = async (id: string, verify: boolean) => {
+    try {
+      const response = await fetch(`/api/activities/${id}`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          isVerified: verify,
+          verifiedBy: "Admin", // Gerçek uygulamada auth'dan alınmalı
+          verifiedAt: new Date().toISOString(),
+        }),
+      })
+
+      if (response.ok) {
+        fetchActivities()
+      } else {
+        alert("Doğrulama işlemi başarısız!")
+      }
+    } catch (error) {
+      console.error("Error verifying activity:", error)
+      alert("Doğrulama işlemi başarısız!")
+    }
+  }
 
   const stats = useMemo(() => {
     const verified = activities.filter((a) => a.isVerified).length
@@ -418,160 +451,374 @@ export default function OgretmenIbYonetimiPage() {
     setCurrentPage(1)
   }
 
+  // Yetki kontrolü yapılıyor
   if (hasAccess === null) {
     return (
-      <div className="min-h-screen bg-gray-50 flex">
-        <OgretmenSidebar />
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-        </div>
+      <div className="p-6">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-gray-400" />
+            <p className="text-gray-500 mt-4">Yükleniyor...</p>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
   if (hasAccess === false) {
     return (
-      <div className="min-h-screen bg-gray-50 flex">
-        <OgretmenSidebar />
-        <div className="flex-1 flex items-center justify-center">
-          <Card>
-            <CardContent className="py-12 text-center">
-              <p className="text-gray-500">Erişim Reddedildi</p>
-              <p className="text-sm text-gray-400 mt-2">Bu sayfaya erişim yetkiniz bulunmamaktadır.</p>
-              <Button onClick={() => router.push("/ogretmen")} className="mt-4">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Ana Panele Dön
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="p-6">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-gray-500">Erişim Reddedildi</p>
+            <p className="text-sm text-gray-400 mt-2">Bu sayfaya erişim yetkiniz bulunmamaktadır.</p>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <OgretmenSidebar />
-      <div className="flex-1">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 shadow-lg">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pl-16 lg:pl-4 sm:pl-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">IB Faaliyet Yönetimi</h1>
+          <p className="text-gray-600 mt-2">
+            Öğrenci faaliyetlerini kayıt altına alın ve IB programı için hazırlayın
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            onClick={() => {
+              setShowForm(true)
+              setUploadedFile(null)
+            }}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Yeni Faaliyet
+          </Button>
+        </div>
+      </div>
+
+      {/* Statistics */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Card className="card-soft border-0">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-3 mb-2">
-                  <Award className="h-7 w-7 sm:h-8 sm:w-8" />
-                  IB Faaliyet Yönetimi
-                </h1>
-                <p className="text-blue-100 text-sm sm:text-base">Öğrenci faaliyetlerini kayıt altına alın ve IB programı için hazırlayın</p>
+                <p className="text-sm text-gray-500">Toplam Faaliyet</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">{stats.total}</p>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="p-3 rounded-xl bg-blue-50 text-blue-600">
+                <BarChart3 className="h-6 w-6" />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-3">Bu yıl: {stats.thisYear} faaliyet</p>
+          </CardContent>
+        </Card>
+
+        <Card className="card-soft border-0">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Doğrulanmış</p>
+                <p className="text-3xl font-bold text-emerald-600 mt-1">{stats.verified}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600">
+                <CheckCircle className="h-6 w-6" />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-3">IB görüntüleme için hazır</p>
+          </CardContent>
+        </Card>
+
+        <Card className="card-soft border-0">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Bekleyen</p>
+                <p className="text-3xl font-bold text-orange-600 mt-1">{stats.unverified}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-orange-50 text-orange-600">
+                <Clock className="h-6 w-6" />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-3">Doğrulama bekliyor</p>
+          </CardContent>
+        </Card>
+
+        <Card className="card-soft border-0">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Bu Yıl</p>
+                <p className="text-3xl font-bold text-indigo-600 mt-1">{stats.thisYear}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-indigo-50 text-indigo-600">
+                <Award className="h-6 w-6" />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-3">{new Date().getFullYear()} faaliyetleri</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <Card className="border-0 shadow-lg">
+        <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="h-5 w-5 text-blue-600" />
+              Filtreleme
+            </CardTitle>
+            <CardDescription>Faaliyetleri öğrenci, tip, tarih ve duruma göre filtreleyin</CardDescription>
+          </div>
+          <Button variant="ghost" size="sm" onClick={handleResetFilters}>
+            Filtreleri Sıfırla
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+            <div>
+              <Label className="text-xs uppercase tracking-wide text-gray-500">Öğrenci</Label>
+              <select
+                value={selectedStudent}
+                onChange={(e) => {
+                  setSelectedStudent(e.target.value)
+                  setCurrentPage(1)
+                }}
+                className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              >
+                <option value="">Tüm öğrenciler</option>
+                {students.map((student) => (
+                  <option key={student.id} value={student.id}>
+                    {student.firstName} {student.lastName} - {student.grade}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <Label className="text-xs uppercase tracking-wide text-gray-500">Faaliyet Tipi</Label>
+              <select
+                value={selectedType}
+                onChange={(e) => {
+                  setSelectedType(e.target.value)
+                  setCurrentPage(1)
+                }}
+                className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              >
+                <option value="">Tüm tipler</option>
+                {Object.entries(activityTypeLabels).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <Label className="text-xs uppercase tracking-wide text-gray-500">Başlangıç Tarihi</Label>
+              <Input
+                type="date"
+                value={startDate}
+                onChange={(e) => {
+                  setStartDate(e.target.value)
+                  setCurrentPage(1)
+                }}
+                className="mt-2"
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs uppercase tracking-wide text-gray-500">Bitiş Tarihi</Label>
+              <Input
+                type="date"
+                value={endDate}
+                onChange={(e) => {
+                  setEndDate(e.target.value)
+                  setCurrentPage(1)
+                }}
+                className="mt-2"
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs uppercase tracking-wide text-gray-500">Doğrulama Durumu</Label>
+              <select
+                value={verificationFilter}
+                onChange={(e) => {
+                  setVerificationFilter(e.target.value)
+                  setCurrentPage(1)
+                }}
+                className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              >
+                <option value="all">Tümü</option>
+                <option value="true">Doğrulanmış</option>
+                <option value="false">Bekleyen</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <Label className="text-xs uppercase tracking-wide text-gray-500">Arama</Label>
+            <div className="mt-2 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value)
+                  setCurrentPage(1)
+                }}
+                placeholder="Başlık, açıklama veya konum ara..."
+                className="pl-10"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Activities List */}
+      <Card className="border-0 shadow-lg">
+        <CardHeader>
+          <CardTitle>Faaliyet Listesi ({totalActivities})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="text-center py-8 text-gray-500">Yükleniyor...</div>
+          ) : activities.length > 0 ? (
+            <div className="space-y-4">
+              {activities.map((activity) => (
+                <Card key={activity.id} className="card-soft border-0">
+                  <CardContent className="p-5">
+                    <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                      <div className="flex-1 space-y-3">
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
+                            <FileText className="h-5 w-5" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="text-lg font-bold text-gray-900">{activity.title}</h3>
+                              <span className="px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">
+                                {activityTypeLabels[activity.type]}
+                              </span>
+                              {activity.isVerified ? (
+                                <span className="px-3 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-700 flex items-center gap-1">
+                                  <CheckCircle className="h-3 w-3" />
+                                  Doğrulanmış
+                                </span>
+                              ) : (
+                                <span className="px-3 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-700 flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  Bekliyor
+                                </span>
+                              )}
+                            </div>
+                            <div className="mt-2 space-y-1 text-sm text-gray-600">
+                              <div className="flex items-center gap-2">
+                                <User className="h-4 w-4" />
+                                <span>
+                                  {activity.student.firstName} {activity.student.lastName} - {activity.student.grade}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4" />
+                                <span>{new Date(activity.activityDate).toLocaleDateString("tr-TR")}</span>
+                              </div>
+                              {activity.location && (
+                                <div className="flex items-center gap-2">
+                                  <MapPin className="h-4 w-4" />
+                                  <span>{activity.location}</span>
+                                </div>
+                              )}
+                              {activity.description && (
+                                <p className="text-gray-700 mt-2">{activity.description}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => handleEdit(activity)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDelete(activity.id)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+              <p>Filtrelere uygun faaliyet bulunamadı</p>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-6 pt-6 border-t border-gray-200">
+              <p className="text-sm text-gray-600">
+                Sayfa {currentPage} / {totalPages}
+              </p>
+              <div className="flex gap-2">
                 <Button
-                  onClick={() => {
-                    setShowForm(true)
-                    setUploadedFile(null)
-                  }}
-                  className="bg-white text-blue-600 hover:bg-blue-50 shadow-lg"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
                 >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Yeni Faaliyet
+                  Önceki
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Sonraki
                 </Button>
               </div>
             </div>
-          </div>
-        </div>
+          )}
+        </CardContent>
+      </Card>
 
-        {/* Content */}
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
-          {/* Statistics */}
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <Card className="card-soft border-0">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500">Toplam Faaliyet</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-1">{stats.total}</p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-blue-50 text-blue-600">
-                    <BarChart3 className="h-6 w-6" />
-                  </div>
-                </div>
-                <p className="text-xs text-gray-500 mt-3">Bu yıl: {stats.thisYear} faaliyet</p>
-              </CardContent>
-            </Card>
-
-            <Card className="card-soft border-0">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500">Doğrulanmış</p>
-                    <p className="text-3xl font-bold text-emerald-600 mt-1">{stats.verified}</p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600">
-                    <CheckCircle className="h-6 w-6" />
-                  </div>
-                </div>
-                <p className="text-xs text-gray-500 mt-3">IB görüntüleme için hazır</p>
-              </CardContent>
-            </Card>
-
-            <Card className="card-soft border-0">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500">Bekleyen</p>
-                    <p className="text-3xl font-bold text-orange-600 mt-1">{stats.unverified}</p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-orange-50 text-orange-600">
-                    <Clock className="h-6 w-6" />
-                  </div>
-                </div>
-                <p className="text-xs text-gray-500 mt-3">Doğrulama bekliyor</p>
-              </CardContent>
-            </Card>
-
-            <Card className="card-soft border-0">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500">Bu Yıl</p>
-                    <p className="text-3xl font-bold text-indigo-600 mt-1">{stats.thisYear}</p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-indigo-50 text-indigo-600">
-                    <Award className="h-6 w-6" />
-                  </div>
-                </div>
-                <p className="text-xs text-gray-500 mt-3">{new Date().getFullYear()} faaliyetleri</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Filters */}
-          <Card className="border-0 shadow-lg">
-            <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Filter className="h-5 w-5 text-blue-600" />
-                  Filtreleme
-                </CardTitle>
-                <CardDescription>Faaliyetleri öğrenci, tip, tarih ve duruma göre filtreleyin</CardDescription>
-              </div>
-              <Button variant="ghost" size="sm" onClick={handleResetFilters}>
-                Filtreleri Sıfırla
+      {/* Activity Form Modal */}
+      {showForm && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="relative w-full max-w-3xl rounded-2xl bg-white shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-100 p-6 flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-gray-900">
+                {editingActivity ? "Faaliyet Düzenle" : "Yeni Faaliyet Ekle"}
+              </h2>
+              <Button variant="ghost" size="sm" onClick={() => setShowForm(false)}>
+                <X className="h-5 w-5" />
               </Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <Label className="text-xs uppercase tracking-wide text-gray-500">Öğrenci</Label>
+                  <Label htmlFor="studentId">Öğrenci *</Label>
                   <select
-                    value={selectedStudent}
-                    onChange={(e) => {
-                      setSelectedStudent(e.target.value)
-                      setCurrentPage(1)
-                    }}
+                    id="studentId"
+                    value={formData.studentId}
+                    onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
+                    required
                     className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                   >
-                    <option value="">Tüm öğrenciler</option>
+                    <option value="">Öğrenci seçin</option>
                     {students.map((student) => (
                       <option key={student.id} value={student.id}>
                         {student.firstName} {student.lastName} - {student.grade}
@@ -581,16 +828,14 @@ export default function OgretmenIbYonetimiPage() {
                 </div>
 
                 <div>
-                  <Label className="text-xs uppercase tracking-wide text-gray-500">Faaliyet Tipi</Label>
+                  <Label htmlFor="type">Faaliyet Tipi *</Label>
                   <select
-                    value={selectedType}
-                    onChange={(e) => {
-                      setSelectedType(e.target.value)
-                      setCurrentPage(1)
-                    }}
+                    id="type"
+                    value={formData.type}
+                    onChange={(e) => setFormData({ ...formData, type: e.target.value as ActivityType })}
+                    required
                     className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                   >
-                    <option value="">Tüm tipler</option>
                     {Object.entries(activityTypeLabels).map(([value, label]) => (
                       <option key={value} value={value}>
                         {label}
@@ -598,481 +843,256 @@ export default function OgretmenIbYonetimiPage() {
                     ))}
                   </select>
                 </div>
+              </div>
 
+              <div>
+                <Label htmlFor="title">Başlık *</Label>
+                <Input
+                  id="title"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  required
+                  className="mt-2"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="description">Açıklama</Label>
+                <textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  rows={3}
+                  className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <Label className="text-xs uppercase tracking-wide text-gray-500">Başlangıç Tarihi</Label>
+                  <Label htmlFor="activityDate">
+                    Faaliyet Tarihi * {editingActivity && <span className="text-xs text-orange-600">(Değiştirilemez)</span>}
+                  </Label>
                   <Input
+                    id="activityDate"
                     type="date"
-                    value={startDate}
-                    onChange={(e) => {
-                      setStartDate(e.target.value)
-                      setCurrentPage(1)
-                    }}
+                    value={formData.activityDate}
+                    onChange={(e) => setFormData({ ...formData, activityDate: e.target.value })}
+                    required
+                    disabled={!!editingActivity}
                     className="mt-2"
                   />
                 </div>
 
                 <div>
-                  <Label className="text-xs uppercase tracking-wide text-gray-500">Bitiş Tarihi</Label>
+                  <Label htmlFor="location">Konum</Label>
                   <Input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => {
-                      setEndDate(e.target.value)
-                      setCurrentPage(1)
-                    }}
+                    id="location"
+                    value={formData.location}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    className="mt-2"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <Label htmlFor="organizer">Organizatör</Label>
+                  <Input
+                    id="organizer"
+                    value={formData.organizer}
+                    onChange={(e) => setFormData({ ...formData, organizer: e.target.value })}
                     className="mt-2"
                   />
                 </div>
 
-                <div>
-                  <Label className="text-xs uppercase tracking-wide text-gray-500">Doğrulama Durumu</Label>
-                  <select
-                    value={verificationFilter}
-                    onChange={(e) => {
-                      setVerificationFilter(e.target.value)
-                      setCurrentPage(1)
-                    }}
-                    className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                  >
-                    <option value="all">Tümü</option>
-                    <option value="true">Doğrulanmış</option>
-                    <option value="false">Bekleyen</option>
-                  </select>
+                <div className="grid gap-4 grid-cols-2">
+                  <div>
+                    <Label htmlFor="duration">Süre (dakika)</Label>
+                    <Input
+                      id="duration"
+                      type="number"
+                      value={formData.duration}
+                      onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+                      className="mt-2"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="participants">Katılımcı Sayısı</Label>
+                    <Input
+                      id="participants"
+                      type="number"
+                      value={formData.participants}
+                      onChange={(e) => setFormData({ ...formData, participants: e.target.value })}
+                      className="mt-2"
+                    />
+                  </div>
                 </div>
               </div>
 
               <div>
-                <Label className="text-xs uppercase tracking-wide text-gray-500">Arama</Label>
-                <div className="mt-2 relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    value={searchTerm}
-                    onChange={(e) => {
-                      setSearchTerm(e.target.value)
-                      setCurrentPage(1)
-                    }}
-                    placeholder="Başlık, açıklama veya konum ara..."
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Activities List */}
-          <Card className="border-0 shadow-lg">
-            <CardHeader>
-              <CardTitle>Faaliyet Listesi ({totalActivities})</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="text-center py-8 text-gray-500">Yükleniyor...</div>
-              ) : activities.length > 0 ? (
-                <div className="space-y-4">
-                  {activities.map((activity) => (
-                    <Card key={activity.id} className="card-soft border-0">
-                      <CardContent className="p-5">
-                        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-                          <div className="flex-1 space-y-3">
-                            <div className="flex items-start gap-3">
-                              <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
-                                <FileText className="h-5 w-5" />
-                              </div>
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <h3 className="text-lg font-bold text-gray-900">{activity.title}</h3>
-                                  <span className="px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">
-                                    {activityTypeLabels[activity.type]}
-                                  </span>
-                                  {activity.isVerified ? (
-                                    <span className="px-3 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-700 flex items-center gap-1">
-                                      <CheckCircle className="h-3 w-3" />
-                                      Doğrulanmış
-                                    </span>
-                                  ) : (
-                                    <span className="px-3 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-700 flex items-center gap-1">
-                                      <Clock className="h-3 w-3" />
-                                      Bekliyor
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="mt-2 space-y-1 text-sm text-gray-600">
-                                  <div className="flex items-center gap-2">
-                                    <User className="h-4 w-4" />
-                                    <span>
-                                      {activity.student.firstName} {activity.student.lastName} - {activity.student.grade}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <Calendar className="h-4 w-4" />
-                                    <span>{new Date(activity.activityDate).toLocaleDateString("tr-TR")}</span>
-                                  </div>
-                                  {activity.location && (
-                                    <div className="flex items-center gap-2">
-                                      <MapPin className="h-4 w-4" />
-                                      <span>{activity.location}</span>
-                                    </div>
-                                  )}
-                                  {activity.description && (
-                                    <p className="text-gray-700 mt-2">{activity.description}</p>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button size="sm" variant="outline" onClick={() => handleEdit(activity)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleDelete(activity.id)}
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                  <p>Filtrelere uygun faaliyet bulunamadı</p>
-                </div>
-              )}
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-6 pt-6 border-t border-gray-200">
-                  <p className="text-sm text-gray-600">
-                    Sayfa {currentPage} / {totalPages}
-                  </p>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                    >
-                      Önceki
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                    >
-                      Sonraki
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Activity Form Modal */}
-        {showForm && (
-          <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="relative w-full max-w-3xl rounded-2xl bg-white shadow-2xl max-h-[90vh] overflow-y-auto">
-              <div className="sticky top-0 bg-white border-b border-gray-100 p-6 flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-gray-900">
-                  {editingActivity ? "Faaliyet Düzenle" : "Yeni Faaliyet Ekle"}
-                </h2>
-                <Button variant="ghost" size="sm" onClick={() => setShowForm(false)}>
-                  <X className="h-5 w-5" />
-                </Button>
+                <Label htmlFor="outcome">Sonuç/Kazanım</Label>
+                <textarea
+                  id="outcome"
+                  value={formData.outcome}
+                  onChange={(e) => setFormData({ ...formData, outcome: e.target.value })}
+                  rows={2}
+                  className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                />
               </div>
 
-              <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <Label htmlFor="studentId">Öğrenci *</Label>
-                    <select
-                      id="studentId"
-                      value={formData.studentId}
-                      onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
-                      required
-                      className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                    >
-                      <option value="">Öğrenci seçin</option>
-                      {students.map((student) => (
-                        <option key={student.id} value={student.id}>
-                          {student.firstName} {student.lastName} - {student.grade}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="type">Faaliyet Tipi *</Label>
-                    <select
-                      id="type"
-                      value={formData.type}
-                      onChange={(e) => setFormData({ ...formData, type: e.target.value as ActivityType })}
-                      required
-                      className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                    >
-                      {Object.entries(activityTypeLabels).map(([value, label]) => (
-                        <option key={value} value={value}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="title">Başlık *</Label>
-                  <Input
-                    id="title"
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    required
-                    className="mt-2"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="description">Açıklama</Label>
-                  <textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    rows={3}
-                    className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                  />
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <Label htmlFor="activityDate">
-                      Faaliyet Tarihi * {editingActivity && <span className="text-xs text-orange-600">(Değiştirilemez)</span>}
-                    </Label>
-                    <Input
-                      id="activityDate"
-                      type="date"
-                      value={formData.activityDate}
-                      onChange={(e) => setFormData({ ...formData, activityDate: e.target.value })}
-                      required
-                      disabled={!!editingActivity}
-                      className="mt-2"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="location">Konum</Label>
-                    <Input
-                      id="location"
-                      value={formData.location}
-                      onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                      className="mt-2"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <Label htmlFor="organizer">Organizatör</Label>
-                    <Input
-                      id="organizer"
-                      value={formData.organizer}
-                      onChange={(e) => setFormData({ ...formData, organizer: e.target.value })}
-                      className="mt-2"
-                    />
-                  </div>
-
-                  <div className="grid gap-4 grid-cols-2">
-                    <div>
-                      <Label htmlFor="duration">Süre (dakika)</Label>
-                      <Input
-                        id="duration"
-                        type="number"
-                        value={formData.duration}
-                        onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-                        className="mt-2"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="participants">Katılımcı Sayısı</Label>
-                      <Input
-                        id="participants"
-                        type="number"
-                        value={formData.participants}
-                        onChange={(e) => setFormData({ ...formData, participants: e.target.value })}
-                        className="mt-2"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="outcome">Sonuç/Kazanım</Label>
-                  <textarea
-                    id="outcome"
-                    value={formData.outcome}
-                    onChange={(e) => setFormData({ ...formData, outcome: e.target.value })}
-                    rows={2}
-                    className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="evidence">Kanıt *</Label>
-                  <div className="mt-2 space-y-3">
-                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-blue-400 transition-colors">
-                      <div className="flex flex-col items-center justify-center space-y-4">
-                        <div className="p-3 rounded-full bg-blue-50">
-                          {uploading ? (
-                            <Loader2 className="h-6 w-6 text-blue-600 animate-spin" />
-                          ) : (
-                            <Upload className="h-6 w-6 text-blue-600" />
-                          )}
-                        </div>
-                        <div className="text-center">
-                          <label
-                            htmlFor="file-upload"
-                            className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                          >
-                            <File className="h-4 w-4" />
-                            {uploading ? "Yükleniyor..." : "Dosya Seç"}
-                          </label>
-                          <input
-                            id="file-upload"
-                            type="file"
-                            className="hidden"
-                            onChange={handleFileUpload}
-                            disabled={uploading}
-                            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.mp4,.mov,.txt"
-                          />
-                        </div>
-                        {uploadedFile && (
-                          <div className="w-full max-w-md">
-                            <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg border border-emerald-200">
-                              <div className="flex items-center gap-2 flex-1 min-w-0">
-                                <FileText className="h-5 w-5 text-emerald-600 flex-shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                  <a
-                                    href={uploadedFile.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-sm font-medium text-emerald-900 truncate hover:underline block"
-                                  >
-                                    {uploadedFile.name}
-                                  </a>
-                                  <p className="text-xs text-emerald-600">
-                                    {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
-                                  </p>
-                                </div>
-                              </div>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setUploadedFile(null)
-                                  setFormData((prev) => ({ ...prev, evidence: "" }))
-                                }}
-                                className="text-emerald-600 hover:text-emerald-700"
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
+              <div>
+                <Label htmlFor="evidence">Kanıt *</Label>
+                <div className="mt-2 space-y-3">
+                  {/* Dosya Yükleme */}
+                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-blue-400 transition-colors">
+                    <div className="flex flex-col items-center justify-center space-y-4">
+                      <div className="p-3 rounded-full bg-blue-50">
+                        {uploading ? (
+                          <Loader2 className="h-6 w-6 text-blue-600 animate-spin" />
+                        ) : (
+                          <Upload className="h-6 w-6 text-blue-600" />
                         )}
                       </div>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="evidence-url" className="text-sm text-gray-600">
-                        Veya link/URL girin
-                      </Label>
-                      <Input
-                        id="evidence-url"
-                        value={formData.evidence}
-                        onChange={(e) => {
-                          setFormData({ ...formData, evidence: e.target.value })
-                          if (e.target.value) {
-                            setUploadedFile(null)
-                          }
-                        }}
-                        placeholder="https://..."
-                        className="mt-1"
-                      />
-                    </div>
-
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                      <p className="text-xs font-semibold text-blue-900 mb-2">Desteklenen Dosya Tipleri:</p>
-                      <div className="grid grid-cols-2 gap-1 text-xs text-blue-700">
-                        <div>• PDF (.pdf)</div>
-                        <div>• Word (.doc, .docx)</div>
-                        <div>• Excel (.xls, .xlsx)</div>
-                        <div>• PowerPoint (.ppt, .pptx)</div>
-                        <div>• Resim (.jpg, .png, .gif, .webp)</div>
-                        <div>• Video (.mp4, .mov)</div>
-                        <div>• Metin (.txt)</div>
+                      <div className="text-center">
+                        <label
+                          htmlFor="file-upload"
+                          className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          <File className="h-4 w-4" />
+                          {uploading ? "Yükleniyor..." : "Dosya Seç"}
+                        </label>
+                        <input
+                          id="file-upload"
+                          type="file"
+                          className="hidden"
+                          onChange={handleFileUpload}
+                          disabled={uploading}
+                          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.mp4,.mov,.txt"
+                        />
                       </div>
-                      <p className="text-xs text-blue-600 mt-2">
-                        <span className="font-semibold">Maksimum dosya boyutu:</span> 10 MB
-                      </p>
+                      {uploadedFile && (
+                        <div className="w-full max-w-md">
+                          <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <FileText className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <a
+                                  href={uploadedFile.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sm font-medium text-emerald-900 truncate hover:underline block"
+                                >
+                                  {uploadedFile.name}
+                                </a>
+                                <p className="text-xs text-emerald-600">
+                                  {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setUploadedFile(null)
+                                setFormData((prev) => ({ ...prev, evidence: "" }))
+                              }}
+                              className="text-emerald-600 hover:text-emerald-700"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
 
-                <div>
-                  <Label htmlFor="notes">Notlar</Label>
-                  <textarea
-                    id="notes"
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    rows={2}
-                    className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                  />
-                </div>
+                  {/* Manuel URL/Link Girişi */}
+                  <div>
+                    <Label htmlFor="evidence-url" className="text-sm text-gray-600">
+                      Veya link/URL girin
+                    </Label>
+                    <Input
+                      id="evidence-url"
+                      value={formData.evidence}
+                      onChange={(e) => {
+                        setFormData({ ...formData, evidence: e.target.value })
+                        if (e.target.value) {
+                          setUploadedFile(null)
+                        }
+                      }}
+                      placeholder="https://..."
+                      className="mt-1"
+                    />
+                  </div>
 
-                <div className="flex gap-2 pt-4">
-                  <Button type="submit" className="flex-1">
-                    <Save className="h-4 w-4 mr-2" />
-                    {editingActivity ? "Güncelle" : "Kaydet"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setShowForm(false)
-                      setEditingActivity(null)
-                      setUploadedFile(null)
-                      setFormData({
-                        studentId: "",
-                        type: "ETKINLIK",
-                        title: "",
-                        description: "",
-                        activityDate: new Date().toISOString().split("T")[0],
-                        location: "",
-                        organizer: "",
-                        duration: "",
-                        participants: "",
-                        outcome: "",
-                        evidence: "",
-                        notes: "",
-                      })
-                    }}
-                  >
-                    İptal
-                  </Button>
+                  {/* Bilgilendirme */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-xs font-semibold text-blue-900 mb-2">Desteklenen Dosya Tipleri:</p>
+                    <div className="grid grid-cols-2 gap-1 text-xs text-blue-700">
+                      <div>• PDF (.pdf)</div>
+                      <div>• Word (.doc, .docx)</div>
+                      <div>• Excel (.xls, .xlsx)</div>
+                      <div>• PowerPoint (.ppt, .pptx)</div>
+                      <div>• Resim (.jpg, .png, .gif, .webp)</div>
+                      <div>• Video (.mp4, .mov)</div>
+                      <div>• Metin (.txt)</div>
+                    </div>
+                    <p className="text-xs text-blue-600 mt-2">
+                      <span className="font-semibold">Maksimum dosya boyutu:</span> 10 MB
+                    </p>
+                  </div>
                 </div>
-              </form>
-            </div>
+              </div>
+
+              <div>
+                <Label htmlFor="notes">Notlar</Label>
+                <textarea
+                  id="notes"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  rows={2}
+                  className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <Button type="submit" className="flex-1">
+                  <Save className="h-4 w-4 mr-2" />
+                  {editingActivity ? "Güncelle" : "Kaydet"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowForm(false)
+                    setEditingActivity(null)
+                    setUploadedFile(null)
+                    setFormData({
+                      studentId: "",
+                      type: "ETKINLIK",
+                      title: "",
+                      description: "",
+                      activityDate: new Date().toISOString().split("T")[0],
+                      location: "",
+                      organizer: "",
+                      duration: "",
+                      participants: "",
+                      outcome: "",
+                      evidence: "",
+                      notes: "",
+                    })
+                  }}
+                >
+                  İptal
+                </Button>
+              </div>
+            </form>
           </div>
-        )}
+        </div>
+      )}
 
-      </div>
     </div>
   )
 }

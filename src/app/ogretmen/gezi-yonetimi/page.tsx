@@ -22,7 +22,6 @@ import {
   ArrowLeft,
 } from "lucide-react"
 import type { Trip, CreateTripData } from "@/lib/geziService"
-import OgretmenSidebar from "@/components/layout/ogretmen-sidebar"
 
 // Helper function to get auth headers
 function getAuthHeaders(): HeadersInit {
@@ -256,39 +255,31 @@ export default function OgretmenGeziYonetimiPage() {
 
   if (hasAccess === null) {
     return (
-      <div className="min-h-screen bg-gray-50 flex">
-        <OgretmenSidebar />
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-        </div>
+      <div className="flex-1 flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     )
   }
 
   if (hasAccess === false) {
     return (
-      <div className="min-h-screen bg-gray-50 flex">
-        <OgretmenSidebar />
-        <div className="flex-1 flex items-center justify-center">
-          <Card>
-            <CardContent className="py-12 text-center">
-              <p className="text-gray-500">Erişim Reddedildi</p>
-              <p className="text-sm text-gray-400 mt-2">Bu sayfaya erişim yetkiniz bulunmamaktadır.</p>
-              <Button onClick={() => router.push("/ogretmen")} className="mt-4">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Ana Panele Dön
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="flex-1 flex items-center justify-center min-h-screen">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-gray-500">Erişim Reddedildi</p>
+            <p className="text-sm text-gray-400 mt-2">Bu sayfaya erişim yetkiniz bulunmamaktadır.</p>
+            <Button onClick={() => router.push("/ogretmen")} className="mt-4">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Ana Panele Dön
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <OgretmenSidebar />
-      <div className="flex-1">
+    <div className="min-h-screen bg-gray-50">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 shadow-lg">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pl-16 lg:pl-4 sm:pl-6">
