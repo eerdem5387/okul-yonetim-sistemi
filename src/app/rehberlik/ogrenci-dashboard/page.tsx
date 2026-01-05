@@ -18,7 +18,6 @@ import {
   Clock,
   Loader2,
   Search,
-  Users,
   Award,
   MapPin,
 } from "lucide-react"

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -54,6 +54,21 @@ export default function TeacherAttendancePage() {
   const [loadingSchedules, setLoadingSchedules] = useState(false)
   const [loadingStudents, setLoadingStudents] = useState(false)
 
+  const fetchClasses = useCallback(async (teacherId: string) => {
+    try {
+      const response = await fetch(`/api/teachers/${teacherId}/classes`)
+      if (response.ok) {
+        const data = await response.json()
+        setClasses(data.classes || [])
+      } else {
+        setClasses([])
+      }
+    } catch (error) {
+      console.error("Error fetching classes:", error)
+      setClasses([])
+    }
+  }, [])
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       const role = localStorage.getItem("auth_role")
@@ -68,8 +83,7 @@ export default function TeacherAttendancePage() {
       fetchClasses(id)
       setLoading(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router])
+  }, [router, fetchClasses])
 
   // Tarih değiştiğinde ders programını getir
   useEffect(() => {
@@ -90,21 +104,6 @@ export default function TeacherAttendancePage() {
       setAttendances({})
     }
   }, [selectedSchedule, selectedClass])
-
-  const fetchClasses = async (teacherId: string) => {
-    try {
-      const response = await fetch(`/api/teachers/${teacherId}/classes`)
-      if (response.ok) {
-        const data = await response.json()
-        setClasses(data.classes || [])
-      } else {
-        setClasses([])
-      }
-    } catch (error) {
-      console.error("Error fetching classes:", error)
-      setClasses([])
-    }
-  }
 
   const fetchDaySchedule = async (date: string, teacherId: string, classId: string) => {
     setLoadingSchedules(true)

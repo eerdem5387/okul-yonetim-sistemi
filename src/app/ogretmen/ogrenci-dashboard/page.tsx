@@ -22,7 +22,6 @@ import {
   BarChart3,
   Plus,
   Search,
-  Users,
   MapPin,
 } from "lucide-react"
 
@@ -111,7 +110,6 @@ interface DashboardData {
 export default function OgretmenOgrenciDashboardPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
-  const [staffId, setStaffId] = useState("")
   const [classes, setClasses] = useState<Array<{ id: string; name: string }>>([])
   const [selectedClassId, setSelectedClassId] = useState("")
   const [students, setStudents] = useState<Student[]>([])
@@ -129,7 +127,6 @@ export default function OgretmenOgrenciDashboardPage() {
         router.push("/login")
         return
       }
-      setStaffId(id)
       fetchClasses(id)
     }
   }, [router])

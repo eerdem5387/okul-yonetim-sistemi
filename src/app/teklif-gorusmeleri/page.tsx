@@ -632,6 +632,18 @@ function TeklifDetailModal({
                   {teklif.okulFiyati.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
                 </p>
               </div>
+              {teklif.sonGecerlilikTarihi && (
+                <div>
+                  <Label className="text-gray-600">Teklifin Son Geçerlilik Tarihi</Label>
+                  <p className="text-lg font-semibold text-orange-600">
+                    {new Date(teklif.sonGecerlilikTarihi).toLocaleDateString('tr-TR', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 

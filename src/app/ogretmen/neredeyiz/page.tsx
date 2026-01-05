@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -13,8 +13,6 @@ import {
   Clock,
   AlertTriangle,
   Calendar,
-  TrendingUp,
-  Hourglass,
   School,
   ArrowLeft,
   ChevronRight,
@@ -74,51 +72,13 @@ export default function OgretmenNeredeyizPage() {
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null)
   const [selectedClass, setSelectedClass] = useState<Class | null>(null)
   const [subjects, setSubjects] = useState<Subject[]>([])
-  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null)
   const [loadingSubjects, setLoadingSubjects] = useState(false)
   const [updatingTopicId, setUpdatingTopicId] = useState<string | null>(null)
   const [expandedUnits, setExpandedUnits] = useState<Set<string>>(new Set())
   const [staffId, setStaffId] = useState<string | null>(null)
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null)
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const role = localStorage.getItem("auth_role")
-      const id = localStorage.getItem("staff_id")
-
-      if (role !== "teacher" || !id) {
-        router.push("/login")
-        return
-      }
-
-      setStaffId(id)
-      fetchClasses(id)
-    }
-  }, [router])
-
-  useEffect(() => {
-    if (selectedClassId && staffId) {
-      fetchSubjectsForClass(selectedClassId, staffId)
-      fetchDashboardStats(staffId, selectedClassId)
-    } else {
-      setSubjects([])
-      setDashboardStats(null)
-    }
-  }, [selectedClassId, staffId])
-
-  // Dersler yüklendiğinde tüm üniteleri açık tut
-  useEffect(() => {
-    if (subjects.length > 0) {
-      const allUnitIds = new Set<string>()
-      subjects.forEach((subject) => {
-        subject.units?.forEach((unit) => {
-          allUnitIds.add(unit.id)
-        })
-      })
-      setExpandedUnits(allUnitIds)
-    }
-  }, [subjects])
-
-  const fetchClasses = async (teacherId: string) => {
+  const fetchClasses = useCallback(async (teacherId: string) => {
     try {
       setLoading(true)
       const response = await fetch(`/api/teachers/${teacherId}/classes`)
@@ -134,9 +94,9 @@ export default function OgretmenNeredeyizPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [error])
 
-  const fetchSubjectsForClass = async (classId: string, teacherId: string) => {
+  const fetchSubjectsForClass = useCallback(async (classId: string, teacherId: string) => {
     setLoadingSubjects(true)
     try {
       const selectedClassData = classes.find((c) => c.id === classId)
@@ -158,9 +118,9 @@ export default function OgretmenNeredeyizPage() {
     } finally {
       setLoadingSubjects(false)
     }
-  }
+  }, [classes, error])
 
-  const fetchDashboardStats = async (teacherId: string, classId: string) => {
+  const fetchDashboardStats = useCallback(async (teacherId: string) => {
     try {
       const response = await fetch(`/api/neredeyiz/teachers/dashboard?staffId=${teacherId}`)
       if (response.ok) {
@@ -171,7 +131,44 @@ export default function OgretmenNeredeyizPage() {
     } catch (err) {
       console.error("Error fetching dashboard stats:", err)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const role = localStorage.getItem("auth_role")
+      const id = localStorage.getItem("staff_id")
+
+      if (role !== "teacher" || !id) {
+        router.push("/login")
+        return
+      }
+
+      setStaffId(id)
+      fetchClasses(id)
+    }
+  }, [router, fetchClasses])
+
+  useEffect(() => {
+    if (selectedClassId && staffId) {
+      fetchSubjectsForClass(selectedClassId, staffId)
+      fetchDashboardStats(staffId)
+    } else {
+      setSubjects([])
+    }
+  }, [selectedClassId, staffId, fetchSubjectsForClass, fetchDashboardStats])
+
+  // Dersler yüklendiğinde tüm üniteleri açık tut
+  useEffect(() => {
+    if (subjects.length > 0) {
+      const allUnitIds = new Set<string>()
+      subjects.forEach((subject) => {
+        subject.units?.forEach((unit) => {
+          allUnitIds.add(unit.id)
+        })
+      })
+      setExpandedUnits(allUnitIds)
+    }
+  }, [subjects])
 
   const handleMarkComplete = async (topicId: string) => {
     if (!staffId) {
@@ -199,7 +196,7 @@ export default function OgretmenNeredeyizPage() {
         // Dersleri yeniden yükle
         if (selectedClassId && staffId) {
           await fetchSubjectsForClass(selectedClassId, staffId)
-          await fetchDashboardStats(staffId, selectedClassId)
+          await fetchDashboardStats(staffId)
         }
       } else {
         const errorData = await response.json()

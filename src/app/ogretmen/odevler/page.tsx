@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -59,34 +59,7 @@ export default function TeacherHomeworkPage() {
   const [selectedHomework, setSelectedHomework] = useState<Homework | null>(null)
   const [updatingAssignmentId, setUpdatingAssignmentId] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const role = localStorage.getItem("auth_role")
-      const id = localStorage.getItem("staff_id")
-
-      if (role !== "teacher" || !id) {
-        router.push("/login")
-        return
-      }
-
-      setStaffId(id)
-      fetchHomeworks(id)
-      fetchClasses(id)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router])
-
-  // Sınıf değiştiğinde öğrencileri getir
-  useEffect(() => {
-    if (formData.classId) {
-      fetchStudents(formData.classId)
-    } else {
-      setStudents([])
-      setSelectedStudentIds([])
-    }
-  }, [formData.classId])
-
-  const fetchHomeworks = async (teacherId: string) => {
+  const fetchHomeworks = useCallback(async (teacherId: string) => {
     try {
       const response = await fetch(`/api/homework?teacherId=${teacherId}`)
       if (response.ok) {
@@ -98,9 +71,9 @@ export default function TeacherHomeworkPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  const fetchClasses = async (teacherId: string) => {
+  const fetchClasses = useCallback(async (teacherId: string) => {
     try {
       // Öğretmenin atandığı sınıfları getir
       const response = await fetch(`/api/teachers/${teacherId}/classes`)
@@ -115,9 +88,9 @@ export default function TeacherHomeworkPage() {
       console.error("Error fetching classes:", error)
       setClasses([])
     }
-  }
+  }, [])
 
-  const fetchStudents = async (classId: string) => {
+  const fetchStudents = useCallback(async (classId: string) => {
     setLoadingStudents(true)
     try {
       const response = await fetch(`/api/classes/${classId}/students`)
@@ -137,7 +110,33 @@ export default function TeacherHomeworkPage() {
     } finally {
       setLoadingStudents(false)
     }
-  }
+  }, [assignToAllClass])
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const role = localStorage.getItem("auth_role")
+      const id = localStorage.getItem("staff_id")
+
+      if (role !== "teacher" || !id) {
+        router.push("/login")
+        return
+      }
+
+      setStaffId(id)
+      fetchHomeworks(id)
+      fetchClasses(id)
+    }
+  }, [router, fetchHomeworks, fetchClasses])
+
+  // Sınıf değiştiğinde öğrencileri getir
+  useEffect(() => {
+    if (formData.classId) {
+      fetchStudents(formData.classId)
+    } else {
+      setStudents([])
+      setSelectedStudentIds([])
+    }
+  }, [formData.classId, fetchStudents])
 
   const handleEdit = async (homeworkId: string) => {
     try {

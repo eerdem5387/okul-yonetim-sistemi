@@ -84,8 +84,8 @@ export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
     { name: "Öğrenci Dashboard", href: "/ogretmen/ogrenci-dashboard", icon: GraduationCap },
     { name: "Gecikmeler", href: "/ogretmen/gecikmeler", icon: AlertTriangle },
     // Yetki bazlı modüller - Sadece yetkisi varsa göster
-    ...(hasGeziAccess === true ? [{ name: "Gezi Yönetimi", href: "/gezi", icon: MapPin }] : []),
-    ...(hasIbAccess === true ? [{ name: "IB Faaliyet Yönetimi", href: "/activities", icon: Award }] : []),
+    ...(hasGeziAccess === true ? [{ name: "Gezi Yönetimi", href: "/ogretmen/gezi-yonetimi", icon: MapPin }] : []),
+    ...(hasIbAccess === true ? [{ name: "IB Faaliyet Yönetimi", href: "/ogretmen/ib-yonetimi", icon: Award }] : []),
   ]
 
   return (

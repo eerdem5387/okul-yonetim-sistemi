@@ -290,7 +290,7 @@ export default function ParentPage() {
         
         // Öğrencinin güncel kulüp seçimlerini yükle (veritabanından)
         // Bu işlem selectedClubs state'ini güncelleyecek
-        const updatedClubIds = await fetchStudentClubs(selectedStudent.id, false)
+        await fetchStudentClubs(selectedStudent.id, false)
         
         // Başarı mesajını göster
         if (savedClubCount === 0) {

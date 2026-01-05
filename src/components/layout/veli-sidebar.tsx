@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, User, BookOpen, Calendar, FileText, MessageSquare, LogOut, ChevronLeft, ChevronRight, Users } from "lucide-react"
+import { User, LogOut, ChevronLeft, ChevronRight, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface VeliSidebarProps {
