@@ -349,7 +349,7 @@ export default function OgretmenNeredeyizPage() {
       
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 shadow-lg">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pl-16 lg:pl-4 sm:pl-6">
           <div className="flex items-center gap-4 mb-4">
             <Button
               variant="ghost"

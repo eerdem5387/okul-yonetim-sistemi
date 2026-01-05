@@ -17,6 +17,7 @@ import {
   X,
   CheckCircle2,
   XCircle,
+  Loader2,
 } from "lucide-react"
 import type { Trip, CreateTripData } from "@/lib/geziService"
 import { useRouter } from "next/navigation"
@@ -148,9 +149,11 @@ export default function GeziPage() {
   }, [])
 
   useEffect(() => {
-    fetchTrips()
-    fetchStats()
-  }, [fetchTrips, fetchStats])
+    if (hasAccess === true) {
+      fetchTrips()
+      fetchStats()
+    }
+  }, [hasAccess, fetchTrips, fetchStats])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -257,6 +260,33 @@ export default function GeziPage() {
     if (filterActive === "inactive" && trip.isActive) return false
     return true
   })
+
+  // Yetki kontrolü yapılıyor
+  if (hasAccess === null) {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-gray-400" />
+            <p className="text-gray-500 mt-4">Yükleniyor...</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (hasAccess === false) {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-gray-500">Erişim Reddedildi</p>
+            <p className="text-sm text-gray-400 mt-2">Bu sayfaya erişim yetkiniz bulunmamaktadır.</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">

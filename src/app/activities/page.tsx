@@ -147,6 +147,41 @@ export default function ActivitiesPage() {
     DIGER: "Diğer",
   }
 
+  // Yetki kontrolü
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const role = localStorage.getItem("auth_role")
+      const staffId = localStorage.getItem("staff_id")
+      
+      // Admin, principal, student_affairs, counselor için varsayılan erişim var
+      if (role === "admin" || role === "principal" || role === "student_affairs" || role === "counselor") {
+        setHasAccess(true)
+        return
+      }
+      
+      // Teacher için yetki kontrolü
+      if (role === "teacher" && staffId) {
+        fetch(`/api/staff/${staffId}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.hasIbAccess) {
+              setHasAccess(true)
+            } else {
+              setHasAccess(false)
+              router.push("/ogretmen")
+            }
+          })
+          .catch(() => {
+            setHasAccess(false)
+            router.push("/ogretmen")
+          })
+      } else {
+        setHasAccess(false)
+        router.push("/login")
+      }
+    }
+  }, [router])
+
   const fetchActivities = useCallback(async () => {
     try {
       setLoading(true)
@@ -194,12 +229,11 @@ export default function ActivitiesPage() {
   }, [])
 
   useEffect(() => {
-    fetchActivities()
-  }, [fetchActivities])
-
-  useEffect(() => {
-    fetchStudents()
-  }, [fetchStudents])
+    if (hasAccess === true) {
+      fetchActivities()
+      fetchStudents()
+    }
+  }, [hasAccess, fetchActivities, fetchStudents])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -417,6 +451,33 @@ export default function ActivitiesPage() {
     setEndDate("")
     setVerificationFilter("all")
     setCurrentPage(1)
+  }
+
+  // Yetki kontrolü yapılıyor
+  if (hasAccess === null) {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-gray-400" />
+            <p className="text-gray-500 mt-4">Yükleniyor...</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (hasAccess === false) {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-gray-500">Erişim Reddedildi</p>
+            <p className="text-sm text-gray-400 mt-2">Bu sayfaya erişim yetkiniz bulunmamaktadır.</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (

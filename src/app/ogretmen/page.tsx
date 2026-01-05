@@ -184,7 +184,7 @@ export default function OgretmenPage() {
     <div className="min-h-screen bg-gray-50">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 shadow-lg sticky top-0 z-10">
-          <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+          <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 pl-16 lg:pl-4 sm:pl-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Hoş Geldiniz, {staffName}</h1>
