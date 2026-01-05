@@ -17,7 +17,9 @@ export async function GET(
             firstName: true,
             lastName: true,
             grade: true,
-            tcNumber: true
+            tcNumber: true,
+            motherName: true,
+            fatherName: true
           }
         }
       }
@@ -88,7 +90,9 @@ export async function PUT(
             firstName: true,
             lastName: true,
             grade: true,
-            tcNumber: true
+            tcNumber: true,
+            motherName: true,
+            fatherName: true
           }
         }
       }

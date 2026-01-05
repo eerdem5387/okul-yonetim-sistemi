@@ -210,7 +210,15 @@ export default function HistoryPage() {
   const handleEditContract = (contract: Contract) => {
     const contractSlug = getContractTypeSlug(contract.type)
     // Sözleşme düzenleme sayfasına yönlendir
-    window.location.href = `/edit-${contractSlug}/${contract.id}`
+    // contract.id'nin doğru olduğundan emin ol
+    if (!contract.id) {
+      console.error("Contract ID is missing:", contract)
+      alert("Sözleşme ID'si bulunamadı!")
+      return
+    }
+    const editUrl = `/edit-${contractSlug}/${contract.id}`
+    console.log("Navigating to edit page:", editUrl, "Contract ID:", contract.id, "Contract Type:", contract.type)
+    window.location.href = editUrl
   }
 
   const handleDeleteContract = async (contract: Contract) => {

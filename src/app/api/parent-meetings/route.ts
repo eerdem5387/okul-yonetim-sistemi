@@ -43,7 +43,9 @@ export async function GET(request: NextRequest) {
               firstName: true,
               lastName: true,
               grade: true,
-              tcNumber: true
+              tcNumber: true,
+              motherName: true,
+              fatherName: true
             }
           }
         },

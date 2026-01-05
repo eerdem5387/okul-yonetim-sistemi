@@ -44,6 +44,8 @@ interface ParentMeeting {
     lastName: string
     grade: string
     tcNumber: string
+    motherName: string
+    fatherName: string
   }
 }
 
@@ -51,6 +53,7 @@ export default function VeliGorusmeleriPage() {
   const { toasts, success, error, removeToast } = useToast()
   const [meetings, setMeetings] = useState<ParentMeeting[]>([])
   const [students, setStudents] = useState<Student[]>([])
+  const [counselors, setCounselors] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -60,9 +63,12 @@ export default function VeliGorusmeleriPage() {
   const [studentSearchTerm, setStudentSearchTerm] = useState("")
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
+  const [selectedCounselor, setSelectedCounselor] = useState<string>("")
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalMeetings, setTotalMeetings] = useState(0)
+  const [userRole, setUserRole] = useState<string | null>(null)
+  const [isViewOnly, setIsViewOnly] = useState(false)
 
   const [formData, setFormData] = useState({
     studentId: "",
@@ -107,7 +113,16 @@ export default function VeliGorusmeleriPage() {
       const response = await fetch(`/api/parent-meetings?${params.toString()}`)
       if (response.ok) {
         const data = await response.json()
-        setMeetings(data.meetings || [])
+        let fetchedMeetings = data.meetings || []
+        
+        // Rehberlik uzmanı filtresi (frontend'de)
+        if (selectedCounselor) {
+          fetchedMeetings = fetchedMeetings.filter((m: ParentMeeting) => 
+            m.counselorName === selectedCounselor
+          )
+        }
+        
+        setMeetings(fetchedMeetings)
         setTotalMeetings(data.pagination?.total || 0)
         setTotalPages(data.pagination?.totalPages || 1)
       }
@@ -116,7 +131,17 @@ export default function VeliGorusmeleriPage() {
     } finally {
       setLoading(false)
     }
-  }, [currentPage, selectedStudentId, startDate, endDate])
+  }, [currentPage, selectedStudentId, startDate, endDate, selectedCounselor])
+
+  // Kullanıcı rolünü kontrol et
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const role = localStorage.getItem("auth_role")
+      setUserRole(role)
+      // Admin, principal, student_affairs için sadece görüntüleme modu
+      setIsViewOnly(role === "admin" || role === "principal" || role === "student_affairs")
+    }
+  }, [])
 
   useEffect(() => {
     fetchStudents()
@@ -125,6 +150,12 @@ export default function VeliGorusmeleriPage() {
   useEffect(() => {
     fetchMeetings()
   }, [fetchMeetings])
+
+  // Rehberlik uzmanlarını çek (benzersiz isimler)
+  useEffect(() => {
+    const uniqueCounselors = Array.from(new Set(meetings.map(m => m.counselorName).filter(Boolean))) as string[]
+    setCounselors(uniqueCounselors.sort())
+  }, [meetings])
 
   const filteredStudents = useMemo(() => {
     // Arama yapılmadığında boş liste döndür (kullanıcı arama yapana kadar öğrenci listesi gösterilmemeli)
@@ -305,24 +336,26 @@ export default function VeliGorusmeleriPage() {
             Rehberlik danışmanı görüşme kayıtları
           </p>
         </div>
-        <Button
-          onClick={() => {
-            setShowForm(true)
-            setEditingMeeting(null)
-            setFormData({
-              studentId: "",
-              meetingDate: new Date().toISOString().split("T")[0],
-              notes: "",
-              counselorName: "", // State'te tutuluyor ama artık kullanılmıyor
-            })
-            setSelectedStudentId("")
-          }}
-          size="sm"
-          className="w-full sm:w-auto text-xs sm:text-sm"
-        >
-          <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-          Yeni Görüşme Ekle
-        </Button>
+        {!isViewOnly && (
+          <Button
+            onClick={() => {
+              setShowForm(true)
+              setEditingMeeting(null)
+              setFormData({
+                studentId: "",
+                meetingDate: new Date().toISOString().split("T")[0],
+                notes: "",
+                counselorName: "", // State'te tutuluyor ama artık kullanılmıyor
+              })
+              setSelectedStudentId("")
+            }}
+            size="sm"
+            className="w-full sm:w-auto text-xs sm:text-sm"
+          >
+            <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            Yeni Görüşme Ekle
+          </Button>
+        )}
       </div>
 
       {/* İstatistikler */}
@@ -372,7 +405,7 @@ export default function VeliGorusmeleriPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <div className="relative">
               <Label htmlFor="studentFilter" className="text-xs sm:text-sm">
                 Öğrenci Ara
@@ -403,6 +436,24 @@ export default function VeliGorusmeleriPage() {
               )}
             </div>
             <div>
+              <Label htmlFor="counselorFilter" className="text-xs sm:text-sm">
+                Rehberlik Uzmanı
+              </Label>
+              <select
+                id="counselorFilter"
+                value={selectedCounselor}
+                onChange={(e) => setSelectedCounselor(e.target.value)}
+                className="w-full h-9 sm:h-10 px-3 py-2 border border-gray-300 rounded-md text-xs sm:text-sm bg-white"
+              >
+                <option value="">Tüm Rehberlik Uzmanları</option>
+                {counselors.map((counselor) => (
+                  <option key={counselor} value={counselor}>
+                    {counselor}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
               <Label htmlFor="startDate" className="text-xs sm:text-sm">
                 Başlangıç Tarihi
               </Label>
@@ -427,7 +478,7 @@ export default function VeliGorusmeleriPage() {
               />
             </div>
           </div>
-          {(selectedStudentId || startDate || endDate) && (
+          {(selectedStudentId || startDate || endDate || selectedCounselor) && (
             <div className="mt-3 sm:mt-4">
               <Button
                 variant="outline"
@@ -436,6 +487,7 @@ export default function VeliGorusmeleriPage() {
                   setSelectedStudentId("")
                   setStartDate("")
                   setEndDate("")
+                  setSelectedCounselor("")
                   setStudentSearchTerm("")
                 }}
                 className="text-xs sm:text-sm"
@@ -447,8 +499,8 @@ export default function VeliGorusmeleriPage() {
         </CardContent>
       </Card>
 
-      {/* Görüşme Formu Modal */}
-      {showForm && (
+      {/* Görüşme Formu Modal - Sadece rehberlik kullanıcısı için */}
+      {showForm && !isViewOnly && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-0 sm:p-4">
           <Card className="w-full h-full sm:h-auto sm:max-w-3xl sm:max-h-[90vh] overflow-y-auto rounded-none sm:rounded-lg">
             <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
@@ -673,13 +725,38 @@ export default function VeliGorusmeleriPage() {
                               })}
                             </span>
                           </div>
-                          {/* ✅ Görüşmeyi Yapan - Her zaman göster */}
-                          <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-50 rounded-lg">
-                            <Users className="h-4 w-4 text-purple-600" />
-                            <span className="font-medium text-purple-700">
-                              {meeting.counselorName || "Bilinmiyor"}
-                            </span>
-                          </div>
+                          {/* ✅ Görüşmeyi Gerçekleştiren Rehberlik Uzmanı - Admin/Principal/Student Affairs için */}
+                          {isViewOnly && (
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-50 rounded-lg">
+                              <Users className="h-4 w-4 text-purple-600" />
+                              <span className="font-medium text-purple-700">
+                                Görüşmeyi gerçekleştiren: {meeting.counselorName || "Bilinmiyor"}
+                              </span>
+                            </div>
+                          )}
+                          {/* ✅ Veli Bilgisi - Admin/Principal/Student Affairs için */}
+                          {isViewOnly && (
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 rounded-lg">
+                              <User className="h-4 w-4 text-green-600" />
+                              <span className="font-medium text-green-700">
+                                Görüşme &quot;{meeting.student.firstName} {meeting.student.lastName}&quot; velisiyle yapıldı
+                                {meeting.student.motherName && meeting.student.fatherName && (
+                                  <span className="text-green-600 ml-1">
+                                    ({meeting.student.motherName} / {meeting.student.fatherName})
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                          )}
+                          {/* ✅ Görüşmeyi Yapan - Rehberlik kullanıcısı için */}
+                          {!isViewOnly && (
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-50 rounded-lg">
+                              <Users className="h-4 w-4 text-purple-600" />
+                              <span className="font-medium text-purple-700">
+                                {meeting.counselorName || "Bilinmiyor"}
+                              </span>
+                            </div>
+                          )}
                         </div>
 
                         {/* Görüşme Notları */}
@@ -693,37 +770,39 @@ export default function VeliGorusmeleriPage() {
                         </div>
                       </div>
 
-                      {/* İşlem Butonları */}
-                      <div className="flex sm:flex-col gap-2 flex-shrink-0 sm:pt-0 pt-2 border-t sm:border-t-0 border-gray-100">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(meeting)}
-                          className="text-xs sm:text-sm h-9 sm:h-10 px-3 sm:px-4 flex-1 sm:flex-initial hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors"
-                        >
-                          <Edit className="h-4 w-4 mr-1.5" />
-                          <span>Düzenle</span>
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDelete(meeting.id)}
-                          disabled={deletingId === meeting.id}
-                          className="text-xs sm:text-sm h-9 sm:h-10 px-3 sm:px-4 flex-1 sm:flex-initial"
-                        >
-                          {deletingId === meeting.id ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-                              <span>Siliniyor...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Trash2 className="h-4 w-4 mr-1.5" />
-                              <span>Sil</span>
-                            </>
-                          )}
-                        </Button>
-                      </div>
+                      {/* İşlem Butonları - Sadece rehberlik kullanıcısı için */}
+                      {!isViewOnly && (
+                        <div className="flex sm:flex-col gap-2 flex-shrink-0 sm:pt-0 pt-2 border-t sm:border-t-0 border-gray-100">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(meeting)}
+                            className="text-xs sm:text-sm h-9 sm:h-10 px-3 sm:px-4 flex-1 sm:flex-initial hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors"
+                          >
+                            <Edit className="h-4 w-4 mr-1.5" />
+                            <span>Düzenle</span>
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDelete(meeting.id)}
+                            disabled={deletingId === meeting.id}
+                            className="text-xs sm:text-sm h-9 sm:h-10 px-3 sm:px-4 flex-1 sm:flex-initial"
+                          >
+                            {deletingId === meeting.id ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                                <span>Siliniyor...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Trash2 className="h-4 w-4 mr-1.5" />
+                                <span>Sil</span>
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
