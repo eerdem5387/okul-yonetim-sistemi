@@ -678,7 +678,7 @@ export default function StudentsPage() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="studentTuitionFee" className="text-xs sm:text-sm">Öğrenciye için Belirlenen Ücret</Label>
+                      <Label htmlFor="studentTuitionFee" className="text-xs sm:text-sm">Öğrenci için Belirlenen Ücret</Label>
                       <Input
                         id="studentTuitionFee"
                         type="text"

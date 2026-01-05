@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { ActivityType, Prisma } from "@prisma/client"
+import { checkIbAccess } from "@/lib/access-control"
 
 // GET - Tek faaliyet detayı
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  // Yetki kontrolü
+  const { hasAccess } = await checkIbAccess(request)
+  if (!hasAccess) {
+    return NextResponse.json(
+      { error: "Bu işlem için yetkiniz bulunmamaktadır" },
+      { status: 403 }
+    )
+  }
+
   try {
     const params = await context.params
     const activity = await prisma.activity.findUnique({
@@ -40,6 +50,15 @@ export async function PUT(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  // Yetki kontrolü
+  const { hasAccess } = await checkIbAccess(request)
+  if (!hasAccess) {
+    return NextResponse.json(
+      { error: "Bu işlem için yetkiniz bulunmamaktadır" },
+      { status: 403 }
+    )
+  }
+
   try {
     const params = await context.params
     const body = await request.json()
@@ -121,6 +140,15 @@ export async function DELETE(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  // Yetki kontrolü
+  const { hasAccess } = await checkIbAccess(request)
+  if (!hasAccess) {
+    return NextResponse.json(
+      { error: "Bu işlem için yetkiniz bulunmamaktadır" },
+      { status: 403 }
+    )
+  }
+
   try {
     const params = await context.params
     await prisma.activity.delete({

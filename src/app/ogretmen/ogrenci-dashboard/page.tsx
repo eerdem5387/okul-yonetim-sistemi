@@ -318,10 +318,10 @@ export default function OgretmenOgrenciDashboardPage() {
                           onChange={(e) => setSearchTerm(e.target.value)}
                           placeholder="Öğrenci adı veya soyadı ile ara..."
                           className="pl-10"
-                        />
+                  />
                       </div>
-                    </div>
-                    <div className="space-y-2">
+                </div>
+                <div className="space-y-2">
                       <Label htmlFor="student">Öğrenci Seç *</Label>
                       {loadingStudents ? (
                         <div className="w-full p-3 border rounded-md bg-gray-50 text-gray-500 text-sm flex items-center gap-2">
@@ -329,7 +329,7 @@ export default function OgretmenOgrenciDashboardPage() {
                           Öğrenciler yükleniyor...
                         </div>
                       ) : filteredStudents.length > 0 ? (
-                        <select
+                  <select
                           id="student"
                           value={selectedStudentId}
                           onChange={(e) => handleStudentChange(e.target.value)}
@@ -342,11 +342,11 @@ export default function OgretmenOgrenciDashboardPage() {
                               {student.grade && ` (${student.grade})`}
                             </option>
                           ))}
-                        </select>
+                  </select>
                       ) : searchTerm ? (
                         <div className="w-full p-3 border rounded-md bg-gray-50 text-gray-500 text-sm">
                           Arama kriterlerinize uygun öğrenci bulunamadı.
-                        </div>
+                </div>
                       ) : (
                         <div className="w-full p-3 border rounded-md bg-gray-50 text-gray-500 text-sm">
                           Bu sınıfta öğrenci bulunmamaktadır.

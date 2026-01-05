@@ -32,6 +32,7 @@ export default function GeziPage() {
     monthlyApplications: 0,
   })
   const [loading, setLoading] = useState(true)
+  const [hasAccess, setHasAccess] = useState<boolean | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
@@ -49,6 +50,41 @@ export default function GeziPage() {
   })
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
+
+  // Yetki kontrolü
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const role = localStorage.getItem("auth_role")
+      const staffId = localStorage.getItem("staff_id")
+      
+      // Admin, principal, student_affairs, counselor için varsayılan erişim var
+      if (role === "admin" || role === "principal" || role === "student_affairs" || role === "counselor") {
+        setHasAccess(true)
+        return
+      }
+      
+      // Teacher için yetki kontrolü
+      if (role === "teacher" && staffId) {
+        fetch(`/api/staff/${staffId}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.hasGeziAccess) {
+              setHasAccess(true)
+            } else {
+              setHasAccess(false)
+              router.push("/ogretmen")
+            }
+          })
+          .catch(() => {
+            setHasAccess(false)
+            router.push("/ogretmen")
+          })
+      } else {
+        setHasAccess(false)
+        router.push("/login")
+      }
+    }
+  }, [router])
 
   const fetchTrips = useCallback(async () => {
     try {

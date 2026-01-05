@@ -1,9 +1,19 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getTrip, updateTrip, type UpdateTripData } from "@/lib/geziService"
+import { checkGeziAccess } from "@/lib/access-control"
 
 type RouteContext = { params: Promise<{ id: string }> }
 
 export async function GET(request: NextRequest, context: RouteContext) {
+  // Yetki kontrolü
+  const { hasAccess } = await checkGeziAccess(request)
+  if (!hasAccess) {
+    return NextResponse.json(
+      { error: "Bu işlem için yetkiniz bulunmamaktadır" },
+      { status: 403 }
+    )
+  }
+  
   try {
     const { id } = await context.params
     
@@ -42,6 +52,15 @@ export async function GET(request: NextRequest, context: RouteContext) {
 }
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
+  // Yetki kontrolü
+  const { hasAccess } = await checkGeziAccess(request)
+  if (!hasAccess) {
+    return NextResponse.json(
+      { error: "Bu işlem için yetkiniz bulunmamaktadır" },
+      { status: 403 }
+    )
+  }
+  
   try {
     const { id } = await context.params
     

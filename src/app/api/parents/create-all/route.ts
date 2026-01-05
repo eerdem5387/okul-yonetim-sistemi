@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma"
  * POST /api/parents/create-all
  * Tüm öğrenciler için veli hesapları oluşturur (mevcut öğrenciler için)
  */
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     console.log("🚀 Veli hesapları oluşturma işlemi başlatılıyor...")
     

@@ -195,10 +195,10 @@ export async function POST(request: NextRequest) {
         })
       } catch (createError) {
         console.error(`[Parent Login] Veli hesabı oluşturma hatası:`, createError)
-        return NextResponse.json(
+      return NextResponse.json(
           { error: "Veli hesabı bulunamadı ve oluşturulamadı" },
-          { status: 404 }
-        )
+        { status: 404 }
+      )
       }
     }
 

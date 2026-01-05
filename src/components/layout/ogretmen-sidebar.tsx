@@ -18,6 +18,8 @@ import {
   Menu,
   X,
   Target,
+  MapPin,
+  Award,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -31,13 +33,15 @@ export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const [staffName, setStaffName] = useState("")
   const [staffSubject, setStaffSubject] = useState("")
+  const [hasGeziAccess, setHasGeziAccess] = useState<boolean>(false)
+  const [hasIbAccess, setHasIbAccess] = useState<boolean>(false)
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const name = localStorage.getItem("staff_name") || "Öğretmen"
       setStaffName(name)
       
-      // Öğretmen ders bilgisini API'den çek
+      // Öğretmen ders bilgisini ve yetkilerini API'den çek
       const staffId = localStorage.getItem("staff_id")
       if (staffId) {
         fetch(`/api/staff/${staffId}`)
@@ -46,8 +50,15 @@ export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
             if (data.subject) {
               setStaffSubject(data.subject)
             }
+            // Yetkileri açıkça set et (true/false)
+            setHasGeziAccess(data.hasGeziAccess === true)
+            setHasIbAccess(data.hasIbAccess === true)
           })
-          .catch(() => {})
+          .catch(() => {
+            // Hata durumunda erişim yok
+            setHasGeziAccess(false)
+            setHasIbAccess(false)
+          })
       }
     }
   }, [])
@@ -72,6 +83,9 @@ export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
     { name: "Öğrenci Görüşleri", href: "/ogretmen/gorusler", icon: MessageSquare },
     { name: "Öğrenci Dashboard", href: "/ogretmen/ogrenci-dashboard", icon: GraduationCap },
     { name: "Gecikmeler", href: "/ogretmen/gecikmeler", icon: AlertTriangle },
+    // Yetki bazlı modüller - Sadece yetkisi varsa göster
+    ...(hasGeziAccess === true ? [{ name: "Gezi Yönetimi", href: "/gezi", icon: MapPin }] : []),
+    ...(hasIbAccess === true ? [{ name: "IB Faaliyet Yönetimi", href: "/activities", icon: Award }] : []),
   ]
 
   return (

@@ -50,6 +50,8 @@ export async function PUT(
       isActive,
       hireDate,
       notes,
+      hasGeziAccess,
+      hasIbAccess,
     } = body
 
     if (!firstName || !lastName || !tcNumber || !department) {
@@ -73,6 +75,8 @@ export async function PUT(
         isActive: isActive !== undefined ? isActive : true,
         hireDate: hireDate ? new Date(hireDate) : null,
         notes: notes || null,
+        hasGeziAccess: hasGeziAccess === true,
+        hasIbAccess: hasIbAccess === true,
       },
     })
 

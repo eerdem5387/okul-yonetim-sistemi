@@ -99,20 +99,78 @@ export function Sidebar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [currentRole, setCurrentRole] = useState<string | null>(null)
   const [staffName, setStaffName] = useState<string>("")
+  const [hasGeziAccess, setHasGeziAccess] = useState<boolean | null>(null) // null = henüz kontrol edilmedi
+  const [hasIbAccess, setHasIbAccess] = useState<boolean | null>(null) // null = henüz kontrol edilmedi
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const role = localStorage.getItem("auth_role")
       const name = localStorage.getItem("staff_name")
+      const staffId = localStorage.getItem("staff_id")
       setCurrentRole(role)
       setStaffName(name || "Kullanıcı")
+      
+      // Staff yetkilerini çek - TÜM ROLLER için kontrol et
+      if (staffId) {
+        fetch(`/api/staff/${staffId}`)
+          .then((res) => res.json())
+          .then((data) => {
+            // Yetkileri açıkça set et (true/false/null)
+            // null = henüz bilinmiyor, varsayılan erişim var
+            // false = açıkça kapatılmış, erişim yok
+            // true = açıkça açılmış, erişim var
+            setHasGeziAccess(data.hasGeziAccess === true ? true : data.hasGeziAccess === false ? false : null)
+            setHasIbAccess(data.hasIbAccess === true ? true : data.hasIbAccess === false ? false : null)
+          })
+          .catch(() => {
+            // Hata durumunda null bırak (varsayılan erişim)
+            setHasGeziAccess(null)
+            setHasIbAccess(null)
+          })
+      } else {
+        // Staff ID yoksa null bırak (varsayılan erişim)
+        setHasGeziAccess(null)
+        setHasIbAccess(null)
+      }
     }
   }, [])
 
-  // Rol bazlı navigation filtreleme
+  // Rol bazlı navigation filtreleme + Yetki kontrolü
   const navigation = allNavigation.filter((item) => {
     if (!currentRole) return false
-    return item.roles.includes(currentRole)
+    
+    // Rol kontrolü
+    if (!item.roles.includes(currentRole)) return false
+    
+    // Gezi Yönetimi için yetki kontrolü - TÜM ROLLER için
+    if (item.href === "/gezi" || item.href.startsWith("/gezi")) {
+      // Eğer hasGeziAccess açıkça false ise (yani kapatılmışsa) hiçbir rol için gösterilmez
+      if (hasGeziAccess === false) return false
+      
+      // Teacher için mutlaka hasGeziAccess true olmalı (null veya false ise gösterilmez)
+      if (currentRole === "teacher" && hasGeziAccess !== true) return false
+      
+      // Admin, principal, student_affairs, counselor için:
+      // - hasGeziAccess === true → göster
+      // - hasGeziAccess === null → göster (varsayılan erişim)
+      // - hasGeziAccess === false → gösterme (yukarıda zaten kontrol edildi)
+    }
+    
+    // IB Faaliyet Yönetimi için yetki kontrolü - TÜM ROLLER için
+    if (item.href === "/activities" || item.href.startsWith("/activities")) {
+      // Eğer hasIbAccess açıkça false ise (yani kapatılmışsa) hiçbir rol için gösterilmez
+      if (hasIbAccess === false) return false
+      
+      // Teacher için mutlaka hasIbAccess true olmalı (null veya false ise gösterilmez)
+      if (currentRole === "teacher" && hasIbAccess !== true) return false
+      
+      // Admin, principal, student_affairs, counselor için:
+      // - hasIbAccess === true → göster
+      // - hasIbAccess === null → göster (varsayılan erişim)
+      // - hasIbAccess === false → gösterme (yukarıda zaten kontrol edildi)
+    }
+    
+    return true
   })
 
   const handleLogout = () => {

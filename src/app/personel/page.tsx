@@ -48,6 +48,8 @@ interface Staff {
   isActive: boolean
   hireDate: string | null
   notes: string | null
+  hasGeziAccess: boolean
+  hasIbAccess: boolean
   createdAt: string
   updatedAt: string
 }
@@ -95,7 +97,18 @@ export default function PersonelPage() {
     isActive: true,
     hireDate: "",
     notes: "",
+    hasGeziAccess: false,
+    hasIbAccess: false,
   })
+  
+  const [userRole, setUserRole] = useState<string | null>(null)
+  
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const role = localStorage.getItem("auth_role")
+      setUserRole(role)
+    }
+  }, [])
 
   const fetchStaff = useCallback(async () => {
     try {
@@ -186,6 +199,8 @@ export default function PersonelPage() {
           isActive: true,
           hireDate: "",
           notes: "",
+          hasGeziAccess: false,
+          hasIbAccess: false,
         })
       } else {
         const errorData = await response.json()
@@ -213,6 +228,8 @@ export default function PersonelPage() {
       isActive: staffMember.isActive,
       hireDate: staffMember.hireDate ? staffMember.hireDate.split("T")[0] : "",
       notes: staffMember.notes || "",
+      hasGeziAccess: staffMember.hasGeziAccess || false,
+      hasIbAccess: staffMember.hasIbAccess || false,
     })
     setShowForm(true)
   }
@@ -304,6 +321,8 @@ export default function PersonelPage() {
               isActive: true,
               hireDate: "",
               notes: "",
+              hasGeziAccess: false,
+              hasIbAccess: false,
             })
           }}
           size="sm"
@@ -469,6 +488,8 @@ export default function PersonelPage() {
                       isActive: true,
                       hireDate: "",
                       notes: "",
+                      hasGeziAccess: false,
+                      hasIbAccess: false,
                     })
                   }}
                 >
@@ -674,6 +695,43 @@ export default function PersonelPage() {
                   />
                 </div>
 
+                {/* Modül Erişim Yetkileri - Sadece Admin, Müdür ve Öğrenci İşleri */}
+                {(userRole === "admin" || userRole === "principal" || userRole === "student_affairs") && (
+                  <div className="border-t pt-3 sm:pt-4">
+                    <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Modül Erişim Yetkileri</h3>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="hasGeziAccess"
+                          checked={formData.hasGeziAccess}
+                          onChange={(e) =>
+                            setFormData({ ...formData, hasGeziAccess: e.target.checked })
+                          }
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <Label htmlFor="hasGeziAccess" className="text-xs sm:text-sm cursor-pointer">
+                          Gezi Yönetimi Erişimi
+                        </Label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="hasIbAccess"
+                          checked={formData.hasIbAccess}
+                          onChange={(e) =>
+                            setFormData({ ...formData, hasIbAccess: e.target.checked })
+                          }
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <Label htmlFor="hasIbAccess" className="text-xs sm:text-sm cursor-pointer">
+                          IB Yönetimi Erişimi
+                        </Label>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex flex-col sm:flex-row gap-2 pt-2">
                   <Button
                     type="submit"
@@ -712,6 +770,8 @@ export default function PersonelPage() {
                         isActive: true,
                         hireDate: "",
                         notes: "",
+                        hasGeziAccess: false,
+                        hasIbAccess: false,
                       })
                     }}
                     className="flex-1 sm:flex-initial text-xs sm:text-sm"

@@ -125,6 +125,8 @@ export async function POST(request: NextRequest) {
       veliAdres,
       teklifEdilenFiyat,
       okulFiyati,
+      sonGecerlilikTarihi,
+      gorusmeTarihi,
       gorusmeyiYapan,
       durum,
       durumNotu,
@@ -135,9 +137,9 @@ export async function POST(request: NextRequest) {
     // Validasyon
     if (!ogrenciAdSoyad || !okul || !sinif || !veliAdSoyad || !veliTelefon || 
         teklifEdilenFiyat === undefined || okulFiyati === undefined || 
-        !durum) {
+        !durum || !gorusmeTarihi) {
       return NextResponse.json(
-        { error: "Tüm zorunlu alanlar doldurulmalıdır" },
+        { error: "Tüm zorunlu alanlar doldurulmalıdır (Görüşme tarihi zorunludur)" },
         { status: 400 }
       )
     }
@@ -150,6 +152,26 @@ export async function POST(request: NextRequest) {
         { error: "Geçersiz görüşme durumu" },
         { status: 400 }
       )
+    }
+
+    // Tarih validasyonu
+    const gorusmeTarihiDate = new Date(gorusmeTarihi)
+    if (isNaN(gorusmeTarihiDate.getTime())) {
+      return NextResponse.json(
+        { error: "Geçersiz görüşme tarihi formatı" },
+        { status: 400 }
+      )
+    }
+
+    let sonGecerlilikTarihiDate: Date | null = null
+    if (sonGecerlilikTarihi) {
+      sonGecerlilikTarihiDate = new Date(sonGecerlilikTarihi)
+      if (isNaN(sonGecerlilikTarihiDate.getTime())) {
+        return NextResponse.json(
+          { error: "Geçersiz son geçerlilik tarihi formatı" },
+          { status: 400 }
+        )
+      }
     }
 
     // Teklif görüşmesi ve ilk kaydı oluştur
@@ -165,9 +187,11 @@ export async function POST(request: NextRequest) {
         veliAdres: veliAdres || null,
         teklifEdilenFiyat: parseFloat(teklifEdilenFiyat),
         okulFiyati: parseFloat(okulFiyati),
+        sonGecerlilikTarihi: sonGecerlilikTarihiDate,
         createdBy: createdBy || null,
         kayitlar: {
           create: {
+            gorusmeTarihi: gorusmeTarihiDate,
             gorusmeyiYapan: gorusmeyiYapanFinal,
             durum: durum as "OLUMLU" | "OLUMSUZ" | "BELIRSIZ",
             durumNotu: durumNotu || null,

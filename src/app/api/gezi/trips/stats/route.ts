@@ -1,7 +1,16 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { getTripStats } from "@/lib/geziService"
+import { checkGeziAccess } from "@/lib/access-control"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // Yetki kontrolü
+  const { hasAccess } = await checkGeziAccess(request)
+  if (!hasAccess) {
+    return NextResponse.json(
+      { error: "Bu işlem için yetkiniz bulunmamaktadır" },
+      { status: 403 }
+    )
+  }
   try {
     const stats = await getTripStats()
     

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -80,9 +81,11 @@ interface Activity {
 }
 
 export default function ActivitiesPage() {
+  const router = useRouter()
   const [activities, setActivities] = useState<Activity[]>([])
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
+  const [hasAccess, setHasAccess] = useState<boolean | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [showViewerModal, setShowViewerModal] = useState(false)
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null)

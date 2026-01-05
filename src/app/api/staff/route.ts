@@ -81,6 +81,8 @@ export async function POST(request: NextRequest) {
       subject,
       hireDate,
       notes,
+      hasGeziAccess,
+      hasIbAccess,
       createdByStaffId, // Ekleyen kişinin Staff ID'si (frontend'den gönderilmeli)
     } = body
 
@@ -117,6 +119,8 @@ export async function POST(request: NextRequest) {
         subject: subject || null,
         hireDate: hireDate ? new Date(hireDate) : null,
         notes: notes || null,
+        hasGeziAccess: hasGeziAccess === true,
+        hasIbAccess: hasIbAccess === true,
         // İlk şifre TC No olacak (ilk girişte değiştirilecek)
         password: null, // İlk girişte TC No ile giriş yapacak
         isFirstLogin: true,

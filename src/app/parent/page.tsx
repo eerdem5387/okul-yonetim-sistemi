@@ -106,15 +106,15 @@ export default function ParentPage() {
           console.error("Error fetching student info:", error)
           // Hata durumunda localStorage'dan oluştur
           const studentInfo: Student = {
-            id: studentId,
-            firstName: studentName.split(" ")[0] || "",
-            lastName: studentName.split(" ").slice(1).join(" ") || "",
-            tcNumber: localStorage.getItem("student_tc") || "",
+        id: studentId,
+        firstName: studentName.split(" ")[0] || "",
+        lastName: studentName.split(" ").slice(1).join(" ") || "",
+        tcNumber: localStorage.getItem("student_tc") || "",
             grade: "",
-          }
-          
+      }
+      
           setSelectedStudent(studentInfo)
-          fetchStudentClubs(studentId)
+      fetchStudentClubs(studentId)
         }
       }
       

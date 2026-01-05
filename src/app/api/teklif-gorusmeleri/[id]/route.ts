@@ -53,7 +53,9 @@ export async function PUT(
       veliAdres,
       teklifEdilenFiyat,
       okulFiyati,
+      sonGecerlilikTarihi,
       // Yeni görüşme kaydı bilgileri
+      gorusmeTarihi,
       gorusmeyiYapan,
       durum,
       durumNotu,
@@ -73,25 +75,48 @@ export async function PUT(
       )
     }
 
+    // Son geçerlilik tarihi validasyonu
+    let sonGecerlilikTarihiDate: Date | null = null
+    if (sonGecerlilikTarihi !== undefined) {
+      if (sonGecerlilikTarihi === null || sonGecerlilikTarihi === "") {
+        sonGecerlilikTarihiDate = null
+      } else {
+        sonGecerlilikTarihiDate = new Date(sonGecerlilikTarihi)
+        if (isNaN(sonGecerlilikTarihiDate.getTime())) {
+          return NextResponse.json(
+            { error: "Geçersiz son geçerlilik tarihi formatı" },
+            { status: 400 }
+          )
+        }
+      }
+    }
+
     // Temel bilgileri güncelle
+    const updateData: Record<string, unknown> = {
+      ogrenciAdSoyad: ogrenciAdSoyad || existingTeklif.ogrenciAdSoyad,
+      okul: okul || existingTeklif.okul,
+      sinif: sinif || existingTeklif.sinif,
+      veliAdSoyad: veliAdSoyad || existingTeklif.veliAdSoyad,
+      veliTelefon: veliTelefon || existingTeklif.veliTelefon,
+      veliEmail: veliEmail !== undefined ? veliEmail : existingTeklif.veliEmail,
+      veliMeslek: veliMeslek !== undefined ? veliMeslek : existingTeklif.veliMeslek,
+      veliAdres: veliAdres !== undefined ? veliAdres : existingTeklif.veliAdres,
+      teklifEdilenFiyat: teklifEdilenFiyat !== undefined 
+        ? parseFloat(teklifEdilenFiyat) 
+        : existingTeklif.teklifEdilenFiyat,
+      okulFiyati: okulFiyati !== undefined 
+        ? parseFloat(okulFiyati) 
+        : existingTeklif.okulFiyati,
+    }
+
+    // Son geçerlilik tarihi güncellemesi
+    if (sonGecerlilikTarihi !== undefined) {
+      updateData.sonGecerlilikTarihi = sonGecerlilikTarihiDate
+    }
+
     await prisma.teklifGorusmesi.update({
       where: { id },
-      data: {
-        ogrenciAdSoyad: ogrenciAdSoyad || existingTeklif.ogrenciAdSoyad,
-        okul: okul || existingTeklif.okul,
-        sinif: sinif || existingTeklif.sinif,
-        veliAdSoyad: veliAdSoyad || existingTeklif.veliAdSoyad,
-        veliTelefon: veliTelefon || existingTeklif.veliTelefon,
-        veliEmail: veliEmail !== undefined ? veliEmail : existingTeklif.veliEmail,
-        veliMeslek: veliMeslek !== undefined ? veliMeslek : existingTeklif.veliMeslek,
-        veliAdres: veliAdres !== undefined ? veliAdres : existingTeklif.veliAdres,
-        teklifEdilenFiyat: teklifEdilenFiyat !== undefined 
-          ? parseFloat(teklifEdilenFiyat) 
-          : existingTeklif.teklifEdilenFiyat,
-        okulFiyati: okulFiyati !== undefined 
-          ? parseFloat(okulFiyati) 
-          : existingTeklif.okulFiyati,
-      }
+      data: updateData
     })
 
     // Eğer yeni görüşme kaydı bilgileri varsa, yeni kayıt oluştur
@@ -103,12 +128,29 @@ export async function PUT(
         )
       }
 
+      if (!gorusmeTarihi) {
+        return NextResponse.json(
+          { error: "Görüşme tarihi zorunludur" },
+          { status: 400 }
+        )
+      }
+
+      // Görüşme tarihi validasyonu
+      const gorusmeTarihiDate = new Date(gorusmeTarihi)
+      if (isNaN(gorusmeTarihiDate.getTime())) {
+        return NextResponse.json(
+          { error: "Geçersiz görüşme tarihi formatı" },
+          { status: 400 }
+        )
+      }
+
       // ✅ Görüşmeyi yapan otomatik olarak createdBy'den alınır
       const gorusmeyiYapanFinal = gorusmeyiYapan || createdBy || "Sistem"
 
       await prisma.teklifGorusmeKaydi.create({
         data: {
           teklifGorusmesiId: id,
+          gorusmeTarihi: gorusmeTarihiDate,
           gorusmeyiYapan: gorusmeyiYapanFinal,
           durum: durum as "OLUMLU" | "OLUMSUZ" | "BELIRSIZ",
           durumNotu: durumNotu || null,

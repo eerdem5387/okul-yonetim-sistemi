@@ -24,6 +24,7 @@ interface TeklifGorusmesi {
   veliAdres: string | null
   teklifEdilenFiyat: number
   okulFiyati: number
+  sonGecerlilikTarihi: string | null
   createdAt: string
   createdBy: string | null
   kayitlar: Array<{
@@ -714,7 +715,11 @@ function TeklifFormModal({
     veliAdres: teklif?.veliAdres || "",
     teklifEdilenFiyat: teklif?.teklifEdilenFiyat.toString() || "",
     okulFiyati: teklif?.okulFiyati.toString() || "",
+    sonGecerlilikTarihi: teklif?.sonGecerlilikTarihi 
+      ? new Date(teklif.sonGecerlilikTarihi).toISOString().split("T")[0] 
+      : "",
     // Yeni görüşme kaydı için
+    gorusmeTarihi: "",
     durum: "" as "" | "OLUMLU" | "OLUMSUZ" | "BELIRSIZ",
     durumNotu: "",
     genelNot: "",
@@ -754,6 +759,8 @@ function TeklifFormModal({
             ...formData,
             teklifEdilenFiyat: parseFloat(formData.teklifEdilenFiyat),
             okulFiyati: parseFloat(formData.okulFiyati),
+            sonGecerlilikTarihi: formData.sonGecerlilikTarihi || null,
+            gorusmeTarihi: formData.gorusmeTarihi,
             createdBy: staffName || "Sistem",
             // ✅ Yeni görüşme kaydı için otomatik kullanıcı adı
             gorusmeyiYapan: formData.durum ? gorusmeyiYapan : undefined,
@@ -770,6 +777,8 @@ function TeklifFormModal({
             ...formData,
             teklifEdilenFiyat: parseFloat(formData.teklifEdilenFiyat),
             okulFiyati: parseFloat(formData.okulFiyati),
+            sonGecerlilikTarihi: formData.sonGecerlilikTarihi || null,
+            gorusmeTarihi: formData.gorusmeTarihi,
             createdBy: staffName || "Sistem",
             // ✅ Yeni görüşme kaydı için otomatik kullanıcı adı
             gorusmeyiYapan: formData.durum ? gorusmeyiYapan : undefined,
@@ -926,91 +935,58 @@ function TeklifFormModal({
               </div>
             </div>
 
-            {/* Görüşme Bilgileri (Düzenleme için veya yeni kayıt için) */}
-            {teklif && (
-              <div>
-                <h3 className="text-lg font-semibold mb-4 text-gray-900">Yeni Görüşme Kaydı</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="durum">Durum *</Label>
-                    <select
-                      id="durum"
-                      value={formData.durum}
-                      onChange={(e) => setFormData({ ...formData, durum: e.target.value as "OLUMLU" | "OLUMSUZ" | "BELIRSIZ" })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      required
-                    >
-                      <option value="">Seçiniz</option>
-                      <option value="OLUMLU">Olumlu</option>
-                      <option value="OLUMSUZ">Olumsuz</option>
-                      <option value="BELIRSIZ">Belirsiz</option>
-                    </select>
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label htmlFor="durumNotu">Durum Notu</Label>
-                    <Input
-                      id="durumNotu"
-                      value={formData.durumNotu}
-                      onChange={(e) => setFormData({ ...formData, durumNotu: e.target.value })}
-                      placeholder="Seçilen duruma özel not..."
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label htmlFor="genelNot">Genel Not/Açıklama</Label>
-                    <textarea
-                      id="genelNot"
-                      value={formData.genelNot}
-                      onChange={(e) => setFormData({ ...formData, genelNot: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      rows={3}
-                    />
-                  </div>
+            {/* Görüşme Bilgileri */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4 text-gray-900">
+                {teklif ? "Yeni Görüşme Kaydı" : "Görüşme Bilgileri"}
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="gorusmeTarihi">Görüşme Tarihi *</Label>
+                  <Input
+                    id="gorusmeTarihi"
+                    type="date"
+                    value={formData.gorusmeTarihi}
+                    onChange={(e) => setFormData({ ...formData, gorusmeTarihi: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="durum">Durum *</Label>
+                  <select
+                    id="durum"
+                    value={formData.durum}
+                    onChange={(e) => setFormData({ ...formData, durum: e.target.value as "OLUMLU" | "OLUMSUZ" | "BELIRSIZ" })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  >
+                    <option value="">Seçiniz</option>
+                    <option value="OLUMLU">Olumlu</option>
+                    <option value="OLUMSUZ">Olumsuz</option>
+                    <option value="BELIRSIZ">Belirsiz</option>
+                  </select>
+                </div>
+                <div className="md:col-span-2">
+                  <Label htmlFor="durumNotu">Durum Notu</Label>
+                  <Input
+                    id="durumNotu"
+                    value={formData.durumNotu}
+                    onChange={(e) => setFormData({ ...formData, durumNotu: e.target.value })}
+                    placeholder="Seçilen duruma özel not..."
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <Label htmlFor="genelNot">Genel Not/Açıklama</Label>
+                  <textarea
+                    id="genelNot"
+                    value={formData.genelNot}
+                    onChange={(e) => setFormData({ ...formData, genelNot: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    rows={3}
+                  />
                 </div>
               </div>
-            )}
-
-            {/* Yeni oluşturma için görüşme bilgileri */}
-            {!teklif && (
-              <div>
-                <h3 className="text-lg font-semibold mb-4 text-gray-900">Görüşme Bilgileri</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="durum">Durum *</Label>
-                    <select
-                      id="durum"
-                      value={formData.durum}
-                      onChange={(e) => setFormData({ ...formData, durum: e.target.value as "OLUMLU" | "OLUMSUZ" | "BELIRSIZ" })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      required
-                    >
-                      <option value="">Seçiniz</option>
-                      <option value="OLUMLU">Olumlu</option>
-                      <option value="OLUMSUZ">Olumsuz</option>
-                      <option value="BELIRSIZ">Belirsiz</option>
-                    </select>
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label htmlFor="durumNotu">Durum Notu</Label>
-                    <Input
-                      id="durumNotu"
-                      value={formData.durumNotu}
-                      onChange={(e) => setFormData({ ...formData, durumNotu: e.target.value })}
-                      placeholder="Seçilen duruma özel not..."
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label htmlFor="genelNot">Genel Not/Açıklama</Label>
-                    <textarea
-                      id="genelNot"
-                      value={formData.genelNot}
-                      onChange={(e) => setFormData({ ...formData, genelNot: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      rows={3}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
+            </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t">
               <Button type="button" variant="outline" onClick={onClose}>

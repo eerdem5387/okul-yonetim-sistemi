@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { checkIbAccess } from "@/lib/access-control"
 
 // GET - Faaliyetleri listele (filtreleme ve sayfalama ile)
 export async function GET(request: NextRequest) {
+  // Yetki kontrolü
+  const { hasAccess } = await checkIbAccess(request)
+  if (!hasAccess) {
+    return NextResponse.json(
+      { error: "Bu işlem için yetkiniz bulunmamaktadır" },
+      { status: 403 }
+    )
+  }
   try {
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get("page") || "1")
@@ -92,6 +101,15 @@ export async function GET(request: NextRequest) {
 
 // POST - Yeni faaliyet oluştur
 export async function POST(request: NextRequest) {
+  // Yetki kontrolü
+  const { hasAccess } = await checkIbAccess(request)
+  if (!hasAccess) {
+    return NextResponse.json(
+      { error: "Bu işlem için yetkiniz bulunmamaktadır" },
+      { status: 403 }
+    )
+  }
+  
   try {
     const body = await request.json()
     const {

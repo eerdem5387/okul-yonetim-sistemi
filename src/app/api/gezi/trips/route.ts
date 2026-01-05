@@ -4,8 +4,17 @@ import {
   createTrip,
   type CreateTripData,
 } from "@/lib/geziService"
+import { checkGeziAccess } from "@/lib/access-control"
 
 export async function GET(request: NextRequest) {
+  // Yetki kontrolü
+  const { hasAccess } = await checkGeziAccess(request)
+  if (!hasAccess) {
+    return NextResponse.json(
+      { error: "Bu işlem için yetkiniz bulunmamaktadır" },
+      { status: 403 }
+    )
+  }
   try {
     const { searchParams } = new URL(request.url)
     const isActive = searchParams.get("isActive")
@@ -36,6 +45,15 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  // Yetki kontrolü
+  const { hasAccess } = await checkGeziAccess(request)
+  if (!hasAccess) {
+    return NextResponse.json(
+      { error: "Bu işlem için yetkiniz bulunmamaktadır" },
+      { status: 403 }
+    )
+  }
+  
   try {
     let payload: unknown
     try {

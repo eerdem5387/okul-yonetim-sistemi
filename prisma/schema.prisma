@@ -344,6 +344,10 @@ model Staff {
   mustChangePassword Boolean         @default(false) // Zorunlu şifre değişikliği bayrağı
   lastLoginAt        DateTime? // Son giriş tarihi
   
+  // Module Access Permissions
+  hasGeziAccess      Boolean         @default(false) // Gezi Yönetimi erişim yetkisi
+  hasIbAccess        Boolean         @default(false) // IB Yönetimi erişim yetkisi
+  
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
 
@@ -659,6 +663,7 @@ model TeklifGorusmesi {
   // Teklif Bilgileri
   teklifEdilenFiyat Float // Teklif edilen fiyat
   okulFiyati        Float // Okul fiyatı
+  sonGecerlilikTarihi DateTime? // Teklifin son geçerlilik tarihi (manuel giriş)
   // Sistem Bilgileri
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -671,6 +676,7 @@ model TeklifGorusmesi {
   @@index([okul])
   @@index([sinif])
   @@index([createdAt])
+  @@index([sonGecerlilikTarihi])
   @@map("teklif_gorusmeleri")
 }
 
@@ -678,7 +684,7 @@ model TeklifGorusmeKaydi {
   id                String              @id @default(cuid())
   teklifGorusmesiId String
   // Görüşme Bilgileri
-  gorusmeTarihi     DateTime            @default(now())
+  gorusmeTarihi     DateTime            // Görüşmenin gerçekleştiği tarih (manuel giriş)
   gorusmeyiYapan    String // Görüşmeyi yapan kişi adı
   durum             TeklifGorusmeDurumu
   durumNotu         String? // Duruma özel not (örn: "Olumlu - %20 indirim teklif edildi")
