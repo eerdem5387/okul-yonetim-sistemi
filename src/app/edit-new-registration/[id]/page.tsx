@@ -81,45 +81,58 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
     try {
       setLoading(true)
       
-      // Ana sözleşmeyi çek
+      // Ana sözleşmeyi çek - API zaten student bilgilerini include ediyor
       const mainResponse = await fetch(`/api/new-registrations/${contractId}`)
-      if (!mainResponse.ok) return
+      if (!mainResponse.ok) {
+        console.error("[Edit New Registration] Failed to fetch contract:", mainResponse.status)
+        setLoading(false)
+        return
+      }
       
       const mainData = await mainResponse.json()
+      console.log("[Edit New Registration] Fetched contract data:", mainData)
       
       // Öğrenci ID'sini al ve sakla
       const fetchedStudentId = mainData.studentId
+      if (!fetchedStudentId) {
+        console.error("[Edit New Registration] Student ID not found in contract")
+        setLoading(false)
+        return
+      }
       setStudentId(fetchedStudentId)
       
-      // Öğrenci bilgilerini API'den al (güncel bilgiler için)
-      const studentResponse = await fetch(`/api/students/${fetchedStudentId}`)
-      let currentStudentData = null
-      if (studentResponse.ok) {
-        const studentData = await studentResponse.json()
-        currentStudentData = studentData.student || studentData
+      // API'den gelen student bilgilerini kullan (zaten include edilmiş)
+      const studentData = mainData.student
+      if (!studentData) {
+        console.error("[Edit New Registration] Student data not found in contract")
+        setLoading(false)
+        return
       }
       
-      // Sözleşme verisini al ve öğrenci bilgilerini güncel verilerle güncelle
+      console.log("[Edit New Registration] Student data from API:", studentData)
+      
+      // Sözleşme verisini al
       const contractData = mainData.contractData || {}
       
-      // Öğrenci bilgilerini güncel verilerle güncelle
+      // Öğrenci bilgilerini API'den gelen student verileriyle güncelle (contractData'dan değil!)
       const updatedContractData = {
         ...contractData,
-        studentName: currentStudentData 
-          ? `${currentStudentData.firstName || ""} ${currentStudentData.lastName || ""}`.trim()
-          : contractData.studentName || "",
-        tcNumber: currentStudentData?.tcNumber || contractData.tcNumber || "",
-        grade: currentStudentData?.grade || contractData.grade || "",
-        address: currentStudentData?.address || contractData.address || "",
-        studentBirthDate: currentStudentData?.birthDate 
-          ? new Date(currentStudentData.birthDate).toISOString().split("T")[0]
-          : contractData.studentBirthDate || "",
-        parentName: currentStudentData?.motherName || contractData.parentName || "",
-        parentPhone: currentStudentData?.motherPhone || contractData.parentPhone || "",
-        parent2Name: currentStudentData?.fatherName || contractData.parent2Name || "",
-        parent2Phone: currentStudentData?.fatherPhone || contractData.parent2Phone || "",
+        // Öğrenci bilgileri - API'den gelen student objesinden
+        studentName: `${studentData.firstName || ""} ${studentData.lastName || ""}`.trim(),
+        tcNumber: studentData.tcNumber || "",
+        grade: studentData.grade || "",
+        address: studentData.address || "",
+        studentBirthDate: studentData.birthDate 
+          ? new Date(studentData.birthDate).toISOString().split("T")[0]
+          : "",
+        // Veli bilgileri - API'den gelen student objesinden
+        parentName: studentData.motherName || "",
+        parentPhone: studentData.motherPhone || "",
+        parent2Name: studentData.fatherName || "",
+        parent2Phone: studentData.fatherPhone || "",
       }
       
+      console.log("[Edit New Registration] Updated contract data:", updatedContractData)
       setContract(updatedContractData)
       
       // Tüm yan sözleşmeleri çek

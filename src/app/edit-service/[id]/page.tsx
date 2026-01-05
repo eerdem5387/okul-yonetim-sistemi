@@ -61,40 +61,54 @@ export default function EditServicePage({ params }: { params: Promise<{ id: stri
 
   const fetchContract = useCallback(async () => {
     try {
+      setLoading(true)
       const response = await fetch(`/api/service-contracts/${contractId}`)
-      if (response.ok) {
-        const data = await response.json()
-        
-        // Öğrenci ID'sini al ve sakla
-        const fetchedStudentId = data.studentId
-        setStudentId(fetchedStudentId)
-        
-        // Öğrenci bilgilerini API'den al (güncel bilgiler için)
-        const studentResponse = await fetch(`/api/students/${fetchedStudentId}`)
-        let currentStudentData = null
-        if (studentResponse.ok) {
-          const studentData = await studentResponse.json()
-          currentStudentData = studentData.student || studentData
-        }
-        
-        // Sözleşme verisini al ve öğrenci bilgilerini güncel verilerle güncelle
-        const contractData = data.contractData || {}
-        
-        // Öğrenci bilgilerini güncel verilerle güncelle
-        const updatedContractData = {
-          ...contractData,
-          studentName: currentStudentData 
-            ? `${currentStudentData.firstName || ""} ${currentStudentData.lastName || ""}`.trim()
-            : contractData.studentName || "",
-          tcNumber: currentStudentData?.tcNumber || contractData.tcNumber || "",
-          grade: currentStudentData?.grade || contractData.grade || "",
-          address: currentStudentData?.address || contractData.address || "",
-          parentName: currentStudentData?.motherName || contractData.parentName || "",
-          parentPhone: currentStudentData?.motherPhone || contractData.parentPhone || "",
-        }
-        
-        setContract(updatedContractData)
+      if (!response.ok) {
+        console.error("[Edit Service] Failed to fetch contract:", response.status)
+        setLoading(false)
+        return
       }
+      
+      const data = await response.json()
+      console.log("[Edit Service] Fetched contract data:", data)
+      
+      // Öğrenci ID'sini al ve sakla
+      const fetchedStudentId = data.studentId
+      if (!fetchedStudentId) {
+        console.error("[Edit Service] Student ID not found in contract")
+        setLoading(false)
+        return
+      }
+      setStudentId(fetchedStudentId)
+      
+      // API'den gelen student bilgilerini kullan (zaten include edilmiş)
+      const studentData = data.student
+      if (!studentData) {
+        console.error("[Edit Service] Student data not found in contract")
+        setLoading(false)
+        return
+      }
+      
+      console.log("[Edit Service] Student data from API:", studentData)
+      
+      // Sözleşme verisini al
+      const contractData = data.contractData || {}
+      
+      // Öğrenci bilgilerini API'den gelen student verileriyle güncelle (contractData'dan değil!)
+      const updatedContractData = {
+        ...contractData,
+        // Öğrenci bilgileri - API'den gelen student objesinden
+        studentName: `${studentData.firstName || ""} ${studentData.lastName || ""}`.trim(),
+        tcNumber: studentData.tcNumber || "",
+        grade: studentData.grade || "",
+        address: studentData.address || "",
+        // Veli bilgileri - API'den gelen student objesinden
+        parentName: studentData.motherName || "",
+        parentPhone: studentData.motherPhone || "",
+      }
+      
+      console.log("[Edit Service] Updated contract data:", updatedContractData)
+      setContract(updatedContractData)
     } catch (error) {
       console.error("Error fetching contract:", error)
     } finally {
