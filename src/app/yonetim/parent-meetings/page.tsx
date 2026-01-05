@@ -87,6 +87,25 @@ export default function YonetimParentMeetingsPage() {
     }
   }, [])
 
+  const fetchCounselors = useCallback(async () => {
+    try {
+      const response = await fetch("/api/staff?department=REHBERLIK&limit=1000")
+      if (response.ok) {
+        const data = await response.json()
+        const staffArray = Array.isArray(data.staff) ? data.staff : (Array.isArray(data) ? data : [])
+        // Rehberlik uzmanlarının isimlerini çıkar
+        const counselorNames = staffArray
+          .filter((s: { department: string }) => s.department === "REHBERLIK")
+          .map((s: { firstName: string; lastName: string }) => `${s.firstName} ${s.lastName}`)
+          .filter(Boolean)
+        setCounselors([...new Set(counselorNames)].sort())
+      }
+    } catch (error) {
+      console.error("Error fetching counselors:", error)
+      // Hata durumunda görüşmelerden çıkarmaya devam et
+    }
+  }, [])
+
   const fetchMeetings = useCallback(async () => {
     try {
       setLoading(true)
@@ -99,9 +118,13 @@ export default function YonetimParentMeetingsPage() {
       if (startDate) params.append("startDate", startDate)
       if (endDate) params.append("endDate", endDate)
 
+      console.log("[Parent Meetings] Fetching with params:", params.toString())
       const response = await fetch(`/api/parent-meetings?${params.toString()}`)
+      
       if (response.ok) {
         const data = await response.json()
+        console.log("[Parent Meetings] API Response:", data)
+        
         let fetchedMeetings = data.meetings || []
         
         // Rehberlik uzmanı filtresi (frontend'de)
@@ -111,12 +134,27 @@ export default function YonetimParentMeetingsPage() {
           )
         }
         
+        console.log("[Parent Meetings] Filtered meetings:", fetchedMeetings.length)
         setMeetings(fetchedMeetings)
-        setTotalMeetings(data.pagination?.total || 0)
+        
+        // Rehberlik uzmanı filtresi uygulanmışsa total'i güncelle
+        const total = selectedCounselor 
+          ? fetchedMeetings.length 
+          : (data.pagination?.total || fetchedMeetings.length)
+        
+        setTotalMeetings(total)
         setTotalPages(data.pagination?.totalPages || 1)
+      } else {
+        console.error("[Parent Meetings] API Error:", response.status, await response.text())
+        setMeetings([])
+        setTotalMeetings(0)
+        setTotalPages(1)
       }
     } catch (error) {
       console.error("Error fetching meetings:", error)
+      setMeetings([])
+      setTotalMeetings(0)
+      setTotalPages(1)
     } finally {
       setLoading(false)
     }
@@ -124,16 +162,22 @@ export default function YonetimParentMeetingsPage() {
 
   useEffect(() => {
     fetchStudents()
-  }, [fetchStudents])
+    fetchCounselors()
+  }, [fetchStudents, fetchCounselors])
 
   useEffect(() => {
     fetchMeetings()
   }, [fetchMeetings])
 
-  // Rehberlik uzmanlarını çek (benzersiz isimler)
+  // Rehberlik uzmanlarını görüşmelerden de ekle (API'den gelenlerle birleştir)
   useEffect(() => {
-    const uniqueCounselors = Array.from(new Set(meetings.map(m => m.counselorName).filter(Boolean))) as string[]
-    setCounselors(uniqueCounselors.sort())
+    const uniqueCounselorsFromMeetings = Array.from(new Set(meetings.map(m => m.counselorName).filter(Boolean))) as string[]
+    if (uniqueCounselorsFromMeetings.length > 0) {
+      setCounselors(prev => {
+        const combined = [...new Set([...prev, ...uniqueCounselorsFromMeetings])]
+        return combined.sort()
+      })
+    }
   }, [meetings])
 
   const filteredStudents = useMemo(() => {

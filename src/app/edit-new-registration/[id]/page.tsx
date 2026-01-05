@@ -498,14 +498,6 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
                 />
               </div>
               <div>
-                <Label htmlFor="registrarName">Kayıt Sorumlusu</Label>
-                <Input
-                  id="registrarName"
-                  value={contract.registrarName}
-                  onChange={(e) => handleInputChange("registrarName", e.target.value)}
-                />
-              </div>
-              <div>
                 <Label htmlFor="schoolLicenseNo">Okul Ruhsat No</Label>
                 <Input
                   id="schoolLicenseNo"
