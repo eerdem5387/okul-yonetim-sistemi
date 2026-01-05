@@ -94,10 +94,10 @@ export default function YonetimParentMeetingsPage() {
         const data = await response.json()
         const staffArray = Array.isArray(data.staff) ? data.staff : (Array.isArray(data) ? data : [])
         // Rehberlik uzmanlarının isimlerini çıkar
-        const counselorNames = staffArray
+        const counselorNames: string[] = staffArray
           .filter((s: { department: string }) => s.department === "REHBERLIK")
           .map((s: { firstName: string; lastName: string }) => `${s.firstName} ${s.lastName}`)
-          .filter(Boolean)
+          .filter((name: string | undefined): name is string => Boolean(name))
         setCounselors([...new Set(counselorNames)].sort())
       }
     } catch (error) {

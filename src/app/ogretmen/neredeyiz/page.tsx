@@ -76,6 +76,7 @@ export default function OgretmenNeredeyizPage() {
   const [updatingTopicId, setUpdatingTopicId] = useState<string | null>(null)
   const [expandedUnits, setExpandedUnits] = useState<Set<string>>(new Set())
   const [staffId, setStaffId] = useState<string | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null)
 
   const fetchClasses = useCallback(async (teacherId: string) => {

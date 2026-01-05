@@ -67,6 +67,7 @@ export default function VeliGorusmeleriPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalMeetings, setTotalMeetings] = useState(0)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [userRole, setUserRole] = useState<string | null>(null)
   const [isViewOnly, setIsViewOnly] = useState(false)
 
