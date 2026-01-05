@@ -76,11 +76,8 @@ const allNavigation = [
   // IB Faaliyet Yönetimi - Rehberlik dahil
   { name: "IB Faaliyet Yönetimi", href: "/activities", icon: Award, roles: ["admin", "principal", "student_affairs", "counselor"] },
   
-  // Veli Görüşmeleri - Tüm roller için aynı sayfa (/veli-gorusmeleri)
-  { name: "Veli Görüşmeleri", href: "/veli-gorusmeleri", icon: MessageSquare, roles: ["admin", "principal", "student_affairs", "counselor"] },
-  
-  // Veli Görüşmeleri Yönetimi - Sadece admin, principal, student_affairs (yönlendirme olmayan özel sayfa)
-  { name: "Veli Görüşmeleri Yönetimi", href: "/yonetim/parent-meetings", icon: MessageSquare, roles: ["admin", "principal", "student_affairs"] },
+  // Veli Görüşmeleri - Admin, Müdür, Öğrenci İşleri için yönetim sayfasına yönlendir
+  { name: "Veli Görüşmeleri", href: "/yonetim/parent-meetings", icon: MessageSquare, roles: ["admin", "principal", "student_affairs"] },
   
   // FAZ 3: Sınav Yönetimi - Sadece Rehberlik
   { name: "Sınav Yönetimi", href: "/rehberlik/sinavlar", icon: FileText, roles: ["counselor"] },

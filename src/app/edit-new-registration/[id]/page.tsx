@@ -150,7 +150,6 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
       }
       
       console.log("[Edit New Registration] Updated contract data - Student Name:", updatedContractData.studentName, "TC:", updatedContractData.tcNumber)
-      setContract(updatedContractData)
       
       // Tüm yan sözleşmeleri çek
       const [uniformRes, mealRes, serviceRes, bookRes] = await Promise.all([
@@ -189,16 +188,40 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
         Object.assign(otherContractData, latestBook.contractData as Record<string, unknown>)
       }
       
-      // Yan sözleşme verilerini state'e ekle
-      setContract(prev => {
-        if (prev) {
-          return {
-            ...prev,
-            ...otherContractData
-          }
-        }
-        return prev
-      })
+      // ÖNEMLİ: Öğrenci bilgilerini yan sözleşme verilerinden koru!
+      // Öğrenci bilgilerini yan sözleşme verilerinden çıkar (eğer varsa)
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const {
+        studentName: _unused1,
+        tcNumber: _unused2,
+        grade: _unused3,
+        address: _unused4,
+        studentBirthDate: _unused5,
+        parentName: _unused6,
+        parentPhone: _unused7,
+        parent2Name: _unused8,
+        parent2Phone: _unused9,
+        ...cleanOtherContractData
+      } = otherContractData as Record<string, unknown>
+      
+      // Tüm verileri birleştir - Öğrenci bilgileri en son eklenmeli (override etmek için)
+      const finalContractData = {
+        ...updatedContractData,
+        ...cleanOtherContractData,
+        // Öğrenci bilgilerini en son ekle (kesinlikle override etsin)
+        studentName: updatedContractData.studentName,
+        tcNumber: updatedContractData.tcNumber,
+        grade: updatedContractData.grade,
+        address: updatedContractData.address,
+        studentBirthDate: updatedContractData.studentBirthDate,
+        parentName: updatedContractData.parentName,
+        parentPhone: updatedContractData.parentPhone,
+        parent2Name: updatedContractData.parent2Name,
+        parent2Phone: updatedContractData.parent2Phone,
+      }
+      
+      console.log("[Edit New Registration] Final contract data - Student Name:", finalContractData.studentName, "TC:", finalContractData.tcNumber)
+      setContract(finalContractData)
       
     } catch (error) {
       console.error("Error fetching contract:", error)
