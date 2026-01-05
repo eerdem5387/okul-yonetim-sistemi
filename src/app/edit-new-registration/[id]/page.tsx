@@ -54,6 +54,9 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
         const id = resolvedParams.id
         console.log("[Edit New Registration] Resolved params ID:", id)
         if (id) {
+          // Önceki contract verilerini temizle
+          setContract(null)
+          setLoading(true)
           setContractId(id)
           setParamsResolved(true)
         }

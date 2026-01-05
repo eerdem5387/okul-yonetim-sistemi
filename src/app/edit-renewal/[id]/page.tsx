@@ -53,6 +53,9 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
         const id = resolvedParams.id
         console.log("[Edit Renewal] Resolved params ID:", id)
         if (id) {
+          // Önceki contract verilerini temizle
+          setContract(null)
+          setLoading(true)
           setContractId(id)
           setParamsResolved(true)
         }

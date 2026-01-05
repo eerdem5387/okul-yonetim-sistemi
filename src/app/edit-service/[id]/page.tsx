@@ -31,7 +31,11 @@ export default function EditServicePage({ params }: { params: Promise<{ id: stri
   useEffect(() => {
     const getParams = async () => {
       const resolvedParams = await params
-      setContractId(resolvedParams.id)
+      const id = resolvedParams.id
+      // Önceki contract verilerini temizle
+      setContract(null)
+      setLoading(true)
+      setContractId(id)
     }
     getParams()
   }, [params])

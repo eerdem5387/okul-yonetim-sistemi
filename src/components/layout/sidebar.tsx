@@ -79,6 +79,9 @@ const allNavigation = [
   // Veli Görüşmeleri - Tüm roller için aynı sayfa (/veli-gorusmeleri)
   { name: "Veli Görüşmeleri", href: "/veli-gorusmeleri", icon: MessageSquare, roles: ["admin", "principal", "student_affairs", "counselor"] },
   
+  // Veli Görüşmeleri Yönetimi - Sadece admin, principal, student_affairs (yönlendirme olmayan özel sayfa)
+  { name: "Veli Görüşmeleri Yönetimi", href: "/yonetim/parent-meetings", icon: MessageSquare, roles: ["admin", "principal", "student_affairs"] },
+  
   // FAZ 3: Sınav Yönetimi - Sadece Rehberlik
   { name: "Sınav Yönetimi", href: "/rehberlik/sinavlar", icon: FileText, roles: ["counselor"] },
   { name: "Öğrenci Görüşleri", href: "/rehberlik/gorusler", icon: MessageSquare, roles: ["counselor"] },
