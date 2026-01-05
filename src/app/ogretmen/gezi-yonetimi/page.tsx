@@ -280,10 +280,10 @@ export default function OgretmenGeziYonetimiPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 shadow-lg">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pl-16 lg:pl-4 sm:pl-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 shadow-lg">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pl-16 lg:pl-4 sm:pl-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h1 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-3 mb-2">
                   <MapPin className="h-7 w-7 sm:h-8 sm:w-8" />
@@ -299,16 +299,15 @@ export default function OgretmenGeziYonetimiPage() {
                 <Plus className="h-5 w-5 mr-2" />
                 Yeni Gezi Oluştur
               </Button>
-            </div>
           </div>
         </div>
-
-        {/* Content */}
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
-          {/* İstatistik Kartları */}
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3 lg:gap-4">
-            <Card>
-              <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 lg:pt-6">
+      </div>
+      {/* Content */}
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+        {/* İstatistik Kartları */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3 lg:gap-4">
+          <Card>
+            <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 lg:pt-6">
                 <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">Toplam Gezi</CardTitle>
               </CardHeader>
               <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
@@ -347,10 +346,10 @@ export default function OgretmenGeziYonetimiPage() {
                 <div className="text-xl sm:text-2xl font-bold text-purple-600">{stats.monthlyApplications}</div>
               </CardContent>
             </Card>
-          </div>
+        </div>
 
-          {/* Arama ve Filtreler */}
-          <Card>
+        {/* Arama ve Filtreler */}
+        <Card>
             <CardContent className="pt-4 sm:pt-6 px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 <div className="flex-1 relative">
@@ -649,7 +648,6 @@ export default function OgretmenGeziYonetimiPage() {
               </Card>
             </div>
           )}
-        </div>
       </div>
     </div>
   )
