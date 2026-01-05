@@ -9,7 +9,6 @@ import {
   Search,
   Calendar,
   User,
-  FileText,
   Users,
   Filter,
   X,

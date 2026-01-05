@@ -23,6 +23,7 @@ interface Contract {
 }
 
 export default function HistoryPage() {
+  const router = useRouter()
   const [contracts, setContracts] = useState<Contract[]>([])
   const [filteredContracts, setFilteredContracts] = useState<Contract[]>([])
   const [searchTerm, setSearchTerm] = useState("")

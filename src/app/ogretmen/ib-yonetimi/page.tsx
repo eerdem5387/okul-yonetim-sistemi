@@ -25,7 +25,6 @@ import {
   Upload,
   File,
   Loader2,
-  ArrowLeft,
 } from "lucide-react"
 
 type ActivityType =
@@ -403,28 +402,6 @@ export default function OgretmenIbYonetimiPage() {
     }
   }
 
-  const handleVerify = async (id: string, verify: boolean) => {
-    try {
-      const response = await fetch(`/api/activities/${id}`, {
-        method: "PUT",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          isVerified: verify,
-          verifiedBy: "Admin", // Gerçek uygulamada auth'dan alınmalı
-          verifiedAt: new Date().toISOString(),
-        }),
-      })
-
-      if (response.ok) {
-        fetchActivities()
-      } else {
-        alert("Doğrulama işlemi başarısız!")
-      }
-    } catch (error) {
-      console.error("Error verifying activity:", error)
-      alert("Doğrulama işlemi başarısız!")
-    }
-  }
 
   const stats = useMemo(() => {
     const verified = activities.filter((a) => a.isVerified).length

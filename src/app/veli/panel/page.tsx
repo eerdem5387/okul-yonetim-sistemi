@@ -118,7 +118,6 @@ interface DashboardData {
 export default function VeliPanelPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
-  const [studentId, setStudentId] = useState("")
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
 
   useEffect(() => {
@@ -131,7 +130,6 @@ export default function VeliPanelPage() {
         return
       }
 
-      setStudentId(savedStudentId)
       fetchDashboard(savedStudentId)
     }
   }, [router])

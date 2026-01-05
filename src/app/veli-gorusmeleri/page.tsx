@@ -137,7 +137,9 @@ export default function VeliGorusmeleriPage() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const role = localStorage.getItem("auth_role")
-      setUserRole(role)
+      if (role) {
+        setUserRole(role)
+      }
       // Admin, principal, student_affairs için sadece görüntüleme modu
       setIsViewOnly(role === "admin" || role === "principal" || role === "student_affairs")
     }
