@@ -61,9 +61,11 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
           id = resolvedParams.id
         }
         
-        console.log("[Edit Renewal] Contract ID:", id, "Pathname:", pathname)
+        console.log("[Edit Renewal] Contract ID:", id, "Pathname:", pathname, "Current contractId:", contractId)
         
+        // Sadece ID değiştiğinde güncelle
         if (id && id !== contractId) {
+          console.log("[Edit Renewal] ID changed, clearing contract and setting new ID")
           // Önceki contract verilerini temizle
           setContract(null)
           setLoading(true)
@@ -74,20 +76,29 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
       }
     }
     extractIdFromPath()
-  }, [pathname, params, contractId])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, params]) // contractId'yi dependency'den çıkardık - sadece pathname değiştiğinde çalışsın
 
   const fetchContract = useCallback(async () => {
+    if (!contractId) {
+      console.log("[Edit Renewal] No contractId, skipping fetch")
+      return
+    }
+    
     try {
       setLoading(true)
+      console.log("[Edit Renewal] Fetching contract with ID:", contractId)
+      
       const response = await fetch(`/api/renewals/${contractId}`)
       if (!response.ok) {
-        console.error("[Edit Renewal] Failed to fetch contract:", response.status)
+        console.error("[Edit Renewal] Failed to fetch contract:", response.status, await response.text())
         setLoading(false)
         return
       }
       
       const data = await response.json()
-      console.log("[Edit Renewal] Fetched contract data:", data)
+      console.log("[Edit Renewal] Fetched contract data - ID:", data.id, "StudentId:", data.studentId)
+      console.log("[Edit Renewal] Student object:", data.student)
       
       // Öğrenci ID'sini al ve sakla
       const fetchedStudentId = data.studentId
@@ -106,7 +117,7 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
         return
       }
       
-      console.log("[Edit Renewal] Student data from API:", studentData)
+      console.log("[Edit Renewal] Student data from API - Name:", studentData.firstName, studentData.lastName, "TC:", studentData.tcNumber)
       
       // Sözleşme verisini al
       const contractData = data.contractData || {}
@@ -129,7 +140,7 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
         parent2Phone: studentData.fatherPhone || "",
       }
       
-      console.log("[Edit Renewal] Updated contract data:", updatedContractData)
+      console.log("[Edit Renewal] Updated contract data - Student Name:", updatedContractData.studentName, "TC:", updatedContractData.tcNumber)
       setContract(updatedContractData)
     } catch (error) {
       console.error("Error fetching contract:", error)
@@ -140,8 +151,10 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
 
   useEffect(() => {
     if (contractId) {
-      console.log("[Edit Renewal] Fetching contract with ID:", contractId)
+      console.log("[Edit Renewal] ContractId changed, fetching contract with ID:", contractId)
       fetchContract()
+    } else {
+      console.log("[Edit Renewal] No contractId yet, waiting...")
     }
   }, [contractId, fetchContract])
 

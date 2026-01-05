@@ -62,9 +62,11 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
           id = resolvedParams.id
         }
         
-        console.log("[Edit New Registration] Contract ID:", id, "Pathname:", pathname)
+        console.log("[Edit New Registration] Contract ID:", id, "Pathname:", pathname, "Current contractId:", contractId)
         
+        // Sadece ID değiştiğinde güncelle
         if (id && id !== contractId) {
+          console.log("[Edit New Registration] ID changed, clearing contract and setting new ID")
           // Önceki contract verilerini temizle
           setContract(null)
           setLoading(true)
@@ -75,22 +77,30 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
       }
     }
     extractIdFromPath()
-  }, [pathname, params, contractId])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, params]) // contractId'yi dependency'den çıkardık - sadece pathname değiştiğinde çalışsın
 
   const fetchContract = useCallback(async () => {
+    if (!contractId) {
+      console.log("[Edit New Registration] No contractId, skipping fetch")
+      return
+    }
+    
     try {
       setLoading(true)
+      console.log("[Edit New Registration] Fetching contract with ID:", contractId)
       
       // Ana sözleşmeyi çek - API zaten student bilgilerini include ediyor
       const mainResponse = await fetch(`/api/new-registrations/${contractId}`)
       if (!mainResponse.ok) {
-        console.error("[Edit New Registration] Failed to fetch contract:", mainResponse.status)
+        console.error("[Edit New Registration] Failed to fetch contract:", mainResponse.status, await mainResponse.text())
         setLoading(false)
         return
       }
       
       const mainData = await mainResponse.json()
-      console.log("[Edit New Registration] Fetched contract data:", mainData)
+      console.log("[Edit New Registration] Fetched contract data - ID:", mainData.id, "StudentId:", mainData.studentId)
+      console.log("[Edit New Registration] Student object:", mainData.student)
       
       // Öğrenci ID'sini al ve sakla
       const fetchedStudentId = mainData.studentId
@@ -109,7 +119,7 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
         return
       }
       
-      console.log("[Edit New Registration] Student data from API:", studentData)
+      console.log("[Edit New Registration] Student data from API - Name:", studentData.firstName, studentData.lastName, "TC:", studentData.tcNumber)
       
       // Sözleşme verisini al
       const contractData = mainData.contractData || {}
@@ -132,7 +142,7 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
         parent2Phone: studentData.fatherPhone || "",
       }
       
-      console.log("[Edit New Registration] Updated contract data:", updatedContractData)
+      console.log("[Edit New Registration] Updated contract data - Student Name:", updatedContractData.studentName, "TC:", updatedContractData.tcNumber)
       setContract(updatedContractData)
       
       // Tüm yan sözleşmeleri çek
@@ -192,8 +202,10 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
 
   useEffect(() => {
     if (contractId) {
-      console.log("[Edit New Registration] Fetching contract with ID:", contractId)
+      console.log("[Edit New Registration] ContractId changed, fetching contract with ID:", contractId)
       fetchContract()
+    } else {
+      console.log("[Edit New Registration] No contractId yet, waiting...")
     }
   }, [contractId, fetchContract])
 
