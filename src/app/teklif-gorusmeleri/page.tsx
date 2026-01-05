@@ -932,6 +932,15 @@ function TeklifFormModal({
                     required
                   />
                 </div>
+                <div>
+                  <Label htmlFor="sonGecerlilikTarihi">Teklifin Son Geçerlilik Tarihi</Label>
+                  <Input
+                    id="sonGecerlilikTarihi"
+                    type="date"
+                    value={formData.sonGecerlilikTarihi}
+                    onChange={(e) => setFormData({ ...formData, sonGecerlilikTarihi: e.target.value })}
+                  />
+                </div>
               </div>
             </div>
 

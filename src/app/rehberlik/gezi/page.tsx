@@ -22,6 +22,16 @@ import type { Trip, CreateTripData } from "@/lib/geziService"
 import { useRouter } from "next/navigation"
 import { RehberlikSidebar } from "@/components/layout/rehberlik-sidebar"
 
+// Helper function to get auth headers
+function getAuthHeaders(): HeadersInit {
+  const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null
+  const headers: HeadersInit = { "Content-Type": "application/json" }
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`
+  }
+  return headers
+}
+
 export default function RehberlikGeziPage() {
   const router = useRouter()
   const [trips, setTrips] = useState<Trip[]>([])
@@ -64,7 +74,9 @@ export default function RehberlikGeziPage() {
         params.append("q", searchTerm)
       }
 
-      const response = await fetch(`/api/gezi/trips?${params.toString()}`)
+      const response = await fetch(`/api/gezi/trips?${params.toString()}`, {
+        headers: getAuthHeaders(),
+      })
       if (!response.ok) {
         throw new Error("Geziler alınamadı")
       }
@@ -81,7 +93,9 @@ export default function RehberlikGeziPage() {
 
   const fetchStats = useCallback(async () => {
     try {
-      const response = await fetch("/api/gezi/trips/stats")
+      const response = await fetch("/api/gezi/trips/stats", {
+        headers: getAuthHeaders(),
+      })
       if (!response.ok) {
         throw new Error("İstatistikler alınamadı")
       }
@@ -128,7 +142,7 @@ export default function RehberlikGeziPage() {
       if (editingTrip) {
         const response = await fetch(`/api/gezi/trips/${editingTrip.id}`, {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
+          headers: getAuthHeaders(),
           body: JSON.stringify(formData),
         })
         if (!response.ok) {
@@ -137,7 +151,7 @@ export default function RehberlikGeziPage() {
       } else {
         const response = await fetch("/api/gezi/trips", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: getAuthHeaders(),
           body: JSON.stringify(formData),
         })
         if (!response.ok) {
@@ -189,7 +203,7 @@ export default function RehberlikGeziPage() {
     try {
       const response = await fetch(`/api/gezi/trips/${trip.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ isActive: !trip.isActive }),
       })
       if (!response.ok) {

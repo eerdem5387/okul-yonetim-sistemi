@@ -20,6 +20,16 @@ import {
 } from "lucide-react"
 import type { Trip, TripApplication } from "@/lib/geziService"
 
+// Helper function to get auth headers
+function getAuthHeaders(): HeadersInit {
+  const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null
+  const headers: HeadersInit = { "Content-Type": "application/json" }
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`
+  }
+  return headers
+}
+
 export default function GeziDetailPage() {
   const params = useParams()
   const router = useRouter()
@@ -38,7 +48,9 @@ export default function GeziDetailPage() {
   const fetchTrip = useCallback(async () => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/gezi/trips/${tripId}`)
+      const response = await fetch(`/api/gezi/trips/${tripId}`, {
+        headers: getAuthHeaders(),
+      })
       if (!response.ok) {
         throw new Error("Gezi bulunamadı")
       }
@@ -63,7 +75,9 @@ export default function GeziDetailPage() {
         params.append("q", searchTerm)
       }
 
-      const response = await fetch(`/api/gezi/trips/${tripId}/applications?${params.toString()}`)
+      const response = await fetch(`/api/gezi/trips/${tripId}/applications?${params.toString()}`, {
+        headers: getAuthHeaders(),
+      })
       if (!response.ok) {
         throw new Error("Başvurular alınamadı")
       }
@@ -93,7 +107,9 @@ export default function GeziDetailPage() {
   const handleExport = async () => {
     try {
       setExporting(true)
-      const response = await fetch(`/api/gezi/trips/${tripId}/applications/export`)
+      const response = await fetch(`/api/gezi/trips/${tripId}/applications/export`, {
+        headers: getAuthHeaders(),
+      })
       if (!response.ok) {
         throw new Error("Excel export başarısız")
       }

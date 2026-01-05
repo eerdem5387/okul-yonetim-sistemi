@@ -21,6 +21,16 @@ import {
 import type { Trip, CreateTripData } from "@/lib/geziService"
 import { useRouter } from "next/navigation"
 
+// Helper function to get auth headers
+function getAuthHeaders(): HeadersInit {
+  const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null
+  const headers: HeadersInit = { "Content-Type": "application/json" }
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`
+  }
+  return headers
+}
+
 export default function GeziPage() {
   const router = useRouter()
   const [trips, setTrips] = useState<Trip[]>([])
@@ -99,7 +109,9 @@ export default function GeziPage() {
         params.append("q", searchTerm)
       }
 
-      const response = await fetch(`/api/gezi/trips?${params.toString()}`)
+      const response = await fetch(`/api/gezi/trips?${params.toString()}`, {
+        headers: getAuthHeaders(),
+      })
       if (!response.ok) {
         throw new Error("Geziler alınamadı")
       }
@@ -116,7 +128,9 @@ export default function GeziPage() {
 
   const fetchStats = useCallback(async () => {
     try {
-      const response = await fetch("/api/gezi/trips/stats")
+      const response = await fetch("/api/gezi/trips/stats", {
+        headers: getAuthHeaders(),
+      })
       if (!response.ok) {
         throw new Error("İstatistikler alınamadı")
       }
@@ -163,7 +177,7 @@ export default function GeziPage() {
       if (editingTrip) {
         const response = await fetch(`/api/gezi/trips/${editingTrip.id}`, {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
+          headers: getAuthHeaders(),
           body: JSON.stringify(formData),
         })
         if (!response.ok) {
@@ -172,7 +186,7 @@ export default function GeziPage() {
       } else {
         const response = await fetch("/api/gezi/trips", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: getAuthHeaders(),
           body: JSON.stringify(formData),
         })
         if (!response.ok) {
@@ -224,7 +238,7 @@ export default function GeziPage() {
     try {
       const response = await fetch(`/api/gezi/trips/${trip.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ isActive: !trip.isActive }),
       })
       if (!response.ok) {

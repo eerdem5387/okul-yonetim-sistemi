@@ -80,6 +80,16 @@ interface Activity {
   }
 }
 
+// Helper function to get auth headers
+function getAuthHeaders(): HeadersInit {
+  const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null
+  const headers: HeadersInit = { "Content-Type": "application/json" }
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`
+  }
+  return headers
+}
+
 export default function ActivitiesPage() {
   const router = useRouter()
   const [activities, setActivities] = useState<Activity[]>([])
@@ -152,7 +162,9 @@ export default function ActivitiesPage() {
       if (endDate) params.append("endDate", endDate)
       if (verificationFilter !== "all") params.append("isVerified", verificationFilter)
 
-      const response = await fetch(`/api/activities?${params.toString()}`)
+      const response = await fetch(`/api/activities?${params.toString()}`, {
+        headers: getAuthHeaders(),
+      })
       if (!response.ok) throw new Error("Failed to fetch activities")
 
       const data = await response.json()
@@ -228,7 +240,7 @@ export default function ActivitiesPage() {
 
       const response = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify(payload),
       })
 
@@ -277,8 +289,14 @@ export default function ActivitiesPage() {
       const formData = new FormData()
       formData.append("file", file)
 
+      const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null
+      const headers: HeadersInit = {}
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`
+      }
       const response = await fetch("/api/activities/upload", {
         method: "POST",
+        headers,
         body: formData,
       })
 
@@ -338,7 +356,10 @@ export default function ActivitiesPage() {
     if (!confirm("Bu faaliyeti silmek istediğinizden emin misiniz?")) return
 
     try {
-      const response = await fetch(`/api/activities/${id}`, { method: "DELETE" })
+      const response = await fetch(`/api/activities/${id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      })
       if (response.ok) {
         fetchActivities()
       } else {
@@ -354,7 +375,7 @@ export default function ActivitiesPage() {
     try {
       const response = await fetch(`/api/activities/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           isVerified: verify,
           verifiedBy: "Admin", // Gerçek uygulamada auth'dan alınmalı
