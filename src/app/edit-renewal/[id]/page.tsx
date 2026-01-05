@@ -47,8 +47,10 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
   const [contractId, setContractId] = useState<string>("")
   const [studentId, setStudentId] = useState<string>("")
 
-  // URL'den ID'yi al - daha güvenilir
+  // URL'den ID'yi al - mount olduğunda ve pathname değiştiğinde çalışsın
   useEffect(() => {
+    let isMounted = true
+    
     const extractIdFromPath = async () => {
       try {
         // Önce pathname'den ID'yi al
@@ -61,11 +63,11 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
           id = resolvedParams.id
         }
         
-        console.log("[Edit Renewal] Contract ID:", id, "Pathname:", pathname, "Current contractId:", contractId)
+        console.log("[Edit Renewal] Contract ID from URL:", id, "Pathname:", pathname, "Current contractId state:", contractId)
         
-        // Sadece ID değiştiğinde güncelle
-        if (id && id !== contractId) {
-          console.log("[Edit Renewal] ID changed, clearing contract and setting new ID")
+        // Her zaman ID'yi güncelle - pathname değiştiğinde veya mount olduğunda
+        if (id && isMounted) {
+          console.log("[Edit Renewal] Setting contract ID:", id)
           // Önceki contract verilerini temizle
           setContract(null)
           setLoading(true)
@@ -75,9 +77,14 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
         console.error("[Edit Renewal] Error extracting ID:", error)
       }
     }
+    
     extractIdFromPath()
+    
+    return () => {
+      isMounted = false
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, params]) // contractId'yi dependency'den çıkardık - sadece pathname değiştiğinde çalışsın
+  }, [pathname]) // Sadece pathname değiştiğinde çalışsın
 
   const fetchContract = useCallback(async () => {
     if (!contractId) {

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -217,8 +218,9 @@ export default function HistoryPage() {
       return
     }
     const editUrl = `/edit-${contractSlug}/${contract.id}`
-    console.log("Navigating to edit page:", editUrl, "Contract ID:", contract.id, "Contract Type:", contract.type)
-    window.location.href = editUrl
+    console.log("Navigating to edit page:", editUrl, "Contract ID:", contract.id, "Contract Type:", contract.type, "Student:", contract.student?.firstName, contract.student?.lastName)
+    // Next.js router kullan - sayfa yenilenmeden yönlendir
+    router.push(editUrl)
   }
 
   const handleDeleteContract = async (contract: Contract) => {

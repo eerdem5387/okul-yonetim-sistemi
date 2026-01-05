@@ -32,8 +32,10 @@ export default function EditUniformPage({ params }: { params: Promise<{ id: stri
   const [contractId, setContractId] = useState<string>("")
   const [studentId, setStudentId] = useState<string>("")
 
-  // URL'den ID'yi al - daha güvenilir
+  // URL'den ID'yi al - mount olduğunda ve pathname değiştiğinde çalışsın
   useEffect(() => {
+    let isMounted = true
+    
     const extractIdFromPath = async () => {
       try {
         // Önce pathname'den ID'yi al
@@ -46,9 +48,11 @@ export default function EditUniformPage({ params }: { params: Promise<{ id: stri
           id = resolvedParams.id
         }
         
-        console.log("[Edit Uniform] Contract ID:", id, "Pathname:", pathname)
+        console.log("[Edit Uniform] Contract ID from URL:", id, "Pathname:", pathname)
         
-        if (id && id !== contractId) {
+        // Her zaman ID'yi güncelle - pathname değiştiğinde veya mount olduğunda
+        if (id && isMounted) {
+          console.log("[Edit Uniform] Setting contract ID:", id)
           // Önceki contract verilerini temizle
           setContract(null)
           setLoading(true)
@@ -58,8 +62,14 @@ export default function EditUniformPage({ params }: { params: Promise<{ id: stri
         console.error("[Edit Uniform] Error extracting ID:", error)
       }
     }
+    
     extractIdFromPath()
-  }, [pathname, params, contractId])
+    
+    return () => {
+      isMounted = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]) // Sadece pathname değiştiğinde çalışsın
 
   const fetchContract = useCallback(async () => {
     try {
