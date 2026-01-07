@@ -123,6 +123,7 @@ export default function ActivitiesPage() {
     evidence: "",
     notes: "",
   })
+  const [evidenceUrl, setEvidenceUrl] = useState("")
   const [uploading, setUploading] = useState(false)
   const [uploadedFile, setUploadedFile] = useState<{
     name: string
@@ -238,8 +239,9 @@ export default function ActivitiesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Evidence kontrolü
-    if (!formData.evidence.trim()) {
+    // Evidence kontrolü - URL veya dosya olmalı
+    const finalEvidence = evidenceUrl.trim() || formData.evidence.trim()
+    if (!finalEvidence) {
       alert("Lütfen bir dosya yükleyin veya kanıt linki girin!")
       return
     }
@@ -263,6 +265,7 @@ export default function ActivitiesPage() {
         notes: string
       } = {
         ...formData,
+        evidence: finalEvidence, // URL varsa onu kullan, yoksa dosya URL'sini kullan
         duration: formData.duration ? parseInt(formData.duration) : null,
         participants: formData.participants ? parseInt(formData.participants) : null,
       }
@@ -283,6 +286,7 @@ export default function ActivitiesPage() {
         setShowForm(false)
         setEditingActivity(null)
         setUploadedFile(null)
+        setEvidenceUrl("")
         setFormData({
           studentId: "",
           type: "ETKINLIK",
@@ -349,6 +353,8 @@ export default function ActivitiesPage() {
         ...prev,
         evidence: data.url,
       }))
+      // Dosya yüklendiğinde URL alanını temizle
+      setEvidenceUrl("")
     } catch (error) {
       console.error("Error uploading file:", error)
       alert(error instanceof Error ? error.message : "Dosya yüklenirken hata oluştu!")
@@ -359,29 +365,56 @@ export default function ActivitiesPage() {
 
   const handleEdit = (activity: Activity) => {
     setEditingActivity(activity)
-    setFormData({
-      studentId: activity.studentId,
-      type: activity.type,
-      title: activity.title,
-      description: activity.description || "",
-      activityDate: activity.activityDate.split("T")[0], // Sadece görüntüleme için
-      location: activity.location || "",
-      organizer: activity.organizer || "",
-      duration: activity.duration?.toString() || "",
-      participants: activity.participants?.toString() || "",
-      outcome: activity.outcome || "",
-      evidence: activity.evidence || "",
-      notes: activity.notes || "",
-    })
-    // Eğer evidence bir URL ise, uploadedFile'ı set et
-    if (activity.evidence && activity.evidence.startsWith("http")) {
-      setUploadedFile({
-        name: activity.evidence.split("/").pop() || "Dosya",
-        url: activity.evidence,
-        size: 0,
+    
+    // Evidence'ın bir HTTP URL olup olmadığını kontrol et (dosya yolu değilse)
+    const isHttpUrl = activity.evidence && 
+      (activity.evidence.startsWith("http://") || activity.evidence.startsWith("https://")) &&
+      !activity.evidence.includes("/api/activities/upload/") // Dosya yolu değilse
+    
+    if (isHttpUrl) {
+      // HTTP URL ise evidenceUrl'e koy
+      setEvidenceUrl(activity.evidence)
+      setFormData({
+        studentId: activity.studentId,
+        type: activity.type,
+        title: activity.title,
+        description: activity.description || "",
+        activityDate: activity.activityDate.split("T")[0], // Sadece görüntüleme için
+        location: activity.location || "",
+        organizer: activity.organizer || "",
+        duration: activity.duration?.toString() || "",
+        participants: activity.participants?.toString() || "",
+        outcome: activity.outcome || "",
+        evidence: "",
+        notes: activity.notes || "",
       })
-    } else {
       setUploadedFile(null)
+    } else {
+      // Dosya yolu ise normal şekilde işle
+      setEvidenceUrl("")
+      setFormData({
+        studentId: activity.studentId,
+        type: activity.type,
+        title: activity.title,
+        description: activity.description || "",
+        activityDate: activity.activityDate.split("T")[0], // Sadece görüntüleme için
+        location: activity.location || "",
+        organizer: activity.organizer || "",
+        duration: activity.duration?.toString() || "",
+        participants: activity.participants?.toString() || "",
+        outcome: activity.outcome || "",
+        evidence: activity.evidence || "",
+        notes: activity.notes || "",
+      })
+      if (activity.evidence) {
+        setUploadedFile({
+          name: activity.evidence.split("/").pop() || "Dosya",
+          url: activity.evidence,
+          size: 0,
+        })
+      } else {
+        setUploadedFile(null)
+      }
     }
     setShowForm(true)
   }
@@ -499,6 +532,7 @@ export default function ActivitiesPage() {
             onClick={() => {
               setShowForm(true)
               setUploadedFile(null)
+              setEvidenceUrl("")
             }}
           >
             <Plus className="h-4 w-4 mr-2" />
@@ -1039,20 +1073,26 @@ export default function ActivitiesPage() {
                   {/* Manuel URL/Link Girişi */}
                   <div>
                     <Label htmlFor="evidence-url" className="text-sm text-gray-600">
-                      Veya link/URL girin
+                      Veya kanıt linki/URL girin (YouTube, Instagram, vb.)
                     </Label>
                     <Input
                       id="evidence-url"
-                      value={formData.evidence}
+                      type="url"
+                      value={evidenceUrl}
                       onChange={(e) => {
-                        setFormData({ ...formData, evidence: e.target.value })
-                        if (e.target.value) {
+                        setEvidenceUrl(e.target.value)
+                        // URL girildiğinde dosya yüklemesini temizle
+                        if (e.target.value.trim()) {
                           setUploadedFile(null)
+                          setFormData((prev) => ({ ...prev, evidence: "" }))
                         }
                       }}
-                      placeholder="https://..."
+                      placeholder="https://youtube.com/watch?v=... veya https://instagram.com/p/..."
                       className="mt-1"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Öğrencinin faaliyetiyle ilgili görsel veya videolu kanıt varsa buraya link girebilirsiniz.
+                    </p>
                   </div>
 
                   {/* Bilgilendirme */}
@@ -1097,6 +1137,7 @@ export default function ActivitiesPage() {
                     setShowForm(false)
                     setEditingActivity(null)
                     setUploadedFile(null)
+                    setEvidenceUrl("")
                     setFormData({
                       studentId: "",
                       type: "ETKINLIK",
