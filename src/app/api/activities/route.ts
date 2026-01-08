@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
       { status: 403 }
     )
   }
-  
+
   try {
     const body = await request.json()
     const {
@@ -134,6 +134,40 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Geçersiz tarih formatı" }, { status: 400 })
     }
 
+    // Batch creation if studentIds provided
+    if (Array.isArray(body.studentIds) && body.studentIds.length > 0) {
+      const studentIds = body.studentIds as string[]
+
+      const activities = await prisma.$transaction(
+        studentIds.map((sid) =>
+          prisma.activity.create({
+            data: {
+              studentId: sid,
+              type,
+              title,
+              description,
+              activityDate: date,
+              location,
+              organizer,
+              duration: duration ? parseInt(duration) : null,
+              participants: participants ? parseInt(participants) : null,
+              outcome,
+              evidence: evidence || "",
+              notes,
+              createdBy,
+            },
+          })
+        )
+      )
+
+      return NextResponse.json({
+        success: true,
+        count: activities.length,
+        message: `${activities.length} adet faaliyet oluşturuldu.`
+      })
+    }
+
+    // Legacy: Single student creation
     const activity = await prisma.activity.create({
       data: {
         studentId,

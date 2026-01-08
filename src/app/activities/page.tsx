@@ -110,7 +110,7 @@ export default function ActivitiesPage() {
   const [totalActivities, setTotalActivities] = useState(0)
 
   const [formData, setFormData] = useState({
-    studentId: "",
+    studentIds: [""] as string[],
     type: "ETKINLIK" as ActivityType,
     title: "",
     description: "",
@@ -123,6 +123,22 @@ export default function ActivitiesPage() {
     evidence: "",
     notes: "",
   })
+
+  // Tekil studentId ile uyumluluk (düzenleme modu için) ve çoğul seçim state'i
+  const handleStudentChange = (index: number, value: string) => {
+    const newStudentIds = [...formData.studentIds]
+    newStudentIds[index] = value
+    setFormData({ ...formData, studentIds: newStudentIds })
+  }
+
+  const addStudentRow = () => {
+    setFormData({ ...formData, studentIds: [...formData.studentIds, ""] })
+  }
+
+  const removeStudentRow = (index: number) => {
+    const newStudentIds = formData.studentIds.filter((_, i) => i !== index)
+    setFormData({ ...formData, studentIds: newStudentIds })
+  }
   const [evidenceUrl, setEvidenceUrl] = useState("")
   const [uploading, setUploading] = useState(false)
   const [uploadedFile, setUploadedFile] = useState<{
@@ -250,24 +266,19 @@ export default function ActivitiesPage() {
       const url = editingActivity ? `/api/activities/${editingActivity.id}` : "/api/activities"
       const method = editingActivity ? "PUT" : "POST"
 
-      const payload: {
-        studentId: string
-        type: ActivityType
-        title: string
-        description: string
-        activityDate?: string
-        location: string
-        organizer: string
-        duration: number | null
-        participants: number | null
-        outcome: string
-        evidence: string
-        notes: string
-      } = {
-        ...formData,
-        evidence: finalEvidence, // URL varsa onu kullan, yoksa dosya URL'sini kullan
-        duration: formData.duration ? parseInt(formData.duration) : null,
-        participants: formData.participants ? parseInt(formData.participants) : null,
+      const payload: any = {
+        studentIds: formData.studentIds.filter((id) => id !== ""),
+        type: formData.type,
+        title: formData.title,
+        description: formData.description,
+        activityDate: formData.activityDate,
+        location: formData.location,
+        organizer: formData.organizer,
+        duration: formData.duration ? parseInt(formData.duration.toString()) : null,
+        participants: formData.participants ? parseInt(formData.participants.toString()) : null,
+        outcome: formData.outcome,
+        evidence: finalEvidence,
+        notes: formData.notes,
       }
 
       // Tarih değişikliği koruması - PUT'ta activityDate göndermiyoruz
@@ -288,7 +299,7 @@ export default function ActivitiesPage() {
         setUploadedFile(null)
         setEvidenceUrl("")
         setFormData({
-          studentId: "",
+          studentIds: [""],
           type: "ETKINLIK",
           title: "",
           description: "",
@@ -375,7 +386,7 @@ export default function ActivitiesPage() {
       // HTTP URL ise evidenceUrl'e koy
       setEvidenceUrl(activity.evidence)
       setFormData({
-        studentId: activity.studentId,
+        studentIds: [activity.studentId],
         type: activity.type,
         title: activity.title,
         description: activity.description || "",
@@ -393,7 +404,7 @@ export default function ActivitiesPage() {
       // Dosya yolu ise normal şekilde işle
       setEvidenceUrl("")
       setFormData({
-        studentId: activity.studentId,
+        studentIds: [activity.studentId],
         type: activity.type,
         title: activity.title,
         description: activity.description || "",
@@ -871,23 +882,52 @@ export default function ActivitiesPage() {
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <Label htmlFor="studentId">Öğrenci *</Label>
-                  <select
-                    id="studentId"
-                    value={formData.studentId}
-                    onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
-                    required
-                    className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                  >
-                    <option value="">Öğrenci seçin</option>
-                    {students.map((student) => (
-                      <option key={student.id} value={student.id}>
-                        {student.firstName} {student.lastName} - {student.grade}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {/* Students Selection */}
+            <div>
+              <Label>Öğrenciler</Label>
+              <div className="space-y-2 mt-2">
+                {formData.studentIds.map((studentId, index) => (
+                  <div key={index} className="flex gap-2">
+                    <select
+                      value={studentId}
+                      onChange={(e) => handleStudentChange(index, e.target.value)}
+                      disabled={!!editingActivity} // Düzenleme modunda öğrenci değiştirilemez
+                      className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      required
+                    >
+                      <option value="">Öğrenci Seçin...</option>
+                      {students.map((student) => (
+                        <option key={student.id} value={student.id}>
+                          {student.firstName} {student.lastName} - {student.grade}
+                        </option>
+                      ))}
+                    </select>
+                    {!editingActivity && formData.studentIds.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => removeStudentRow(index)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {!editingActivity && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addStudentRow}
+                  className="mt-2 text-blue-600 border-blue-200 hover:bg-blue-50"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Öğrenci Ekle
+                </Button>
+              )}
+            </div>
 
                 <div>
                   <Label htmlFor="type">Faaliyet Tipi *</Label>
@@ -1139,7 +1179,7 @@ export default function ActivitiesPage() {
                     setUploadedFile(null)
                     setEvidenceUrl("")
                     setFormData({
-                      studentId: "",
+                      studentIds: [""],
                       type: "ETKINLIK",
                       title: "",
                       description: "",
