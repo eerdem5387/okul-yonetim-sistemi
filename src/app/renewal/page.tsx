@@ -117,12 +117,7 @@ export default function RenewalPage() {
     // Servis ve Kulüp Bilgileri
     serviceRegion: "",
     servicePrice: "",
-    selectedClubs: [] as string[],
-    
-    // Öğretim Yılı ve Ödeme Planı
-    academicYear: "",
-    paymentPlan: "",
-    paymentDueDate: ""
+    selectedClubs: [] as string[]
   })
 
   // Diğer Sözleşme Form Verileri
@@ -940,8 +935,8 @@ export default function RenewalPage() {
                     
                     <div className="grid grid-cols-3 gap-4">
                       <div className="font-semibold">Ücret Türü</div>
-                      <div className="font-semibold text-center">Kurumun İlan Ettiği Ücretler (KDV Dahil)</div>
-                      <div className="font-semibold text-center">Öğrenci İçin Belirlenen Ücretler (KDV Dahil)</div>
+                      <div className="font-semibold text-center">Meb'in Belirlediği Ücret (KDV Dahil)</div>
+                      <div className="font-semibold text-center">Öğrenci Ücreti (KDV Dahil)</div>
                     </div>
 
                     <div className="grid grid-cols-3 gap-4">

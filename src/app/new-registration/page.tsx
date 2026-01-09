@@ -168,8 +168,7 @@ export default function NewRegistrationPage() {
     
     // Öğretim Yılı ve Ödeme Planı
     academicYear: "",
-    paymentPlan: "",
-    paymentDueDate: ""
+    paymentPlan: ""
   })
 
   // Diğer Sözleşme Form Verileri
@@ -263,6 +262,7 @@ export default function NewRegistrationPage() {
         paymentDueDate: dueDate.toISOString().split("T")[0]
       }))
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mainContractData.registrationDate])
 
   useEffect(() => {
