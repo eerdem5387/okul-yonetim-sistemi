@@ -298,6 +298,11 @@ export default function NewRegistrationPage() {
       return
     }
 
+    if (!mainContractData.schoolLicenseNo) {
+      alert("⚠️ Okul ruhsat no seçmelisiniz!")
+      return
+    }
+
     // TC numarası kontrolü
     if (studentFormData.tcNumber.length !== 11 || !/^\d+$/.test(studentFormData.tcNumber)) {
       alert("⚠️ TC Kimlik Numarası 11 haneli olmalı ve sadece rakamlardan oluşmalıdır!")

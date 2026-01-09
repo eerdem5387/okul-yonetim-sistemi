@@ -400,6 +400,11 @@ export default function RenewalPage() {
       return
     }
 
+    if (!mainContractData.schoolLicenseNo) {
+      alert("⚠️ Okul ruhsat no seçmelisiniz!")
+      return
+    }
+
     try {
       // Önce sözleşmeleri kaydet (eğer kaydedilmemişse)
       // Tüm sözleşmeleri ayrı ayrı kaydet
