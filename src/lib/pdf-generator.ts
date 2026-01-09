@@ -336,9 +336,8 @@ export function generateCombinedContractHTML(data: {
   contractTypes: string[]
   mainContractData: Record<string, unknown>
   otherContractData: Record<string, unknown>
-  selectedClubs?: { id: string; name: string }[]
 }) {
-  const { student, contractTypes, mainContractData, otherContractData, selectedClubs } = data
+  const { student, contractTypes, mainContractData, otherContractData } = data
 
   // Ana sözleşme HTML'i (Eğitim Öğretim Hizmet Sözleşmesi)
   const mainContractHTML = generateMainContractHTML(student, mainContractData)
@@ -346,8 +345,6 @@ export function generateCombinedContractHTML(data: {
   // Diğer sözleşmeler HTML'i
   const otherContractsHTML = generateOtherContractsHTML(student, contractTypes, otherContractData)
 
-  // Kulüp seçimleri HTML'i
-  const clubsHTML = selectedClubs && selectedClubs.length > 0 ? generateClubSelectionsHTML(student, selectedClubs) : ''
 
   return `
     <!DOCTYPE html>
@@ -502,8 +499,6 @@ export function generateCombinedContractHTML(data: {
     <body>
         ${mainContractHTML}
         ${otherContractsHTML}
-        ${clubsHTML}
-        
         <div class="footer">
             <p>Bu sözleşmeler elektronik ortamda oluşturulmuş olup, yasal geçerliliği vardır.</p>
         </div>
@@ -609,50 +604,6 @@ function generateMainContractHTML(student: { firstName: string; lastName: string
     <div style="display: flex; gap: 15px; margin-bottom: 12px;">
       <div style="flex: 1;">
         <div class="field-row">
-          <div class="field-label" style="min-width: 110px;">Başarı İndirimi:</div>
-          <div class="field-value">${contractData.achievementDiscountRate || '___________'} ${contractData.achievementDiscountType === 'percentage' ? '%' : ''}</div>
-        </div>
-      </div>
-      
-      <div style="flex: 1;">
-        <div class="section-title">İNDİRİMLER</div>
-        <div class="checkbox-section">
-          <div class="checkbox ${contractData.siblingDiscount ? 'checked' : ''}"></div>
-          <span>Kardeş İndirimi</span>
-        </div>
-        <div class="checkbox-section">
-          <div class="checkbox ${contractData.staffChildDiscount ? 'checked' : ''}"></div>
-          <span>Personel Çocuğu</span>
-        </div>
-        <div class="checkbox-section">
-          <div class="checkbox ${contractData.corporateDiscount ? 'checked' : ''}"></div>
-          <span>Kurumsal</span>
-        </div>
-        <div class="checkbox-section">
-          <div class="checkbox ${contractData.martyrVeteranDiscount ? 'checked' : ''}"></div>
-          <span>Şehit/Gazi</span>
-        </div>
-        <div class="checkbox-section">
-          <div class="checkbox ${contractData.teacherChildDiscount ? 'checked' : ''}"></div>
-          <span>Öğretmen Çocuğu</span>
-        </div>
-        <div class="checkbox-section">
-          <div class="checkbox ${contractData.achievementDiscount ? 'checked' : ''}"></div>
-          <span>Başarı İndirimi</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="field-row">
-        <div class="field-label">Diğer İndirimler:</div>
-        <div class="field-value">${contractData.otherDiscountDescription || '___________'}</div>
-      </div>
-    </div>
-
-    <div style="display: flex; gap: 15px; margin-bottom: 12px;">
-      <div style="flex: 1;">
-        <div class="field-row">
           <div class="field-label">Tarih:</div>
           <div class="field-value">${contractData.contractDate || '___________'}</div>
         </div>
@@ -664,25 +615,6 @@ function generateMainContractHTML(student: { firstName: string; lastName: string
         </div>
       </div>
     </div>
-
-    ${contractData.registrationDate || contractData.paymentDueDate ? `
-    <div class="section" style="margin-top: 30px; padding: 15px; background-color: #fff9e6; border: 2px solid #ffd700;">
-      <div class="section-title" style="color: #b8860b;">BORÇ MUACCELİYET TARİHİ</div>
-      <div class="field-row">
-        <div class="field-label">Kayıt İşleminin Gerçekleştirildiği Tarih:</div>
-        <div class="field-value">${contractData.registrationDate || '___________'}</div>
-      </div>
-      <div class="field-row">
-        <div class="field-label">Ödemenin Yapılması Gereken Son Tarih:</div>
-        <div class="field-value">${contractData.paymentDueDate || '___________'}</div>
-      </div>
-      <div style="margin-top: 15px; padding: 10px; background-color: #fff3cd; border-left: 4px solid #ffc107;">
-        <p style="margin: 0; font-weight: bold; color: #856404; font-size: 12px;">
-          MUACCELİYET TARİHİ SONRASI AYLIK GECİKME ZAMMI ORANI % 3,02 OLARAK UYGULANACAKTIR.
-        </p>
-      </div>
-    </div>
-    ` : ''}
 
     <div class="signature-section">
       <div class="signature-box">
@@ -696,6 +628,25 @@ function generateMainContractHTML(student: { firstName: string; lastName: string
     </div>
 
     <div class="page-break"></div>
+
+    ${contractData.registrationDate || contractData.paymentDueDate ? `
+    <div class="section" style="margin-top: 20px; padding: 15px; background-color: #fff9e6; border: 2px solid #000000;">
+      <div class="section-title" style="color: #000000;">BORÇ MUACCELİYET TARİHİ</div>
+      <div class="field-row">
+        <div class="field-label">Kayıt İşleminin Gerçekleştirildiği Tarih:</div>
+        <div class="field-value">${contractData.registrationDate || '___________'}</div>
+      </div>
+      <div class="field-row">
+        <div class="field-label">Ödemenin Yapılması Gereken Son Tarih:</div>
+        <div class="field-value">${contractData.paymentDueDate || '___________'}</div>
+      </div>
+      <div style="margin-top: 15px; padding: 10px; background-color: #fff3cd; border-left: 4px solid #000000;">
+        <p style="margin: 0; font-weight: bold; color: #000000; font-size: 12px;">
+          MUACCELİYET TARİHİ SONRASI AYLIK GECİKME ZAMMI ORANI % 3,02 OLARAK UYGULANACAKTIR.
+        </p>
+      </div>
+    </div>
+    ` : ''}
 
     <div class="contract-header">
       <div class="contract-title">ŞARTLAR</div>
@@ -836,8 +787,6 @@ function generateMainContractHTML(student: { firstName: string; lastName: string
         <div class="terms-title">ÖDEME KOŞULLARI:</div>
         <ol class="terms-list">
           <li>Peşinat, kayıt sırasında nakit olarak alınacaktır.</li>
-          <li>Taksitler, her ayın belirlenen gününde ödenecektir.</li>
-          <li>Geciken ödemeler için günlük %0.5 faiz uygulanacaktır.</li>
           <li>Ödeme planına uyulmaması durumunda sözleşme feshedilebilir.</li>
         </ol>
       </div>
@@ -1170,64 +1119,6 @@ function generateServiceContractHTML(student: { firstName: string; lastName: str
   `
 }
 
-function generateClubSelectionsHTML(student: { firstName: string; lastName: string; tcNumber: string }, clubs: { id: string; name: string }[]) {
-  const clubsList = clubs.map((club, index) => `
-    <div class="field-row">
-      <div class="field-label">${index + 1}. Kulüp:</div>
-      <div class="field-value">${club.name}</div>
-    </div>
-  `).join('')
-
-  return `
-    <div class="page-break"></div>
-    
-    <div class="contract-header">
-      <div class="contract-title">KULÜP SEÇİM FORMU</div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">ÖĞRENCİ BİLGİLERİ</div>
-      <div class="field-row">
-        <div class="field-label">Ad Soyad:</div>
-        <div class="field-value">${student.firstName} ${student.lastName}</div>
-      </div>
-      <div class="field-row">
-        <div class="field-label">TC Kimlik No:</div>
-        <div class="field-value">${student.tcNumber}</div>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">SEÇİLEN KULÜPLER</div>
-      ${clubsList}
-    </div>
-
-    <div class="terms-section">
-      <div class="terms-title">BİLGİLENDİRME:</div>
-      <ol class="terms-list">
-        <li>Öğrenci yukarıda belirtilen kulüplere kayıt olmuştur.</li>
-        <li>Kulüp faaliyetleri eğitim-öğretim yılı boyunca devam eder.</li>
-        <li>Öğrenci kulüp faaliyetlerine katılmakla yükümlüdür.</li>
-        <li>Kulüp değişikliği okul yönetiminin onayı ile yapılabilir.</li>
-      </ol>
-    </div>
-
-    <div class="signature-section">
-      <div class="signature-box">
-        <div class="signature-line"></div>
-        <div class="signature-label">Öğrenci İmzası</div>
-      </div>
-      <div class="signature-box">
-        <div class="signature-line"></div>
-        <div class="signature-label">Veli İmzası</div>
-      </div>
-      <div class="signature-box">
-        <div class="signature-line"></div>
-        <div class="signature-label">Okul Müdürü İmzası</div>
-      </div>
-    </div>
-  `
-}
 
 // IB Activity Report HTML Generator (Türkçe/İngilizce)
 export function generateIBActivityReportHTML(data: {

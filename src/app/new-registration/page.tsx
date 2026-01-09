@@ -303,6 +303,11 @@ export default function NewRegistrationPage() {
       return
     }
 
+    if (!mainContractData.academicYear) {
+      alert("⚠️ Eğitim öğretim yılı seçmelisiniz!")
+      return
+    }
+
     // TC numarası kontrolü
     if (studentFormData.tcNumber.length !== 11 || !/^\d+$/.test(studentFormData.tcNumber)) {
       alert("⚠️ TC Kimlik Numarası 11 haneli olmalı ve sadece rakamlardan oluşmalıdır!")

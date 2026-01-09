@@ -405,6 +405,11 @@ export default function RenewalPage() {
       return
     }
 
+    if (!mainContractData.academicYear) {
+      alert("⚠️ Eğitim öğretim yılı seçmelisiniz!")
+      return
+    }
+
     try {
       // Önce sözleşmeleri kaydet (eğer kaydedilmemişse)
       // Tüm sözleşmeleri ayrı ayrı kaydet
