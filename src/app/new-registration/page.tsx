@@ -784,7 +784,7 @@ export default function NewRegistrationPage() {
                   {/* Öğrenci ve Sözleşme Bilgileri */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="studentName">Öğrenci Adı</Label>
+                      <Label htmlFor="studentName">Öğrenci Adı Soyadı</Label>
                       <Input
                         id="studentName"
                         value={mainContractData.studentName}
