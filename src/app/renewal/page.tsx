@@ -206,16 +206,78 @@ export default function RenewalPage() {
     fetchStats()
   }, [fetchStudents, fetchStats])
 
-  // Kullanıcı adını otomatik doldur (sadece bir kez)
+  // Sözleşme numarasını otomatik oluştur
+  const generateContractNumber = async (date: string) => {
+    if (!date) return ""
+    
+    // Tarihi DDMMYYYY formatına çevir
+    const dateObj = new Date(date)
+    const day = String(dateObj.getDate()).padStart(2, '0')
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0')
+    const year = dateObj.getFullYear()
+    const datePrefix = `${day}${month}${year}`
+    
+    try {
+      // O tarihte kaç sözleşme (new-registration + renewal) yapıldığını say
+      const startOfDay = new Date(date)
+      startOfDay.setHours(0, 0, 0, 0)
+      const endOfDay = new Date(date)
+      endOfDay.setHours(23, 59, 59, 999)
+      
+      const [newRegRes, renewalRes] = await Promise.all([
+        fetch(`/api/new-registrations/stats?startDate=${startOfDay.toISOString()}&endDate=${endOfDay.toISOString()}`),
+        fetch(`/api/renewals/stats?startDate=${startOfDay.toISOString()}&endDate=${endOfDay.toISOString()}`)
+      ])
+      
+      const newRegData = newRegRes.ok ? await newRegRes.json() : { total: 0 }
+      const renewalData = renewalRes.ok ? await renewalRes.json() : { total: 0 }
+      
+      const totalContracts = (newRegData.total || 0) + (renewalData.total || 0)
+      const sequenceNumber = totalContracts + 1
+      
+      return `${datePrefix}-${sequenceNumber}`
+    } catch (error) {
+      console.error("Error generating contract number:", error)
+      // Hata durumunda sadece tarih + 1 döndür
+      return `${datePrefix}-1`
+    }
+  }
+
+  // Kullanıcı adını, tarihi ve sözleşme numarasını otomatik doldur (sadece bir kez)
   useEffect(() => {
     const staffName = localStorage.getItem("staff_name")
-    if (staffName && !mainContractData.registrationResponsible) {
-      setMainContractData(prev => ({
-        ...prev,
-        registrationResponsible: staffName
-      }))
+    const today = new Date().toISOString().split("T")[0]
+    
+    const updateData = async () => {
+      if (staffName) {
+        setMainContractData(prev => ({
+          ...prev,
+          registrationResponsible: prev.registrationResponsible || staffName,
+          registrarName: prev.registrarName || staffName,
+          contractDate: prev.contractDate || today,
+          registrationDate: prev.registrationDate || today
+        }))
+      } else {
+        setMainContractData(prev => ({
+          ...prev,
+          contractDate: prev.contractDate || today,
+          registrationDate: prev.registrationDate || today
+        }))
+      }
+      
+      // Sözleşme numarasını oluştur
+      const contractNo = await generateContractNumber(today)
+      if (contractNo) {
+        setMainContractData(prev => ({
+          ...prev,
+          contractNo
+        }))
+      }
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    
+    updateData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Öğrenci seçildiğinde öğrenim ücreti bilgilerini otomatik doldur
   useEffect(() => {
@@ -775,11 +837,12 @@ export default function RenewalPage() {
                       )}
                     </div>
                     <div>
-                      <Label htmlFor="contractNo">Sözleşme No (Okul No)</Label>
+                      <Label htmlFor="contractNo">Sözleşme No</Label>
                       <Input
                         id="contractNo"
                         value={mainContractData.contractNo}
-                        onChange={(e) => setMainContractData({ ...mainContractData, contractNo: e.target.value })}
+                        readOnly
+                        className="bg-gray-100 cursor-not-allowed"
                       />
                     </div>
                     <div>
@@ -997,7 +1060,7 @@ export default function RenewalPage() {
                   {/* Ödeme Planı */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Ödeme Planı</h3>
-                    <div className="space-y-2">
+                    <div className="grid grid-cols-4 gap-3">
                       {[
                         "İŞBANK KREDİ KARTI 2+4 TAKSİT",
                         "ZİRAATBANK KREDİ KARTI 2+8 TAKSİT",
@@ -1017,9 +1080,9 @@ export default function RenewalPage() {
                             value={plan}
                             checked={mainContractData.paymentPlan === plan}
                             onChange={(e) => setMainContractData({ ...mainContractData, paymentPlan: e.target.value })}
-                            className="w-4 h-4"
+                            className="w-4 h-4 flex-shrink-0"
                           />
-                          <span className="text-sm">{plan}</span>
+                          <span className="text-xs">{plan}</span>
                         </label>
                       ))}
                     </div>
@@ -1037,7 +1100,8 @@ export default function RenewalPage() {
                           id="contractDate"
                           type="date"
                           value={mainContractData.contractDate}
-                          onChange={(e) => setMainContractData({ ...mainContractData, contractDate: e.target.value })}
+                          readOnly
+                          className="bg-gray-100 cursor-not-allowed"
                         />
                       </div>
                       <div>
@@ -1045,7 +1109,8 @@ export default function RenewalPage() {
                         <Input
                           id="registrarName"
                           value={mainContractData.registrarName}
-                          onChange={(e) => setMainContractData({ ...mainContractData, registrarName: e.target.value })}
+                          readOnly
+                          className="bg-gray-100 cursor-not-allowed"
                         />
                       </div>
                     </div>
