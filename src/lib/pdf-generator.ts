@@ -296,36 +296,6 @@ function generateContractSpecificFields(contractData: Record<string, unknown>, c
             <div class="field-value">${contractData.startDate || ''}</div>
         </div>
       `
-    case 'Servis Sözleşmesi':
-      return `
-        <div class="field">
-            <div class="field-label">Güzergah:</div>
-            <div class="field-value">${contractData.route || ''}</div>
-        </div>
-        <div class="field">
-            <div class="field-label">Servis Ücreti:</div>
-            <div class="field-value">${contractData.servicePrice || '0'} TL</div>
-        </div>
-        <div class="field">
-            <div class="field-label">Alış Saati:</div>
-            <div class="field-value">${contractData.pickupTime || ''}</div>
-        </div>
-      `
-    case 'Kitap Sözleşmesi':
-      return `
-        <div class="field">
-            <div class="field-label">Kitap Seti:</div>
-            <div class="field-value">${contractData.bookSet || ''}</div>
-        </div>
-        <div class="field">
-            <div class="field-label">Kitap Ücreti:</div>
-            <div class="field-value">${contractData.bookPrice || '0'} TL</div>
-        </div>
-        <div class="field">
-            <div class="field-label">Teslim Tarihi:</div>
-            <div class="field-value">${contractData.deliveryDate || ''}</div>
-        </div>
-      `
     default:
       return ''
   }
@@ -547,7 +517,7 @@ function generateMainContractHTML(student: { firstName: string; lastName: string
         <thead>
           <tr>
             <th>ÜCRET TÜRÜ</th>
-            <th>İLAN EDİLEN (KDV Dahil)</th>
+            <th>Meb'in Belirlediği Ücret (KDV Dahil)</th>
             <th>ÖĞRENCİ İÇİN (KDV Dahil)</th>
           </tr>
         </thead>
@@ -566,11 +536,6 @@ function generateMainContractHTML(student: { firstName: string; lastName: string
             <td style="padding-left: 15px;">Takviye Kursu</td>
             <td>${contractData.announcedCourseFee || '0'}</td>
             <td>${contractData.studentCourseFee || '0'}</td>
-          </tr>
-          <tr>
-            <td style="padding-left: 15px;">Kitap</td>
-            <td>${contractData.announcedBookFee || '0'}</td>
-            <td>${contractData.studentBookFee || '0'}</td>
           </tr>
           <tr>
             <td style="padding-left: 15px;">Kırtasiye</td>
@@ -896,21 +861,6 @@ function generateOtherContractsHTML(student: { firstName: string; lastName: stri
     }
   }
 
-  // Kitap + Servis tek sayfada
-  const hasBook = contractTypes.includes('book')
-  const hasService = contractTypes.includes('service')
-
-  if (hasBook || hasService) {
-    html += '<div class="page-break"></div>'
-
-    if (hasBook) {
-      html += generateBookContractHTML(student, contractData, !hasService) // Compact if service is also present
-    }
-
-    if (hasService) {
-      html += generateServiceContractHTML(student, contractData, hasBook) // Add separator if book is present
-    }
-  }
 
   return html
 }
@@ -1017,107 +967,6 @@ function generateMealContractHTML(student: { firstName: string; lastName: string
   `
 }
 
-function generateBookContractHTML(student: { firstName: string; lastName: string; tcNumber: string; grade: string }, contractData: Record<string, unknown>, standalone = true) {
-  return `
-    ${!standalone ? '<div style="border-top: 2px dashed #000; margin: 20px 0; padding-top: 20px;">' : ''}
-    
-    <div class="contract-header">
-      <div class="contract-title">KİTAP SÖZLEŞMESİ</div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">ÖĞRENCİ BİLGİLERİ</div>
-      <div class="field-row">
-        <div class="field-label">Ad Soyad:</div>
-        <div class="field-value">${student.firstName} ${student.lastName}</div>
-      </div>
-      <div class="field-row">
-        <div class="field-label">Sınıfı:</div>
-        <div class="field-value">${student.grade}</div>
-      </div>
-      <div class="field-row">
-        <div class="field-label">TC Kimlik No:</div>
-        <div class="field-value">${student.tcNumber}</div>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">KİTAP BİLGİLERİ</div>
-      <div class="field-row">
-        <div class="field-label">Kitap Seti:</div>
-        <div class="field-value">${contractData.bookSet || '___________'}</div>
-      </div>
-      <div class="field-row">
-        <div class="field-label">Teslim Tarihi:</div>
-        <div class="field-value">${contractData.bookDeliveryDate || '___________'}</div>
-      </div>
-    </div>
-
-    <div class="signature-section">
-      <div class="signature-box">
-        <div class="signature-line"></div>
-        <div class="signature-label">Veli İmzası</div>
-      </div>
-      <div class="signature-box">
-        <div class="signature-line"></div>
-        <div class="signature-label">Okul Müdürü İmzası</div>
-      </div>
-    </div>
-    
-    ${!standalone ? '</div>' : ''}
-  `
-}
-
-function generateServiceContractHTML(student: { firstName: string; lastName: string; tcNumber: string; address: string }, contractData: Record<string, unknown>, hasSeparator = false) {
-  return `
-    ${hasSeparator ? '<div style="border-top: 2px dashed #000; margin: 20px 0; padding-top: 20px;">' : ''}
-    
-    <div class="contract-header">
-      <div class="contract-title">SERVİS SÖZLEŞMESİ</div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">ÖĞRENCİ BİLGİLERİ</div>
-      <div class="field-row">
-        <div class="field-label">Ad Soyad:</div>
-        <div class="field-value">${student.firstName} ${student.lastName}</div>
-      </div>
-      <div class="field-row">
-        <div class="field-label">TC Kimlik No:</div>
-        <div class="field-value">${student.tcNumber}</div>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">SERVİS BİLGİLERİ</div>
-      <div class="field-row">
-        <div class="field-label">Servis Bölgesi:</div>
-        <div class="field-value">${contractData.serviceRegion || '___________'}</div>
-      </div>
-      <div class="field-row">
-        <div class="field-label">Adres:</div>
-        <div class="field-value-large">${student.address || '___________'}</div>
-      </div>
-      <div class="field-row">
-        <div class="field-label">Servis Ücreti (Dönemlik):</div>
-        <div class="field-value">${contractData.servicePrice || '___________'} TL</div>
-      </div>
-    </div>
-
-    <div class="signature-section">
-      <div class="signature-box">
-        <div class="signature-line"></div>
-        <div class="signature-label">Veli İmzası</div>
-      </div>
-      <div class="signature-box">
-        <div class="signature-line"></div>
-        <div class="signature-label">Okul Müdürü İmzası</div>
-      </div>
-    </div>
-    
-    ${hasSeparator ? '</div>' : ''}
-  `
-}
 
 
 // IB Activity Report HTML Generator (Türkçe/İngilizce)
@@ -1223,11 +1072,11 @@ export function generateIBActivityReportHTML(data: {
     return date.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' })
   }
 
-  
+
   const activityRows = activities.map((activity, index) => {
     const typeLabel = activityTypeLabels[activity.type]?.[language] || activity.type
     const notSpecified = language === 'en' ? 'Not specified' : 'Belirtilmemiş'
-    
+
     // Text content for first page
     const textContent = `
       <div style="page-break-after: always;">
@@ -1284,7 +1133,7 @@ export function generateIBActivityReportHTML(data: {
         </div>
       </div>
     `
-    
+
     // Evidence content for second page
     const evidenceContent = `
       <div style="page-break-before: always;">
@@ -1293,24 +1142,24 @@ export function generateIBActivityReportHTML(data: {
           <div style="padding: 15px; background-color: #fff; border: 1px solid #e0e0e0; border-radius: 3px;">
             <div style="font-size: 11px; color: #666; font-weight: 600; margin-bottom: 10px;">${t.evidence}:</div>
             ${activity.evidence && activity.evidence.trim() !== '' ? (() => {
-              const evidenceUrl = activity.evidence.trim()
-              const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
-              const isImage = imageExtensions.some(ext => evidenceUrl.toLowerCase().includes(ext))
-              
-              if (isImage) {
-                return `<div style="margin-top: 10px; text-align: center;">
+        const evidenceUrl = activity.evidence.trim()
+        const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
+        const isImage = imageExtensions.some(ext => evidenceUrl.toLowerCase().includes(ext))
+
+        if (isImage) {
+          return `<div style="margin-top: 10px; text-align: center;">
                   <img src="${escapeHTML(evidenceUrl)}" alt="Evidence" style="max-width: 100%; max-height: 600px; border: 1px solid #e0e0e0; border-radius: 4px; display: block; margin: 0 auto;" />
                   <a href="${escapeHTML(evidenceUrl)}" target="_blank" style="color: #1976d2; text-decoration: underline; font-size: 10px; display: inline-block; margin-top: 10px; word-break: break-all;">${escapeHTML(evidenceUrl)}</a>
                 </div>`
-              } else {
-                return `<a href="${escapeHTML(evidenceUrl)}" target="_blank" style="color: #1976d2; word-break: break-all; text-decoration: underline; font-size: 11px;">${escapeHTML(evidenceUrl)}</a>`
-              }
-            })() : `<span style="color: #999; font-style: italic; font-size: 11px;">${notSpecified}</span>`}
+        } else {
+          return `<a href="${escapeHTML(evidenceUrl)}" target="_blank" style="color: #1976d2; word-break: break-all; text-decoration: underline; font-size: 11px;">${escapeHTML(evidenceUrl)}</a>`
+        }
+      })() : `<span style="color: #999; font-style: italic; font-size: 11px;">${notSpecified}</span>`}
           </div>
         </div>
       </div>
     `
-    
+
     return textContent + evidenceContent
   }).join('')
 

@@ -67,23 +67,17 @@ export default function NewRegistrationPage() {
     announcedTuitionFee: string
     announcedClothingFee: string
     announcedCourseFee: string
-    announcedServiceFee: string
-    announcedBookFee: string
     announcedStudyHallFee: string
     announcedTotal: string
     studentTuitionFee: string
     studentClothingFee: string
     studentCourseFee: string
-    studentServiceFee: string
-    studentBookFee: string
     studentStudyHallFee: string
     studentTotal: string
     parentSignature: string
     contractDate: string
     registrarName: string
     registrarSignature: string
-    serviceRegion: string
-    servicePrice: string
     academicYear: string
     paymentPlan: string
     paymentDueDate: string
@@ -106,8 +100,6 @@ export default function NewRegistrationPage() {
     announcedTuitionFee: "",
     announcedClothingFee: "",
     announcedCourseFee: "",
-    announcedServiceFee: "",
-    announcedBookFee: "",
     announcedStudyHallFee: "",
     announcedTotal: "",
     
@@ -115,8 +107,6 @@ export default function NewRegistrationPage() {
     studentTuitionFee: "",
     studentClothingFee: "",
     studentCourseFee: "",
-    studentServiceFee: "",
-    studentBookFee: "",
     studentStudyHallFee: "",
     studentTotal: "",
     
@@ -130,8 +120,6 @@ export default function NewRegistrationPage() {
     registrarSignature: "",
     
     // Servis Bilgileri
-    serviceRegion: "",
-    servicePrice: "",
     
     // Öğretim Yılı ve Ödeme Planı
     academicYear: "",
@@ -147,14 +135,6 @@ export default function NewRegistrationPage() {
     uniformItems: [] as string[],
     
     
-    // Kitap Sözleşmesi
-    bookSet: "",
-    bookDeliveryDate: "",
-    
-    // Servis Sözleşmesi
-    usesService: false as boolean,
-    serviceRegion: "",
-    servicePrice: ""
   })
 
   const formatDate = (date: string | Date | null | undefined) => {
@@ -378,31 +358,6 @@ export default function NewRegistrationPage() {
             }
           }
         },
-        {
-          type: "book",
-          data: {
-            studentId: studentId,
-            contractData: {
-              studentName: `${studentFormData.firstName} ${studentFormData.lastName}`,
-              tcNumber: studentFormData.tcNumber,
-              bookSet: otherContractData.bookSet,
-              deliveryDate: otherContractData.bookDeliveryDate
-            }
-          }
-        },
-        {
-          type: "service",
-          data: {
-            studentId: studentId,
-            contractData: {
-              studentName: `${studentFormData.firstName} ${studentFormData.lastName}`,
-              tcNumber: studentFormData.tcNumber,
-              serviceRegion: otherContractData.serviceRegion,
-              servicePrice: otherContractData.servicePrice,
-              address: studentFormData.address
-            }
-          }
-        }
       ]
 
       // Tüm sözleşmeleri kaydet
@@ -458,8 +413,6 @@ export default function NewRegistrationPage() {
           contractTypes: [
             "new-registration",
             "uniform",
-            "book",
-            ...(otherContractData.usesService ? ["service"] : [])
           ],
           mainContractData: mainContractData,
           otherContractData: otherContractData
@@ -967,14 +920,12 @@ export default function NewRegistrationPage() {
                             parseFloat(mainContractData.announcedTuitionFee) || 0,
                             parseFloat(mainContractData.announcedClothingFee) || 0,
                             parseFloat(mainContractData.announcedCourseFee) || 0,
-                            parseFloat(mainContractData.announcedBookFee) || 0,
                             parseFloat(mainContractData.announcedStudyHallFee) || 0
                           ]
                           const student = [
                             parseFloat(mainContractData.studentTuitionFee) || 0,
                             parseFloat(mainContractData.studentClothingFee) || 0,
                             parseFloat(mainContractData.studentCourseFee) || 0,
-                            parseFloat(mainContractData.studentBookFee) || 0,
                             parseFloat(mainContractData.studentStudyHallFee) || 0
                           ]
                           const announcedTotal = announced.reduce((a, b) => a + b, 0)
@@ -1039,19 +990,6 @@ export default function NewRegistrationPage() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="pl-4">Kitap Ücreti</div>
-                      <Input
-                        value={mainContractData.announcedBookFee}
-                        onChange={(e) => setMainContractData({ ...mainContractData, announcedBookFee: e.target.value })}
-                        placeholder="0"
-                      />
-                      <Input
-                        value={mainContractData.studentBookFee}
-                        onChange={(e) => setMainContractData({ ...mainContractData, studentBookFee: e.target.value })}
-                        placeholder="0"
-                      />
-                    </div>
 
                     <div className="grid grid-cols-3 gap-4">
                       <div className="pl-4">Etüt Ücreti</div>
@@ -1256,137 +1194,6 @@ export default function NewRegistrationPage() {
               </CardContent>
             </Card>
 
-            {/* Kitap Sözleşmesi */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-purple-600">Kitap Sözleşmesi</CardTitle>
-                <CardDescription>Öğrenci kitap sözleşmesi</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="contractDate">Sözleşme Tarihi</Label>
-                    <Input
-                      id="contractDate"
-                      type="date"
-                      defaultValue={new Date().toISOString().split('T')[0]}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="studentName">Öğrenci Ad Soyad</Label>
-                      <Input
-                        id="studentName"
-                        value={`${studentFormData.firstName} ${studentFormData.lastName}`}
-                        disabled
-                        className="bg-gray-100"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="studentGrade">Sınıfı</Label>
-                      <Input
-                        id="studentGrade"
-                        value={studentFormData.grade}
-                        disabled
-                        className="bg-gray-100"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="bookSet">Kitap Seti</Label>
-                    <Input
-                      id="bookSet"
-                      value={otherContractData.bookSet}
-                      onChange={(e) => setOtherContractData({ ...otherContractData, bookSet: e.target.value })}
-                      placeholder="Örn: 9. Sınıf Seti"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="bookDeliveryDate">Teslimat Tarihi</Label>
-                    <Input
-                      id="bookDeliveryDate"
-                      type="date"
-                      value={otherContractData.bookDeliveryDate}
-                      onChange={(e) => setOtherContractData({ ...otherContractData, bookDeliveryDate: e.target.value })}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Servis Sözleşmesi */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <CardTitle className="text-red-600">Servis Sözleşmesi</CardTitle>
-                    <CardDescription>Öğrenci servis sözleşmesi</CardDescription>
-                  </div>
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={otherContractData.usesService}
-                      onChange={(e) => setOtherContractData({ ...otherContractData, usesService: e.target.checked })}
-                    />
-                    Öğrenci Servis Kullanacaktır.
-                  </label>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="contractDate">Sözleşme Tarihi</Label>
-                    <Input
-                      id="contractDate"
-                      type="date"
-                      defaultValue={new Date().toISOString().split('T')[0]}
-                      disabled={!otherContractData.usesService}
-                      className={!otherContractData.usesService ? "bg-gray-100" : undefined}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="serviceRegion">Servis Bölgesi</Label>
-                    <select
-                      id="serviceRegion"
-                      value={otherContractData.serviceRegion}
-                      onChange={(e) => setOtherContractData({ ...otherContractData, serviceRegion: e.target.value })}
-                      className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      disabled={!otherContractData.usesService}
-                    >
-                      <option value="">Bölge seçin...</option>
-                      <option value="1.bölge">1. Bölge</option>
-                      <option value="2.bölge">2. Bölge</option>
-                      <option value="3.bölge">3. Bölge</option>
-                      <option value="4.bölge">4. Bölge</option>
-                      <option value="5.bölge">5. Bölge</option>
-                      <option value="6.bölge">6. Bölge</option>
-                      <option value="çayeli">Çayeli</option>
-                      <option value="pazar/ardeşen">Pazar/Ardeşen</option>
-                    </select>
-                  </div>
-                  <div>
-                    <Label htmlFor="studentAddress">Adres</Label>
-                    <Input
-                      id="studentAddress"
-                      value={studentFormData.address}
-                      disabled
-                      className="bg-gray-100"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="servicePrice">Servis Ücreti - Dönemlik</Label>
-                    <Input
-                      id="servicePrice"
-                      type="number"
-                      value={otherContractData.servicePrice}
-                      onChange={(e) => setOtherContractData({ ...otherContractData, servicePrice: e.target.value })}
-                      placeholder="Örn: 800"
-                      disabled={!otherContractData.usesService}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
 
 
             {/* Kaydet ve PDF İndir Butonları */}
