@@ -44,7 +44,6 @@ const siniflar = [
 export default function RenewalPage() {
   const router = useRouter()
   const [students, setStudents] = useState<Student[]>([])
-  const [clubs, setClubs] = useState<{id: string, name: string}[]>([])
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
   const [studentSearchTerm, setStudentSearchTerm] = useState("")
   
@@ -78,7 +77,6 @@ export default function RenewalPage() {
     announcedClothingFee: "",
     announcedCourseFee: "",
     announcedBookFee: "",
-    announcedStationeryFee: "",
     announcedStudyHallFee: "",
     announcedTotal: "",
     
@@ -87,26 +85,13 @@ export default function RenewalPage() {
     studentClothingFee: "",
     studentCourseFee: "",
     studentBookFee: "",
-    studentStationeryFee: "",
     studentStudyHallFee: "",
     studentTotal: "",
     
     // Ödeme Planı ve Muacceliyet
-    achievementDiscountRate: "",
-    achievementDiscountType: "none", // "none" or "percentage"
     academicYear: "",
     paymentPlan: "",
     paymentDueDate: "",
-    
-    // İndirimler
-    siblingDiscount: false,
-    staffChildDiscount: false,
-    corporateDiscount: false,
-    martyrVeteranDiscount: false,
-    teacherChildDiscount: false,
-    achievementDiscount: false,
-    otherDiscount: false,
-    otherDiscountDescription: "",
     
     // İmza ve Tarih
     parentSignature: "",
@@ -114,10 +99,9 @@ export default function RenewalPage() {
     registrarName: "",
     registrarSignature: "",
     
-    // Servis ve Kulüp Bilgileri
+    // Servis Bilgileri
     serviceRegion: "",
-    servicePrice: "",
-    selectedClubs: [] as string[]
+    servicePrice: ""
   })
 
   // Diğer Sözleşme Form Verileri
@@ -128,10 +112,6 @@ export default function RenewalPage() {
     uniformDeliveryDate: "",
     uniformItems: [] as string[],
     
-    // Yemek Sözleşmesi
-    mealPeriods: [] as string[],
-    mealPrice: "",
-    
     // Kitap Sözleşmesi
     bookSet: "",
     bookDeliveryDate: "",
@@ -139,10 +119,7 @@ export default function RenewalPage() {
     // Servis Sözleşmesi
     usesService: false as boolean,
     serviceRegion: "",
-    servicePrice: "",
-    
-    // Kulüp Seçimi
-    selectedClubs: [] as string[]
+    servicePrice: ""
   })
 
   const formatDate = (date: string | Date | null | undefined) => {
@@ -183,19 +160,6 @@ export default function RenewalPage() {
     }
   }, [])
 
-  const fetchClubs = useCallback(async () => {
-    try {
-      const response = await fetch("/api/clubs")
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      const data = await response.json()
-      setClubs(Array.isArray(data) ? data : [])
-    } catch (error) {
-      console.error("Error fetching clubs:", error)
-      setClubs([])
-    }
-  }, [])
 
   const fetchStats = useCallback(async () => {
     try {
@@ -234,13 +198,13 @@ export default function RenewalPage() {
         paymentDueDate: dueDate.toISOString().split("T")[0]
       }))
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mainContractData.registrationDate])
 
   useEffect(() => {
     fetchStudents()
-    fetchClubs()
     fetchStats()
-  }, [fetchStudents, fetchClubs, fetchStats])
+  }, [fetchStudents, fetchStats])
 
   // Kullanıcı adını otomatik doldur (sadece bir kez)
   useEffect(() => {
@@ -274,40 +238,6 @@ export default function RenewalPage() {
     }
   }, [selectedStudent?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleSaveClubSelections = async () => {
-    if (!selectedStudent || !otherContractData.selectedClubs?.length) return
-
-    try {
-      // Kulüp seçimlerini kaydet
-      const clubSelections = otherContractData.selectedClubs.map(clubId => ({
-        clubId,
-        studentId: selectedStudent.id
-      }))
-
-      const response = await fetch("/api/clubs/students", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clubSelections })
-      })
-
-      if (response.ok) {
-        alert("Kulüp seçimleri başarıyla kaydedildi!")
-        // Kulüp listesini yenile
-        fetchClubs()
-      } else {
-        const errorData = await response.json()
-        if (errorData.error && errorData.existingClubs) {
-          const clubNames = errorData.existingClubs.map((club: {name: string}) => club.name).join(", ")
-          alert(`⚠️ Bu öğrenci zaten şu kulüplere kayıtlı:\n\n${clubNames}\n\nLütfen farklı kulüpler seçin.`)
-        } else {
-          alert("Kulüp seçimleri kaydedilirken hata oluştu!")
-        }
-      }
-    } catch (error) {
-      console.error("Error saving club selections:", error)
-      alert("Kulüp seçimleri kaydedilirken hata oluştu!")
-    }
-  }
 
   const handleSaveAllContracts = async () => {
     if (!selectedStudent) return
@@ -341,18 +271,6 @@ export default function RenewalPage() {
               uniformPrice: otherContractData.uniformPrice,
               deliveryDate: otherContractData.uniformDeliveryDate,
               uniformItems: otherContractData.uniformItems
-            }
-          }
-        },
-        {
-          type: "meal",
-          data: {
-            studentId: selectedStudent.id,
-            contractData: {
-              studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
-              tcNumber: selectedStudent.tcNumber,
-              mealPeriods: otherContractData.mealPeriods,
-              mealPrice: otherContractData.mealPrice
             }
           }
         },
@@ -391,10 +309,7 @@ export default function RenewalPage() {
             ? "/api/renewals" 
             : `/api/${contract.type}-contracts`
           
-          // Kulüp seçimlerini sadece ana sözleşmeye ekle
-          const requestBody = contract.type === "renewal" 
-            ? { ...contract.data, selectedClubs: mainContractData.selectedClubs }
-            : contract.data
+          const requestBody = contract.data
           
           return fetch(endpoint, {
             method: "POST",
@@ -440,7 +355,6 @@ export default function RenewalPage() {
               contractStudentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
               contractParentName: ""
             },
-            selectedClubs: mainContractData.selectedClubs
           }
         },
         {
@@ -454,18 +368,6 @@ export default function RenewalPage() {
               uniformPrice: otherContractData.uniformPrice,
               deliveryDate: otherContractData.uniformDeliveryDate,
               uniformItems: otherContractData.uniformItems
-            }
-          }
-        },
-        {
-          type: "meal",
-          data: {
-            studentId: selectedStudent.id,
-            contractData: {
-              studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
-              tcNumber: selectedStudent.tcNumber,
-              mealPeriods: otherContractData.mealPeriods,
-              mealPrice: otherContractData.mealPrice
             }
           }
         },
@@ -504,7 +406,7 @@ export default function RenewalPage() {
             : `/api/${contract.type}-contracts`
           
           const requestBody = contract.type === "renewal" 
-            ? { ...contract.data, selectedClubs: mainContractData.selectedClubs }
+            ? contract.data
             : contract.data
           
           return fetch(endpoint, {
@@ -538,14 +440,6 @@ export default function RenewalPage() {
         return
       }
 
-      // Seçili kulüplerin detaylarını al (mainContractData'dan)
-      const selectedClubsForPDF = (mainContractData.selectedClubs || [])
-        .map((clubId: string) => {
-          const club = clubs.find(c => c.id === clubId)
-          return club ? { id: club.id, name: club.name } : null
-        })
-        .filter((club): club is { id: string; name: string } => club !== null)
-
       // PDF'i indir
       const response = await fetch(`/api/pdf/combined/${contractId}`, {
         method: "POST",
@@ -554,13 +448,11 @@ export default function RenewalPage() {
           contractTypes: [
             "renewal",
             "uniform",
-            "meal",
             "book",
             ...(otherContractData.usesService ? ["service"] : [])
           ],
           mainContractData: mainContractData,
-          otherContractData: otherContractData,
-          selectedClubs: selectedClubsForPDF.length > 0 ? selectedClubsForPDF : undefined
+          otherContractData: otherContractData
         })
       })
 
@@ -849,12 +741,38 @@ export default function RenewalPage() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="schoolLicenseNo">Okul Ruhsat No</Label>
-                      <Input
-                        id="schoolLicenseNo"
-                        value={mainContractData.schoolLicenseNo}
-                        onChange={(e) => setMainContractData({ ...mainContractData, schoolLicenseNo: e.target.value })}
-                      />
+                      <Label>Okul Ruhsat No</Label>
+                      <div className="flex gap-2 mt-1">
+                        <Button
+                          type="button"
+                          variant={mainContractData.schoolLicenseNo === "574450" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setMainContractData({ ...mainContractData, schoolLicenseNo: "574450" })}
+                        >
+                          Anadolu Lisesi
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={mainContractData.schoolLicenseNo === "574451" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setMainContractData({ ...mainContractData, schoolLicenseNo: "574451" })}
+                        >
+                          Fen Lisesi
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={mainContractData.schoolLicenseNo === "574449" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setMainContractData({ ...mainContractData, schoolLicenseNo: "574449" })}
+                        >
+                          Ortaokul
+                        </Button>
+                      </div>
+                      {mainContractData.schoolLicenseNo && (
+                        <div className="mt-2 text-sm text-gray-600">
+                          Seçilen Ruhsat No: <span className="font-semibold">{mainContractData.schoolLicenseNo}</span>
+                        </div>
+                      )}
                     </div>
                     <div>
                       <Label htmlFor="contractNo">Sözleşme No (Okul No)</Label>
@@ -889,13 +807,21 @@ export default function RenewalPage() {
                     <div className="flex justify-between items-center gap-4">
                       <div className="flex items-center gap-2 flex-1">
                         <h3 className="text-lg font-semibold">ÖDEME BİLGİLERİ (</h3>
-                        <Input
-                          type="text"
+                        <select
                           value={mainContractData.academicYear}
                           onChange={(e) => setMainContractData({ ...mainContractData, academicYear: e.target.value })}
-                          placeholder="2024-2025"
-                          className="w-32"
-                        />
+                          className="w-40 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                        >
+                          <option value="">Seçiniz</option>
+                          {Array.from({ length: 10 }, (_, i) => {
+                            const year = 2025 + i
+                            return (
+                              <option key={year} value={`${year}-${year + 1}`}>
+                                {year}-{year + 1}
+                              </option>
+                            )
+                          })}
+                        </select>
                         <h3 className="text-lg font-semibold">Öğretim Yılı İçin)</h3>
                       </div>
                       <Button
@@ -908,7 +834,6 @@ export default function RenewalPage() {
                             parseFloat(mainContractData.announcedClothingFee) || 0,
                             parseFloat(mainContractData.announcedCourseFee) || 0,
                             parseFloat(mainContractData.announcedBookFee) || 0,
-                            parseFloat(mainContractData.announcedStationeryFee) || 0,
                             parseFloat(mainContractData.announcedStudyHallFee) || 0
                           ]
                           const student = [
@@ -916,7 +841,6 @@ export default function RenewalPage() {
                             parseFloat(mainContractData.studentClothingFee) || 0,
                             parseFloat(mainContractData.studentCourseFee) || 0,
                             parseFloat(mainContractData.studentBookFee) || 0,
-                            parseFloat(mainContractData.studentStationeryFee) || 0,
                             parseFloat(mainContractData.studentStudyHallFee) || 0
                           ]
                           const announcedTotal = announced.reduce((a, b) => a + b, 0)
@@ -935,7 +859,7 @@ export default function RenewalPage() {
                     
                     <div className="grid grid-cols-3 gap-4">
                       <div className="font-semibold">Ücret Türü</div>
-                      <div className="font-semibold text-center">Meb'in Belirlediği Ücret (KDV Dahil)</div>
+                      <div className="font-semibold text-center">Meb&apos;in Belirlediği Ücret (KDV Dahil)</div>
                       <div className="font-semibold text-center">Öğrenci Ücreti (KDV Dahil)</div>
                     </div>
 
@@ -1000,20 +924,6 @@ export default function RenewalPage() {
                     </div>
 
                     <div className="grid grid-cols-3 gap-4">
-                      <div className="pl-4">Kırtasiye Ücreti</div>
-                      <Input
-                        value={mainContractData.announcedStationeryFee}
-                        onChange={(e) => setMainContractData({ ...mainContractData, announcedStationeryFee: e.target.value })}
-                        placeholder="0"
-                      />
-                      <Input
-                        value={mainContractData.studentStationeryFee}
-                        onChange={(e) => setMainContractData({ ...mainContractData, studentStationeryFee: e.target.value })}
-                        placeholder="0"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4">
                       <div className="pl-4">Etüt Ücreti</div>
                       <Input
                         value={mainContractData.announcedStudyHallFee}
@@ -1054,17 +964,8 @@ export default function RenewalPage() {
                           id="registrationDateMuacceliyetRenewal"
                           type="date"
                           value={mainContractData.registrationDate}
-                          onChange={(e) => {
-                            const regDate = e.target.value
-                            const regDateObj = new Date(regDate)
-                            const dueDateObj = new Date(regDateObj)
-                            dueDateObj.setDate(dueDateObj.getDate() + 15)
-                            setMainContractData({ 
-                              ...mainContractData, 
-                              registrationDate: regDate,
-                              paymentDueDate: dueDateObj.toISOString().split("T")[0]
-                            })
-                          }}
+                          readOnly
+                          className="bg-gray-100 cursor-not-allowed"
                         />
                       </div>
                       <div>
@@ -1124,122 +1025,7 @@ export default function RenewalPage() {
                     </div>
                   </div>
 
-                  <div>
-                        <Label htmlFor="achievementDiscountRate">Başarı İndirimi Oranı</Label>
-                        <div className="flex gap-2">
-                          <label className="flex items-center">
-                            <input
-                              type="radio"
-                              name="achievementDiscountType"
-                              value="none"
-                              checked={mainContractData.achievementDiscountType === "none"}
-                              onChange={(e) => setMainContractData({ ...mainContractData, achievementDiscountType: e.target.value })}
-                              className="mr-1"
-                            />
-                            Yok
-                          </label>
-                          <label className="flex items-center">
-                            <input
-                              type="radio"
-                              name="achievementDiscountType"
-                              value="percentage"
-                              checked={mainContractData.achievementDiscountType === "percentage"}
-                              onChange={(e) => setMainContractData({ ...mainContractData, achievementDiscountType: e.target.value })}
-                              className="mr-1"
-                            />
-                            %
-                          </label>
-                          {mainContractData.achievementDiscountType === "percentage" && (
-                            <Input
-                              value={mainContractData.achievementDiscountRate}
-                              onChange={(e) => setMainContractData({ ...mainContractData, achievementDiscountRate: e.target.value })}
-                              placeholder="0"
-                              className="w-20"
-                            />
-                          )}
-                        </div>
-                      </div>
 
-                  {/* İndirimler */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">İNDİRİMLER</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={mainContractData.siblingDiscount}
-                            onChange={(e) => setMainContractData({ ...mainContractData, siblingDiscount: e.target.checked })}
-                            className="mr-2"
-                          />
-                          Kardeş İndirimi
-                        </label>
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={mainContractData.staffChildDiscount}
-                            onChange={(e) => setMainContractData({ ...mainContractData, staffChildDiscount: e.target.checked })}
-                            className="mr-2"
-                          />
-                          Personel Çocuğu İndirimi
-                        </label>
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={mainContractData.corporateDiscount}
-                            onChange={(e) => setMainContractData({ ...mainContractData, corporateDiscount: e.target.checked })}
-                            className="mr-2"
-                          />
-                          Kurumsal İndirim
-                        </label>
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={mainContractData.martyrVeteranDiscount}
-                            onChange={(e) => setMainContractData({ ...mainContractData, martyrVeteranDiscount: e.target.checked })}
-                            className="mr-2"
-                          />
-                          Şehit/Gazi Çocuğu İndirimi
-                        </label>
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={mainContractData.otherDiscount}
-                            onChange={(e) => setMainContractData({ ...mainContractData, otherDiscount: e.target.checked })}
-                            className="mr-2"
-                          />
-                          Diğer İndirimler
-                        </label>
-                        {mainContractData.otherDiscount && (
-                          <Input
-                            value={mainContractData.otherDiscountDescription}
-                            onChange={(e) => setMainContractData({ ...mainContractData, otherDiscountDescription: e.target.value })}
-                            placeholder="İndirim açıklaması"
-                          />
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={mainContractData.teacherChildDiscount}
-                            onChange={(e) => setMainContractData({ ...mainContractData, teacherChildDiscount: e.target.checked })}
-                            className="mr-2"
-                          />
-                          Öğretmen Çocuğu İndirimi
-                        </label>
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={mainContractData.achievementDiscount}
-                            onChange={(e) => setMainContractData({ ...mainContractData, achievementDiscount: e.target.checked })}
-                            className="mr-2"
-                          />
-                          Başarı İndirimi
-                        </label>
-                      </div>
-                    </div>
-                  </div>
 
                   {/* İmza ve Tarih */}
                   <div className="space-y-4">
@@ -1335,58 +1121,6 @@ export default function RenewalPage() {
                         </label>
                       ))}
                     </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Yemek Sözleşmesi */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-orange-600">Yemek Sözleşmesi</CardTitle>
-                <CardDescription>Öğrenci yemek sözleşmesi</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="contractDate">Sözleşme Tarihi</Label>
-                    <Input
-                      id="contractDate"
-                      type="date"
-                      defaultValue={new Date().toISOString().split('T')[0]}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="mealPeriods">Ödeme Dönemleri</Label>
-                    <div className="grid grid-cols-3 gap-2 mt-2">
-                      {['eylül', 'ekim', 'kasım', 'aralık', 'ocak', 'şubat', 'mart', 'nisan', 'mayıs', 'haziran', '1.dönem', '2.dönem', 'tüm yıl'].map((period) => (
-                        <label key={period} className="flex items-center">
-                          <input
-                            type="checkbox"
-                            className="mr-2"
-                            onChange={(e) => {
-                              const currentPeriods = otherContractData.mealPeriods || []
-                              if (e.target.checked) {
-                                setOtherContractData({ ...otherContractData, mealPeriods: [...currentPeriods, period] })
-                              } else {
-                                setOtherContractData({ ...otherContractData, mealPeriods: currentPeriods.filter(p => p !== period) })
-                              }
-                            }}
-                          />
-                          {period}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="mealPrice">Yemek Ücreti</Label>
-                    <Input
-                      id="mealPrice"
-                      type="number"
-                      value={otherContractData.mealPrice}
-                      onChange={(e) => setOtherContractData({ ...otherContractData, mealPrice: e.target.value })}
-                      placeholder="Örn: 2000"
-                    />
                   </div>
                 </div>
               </CardContent>
@@ -1524,91 +1258,6 @@ export default function RenewalPage() {
               </CardContent>
             </Card>
 
-            {/* Kulüp Seçimi */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-indigo-600">Kulüp Seçimi (En fazla 3 kulüp)</CardTitle>
-                <CardDescription>Öğrenci kulüp seçimi</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {clubs.map((club: { id: string; name: string; selections?: unknown[]; capacity?: number }) => {
-                    const isSelected = otherContractData.selectedClubs?.includes(club.id)
-                    const currentSelections = club.selections?.length || 0
-                    const capacity = club.capacity || 0
-                    const isFull = currentSelections >= capacity
-                    const capacityPercentage = (currentSelections / capacity) * 100
-                    
-                    return (
-                      <label 
-                        key={club.id} 
-                        className={`flex items-center justify-between p-3 border rounded-lg transition-all ${
-                          isFull && !isSelected 
-                            ? 'bg-gray-100 border-gray-300 cursor-not-allowed' 
-                            : isSelected
-                            ? 'bg-blue-50 border-blue-500'
-                            : 'hover:bg-gray-50 border-gray-200 cursor-pointer'
-                        }`}
-                      >
-                        <div className="flex items-center flex-1">
-                          <input
-                            type="checkbox"
-                            className="mr-3"
-                            checked={isSelected}
-                            onChange={(e) => {
-                              const currentClubs = otherContractData.selectedClubs || []
-                              if (e.target.checked && currentClubs.length < 3) {
-                                setOtherContractData({ ...otherContractData, selectedClubs: [...currentClubs, club.id] })
-                              } else if (!e.target.checked) {
-                                setOtherContractData({ ...otherContractData, selectedClubs: currentClubs.filter(c => c !== club.id) })
-                              }
-                            }}
-                            disabled={(otherContractData.selectedClubs?.length >= 3 && !isSelected) || (isFull && !isSelected)}
-                          />
-                          <div className="flex-1">
-                            <span className={`font-medium ${isFull && !isSelected ? 'text-gray-400' : 'text-gray-900'}`}>
-                              {club.name}
-                            </span>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-xs text-gray-500">
-                                {currentSelections}/{capacity}
-                              </span>
-                              {isFull && !isSelected && (
-                                <span className="text-xs px-2 py-0.5 bg-red-100 text-red-700 rounded-full font-medium">
-                                  DOLU
-                                </span>
-                              )}
-                              {capacityPercentage >= 80 && capacityPercentage < 100 && (
-                                <span className="text-xs px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full font-medium">
-                                  AZ YER
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </label>
-                    )
-                  })}
-                </div>
-                {otherContractData.selectedClubs?.length > 0 && (
-                  <div className="text-sm text-gray-600 mt-2">
-                    Seçilen kulüpler: {otherContractData.selectedClubs.map(clubId => 
-                      clubs.find(c => c.id === clubId)?.name
-                    ).join(", ")}
-                  </div>
-                )}
-                <div className="mt-4">
-                  <Button 
-                    onClick={handleSaveClubSelections} 
-                    className="bg-indigo-600 hover:bg-indigo-700"
-                    disabled={!otherContractData.selectedClubs?.length}
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    Kulüp Seçimlerini Kaydet
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
 
             {/* Kaydet ve PDF İndir Butonları */}
             <div className="flex gap-2">

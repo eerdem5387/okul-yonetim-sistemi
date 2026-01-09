@@ -853,6 +853,78 @@ function generateMainContractHTML(student: { firstName: string; lastName: string
         </div>
       </div>
     </div>
+
+    <div class="page-break"></div>
+
+    <div class="contract-header">
+      <div class="contract-title">RİZE LEVENT OKULLARI</div>
+      <div class="contract-title" style="font-size: 18px; margin-top: 10px;">EĞİTİM ÖĞRETİM ÜCRETLERİ MUTABAKAT BELGESİ</div>
+    </div>
+
+    <div class="section" style="margin-top: 20px;">
+      <p style="text-align: justify; line-height: 1.8; margin-bottom: 15px;">
+        Aşağıda bilgileri beyan edilen öğrenciye ait ${contractData.academicYear || '2026-2027'} eğitim öğretim dönemine ait ücretler, tabloda belirtilen tarihte muaccel olacaktır. Bu tarihten sonra muaccel borç için Maliye Bakanlığı'nın ilan ettiği aylık gecikme zammı oranı ile güncelleştirilecektir.
+      </p>
+      <p style="text-align: justify; line-height: 1.8; margin-bottom: 15px;">
+        Öğrenci Eğitim Öğretim Ücreti, sözleşme yenileme tarihinde belirlenir. Ücretin sözleşmede belirtilen şekilde Son ödeme tarihine kadar ödenmesi gereklidir.
+      </p>
+      <p style="text-align: justify; line-height: 1.8; margin-bottom: 20px;">
+        Bu tarihten itibaren ödeme, gecikmiş borç hükmüyle, ay olarak gecikme süresi kadar temerrüt faizi eklenecek olup, tahsilatta temerrüde dair, 3095 Sayılı Kanun hükümleri uygulanacaktır.
+      </p>
+    </div>
+
+    <div class="section" style="margin-top: 30px;">
+      <div style="text-align: right; margin-bottom: 30px;">
+        <div style="font-weight: bold; margin-bottom: 5px;">AKEM EĞT ÖĞRT LTD ŞTİ ADINA</div>
+        <div style="font-weight: bold; margin-bottom: 5px;">Şirket Müdürü</div>
+        <div style="font-weight: bold;">Emin Usta</div>
+      </div>
+    </div>
+
+    <div class="section" style="margin-top: 40px;">
+      <div class="field-row">
+        <div class="field-label" style="min-width: 200px;">Öğrenci Ad Soyad:</div>
+        <div class="field-value" style="border-bottom: 1px solid #000; padding-bottom: 5px; min-width: 300px;">${contractData.studentName || student.firstName + ' ' + student.lastName}</div>
+      </div>
+      <div class="field-row" style="margin-top: 15px;">
+        <div class="field-label" style="min-width: 200px;">Velisinin Adı Soyadı:</div>
+        <div class="field-value" style="border-bottom: 1px solid #000; padding-bottom: 5px; min-width: 300px;">${contractData.contractParentName || student.fatherName || student.motherName || '___________'}</div>
+      </div>
+      <div class="field-row" style="margin-top: 15px;">
+        <div class="field-label" style="min-width: 200px;">Sınıfı:</div>
+        <div class="field-value" style="border-bottom: 1px solid #000; padding-bottom: 5px; min-width: 300px;">${contractData.studentClass || student.grade}</div>
+      </div>
+      <div class="field-row" style="margin-top: 15px;">
+        <div class="field-label" style="min-width: 200px;">Tc kimlik no:</div>
+        <div class="field-value" style="border-bottom: 1px solid #000; padding-bottom: 5px; min-width: 300px;">${contractData.studentTC || student.tcNumber}</div>
+      </div>
+      <div class="field-row" style="margin-top: 15px;">
+        <div class="field-label" style="min-width: 200px;">Okul numarası:</div>
+        <div class="field-value" style="border-bottom: 1px solid #000; padding-bottom: 5px; min-width: 300px;">${contractData.contractNo || '___________'}</div>
+      </div>
+      <div class="field-row" style="margin-top: 15px;">
+        <div class="field-label" style="min-width: 200px;">Adresi:</div>
+        <div class="field-value" style="border-bottom: 1px solid #000; padding-bottom: 5px; min-width: 300px;">${contractData.address || student.address || '___________'}</div>
+      </div>
+    </div>
+
+    <div class="section" style="margin-top: 50px;">
+      <div style="margin-bottom: 20px;">
+        <div style="border-bottom: 1px solid #000; padding-bottom: 5px; min-width: 400px; display: inline-block;">
+          El yazısı ile (Okudum, Anladım)…………………………………………………………………
+        </div>
+      </div>
+      <div class="field-row" style="margin-top: 30px;">
+        <div class="field-label" style="min-width: 150px;">Tarih:</div>
+        <div class="field-value" style="border-bottom: 1px solid #000; padding-bottom: 5px; min-width: 200px;">${contractData.contractDate || (contractData.registrationDate ? new Date(contractData.registrationDate as string).toLocaleDateString('tr-TR') : new Date().toLocaleDateString('tr-TR'))}</div>
+      </div>
+      <div class="signature-section" style="margin-top: 40px;">
+        <div class="signature-box">
+          <div class="signature-line"></div>
+          <div class="signature-label">Veli İmzası</div>
+        </div>
+      </div>
+    </div>
   `
 }
 
