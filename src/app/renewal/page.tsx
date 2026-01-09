@@ -1326,13 +1326,9 @@ export default function RenewalPage() {
 
             {/* Kaydet ve PDF İndir Butonları */}
             <div className="flex gap-2">
-              <Button onClick={handleSaveAllContracts} className="bg-blue-600 hover:bg-blue-700">
-                <Save className="h-4 w-4 mr-2" />
-                Tüm Sözleşmeleri Kaydet
-              </Button>
               <Button onClick={handleDownloadCombinedPDF} variant="outline">
                 <Download className="h-4 w-4 mr-2" />
-                Tüm Sözleşmeleri PDF İndir
+                Tüm Sözleşmeleri PDF İndir ve Kaydet
               </Button>
             </div>
           </>
