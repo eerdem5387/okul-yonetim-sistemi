@@ -67,7 +67,7 @@ export default function RenewalPage() {
     schoolLicenseNo: "",
     contractNo: "",
     registrationResponsible: "",
-    registrationDate: "",
+    registrationDate: new Date().toISOString().split("T")[0],
     
     // Sözleşme Metni
     contractStudentName: "",
@@ -91,12 +91,12 @@ export default function RenewalPage() {
     studentStudyHallFee: "",
     studentTotal: "",
     
-    // Ödeme Planı
-    installmentStartDate: "",
-    downPayment: "",
-    installments: [] as { month: string; label: string; amount: string }[],
+    // Ödeme Planı ve Muacceliyet
     achievementDiscountRate: "",
     achievementDiscountType: "none", // "none" or "percentage"
+    academicYear: "",
+    paymentPlan: "",
+    paymentDueDate: ""
     
     // İndirimler
     siblingDiscount: false,
@@ -117,7 +117,12 @@ export default function RenewalPage() {
     // Servis ve Kulüp Bilgileri
     serviceRegion: "",
     servicePrice: "",
-    selectedClubs: [] as string[]
+    selectedClubs: [] as string[],
+    
+    // Öğretim Yılı ve Ödeme Planı
+    academicYear: "",
+    paymentPlan: "",
+    paymentDueDate: ""
   })
 
   // Diğer Sözleşme Form Verileri
@@ -873,8 +878,18 @@ export default function RenewalPage() {
 
                   {/* Ödeme Bilgileri */}
                   <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-lg font-semibold">ÖDEME BİLGİLERİ (2024-2025 Öğretim Yılı İçin)</h3>
+                    <div className="flex justify-between items-center gap-4">
+                      <div className="flex items-center gap-2 flex-1">
+                        <h3 className="text-lg font-semibold">ÖDEME BİLGİLERİ (</h3>
+                        <Input
+                          type="text"
+                          value={mainContractData.academicYear}
+                          onChange={(e) => setMainContractData({ ...mainContractData, academicYear: e.target.value })}
+                          placeholder="2024-2025"
+                          className="w-32"
+                        />
+                        <h3 className="text-lg font-semibold">Öğretim Yılı İçin)</h3>
+                      </div>
                       <Button
                         type="button"
                         variant="outline"
@@ -1021,83 +1036,87 @@ export default function RenewalPage() {
                     </div>
                   </div>
 
+                  {/* Borç Muacceliyet Tarihi */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Borç Muacceliyet Tarihi</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="registrationDateMuacceliyet">Kayıt İşleminin Gerçekleştirildiği Tarih</Label>
+                        <Input
+                          id="registrationDateMuacceliyet"
+                          type="date"
+                          value={mainContractData.registrationDate}
+                          onChange={(e) => {
+                            const regDate = e.target.value
+                            const regDateObj = new Date(regDate)
+                            const dueDateObj = new Date(regDateObj)
+                            dueDateObj.setDate(dueDateObj.getDate() + 15)
+                            setMainContractData({ 
+                              ...mainContractData, 
+                              registrationDate: regDate,
+                              paymentDueDate: dueDateObj.toISOString().split("T")[0]
+                            })
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="paymentDueDate">Ödemenin Yapılması Gereken Son Tarih</Label>
+                        <Input
+                          id="paymentDueDate"
+                          type="date"
+                          value={(() => {
+                            if (mainContractData.registrationDate) {
+                              const regDate = new Date(mainContractData.registrationDate)
+                              const dueDate = new Date(regDate)
+                              dueDate.setDate(dueDate.getDate() + 15)
+                              return dueDate.toISOString().split("T")[0]
+                            }
+                            return ""
+                          })()}
+                          readOnly
+                          className="bg-gray-100 cursor-not-allowed"
+                        />
+                      </div>
+                    </div>
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                      <p className="text-sm font-semibold text-yellow-900">
+                        MUACCELİYET TARİHİ SONRASI AYLIK GECİKME ZAMMI ORANI % 3,02 OLARAK UYGULANACAKTIR.
+                      </p>
+                    </div>
+                  </div>
+
                   {/* Ödeme Planı */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Ödeme Planı</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="installmentStartDate">Taksit Başlangıç Tarihi</Label>
-                        <Input
-                          id="installmentStartDate"
-                          type="date"
-                          value={mainContractData.installmentStartDate}
-                          onChange={(e) => setMainContractData({ ...mainContractData, installmentStartDate: e.target.value })}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="downPayment">Peşinat</Label>
-                        <Input
-                          id="downPayment"
-                          value={mainContractData.downPayment}
-                          onChange={(e) => setMainContractData({ ...mainContractData, downPayment: e.target.value })}
-                          placeholder="0"
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <Label>Taksit Ayları ve Tutarları</Label>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-2">
-                          {(() => {
-                            const year = new Date().getFullYear()
-                            const monthsTR = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"]
-                            return monthsTR.map((name, idx) => {
-                              const m = String(idx + 1).padStart(2, '0')
-                              const month = `${year}-${m}`
-                              const label = `${name} ${year}`
-                              const selected = mainContractData.installments.find(i => i.month === month)
-                              return (
-                                <div key={month} className="flex items-center justify-between gap-2 p-2 border rounded-md">
-                                  <label className="flex items-center gap-2">
-                                    <input
-                                      type="checkbox"
-                                      checked={!!selected}
-                                      onChange={(e) => {
-                                        if (e.target.checked) {
-                                          setMainContractData({
-                                            ...mainContractData,
-                                            installments: [...mainContractData.installments, { month, label, amount: "" }]
-                                          })
-                                        } else {
-                                          setMainContractData({
-                                            ...mainContractData,
-                                            installments: mainContractData.installments.filter(i => i.month !== month)
-                                          })
-                                        }
-                                      }}
-                                    />
-                                    <span>{label}</span>
-                                  </label>
-                                  <Input
-                                    placeholder="0"
-                                    value={selected?.amount || ""}
-                                    onChange={(e) => {
-                                      const val = e.target.value
-                                      setMainContractData({
-                                        ...mainContractData,
-                                        installments: selected
-                                          ? mainContractData.installments.map(i => i.month === month ? { ...i, amount: val } : i)
-                                          : [...mainContractData.installments, { month, label, amount: val }]
-                                      })
-                                    }}
-                                    className="w-32"
-                                    disabled={!selected}
-                                  />
-                                </div>
-                              )
-                            })
-                          })()}
-                        </div>
-                      </div>
-                      <div>
+                    <div className="space-y-2">
+                      {[
+                        "İŞBANK KREDİ KARTI 2+4 TAKSİT",
+                        "ZİRAATBANK KREDİ KARTI 2+8 TAKSİT",
+                        "YAPIKREDİ KREDİ KARTI 3 TAKSİT",
+                        "AKBANK KREDİ KARTI 2+8+4 TAKSİT",
+                        "BONUS KREDİ KARTI 2 TAKSİT",
+                        "DİĞER KREDİ KARTLARI 2 TAKSİT",
+                        "İŞBANKASI OTS 3 TAKSİT",
+                        "VAKIFBANK OTS 3 TAKSİT",
+                        "AKBANK OTS 3 TAKSİT",
+                        "ZİRAAT OTS 4 TAKSİT"
+                      ].map((plan) => (
+                        <label key={plan} className="flex items-center gap-2 p-3 border rounded-md cursor-pointer hover:bg-gray-50">
+                          <input
+                            type="radio"
+                            name="paymentPlan"
+                            value={plan}
+                            checked={mainContractData.paymentPlan === plan}
+                            onChange={(e) => setMainContractData({ ...mainContractData, paymentPlan: e.target.value })}
+                            className="w-4 h-4"
+                          />
+                          <span className="text-sm">{plan}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
                         <Label htmlFor="achievementDiscountRate">Başarı İndirimi Oranı</Label>
                         <div className="flex gap-2">
                           <label className="flex items-center">

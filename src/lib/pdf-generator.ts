@@ -547,7 +547,7 @@ function generateMainContractHTML(student: { firstName: string; lastName: string
     </div>
 
     <div class="section">
-      <div class="section-title">ÖDEME BİLGİLERİ (2024-2025 Öğretim Yılı İçin)</div>
+      <div class="section-title">ÖDEME BİLGİLERİ (${contractData.academicYear || '2024-2025'} Öğretim Yılı İçin)</div>
       <table class="table">
         <thead>
           <tr>
@@ -596,21 +596,18 @@ function generateMainContractHTML(student: { firstName: string; lastName: string
       </table>
     </div>
 
+    ${contractData.paymentPlan ? `
+    <div class="section" style="margin-top: 20px;">
+      <div class="section-title">ÖDEME PLANI</div>
+      <div class="field-row">
+        <div class="field-label" style="min-width: 150px;">Seçilen Ödeme Planı:</div>
+        <div class="field-value" style="font-weight: bold;">${contractData.paymentPlan}</div>
+      </div>
+    </div>
+    ` : ''}
+    
     <div style="display: flex; gap: 15px; margin-bottom: 12px;">
       <div style="flex: 1;">
-        <div class="section-title">ÖDEME PLANI</div>
-        <div class="field-row">
-          <div class="field-label" style="min-width: 110px;">Taksit Başlangıç:</div>
-          <div class="field-value">${contractData.installmentStartDate || '___________'}</div>
-        </div>
-        <div class="field-row">
-          <div class="field-label" style="min-width: 110px;">Peşinat:</div>
-          <div class="field-value">${contractData.downPayment || '___________'}</div>
-        </div>
-        <div class="field-row">
-          <div class="field-label" style="min-width: 110px;">Taksit Detayı:</div>
-          <div class="field-value">${contractData.installmentDetails || '___________'}</div>
-        </div>
         <div class="field-row">
           <div class="field-label" style="min-width: 110px;">Başarı İndirimi:</div>
           <div class="field-value">${contractData.achievementDiscountRate || '___________'} ${contractData.achievementDiscountType === 'percentage' ? '%' : ''}</div>
@@ -667,6 +664,25 @@ function generateMainContractHTML(student: { firstName: string; lastName: string
         </div>
       </div>
     </div>
+
+    ${contractData.registrationDate || contractData.paymentDueDate ? `
+    <div class="section" style="margin-top: 30px; padding: 15px; background-color: #fff9e6; border: 2px solid #ffd700;">
+      <div class="section-title" style="color: #b8860b;">BORÇ MUACCELİYET TARİHİ</div>
+      <div class="field-row">
+        <div class="field-label">Kayıt İşleminin Gerçekleştirildiği Tarih:</div>
+        <div class="field-value">${contractData.registrationDate || '___________'}</div>
+      </div>
+      <div class="field-row">
+        <div class="field-label">Ödemenin Yapılması Gereken Son Tarih:</div>
+        <div class="field-value">${contractData.paymentDueDate || '___________'}</div>
+      </div>
+      <div style="margin-top: 15px; padding: 10px; background-color: #fff3cd; border-left: 4px solid #ffc107;">
+        <p style="margin: 0; font-weight: bold; color: #856404; font-size: 12px;">
+          MUACCELİYET TARİHİ SONRASI AYLIK GECİKME ZAMMI ORANI % 3,02 OLARAK UYGULANACAKTIR.
+        </p>
+      </div>
+    </div>
+    ` : ''}
 
     <div class="signature-section">
       <div class="signature-box">
