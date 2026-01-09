@@ -41,21 +41,13 @@ export async function POST(
             body = {}
         }
         
-        const { contractTypes, mainContractData, otherContractData, selectedClubs } = body
+        const { contractTypes, mainContractData, otherContractData } = body
 
         // Önce sözleşmeyi bul, sonra öğrenciyi ve tüm yan sözleşmeleri al
         const contract = await prisma.newRegistration.findUnique({
             where: { id: params.id },
             include: {
-                student: {
-                    include: {
-                        clubSelections: {
-                            include: {
-                                club: true
-                            }
-                        }
-                    }
-                }
+                student: true
             }
         })
 
@@ -176,12 +168,6 @@ export async function POST(
         }
 
         // Kulüp seçimlerini hazırla (frontend'den gelen veya veritabanından)
-        const clubsForPDF = selectedClubs || (student.clubSelections && Array.isArray(student.clubSelections) 
-            ? student.clubSelections.map(selection => ({
-                id: selection.club?.id || "",
-                name: selection.club?.name || ""
-            })).filter(club => club.id && club.name)
-            : [])
 
         // Hangi sözleşmeler PDF'e dahil edilecek?
         const derivedTypes: string[] = []
@@ -198,8 +184,7 @@ export async function POST(
                 student: safeStudent,
                 contractTypes: typesForPdf,
                 mainContractData: finalMainContractData,
-                otherContractData: finalOtherContractData,
-                selectedClubs: clubsForPDF.length > 0 ? clubsForPDF : undefined
+                otherContractData: finalOtherContractData
             })
         } catch (htmlError) {
             console.error("Error generating HTML:", htmlError)

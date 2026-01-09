@@ -287,7 +287,6 @@ export default function NewRegistrationPage() {
     }
     
     updateData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
 

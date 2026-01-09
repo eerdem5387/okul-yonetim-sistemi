@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Save, Download, Users, Clock, TrendingUp, GraduationCap, List, Search } from "lucide-react"
+import { Download, Users, Clock, TrendingUp, GraduationCap, List, Search } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 interface Student {
@@ -276,7 +276,6 @@ export default function RenewalPage() {
     }
     
     updateData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Öğrenci seçildiğinde öğrenim ücreti bilgilerini otomatik doldur
@@ -300,99 +299,6 @@ export default function RenewalPage() {
     }
   }, [selectedStudent?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-
-  const handleSaveAllContracts = async () => {
-    if (!selectedStudent) return
-
-    try {
-      // Tüm sözleşmeleri ayrı ayrı kaydet
-      const contracts = [
-        {
-          type: "renewal",
-          data: {
-            studentId: selectedStudent.id,
-            contractData: {
-              ...mainContractData,
-              studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
-              studentTC: selectedStudent.tcNumber,
-              studentClass: selectedStudent.grade,
-              studentBirthDate: formatDate(selectedStudent.birthDate),
-              contractStudentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
-              contractParentName: ""
-            }
-          }
-        },
-        {
-          type: "uniform",
-          data: {
-            studentId: selectedStudent.id,
-            contractData: {
-              studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
-              tcNumber: selectedStudent.tcNumber,
-              uniformSize: otherContractData.uniformSize,
-              uniformPrice: otherContractData.uniformPrice,
-              deliveryDate: otherContractData.uniformDeliveryDate,
-              uniformItems: otherContractData.uniformItems
-            }
-          }
-        },
-        {
-          type: "book",
-          data: {
-            studentId: selectedStudent.id,
-            contractData: {
-              studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
-              tcNumber: selectedStudent.tcNumber,
-              bookSet: otherContractData.bookSet,
-              deliveryDate: otherContractData.bookDeliveryDate
-            }
-          }
-        },
-        ...(otherContractData.usesService ? [{
-          type: "service",
-          data: {
-            studentId: selectedStudent.id,
-            contractData: {
-              studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
-              tcNumber: selectedStudent.tcNumber,
-              serviceRegion: otherContractData.serviceRegion,
-              servicePrice: otherContractData.servicePrice,
-              address: selectedStudent.address
-            }
-          }
-        }] : [])
-      ]
-
-      // Tüm sözleşmeleri kaydet
-      const responses = await Promise.all(
-        contracts.map(contract => {
-          // renewal type'ı için doğru endpoint kullan
-          const endpoint = contract.type === "renewal" 
-            ? "/api/renewals" 
-            : `/api/${contract.type}-contracts`
-          
-          const requestBody = contract.data
-          
-          return fetch(endpoint, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(requestBody)
-          })
-        })
-      )
-
-      const allSuccessful = responses.every(response => response.ok)
-      
-      if (allSuccessful) {
-        alert("Tüm sözleşmeler başarıyla kaydedildi!")
-      } else {
-        alert("Bazı sözleşmeler kaydedilirken hata oluştu!")
-      }
-    } catch (error) {
-      console.error("Error saving contracts:", error)
-      alert("Sözleşmeler kaydedilirken hata oluştu!")
-    }
-  }
 
   const handleDownloadCombinedPDF = async () => {
     if (!selectedStudent) {
