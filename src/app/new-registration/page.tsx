@@ -1217,8 +1217,6 @@ export default function NewRegistrationPage() {
                           )}
                         </div>
                       </div>
-                    </div>
-                  </div>
 
                   {/* İndirimler */}
                   <div className="space-y-4">

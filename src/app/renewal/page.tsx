@@ -96,7 +96,7 @@ export default function RenewalPage() {
     achievementDiscountType: "none", // "none" or "percentage"
     academicYear: "",
     paymentPlan: "",
-    paymentDueDate: ""
+    paymentDueDate: "",
     
     // İndirimler
     siblingDiscount: false,
@@ -1164,8 +1164,6 @@ export default function RenewalPage() {
                           )}
                         </div>
                       </div>
-                    </div>
-                  </div>
 
                   {/* İndirimler */}
                   <div className="space-y-4">
