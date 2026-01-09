@@ -252,6 +252,19 @@ export default function NewRegistrationPage() {
     }
   }, [])
 
+  // Registration date ve payment due date'i otomatik ayarla
+  useEffect(() => {
+    if (mainContractData.registrationDate && !mainContractData.paymentDueDate) {
+      const regDate = new Date(mainContractData.registrationDate)
+      const dueDate = new Date(regDate)
+      dueDate.setDate(dueDate.getDate() + 15)
+      setMainContractData(prev => ({
+        ...prev,
+        paymentDueDate: dueDate.toISOString().split("T")[0]
+      }))
+    }
+  }, [mainContractData.registrationDate])
+
   useEffect(() => {
     fetchClubs()
     fetchStats()
@@ -1094,9 +1107,9 @@ export default function NewRegistrationPage() {
                     <h3 className="text-lg font-semibold">Borç Muacceliyet Tarihi</h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="registrationDate">Kayıt İşleminin Gerçekleştirildiği Tarih</Label>
+                        <Label htmlFor="registrationDateMuacceliyet">Kayıt İşleminin Gerçekleştirildiği Tarih</Label>
                         <Input
-                          id="registrationDate"
+                          id="registrationDateMuacceliyet"
                           type="date"
                           value={mainContractData.registrationDate}
                           onChange={(e) => {
