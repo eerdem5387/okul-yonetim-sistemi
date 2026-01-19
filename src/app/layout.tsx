@@ -10,7 +10,7 @@ import { useEffect, useState } from "react"
 
 const inter = Inter({ subsets: ["latin"] })
 
-type AuthRole = "admin" | "principal" | "student_affairs" | "parent" | "teacher" | "counselor" | null
+type AuthRole = "admin" | "principal" | "student_affairs" | "parent" | "teacher" | "counselor" | "head_counselor" | null
 
 export default function RootLayout({
   children,
@@ -30,7 +30,7 @@ export default function RootLayout({
       const storedRole = localStorage.getItem("auth_role")
       let normalizedRole: AuthRole = null
 
-      if (storedRole === "admin" || storedRole === "principal" || storedRole === "student_affairs" || storedRole === "parent" || storedRole === "teacher" || storedRole === "counselor") {
+      if (storedRole === "admin" || storedRole === "principal" || storedRole === "student_affairs" || storedRole === "parent" || storedRole === "teacher" || storedRole === "counselor" || storedRole === "head_counselor") {
         normalizedRole = storedRole
       } else if (storedRole) {
         // Geçersiz rol - temizle
@@ -66,7 +66,7 @@ export default function RootLayout({
     const storedRole = localStorage.getItem("auth_role")
     let normalizedRole: AuthRole = null
 
-    if (storedRole === "admin" || storedRole === "principal" || storedRole === "student_affairs" || storedRole === "parent" || storedRole === "teacher" || storedRole === "counselor") {
+    if (storedRole === "admin" || storedRole === "principal" || storedRole === "student_affairs" || storedRole === "parent" || storedRole === "teacher" || storedRole === "counselor" || storedRole === "head_counselor") {
       normalizedRole = storedRole
     }
 
@@ -94,7 +94,7 @@ export default function RootLayout({
     if (pathname === "/login" && normalizedRole) {
       if (normalizedRole === "teacher") {
         router.push("/ogretmen")
-      } else if (normalizedRole === "counselor") {
+      } else if (normalizedRole === "counselor" || normalizedRole === "head_counselor") {
         router.push("/rehberlik")
       } else if (normalizedRole === "parent") {
         router.push("/veli/panel")
@@ -121,7 +121,7 @@ export default function RootLayout({
 
     // Rehberlik sayfaları için kontrol
     if (pathname?.startsWith("/rehberlik")) {
-      if (normalizedRole !== "counselor") {
+      if (normalizedRole !== "counselor" && normalizedRole !== "head_counselor") {
         router.push("/login")
         return
       }
@@ -132,7 +132,7 @@ export default function RootLayout({
     // BU SAYFA VELİ PANELİNE YÖNLENDİRME YAPMAZ - SADECE GÖRÜNTÜLEME MODUNDA
     // ÖNEMLİ: Bu kontrol /veli kontrolünden ÖNCE yapılmalı çünkü /veli-gorusmeleri /veli ile başlıyor
     if (pathname === "/veli-gorusmeleri") {
-      if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "counselor") {
+      if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "counselor" || normalizedRole === "head_counselor") {
         // Bu roller için erişim izni var - YÖNLENDİRME YOK, direkt sayfaya erişebilirler
         return
       }
@@ -178,9 +178,54 @@ export default function RootLayout({
       return
     }
 
+    // Bursluluk Başvuruları sayfası için kontrol (admin, principal, student_affairs, head_counselor erişebilir)
+    if (pathname === "/basvurular") {
+      if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "head_counselor") {
+        return
+      }
+      router.push("/login")
+      return
+    }
+
+    // Yeni Kayıt sayfası için kontrol (admin, principal, student_affairs, head_counselor erişebilir)
+    if (pathname === "/new-registration") {
+      if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "head_counselor") {
+        return
+      }
+      router.push("/login")
+      return
+    }
+
+    // Kayıt Yenileme sayfası için kontrol (admin, principal, student_affairs, head_counselor erişebilir)
+    if (pathname === "/renewal") {
+      if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "head_counselor") {
+        return
+      }
+      router.push("/login")
+      return
+    }
+
+    // Geçmiş Sözleşmeler sayfası için kontrol (admin, principal, student_affairs, head_counselor erişebilir)
+    if (pathname === "/history") {
+      if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "head_counselor") {
+        return
+      }
+      router.push("/login")
+      return
+    }
+
+    // Teklif Görüşmeleri sayfası için kontrol (admin, principal, student_affairs, head_counselor erişebilir)
+    if (pathname === "/teklif-gorusmeleri") {
+      if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "head_counselor") {
+        return
+      }
+      router.push("/login")
+      return
+    }
+
     // Ana sayfa (/) için kontrol
     if (pathname === "/") {
-      if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "counselor") {
+      if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "counselor" || normalizedRole === "head_counselor") {
         // Ana sayfaya erişim izni var
         return
       }

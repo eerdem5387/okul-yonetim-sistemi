@@ -314,6 +314,7 @@ enum StaffDepartment {
   MUDUR // Müdür
   MUDUR_YARDIMCISI // Müdür Yardımcısı
   REHBERLIK // Rehberlik
+  BAS_REHBERLIK // Baş Rehberlik
   MUHASEBE // Muhasebe
   GUZEL_SANATLAR // Güzel Sanatlar
   SPOR // Spor

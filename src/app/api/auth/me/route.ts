@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Rol belirleme
-    let role: "admin" | "principal" | "teacher" | "counselor" | "student_affairs" = "teacher"
+    let role: "admin" | "principal" | "teacher" | "counselor" | "head_counselor" | "student_affairs" = "teacher"
     
     if (staff.department === "SUPER_ADMIN") {
       role = "admin"
@@ -79,6 +79,8 @@ export async function GET(request: NextRequest) {
       role = "principal"
     } else if (staff.department === "MUDUR_YARDIMCISI" || staff.department === "OGRENCI_ISLERI") {
       role = "student_affairs"
+    } else if (staff.department === "BAS_REHBERLIK") {
+      role = "head_counselor"
     } else if (staff.department === "REHBERLIK") {
       role = "counselor"
     } else if (staff.department === "OGRETMEN") {
@@ -88,17 +90,18 @@ export async function GET(request: NextRequest) {
     // Yetkiler (permissions) belirleme
     const isPrincipal = role === "principal"
     const isStudentAffairs = role === "student_affairs"
+    const isHeadCounselor = role === "head_counselor"
     const isCounselor = role === "counselor"
     const isTeacher = role === "teacher"
     
     const permissions = {
-      canManageClasses: isPrincipal || isStudentAffairs || isCounselor,
+      canManageClasses: isPrincipal || isStudentAffairs || isCounselor || isHeadCounselor,
       canApproveSchedules: isPrincipal,
       canManageStaff: isPrincipal || isStudentAffairs,
       canManageStudents: !isTeacher,
-      canViewAllClasses: isPrincipal || isStudentAffairs,
-      canManageApplications: isPrincipal || isStudentAffairs,
-      canManageOfferMeetings: isPrincipal || isStudentAffairs,
+      canViewAllClasses: isPrincipal || isStudentAffairs || isHeadCounselor,
+      canManageApplications: isPrincipal || isStudentAffairs || isHeadCounselor,
+      canManageOfferMeetings: isPrincipal || isStudentAffairs || isHeadCounselor,
       canManageTrips: !isTeacher,
       canManageClubs: !isTeacher,
       canManageIBActivities: !isTeacher,

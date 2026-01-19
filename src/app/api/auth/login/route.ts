@@ -7,6 +7,7 @@ const ACTIVE_ROLES = [
   "SUPER_ADMIN",
   "OGRETMEN",
   "REHBERLIK",
+  "BAS_REHBERLIK",
   "OGRENCI_ISLERI",
   "MUDUR",
   "MUDUR_YARDIMCISI",
@@ -151,7 +152,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Rol belirleme
-    let userRole: "admin" | "principal" | "teacher" | "counselor" | "student_affairs" = "teacher"
+    let userRole: "admin" | "principal" | "teacher" | "counselor" | "head_counselor" | "student_affairs" = "teacher"
     
     if (staff.department === "SUPER_ADMIN") {
       userRole = "admin"
@@ -159,6 +160,8 @@ export async function POST(request: NextRequest) {
       userRole = "principal"
     } else if (staff.department === "MUDUR_YARDIMCISI") {
       userRole = "student_affairs"
+    } else if (staff.department === "BAS_REHBERLIK") {
+      userRole = "head_counselor"
     } else if (staff.department === "REHBERLIK") {
       userRole = "counselor"
     } else if (staff.department === "OGRENCI_ISLERI") {

@@ -3,7 +3,7 @@
  * Basit yetkilendirme kontrolleri için helper fonksiyonlar
  */
 
-export type UserRole = "admin" | "principal" | "student_affairs" | "counselor" | "teacher"
+export type UserRole = "admin" | "principal" | "student_affairs" | "counselor" | "head_counselor" | "teacher"
 
 export interface UserPermissions {
   canManageClasses: boolean
@@ -28,6 +28,8 @@ export function getRoleFromDepartment(department: string): UserRole {
     case "MUDUR_YARDIMCISI":
     case "OGRENCI_ISLERI":
       return "student_affairs"
+    case "BAS_REHBERLIK":
+      return "head_counselor"
     case "REHBERLIK":
       return "counselor"
     case "OGRETMEN":
@@ -41,17 +43,18 @@ export function getPermissions(role: UserRole): UserPermissions {
   const isAdmin = role === "admin"
   const isPrincipal = role === "principal"
   const isStudentAffairs = role === "student_affairs"
+  const isHeadCounselor = role === "head_counselor"
   const isCounselor = role === "counselor"
   const isTeacher = role === "teacher"
 
   return {
-    canManageClasses: isAdmin || isPrincipal || isStudentAffairs || isCounselor,
+    canManageClasses: isAdmin || isPrincipal || isStudentAffairs || isCounselor || isHeadCounselor,
     canApproveSchedules: isAdmin || isPrincipal,
     canManageStaff: isAdmin || isPrincipal || isStudentAffairs,
     canManageStudents: !isTeacher,
-    canViewAllClasses: isAdmin || isPrincipal || isStudentAffairs,
-    canManageApplications: isAdmin || isPrincipal || isStudentAffairs,
-    canManageOfferMeetings: isAdmin || isPrincipal || isStudentAffairs,
+    canViewAllClasses: isAdmin || isPrincipal || isStudentAffairs || isHeadCounselor,
+    canManageApplications: isAdmin || isPrincipal || isStudentAffairs || isHeadCounselor,
+    canManageOfferMeetings: isAdmin || isPrincipal || isStudentAffairs || isHeadCounselor,
     canManageTrips: !isTeacher,
     canManageClubs: !isTeacher,
     canManageIBActivities: !isTeacher,

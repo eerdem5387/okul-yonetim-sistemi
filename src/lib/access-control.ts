@@ -45,13 +45,14 @@ export async function checkGeziAccess(request: NextRequest): Promise<{ hasAccess
       return { hasAccess: false, staffId }
     }
     
-    // Admin, principal, student_affairs, counselor için varsayılan erişim
+    // Admin, principal, student_affairs, counselor, head_counselor için varsayılan erişim
     if (
       staff.department === "SUPER_ADMIN" ||
       staff.department === "MUDUR" ||
       staff.department === "MUDUR_YARDIMCISI" ||
       staff.department === "OGRENCI_ISLERI" ||
-      staff.department === "REHBERLIK"
+      staff.department === "REHBERLIK" ||
+      staff.department === "BAS_REHBERLIK"
     ) {
       return { hasAccess: true, staffId }
     }
@@ -112,13 +113,14 @@ export async function checkIbAccess(request: NextRequest): Promise<{ hasAccess: 
       return { hasAccess: false, staffId }
     }
     
-    // Admin, principal, student_affairs, counselor için varsayılan erişim
+    // Admin, principal, student_affairs, counselor, head_counselor için varsayılan erişim
     if (
       staff.department === "SUPER_ADMIN" ||
       staff.department === "MUDUR" ||
       staff.department === "MUDUR_YARDIMCISI" ||
       staff.department === "OGRENCI_ISLERI" ||
-      staff.department === "REHBERLIK"
+      staff.department === "REHBERLIK" ||
+      staff.department === "BAS_REHBERLIK"
     ) {
       return { hasAccess: true, staffId }
     }
