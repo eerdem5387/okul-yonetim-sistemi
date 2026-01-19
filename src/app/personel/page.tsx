@@ -26,6 +26,7 @@ type StaffDepartment =
   | "MUDUR"
   | "MUDUR_YARDIMCISI"
   | "REHBERLIK"
+  | "BAS_REHBERLIK"
   | "MUHASEBE"
   | "GUZEL_SANATLAR"
   | "SPOR"
@@ -60,6 +61,7 @@ const departmentLabels: Record<StaffDepartment, string> = {
   MUDUR: "Müdür",
   MUDUR_YARDIMCISI: "Müdür Yardımcısı",
   REHBERLIK: "Rehberlik",
+  BAS_REHBERLIK: "Baş Rehberlik",
   MUHASEBE: "Muhasebe",
   GUZEL_SANATLAR: "Güzel Sanatlar",
   SPOR: "Spor",
