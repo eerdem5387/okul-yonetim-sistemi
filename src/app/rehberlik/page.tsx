@@ -53,7 +53,7 @@ export default function RehberlikPage() {
       const role = localStorage.getItem("auth_role")
       const name = localStorage.getItem("staff_name")
 
-      if (role !== "counselor") {
+      if (role !== "counselor" && role !== "head_counselor") {
         router.push("/login")
         return
       }

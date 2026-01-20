@@ -6,7 +6,7 @@ import { Sidebar } from "@/components/layout/sidebar"
 import OgretmenSidebar from "@/components/layout/ogretmen-sidebar"
 import VeliSidebar from "@/components/layout/veli-sidebar"
 import { usePathname, useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -21,6 +21,7 @@ export default function RootLayout({
   const router = useRouter()
   const [authRole, setAuthRole] = useState<AuthRole>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const redirectingRef = useRef(false) // Yönlendirme yapılıyor mu kontrolü için
 
   // İlk yüklemede auth kontrolü
   useEffect(() => {
@@ -62,6 +63,7 @@ export default function RootLayout({
   useEffect(() => {
     if (typeof window === "undefined") return
     if (isLoading) return
+    if (redirectingRef.current) return // Zaten yönlendirme yapılıyorsa tekrar çalışma
 
     const storedRole = localStorage.getItem("auth_role")
     let normalizedRole: AuthRole = null
@@ -70,9 +72,11 @@ export default function RootLayout({
       normalizedRole = storedRole
     }
 
-    // State'i güncelle
+    // State'i güncelle (sadece gerçekten değiştiğinde)
     if (normalizedRole !== authRole) {
       setAuthRole(normalizedRole)
+      // State güncellendiğinde bu effect tekrar çalışacak, bu yüzden şimdi return et
+      return
     }
 
     // IB Viewer sayfaları için özel kontrol
@@ -80,7 +84,11 @@ export default function RootLayout({
       if (pathname === "/ib-viewer/login") return
       const ibToken = localStorage.getItem("ib_viewer_token")
       if (!ibToken) {
-        router.push("/login")
+        if (!redirectingRef.current) {
+          redirectingRef.current = true
+          router.push("/login")
+          setTimeout(() => { redirectingRef.current = false }, 100)
+        }
         return
       }
       return
@@ -92,28 +100,40 @@ export default function RootLayout({
 
     // Login sayfasındaysa ve zaten giriş yapılmışsa, rolüne göre yönlendir
     if (pathname === "/login" && normalizedRole) {
-      if (normalizedRole === "teacher") {
-        router.push("/ogretmen")
-      } else if (normalizedRole === "counselor" || normalizedRole === "head_counselor") {
-        router.push("/rehberlik")
-      } else if (normalizedRole === "parent") {
-        router.push("/veli/panel")
-      } else {
-        router.push("/")
+      if (!redirectingRef.current) {
+        redirectingRef.current = true
+        if (normalizedRole === "teacher") {
+          router.push("/ogretmen")
+        } else if (normalizedRole === "counselor" || normalizedRole === "head_counselor") {
+          router.push("/rehberlik")
+        } else if (normalizedRole === "parent") {
+          router.push("/veli/panel")
+        } else {
+          router.push("/")
+        }
+        setTimeout(() => { redirectingRef.current = false }, 100)
       }
       return
     }
 
     // Veli login sayfasındaysa ve zaten parent rolü varsa, veli paneline yönlendir
     if (pathname === "/veli-login" && normalizedRole === "parent") {
-      router.push("/veli/panel")
+      if (!redirectingRef.current) {
+        redirectingRef.current = true
+        router.push("/veli/panel")
+        setTimeout(() => { redirectingRef.current = false }, 100)
+      }
       return
     }
 
     // Öğretmen sayfaları için kontrol
     if (pathname?.startsWith("/ogretmen")) {
       if (normalizedRole !== "teacher") {
-        router.push("/login")
+        if (!redirectingRef.current) {
+          redirectingRef.current = true
+          router.push("/login")
+          setTimeout(() => { redirectingRef.current = false }, 100)
+        }
         return
       }
       return
@@ -122,7 +142,11 @@ export default function RootLayout({
     // Rehberlik sayfaları için kontrol
     if (pathname?.startsWith("/rehberlik")) {
       if (normalizedRole !== "counselor" && normalizedRole !== "head_counselor") {
-        router.push("/login")
+        if (!redirectingRef.current) {
+          redirectingRef.current = true
+          router.push("/login")
+          setTimeout(() => { redirectingRef.current = false }, 100)
+        }
         return
       }
       return
@@ -141,7 +165,11 @@ export default function RootLayout({
         return
       }
       // Diğer roller için login'e yönlendir
-      router.push("/login")
+      if (!redirectingRef.current) {
+        redirectingRef.current = true
+        router.push("/login")
+        setTimeout(() => { redirectingRef.current = false }, 100)
+      }
       return
     }
 
@@ -152,7 +180,11 @@ export default function RootLayout({
         return
       }
       // Diğer roller için login'e yönlendir
-      router.push("/login")
+      if (!redirectingRef.current) {
+        redirectingRef.current = true
+        router.push("/login")
+        setTimeout(() => { redirectingRef.current = false }, 100)
+      }
       return
     }
 
@@ -164,7 +196,11 @@ export default function RootLayout({
         return
       }
       // Diğer roller için login'e yönlendir
-      router.push("/login")
+      if (!redirectingRef.current) {
+        redirectingRef.current = true
+        router.push("/login")
+        setTimeout(() => { redirectingRef.current = false }, 100)
+      }
       return
     }
 
@@ -172,7 +208,11 @@ export default function RootLayout({
     // ÖNEMLİ: Bu kontrol /veli-gorusmeleri kontrolünden SONRA yapılmalı
     if ((pathname?.startsWith("/veli") && pathname !== "/veli-gorusmeleri") || pathname === "/parent") {
       if (normalizedRole !== "parent") {
-        router.push("/veli-login")
+        if (!redirectingRef.current) {
+          redirectingRef.current = true
+          router.push("/veli-login")
+          setTimeout(() => { redirectingRef.current = false }, 100)
+        }
         return
       }
       return
@@ -183,7 +223,11 @@ export default function RootLayout({
       if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "head_counselor") {
         return
       }
-      router.push("/login")
+      if (!redirectingRef.current) {
+        redirectingRef.current = true
+        router.push("/login")
+        setTimeout(() => { redirectingRef.current = false }, 100)
+      }
       return
     }
 
@@ -192,7 +236,11 @@ export default function RootLayout({
       if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "head_counselor") {
         return
       }
-      router.push("/login")
+      if (!redirectingRef.current) {
+        redirectingRef.current = true
+        router.push("/login")
+        setTimeout(() => { redirectingRef.current = false }, 100)
+      }
       return
     }
 
@@ -201,7 +249,11 @@ export default function RootLayout({
       if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "head_counselor") {
         return
       }
-      router.push("/login")
+      if (!redirectingRef.current) {
+        redirectingRef.current = true
+        router.push("/login")
+        setTimeout(() => { redirectingRef.current = false }, 100)
+      }
       return
     }
 
@@ -210,7 +262,11 @@ export default function RootLayout({
       if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "head_counselor") {
         return
       }
-      router.push("/login")
+      if (!redirectingRef.current) {
+        redirectingRef.current = true
+        router.push("/login")
+        setTimeout(() => { redirectingRef.current = false }, 100)
+      }
       return
     }
 
@@ -219,7 +275,11 @@ export default function RootLayout({
       if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "head_counselor") {
         return
       }
-      router.push("/login")
+      if (!redirectingRef.current) {
+        redirectingRef.current = true
+        router.push("/login")
+        setTimeout(() => { redirectingRef.current = false }, 100)
+      }
       return
     }
 
@@ -230,24 +290,40 @@ export default function RootLayout({
         return
       }
       if (normalizedRole === "teacher") {
-        router.push("/ogretmen")
+        if (!redirectingRef.current) {
+          redirectingRef.current = true
+          router.push("/ogretmen")
+          setTimeout(() => { redirectingRef.current = false }, 100)
+        }
         return
       }
       if (normalizedRole === "parent") {
-        router.push("/veli/panel")
+        if (!redirectingRef.current) {
+          redirectingRef.current = true
+          router.push("/veli/panel")
+          setTimeout(() => { redirectingRef.current = false }, 100)
+        }
         return
       }
       // Auth yoksa login'e yönlendir
-      router.push("/login")
+      if (!redirectingRef.current) {
+        redirectingRef.current = true
+        router.push("/login")
+        setTimeout(() => { redirectingRef.current = false }, 100)
+      }
       return
     }
 
     // Login sayfası değilse ve yetkili rol yoksa login'e yönlendir
     if (!isAllowedPath && !normalizedRole) {
-      router.push("/login")
+      if (!redirectingRef.current) {
+        redirectingRef.current = true
+        router.push("/login")
+        setTimeout(() => { redirectingRef.current = false }, 100)
+      }
       return
     }
-  }, [pathname, router, isLoading, authRole])
+  }, [pathname, router, isLoading]) // authRole dependency'sini kaldırdık çünkü yukarıda zaten kontrol ediyoruz
 
   // Loading durumu
   if (isLoading) {
