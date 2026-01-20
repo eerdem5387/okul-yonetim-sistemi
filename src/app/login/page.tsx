@@ -58,7 +58,7 @@ export default function LoginPage() {
         // Rol bazlı yönlendirme - window.location.href kullanarak tam sayfa yenileme
         if (data.role === "teacher") {
           window.location.href = "/ogretmen"
-        } else if (data.role === "counselor") {
+        } else if (data.role === "counselor" || data.role === "head_counselor") {
           window.location.href = "/rehberlik"
         } else {
           window.location.href = "/"

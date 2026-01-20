@@ -377,8 +377,8 @@ export default function RootLayout({
     )
   }
 
-  // Admin, Principal, Student Affairs, Counselor için normal layout (sidebar ile)
-  if (authRole === "admin" || authRole === "principal" || authRole === "student_affairs" || authRole === "counselor") {
+  // Admin, Principal, Student Affairs, Counselor, Head Counselor için normal layout (sidebar ile)
+  if (authRole === "admin" || authRole === "principal" || authRole === "student_affairs" || authRole === "counselor" || authRole === "head_counselor") {
     return (
       <html lang="tr">
         <head>
