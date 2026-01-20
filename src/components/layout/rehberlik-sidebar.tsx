@@ -15,10 +15,14 @@ import {
   Menu,
   X,
   LogOut,
+  ClipboardList,
+  FileText,
+  History,
+  Handshake,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 
-const navigation = [
+const baseNavigation = [
   { name: "Dashboard", href: "/rehberlik", icon: LayoutDashboard },
   { name: "Neredeyiz?", href: "/rehberlik/neredeyiz", icon: Target },
   { name: "Sınıf Yönetimi", href: "/sinif-yonetimi", icon: School },
@@ -28,17 +32,33 @@ const navigation = [
   { name: "Veli Görüşmeleri", href: "/rehberlik/veli-gorusmeleri", icon: MessageSquare },
 ]
 
+const headCounselorNavigation = [
+  { name: "Bursluluk Başvuruları", href: "/basvurular", icon: ClipboardList },
+  { name: "Teklif Görüşmeleri", href: "/teklif-gorusmeleri", icon: Handshake },
+  { name: "Yeni Kayıt", href: "/new-registration", icon: FileText },
+  { name: "Kayıt Yenileme", href: "/renewal", icon: FileText },
+  { name: "Geçmiş Sözleşmeler", href: "/history", icon: History },
+]
+
 export function RehberlikSidebar() {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [staffName, setStaffName] = useState<string>("")
+  const [isHeadCounselor, setIsHeadCounselor] = useState(false)
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const name = localStorage.getItem("staff_name")
+      const role = localStorage.getItem("auth_role")
       setStaffName(name || "Rehberlik Uzmanı")
+      setIsHeadCounselor(role === "head_counselor")
     }
   }, [])
+  
+  // Baş Rehberlik için ekstra menü öğelerini ekle
+  const navigation = isHeadCounselor 
+    ? [...baseNavigation, ...headCounselorNavigation]
+    : baseNavigation
 
   const handleLogout = () => {
     if (confirm("Çıkış yapmak istediğinizden emin misiniz?")) {
@@ -137,7 +157,9 @@ export function RehberlikSidebar() {
               <p className="text-sm font-semibold text-gray-900 truncate">
                 {staffName}
               </p>
-              <p className="text-xs text-gray-500">Rehberlik</p>
+              <p className="text-xs text-gray-500">
+                {isHeadCounselor ? "Baş Rehberlik" : "Rehberlik"}
+              </p>
             </div>
           </div>
           <Button
