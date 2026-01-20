@@ -1,15 +1,27 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
+        const { searchParams } = new URL(request.url)
+        const studentId = searchParams.get('studentId')
+        const academicYear = searchParams.get('academicYear')
+        
+        const whereClause: Record<string, unknown> = {}
+        if (studentId) {
+            whereClause.studentId = studentId
+        }
+        
         const renewals = await prisma.renewal.findMany({
+            where: whereClause,
             include: {
                 student: {
                     select: {
+                        id: true,
                         firstName: true,
                         lastName: true,
-                        tcNumber: true
+                        tcNumber: true,
+                        grade: true
                     }
                 }
             },
@@ -17,6 +29,15 @@ export async function GET() {
                 createdAt: "desc"
             }
         })
+
+        // Eğer academicYear parametresi varsa, contractData içinde bu akademik yılı kontrol et
+        if (academicYear && renewals.length > 0) {
+            const filteredRenewals = renewals.filter(renewal => {
+                const contractData = renewal.contractData as Record<string, unknown>
+                return contractData.academicYear === academicYear
+            })
+            return NextResponse.json(filteredRenewals)
+        }
 
         return NextResponse.json(renewals)
     } catch (error) {
@@ -42,6 +63,29 @@ export async function POST(request: NextRequest) {
 
         if (!student) {
             return NextResponse.json({ error: "Student not found" }, { status: 404 })
+        }
+
+        // Bu öğrenci için aynı akademik yılda zaten kayıt yenileme var mı kontrol et
+        const contractDataObj = contractData as Record<string, unknown>
+        const academicYear = contractDataObj?.academicYear as string | undefined
+        
+        if (academicYear) {
+            const existingRenewals = await prisma.renewal.findMany({
+                where: { studentId },
+                select: { contractData: true }
+            })
+            
+            const hasExistingRenewal = existingRenewals.some(renewal => {
+                const existingContractData = renewal.contractData as Record<string, unknown>
+                return existingContractData.academicYear === academicYear
+            })
+            
+            if (hasExistingRenewal) {
+                return NextResponse.json({ 
+                    error: "Bu öğrenci için seçilen akademik yılda zaten kayıt yenileme yapılmış!",
+                    code: "DUPLICATE_RENEWAL"
+                }, { status: 400 })
+            }
         }
 
         // Sözleşmeyi oluştur

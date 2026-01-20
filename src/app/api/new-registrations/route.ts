@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
+        const { searchParams } = new URL(request.url)
+        const studentId = searchParams.get('studentId')
+        
+        const whereClause = studentId ? { studentId } : {}
+        
         const registrations = await prisma.newRegistration.findMany({
+            where: whereClause,
             include: {
                 student: {
                     select: {

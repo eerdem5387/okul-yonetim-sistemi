@@ -46,6 +46,8 @@ export default function RenewalPage() {
   const [students, setStudents] = useState<Student[]>([])
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
   const [studentSearchTerm, setStudentSearchTerm] = useState("")
+  const [hasExistingRenewal, setHasExistingRenewal] = useState(false)
+  const [existingRenewalInfo, setExistingRenewalInfo] = useState<string>("")
   
   // İstatistikler
   const [stats, setStats] = useState({
@@ -304,6 +306,12 @@ export default function RenewalPage() {
       return
     }
 
+    // Mevcut kayıt yenileme kontrolü
+    if (hasExistingRenewal) {
+      alert(`⚠️ ${existingRenewalInfo}\n\nBu öğrenci için seçilen akademik yılda zaten kayıt yenileme yapılmış. Tekrar kayıt yenileme yapılamaz!`)
+      return
+    }
+
     try {
       // Önce sözleşmeleri kaydet (eğer kaydedilmemişse)
       // Tüm sözleşmeleri ayrı ayrı kaydet
@@ -434,6 +442,8 @@ export default function RenewalPage() {
   const handleStudentSelect = async (student: Student) => {
     setSelectedStudent(student)
     setStudentSearchTerm("") // Arama terimini temizle
+    setHasExistingRenewal(false)
+    setExistingRenewalInfo("")
     
     const formattedBirthDate = formatDate(student.birthDate)
     setMainContractData(prev => ({
@@ -463,6 +473,45 @@ export default function RenewalPage() {
       console.error("Error fetching student details:", err)
     }
   }
+
+  // Akademik yıl değiştiğinde veya öğrenci seçildiğinde mevcut kayıt yenilemeyi kontrol et
+  useEffect(() => {
+    const checkExistingRenewal = async () => {
+      if (!selectedStudent || !mainContractData.academicYear) {
+        setHasExistingRenewal(false)
+        setExistingRenewalInfo("")
+        return
+      }
+
+      try {
+        const response = await fetch(`/api/renewals?studentId=${selectedStudent.id}&academicYear=${encodeURIComponent(mainContractData.academicYear)}`)
+        if (response.ok) {
+          const renewals = await response.json()
+          if (Array.isArray(renewals) && renewals.length > 0) {
+            setHasExistingRenewal(true)
+            const renewal = renewals[0]
+            const createdAt = new Date(renewal.createdAt).toLocaleDateString('tr-TR', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })
+            setExistingRenewalInfo(`Bu öğrenci için ${mainContractData.academicYear} akademik yılında zaten kayıt yenileme yapılmış. (Tarih: ${createdAt})`)
+          } else {
+            setHasExistingRenewal(false)
+            setExistingRenewalInfo("")
+          }
+        }
+      } catch (err) {
+        console.error("Error checking existing renewal:", err)
+        setHasExistingRenewal(false)
+        setExistingRenewalInfo("")
+      }
+    }
+
+    checkExistingRenewal()
+  }, [selectedStudent?.id, mainContractData.academicYear])
 
   return (
     <div className="p-6">
@@ -607,8 +656,15 @@ export default function RenewalPage() {
             </div>
 
             {selectedStudent && (
-              <div className="p-4 bg-gray-50 rounded">
+              <div className={`p-4 rounded ${hasExistingRenewal ? 'bg-red-50 border-2 border-red-300' : 'bg-gray-50'}`}>
                 <h3 className="font-medium mb-2">Seçilen Öğrenci Bilgileri</h3>
+                {hasExistingRenewal && (
+                  <div className="mb-3 p-3 bg-red-100 border border-red-300 rounded text-red-800">
+                    <p className="font-semibold">⚠️ Uyarı!</p>
+                    <p className="text-sm">{existingRenewalInfo}</p>
+                    <p className="text-sm mt-1">Bu öğrenci için seçilen akademik yılda kayıt yenileme yapılamaz.</p>
+                  </div>
+                )}
                 <p><strong>Ad Soyad:</strong> {selectedStudent.firstName} {selectedStudent.lastName}</p>
                 <p><strong>TC Kimlik No:</strong> {selectedStudent.tcNumber}</p>
                 <p><strong>Sınıf:</strong> {selectedStudent.grade}</p>
@@ -637,7 +693,7 @@ export default function RenewalPage() {
         {selectedStudent && (
           <>
             {/* Ana Sözleşme Formu */}
-            <Card>
+            <Card className={hasExistingRenewal ? 'opacity-60 pointer-events-none' : ''}>
               <CardHeader>
                 <CardTitle className="text-blue-600">EĞİTİM ÖĞRETİM HİZMET SÖZLEŞMESİ</CardTitle>
                 <CardDescription>Ana sözleşme formu - Öğrenci ve ödeme bilgileri</CardDescription>
@@ -1057,9 +1113,13 @@ export default function RenewalPage() {
 
             {/* Kaydet ve PDF İndir Butonları */}
             <div className="flex gap-2">
-              <Button onClick={handleDownloadCombinedPDF} variant="outline">
+              <Button 
+                onClick={handleDownloadCombinedPDF} 
+                variant="outline"
+                disabled={hasExistingRenewal}
+              >
                 <Download className="h-4 w-4 mr-2" />
-                Tüm Sözleşmeleri PDF İndir ve Kaydet
+                {hasExistingRenewal ? "Kayıt Yenileme Yapılamaz" : "Tüm Sözleşmeleri PDF İndir ve Kaydet"}
               </Button>
             </div>
           </>

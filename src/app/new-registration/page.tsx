@@ -22,6 +22,7 @@ const siniflar = [
 export default function NewRegistrationPage() {
   const router = useRouter()
   const [createdStudentId, setCreatedStudentId] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   
   // İstatistikler
   const [stats, setStats] = useState({
@@ -271,6 +272,11 @@ export default function NewRegistrationPage() {
 
 
   const handleDownloadCombinedPDF = async () => {
+    // Çift tıklama koruması
+    if (isSubmitting) {
+      return
+    }
+
     // Öğrenci bilgilerini kontrol et - zorunlu alanlar
     if (!studentFormData.firstName || !studentFormData.lastName || !studentFormData.tcNumber || !studentFormData.grade || !studentFormData.birthDate) {
       alert("⚠️ Lütfen öğrenci bilgilerini eksiksiz doldurun!\n\nZorunlu alanlar:\n- Ad\n- Soyad\n- TC Kimlik No\n- Doğum Tarihi\n- Sınıf")
@@ -293,6 +299,7 @@ export default function NewRegistrationPage() {
       return
     }
 
+    setIsSubmitting(true)
     try {
       // Önce öğrenciyi oluştur (yeni kayıt için her zaman yeni öğrenci oluşturulur)
       let studentId = createdStudentId
@@ -310,10 +317,13 @@ export default function NewRegistrationPage() {
           // TC numarası zaten varsa özel mesaj
           if (errorData.error && errorData.error.includes("TC") && errorData.error.includes("unique")) {
             alert("⚠️ Bu TC Kimlik Numarası ile kayıtlı bir öğrenci zaten mevcut!\n\nLütfen TC numarasını kontrol edin veya 'Kayıt Yenileme' sayfasını kullanın.")
+            setIsSubmitting(false)
+            return
           } else {
             alert(errorData.error || "Öğrenci oluşturulurken hata oluştu!")
+            setIsSubmitting(false)
+            return
           }
-          return
         }
 
         const newStudent = await studentResponse.json()
@@ -321,9 +331,51 @@ export default function NewRegistrationPage() {
         studentId = newStudent.student?.id || newStudent.id
         if (!studentId) {
           alert("⚠️ Öğrenci oluşturuldu ancak ID alınamadı!")
+          setIsSubmitting(false)
           return
         }
         setCreatedStudentId(studentId)
+      }
+
+      // Bu öğrenci için zaten yeni kayıt var mı kontrol et
+      const existingRegistrationsResponse = await fetch(`/api/new-registrations?studentId=${studentId}`)
+      if (existingRegistrationsResponse.ok) {
+        const existingRegistrations = await existingRegistrationsResponse.json()
+        if (Array.isArray(existingRegistrations) && existingRegistrations.length > 0) {
+          // Mevcut kayıt varsa, yeni kayıt oluşturma
+          const existingRegistration = existingRegistrations[0]
+          const contractId = existingRegistration.id
+          
+          // PDF'i mevcut kayıt ile indir
+          const pdfResponse = await fetch(`/api/pdf/combined/${contractId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contractTypes: [
+                "new-registration",
+                "uniform",
+              ],
+              mainContractData: mainContractData,
+              otherContractData: otherContractData
+            })
+          })
+
+          if (pdfResponse.ok) {
+            const blob = await pdfResponse.blob()
+            const url = window.URL.createObjectURL(blob)
+            const a = document.createElement("a")
+            a.href = url
+            a.download = `tum-sozlesmeler-${studentFormData.firstName}-${studentFormData.lastName}.pdf`
+            document.body.appendChild(a)
+            a.click()
+            window.URL.revokeObjectURL(url)
+            document.body.removeChild(a)
+            
+            alert(`✅ PDF başarıyla indirildi!\n\nBu öğrenci için zaten bir kayıt mevcut. Mevcut kayıt kullanıldı.`)
+            setIsSubmitting(false)
+            return
+          }
+        }
       }
 
       // Sonra sözleşmeleri kaydet
@@ -470,6 +522,8 @@ export default function NewRegistrationPage() {
     } catch (error) {
       console.error("Error downloading PDF:", error)
       alert("PDF indirilirken hata oluştu!")
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -1199,9 +1253,13 @@ export default function NewRegistrationPage() {
             {/* Kaydet ve PDF İndir Butonları */}
             <div className="space-y-3">
               <div className="flex gap-2">
-                <Button onClick={handleDownloadCombinedPDF} variant="outline">
+                <Button 
+                  onClick={handleDownloadCombinedPDF} 
+                  variant="outline"
+                  disabled={isSubmitting}
+                >
                   <Download className="h-4 w-4 mr-2" />
-                  Tüm Sözleşmeleri PDF İndir
+                  {isSubmitting ? "İşleniyor..." : "Tüm Sözleşmeleri PDF İndir"}
                 </Button>
               </div>
             </div>
