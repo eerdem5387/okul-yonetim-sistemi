@@ -7,6 +7,7 @@ const ACTIVE_ROLES = [
   "SUPER_ADMIN",
   "OGRETMEN",
   "REHBERLIK",
+  "BAS_REHBERLIK",
   "OGRENCI_ISLERI",
   "MUDUR",
   "MUDUR_YARDIMCISI",
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
       }
       
       // Rol belirleme (ilk giriş için de)
-      let role: "admin" | "principal" | "teacher" | "counselor" | "student_affairs" = "teacher"
+      let role: "admin" | "principal" | "teacher" | "counselor" | "head_counselor" | "student_affairs" = "teacher"
       
       if (staff.department === "SUPER_ADMIN") {
         role = "admin"
@@ -72,6 +73,8 @@ export async function POST(request: NextRequest) {
         role = "principal"
       } else if (staff.department === "MUDUR_YARDIMCISI") {
         role = "student_affairs"
+      } else if (staff.department === "BAS_REHBERLIK") {
+        role = "head_counselor"
       } else if (staff.department === "REHBERLIK") {
         role = "counselor"
       } else if (staff.department === "OGRENCI_ISLERI") {
@@ -114,7 +117,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Rol belirleme
-    let role: "admin" | "principal" | "teacher" | "counselor" | "student_affairs" = "teacher"
+    let role: "admin" | "principal" | "teacher" | "counselor" | "head_counselor" | "student_affairs" = "teacher"
     
     if (staff.department === "SUPER_ADMIN") {
       role = "admin" // Süper Admin
@@ -122,6 +125,8 @@ export async function POST(request: NextRequest) {
       role = "principal" // Müdür
     } else if (staff.department === "MUDUR_YARDIMCISI") {
       role = "student_affairs" // Müdür Yardımcısı → Öğrenci İşleri yetkisi
+    } else if (staff.department === "BAS_REHBERLIK") {
+      role = "head_counselor" // Baş Rehberlik
     } else if (staff.department === "REHBERLIK") {
       role = "counselor" // Rehberlik
     } else if (staff.department === "OGRENCI_ISLERI") {
