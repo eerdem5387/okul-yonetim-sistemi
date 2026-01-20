@@ -1112,8 +1112,8 @@ export default function NewRegistrationPage() {
                         <Input
                           id="registrarName"
                           value={mainContractData.registrarName}
-                          readOnly
-                          className="bg-gray-100 cursor-not-allowed"
+                          onChange={(e) => setMainContractData(prev => ({ ...prev, registrarName: e.target.value }))}
+                          placeholder="Kaydı yapan kişinin adı soyadı"
                         />
                       </div>
                     </div>
