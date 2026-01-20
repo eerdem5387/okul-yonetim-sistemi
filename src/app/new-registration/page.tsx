@@ -864,8 +864,8 @@ export default function NewRegistrationPage() {
                       <Input
                         id="registrationResponsible"
                         value={mainContractData.registrationResponsible}
-                        readOnly
-                        className="bg-gray-100 cursor-not-allowed"
+                        onChange={(e) => setMainContractData(prev => ({ ...prev, registrationResponsible: e.target.value }))}
+                        placeholder="Kayıt sorumlusunun adı soyadı"
                       />
                     </div>
                     <div>
