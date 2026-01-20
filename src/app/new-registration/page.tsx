@@ -141,6 +141,14 @@ export default function NewRegistrationPage() {
   const formatDate = (date: string | Date | null | undefined) => {
     if (!date) return ""
     try {
+      // Eğer DD.MM.YYYY formatındaysa ISO formatına çevir
+      if (typeof date === "string" && date.includes('.') && date.length === 10) {
+        const parts = date.split('.')
+        if (parts.length === 3) {
+          const [day, month, year] = parts
+          return `${year}-${month}-${day}`
+        }
+      }
       const parsed = new Date(date)
       if (!isNaN(parsed.getTime())) {
         return parsed.toISOString().split("T")[0]
@@ -683,15 +691,38 @@ export default function NewRegistrationPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="birthDate">Doğum Tarihi *</Label>
+                    <Label htmlFor="birthDate">Doğum Tarihi * (GG.AA.YYYY)</Label>
                     <Input
                       id="birthDate"
-                      type="date"
+                      type="text"
                       value={studentFormData.birthDate}
                       onChange={(e) => {
-                        setStudentFormData({ ...studentFormData, birthDate: e.target.value })
-                        setMainContractData(prev => ({ ...prev, studentBirthDate: e.target.value }))
+                        let value = e.target.value.replace(/\D/g, '') // Sadece rakamları al
+                        // Maksimum 8 rakam (DDMMYYYY)
+                        if (value.length > 8) value = value.slice(0, 8)
+                        
+                        // Formatla: DD.MM.YYYY
+                        let formatted = value
+                        if (value.length > 2) {
+                          formatted = value.slice(0, 2) + '.' + value.slice(2)
+                        }
+                        if (value.length > 4) {
+                          formatted = value.slice(0, 2) + '.' + value.slice(2, 4) + '.' + value.slice(4)
+                        }
+                        
+                        setStudentFormData({ ...studentFormData, birthDate: formatted })
+                        // ISO formatına çevir (YYYY-MM-DD) - backend için
+                        let isoDate = ''
+                        if (value.length === 8) {
+                          const day = value.slice(0, 2)
+                          const month = value.slice(2, 4)
+                          const year = value.slice(4, 8)
+                          isoDate = `${year}-${month}-${day}`
+                        }
+                        setMainContractData(prev => ({ ...prev, studentBirthDate: isoDate || formatted }))
                       }}
+                      placeholder="GG.AA.YYYY (örn: 12.07.2016)"
+                      maxLength={10}
                       required
                     />
                   </div>

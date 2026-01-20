@@ -115,6 +115,14 @@ export default function RenewalPage() {
   const formatDate = (date: string | Date | null | undefined) => {
     if (!date) return ""
     try {
+      // Eğer DD.MM.YYYY formatındaysa ISO formatına çevir
+      if (typeof date === "string" && date.includes('.') && date.length === 10) {
+        const parts = date.split('.')
+        if (parts.length === 3) {
+          const [day, month, year] = parts
+          return `${year}-${month}-${day}`
+        }
+      }
       const parsed = new Date(date)
       if (!isNaN(parsed.getTime())) {
         return parsed.toISOString().split("T")[0]
@@ -124,6 +132,34 @@ export default function RenewalPage() {
     } catch {
       const stringDate = typeof date === "string" ? date : ""
       return stringDate.includes("T") ? stringDate.split("T")[0] : stringDate
+    }
+  }
+
+  // ISO formatından DD.MM.YYYY formatına çevir (görüntüleme için)
+  const formatDateForDisplay = (date: string | Date | null | undefined) => {
+    if (!date) return ""
+    try {
+      // Eğer zaten DD.MM.YYYY formatındaysa olduğu gibi döndür
+      if (typeof date === "string" && date.includes('.') && date.length === 10) {
+        return date
+      }
+      // ISO formatından (YYYY-MM-DD) DD.MM.YYYY'ye çevir
+      if (typeof date === "string" && date.includes('-') && date.length === 10) {
+        const parts = date.split('-')
+        if (parts.length === 3) {
+          return `${parts[2]}.${parts[1]}.${parts[0]}`
+        }
+      }
+      const parsed = new Date(date)
+      if (!isNaN(parsed.getTime())) {
+        const day = String(parsed.getDate()).padStart(2, '0')
+        const month = String(parsed.getMonth() + 1).padStart(2, '0')
+        const year = parsed.getFullYear()
+        return `${day}.${month}.${year}`
+      }
+      return String(date)
+    } catch {
+      return String(date || "")
     }
   }
 
@@ -451,7 +487,7 @@ export default function RenewalPage() {
       studentName: `${student.firstName} ${student.lastName}`,
       studentTC: student.tcNumber,
       studentClass: student.grade,
-      studentBirthDate: formattedBirthDate,
+      studentBirthDate: formattedBirthDate, // ISO formatında sakla (YYYY-MM-DD)
       contractStudentName: `${student.firstName} ${student.lastName}`,
       contractParentName: ""
     }))
@@ -727,12 +763,38 @@ export default function RenewalPage() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="studentBirthDate">Doğum Tarihi</Label>
+                      <Label htmlFor="studentBirthDate">Doğum Tarihi (GG.AA.YYYY)</Label>
                       <Input
                         id="studentBirthDate"
-                        type="date"
-                        value={mainContractData.studentBirthDate}
-                        onChange={(e) => setMainContractData({ ...mainContractData, studentBirthDate: e.target.value })}
+                        type="text"
+                        value={formatDateForDisplay(mainContractData.studentBirthDate)}
+                        onChange={(e) => {
+                          let value = e.target.value.replace(/\D/g, '') // Sadece rakamları al
+                          // Maksimum 8 rakam (DDMMYYYY)
+                          if (value.length > 8) value = value.slice(0, 8)
+                          
+                          // Formatla: DD.MM.YYYY
+                          let formatted = value
+                          if (value.length > 2) {
+                            formatted = value.slice(0, 2) + '.' + value.slice(2)
+                          }
+                          if (value.length > 4) {
+                            formatted = value.slice(0, 2) + '.' + value.slice(2, 4) + '.' + value.slice(4)
+                          }
+                          
+                          // ISO formatına çevir (YYYY-MM-DD) - backend için
+                          let isoDate = formatted
+                          if (value.length === 8) {
+                            const day = value.slice(0, 2)
+                            const month = value.slice(2, 4)
+                            const year = value.slice(4, 8)
+                            isoDate = `${year}-${month}-${day}`
+                          }
+                          
+                          setMainContractData({ ...mainContractData, studentBirthDate: isoDate })
+                        }}
+                        placeholder="GG.AA.YYYY (örn: 12.07.2016)"
+                        maxLength={10}
                       />
                     </div>
                     <div>
