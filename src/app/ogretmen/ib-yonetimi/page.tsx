@@ -340,6 +340,8 @@ export default function OgretmenIbYonetimiPage() {
       if (token) {
         headers["Authorization"] = `Bearer ${token}`
       }
+      // FormData gönderilirken Content-Type header'ını manuel ayarlama
+      // Browser otomatik olarak multipart/form-data ile boundary ekler
       const response = await fetch("/api/activities/upload", {
         method: "POST",
         headers,

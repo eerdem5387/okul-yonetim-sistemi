@@ -1,9 +1,19 @@
 import { NextRequest, NextResponse } from "next/server"
 import { put } from "@vercel/blob"
+import { checkIbAccess } from "@/lib/access-control"
 
 // POST - Dosya yükle
 export async function POST(request: NextRequest) {
   try {
+    // Yetki kontrolü
+    const { hasAccess } = await checkIbAccess(request)
+    if (!hasAccess) {
+      return NextResponse.json(
+        { error: "Bu işlem için yetkiniz bulunmamaktadır" },
+        { status: 403 }
+      )
+    }
+
     const formData = await request.formData()
     const file = formData.get("file") as File
 
