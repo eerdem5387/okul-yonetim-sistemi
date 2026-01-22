@@ -48,6 +48,25 @@ export default function NewRegistrationsListPage() {
     return "Belirtilmemiş"
   }
 
+  // Sınıf formatı helper - "5" -> "5. Sınıf"
+  const formatGrade = (value: unknown): string => {
+    const gradeStr = safeString(value)
+    if (gradeStr === "Belirtilmemiş") return gradeStr
+    
+    // Eğer zaten "X. Sınıf" formatındaysa olduğu gibi döndür
+    if (gradeStr.includes(". Sınıf") || gradeStr.includes("Sınıf")) {
+      return gradeStr
+    }
+    
+    // Sadece rakam ise "X. Sınıf" formatına çevir
+    const gradeNum = gradeStr.trim()
+    if (/^\d+$/.test(gradeNum)) {
+      return `${gradeNum}. Sınıf`
+    }
+    
+    return gradeStr
+  }
+
   const fetchRegistrations = useCallback(async () => {
     try {
       setLoading(true)
@@ -227,7 +246,7 @@ export default function NewRegistrationsListPage() {
                   </div>
                   <div>
                     <Label className="text-sm text-gray-600">Sınıf</Label>
-                    <p className="font-medium">{safeString(contractData.studentClass || selectedRegistration.student?.grade)}</p>
+                    <p className="font-medium">{formatGrade(contractData.studentClass || selectedRegistration.student?.grade)}</p>
                   </div>
                   <div>
                     <Label className="text-sm text-gray-600">Doğum Tarihi</Label>
@@ -520,7 +539,7 @@ export default function NewRegistrationsListPage() {
                           </div>
                           <div className="flex items-center gap-2">
                             <GraduationCap className="h-4 w-4" />
-                            <span>{safeString(contractData.studentClass || registration.student?.grade)}</span>
+                            <span>{formatGrade(contractData.studentClass || registration.student?.grade)}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <Calendar className="h-4 w-4" />
