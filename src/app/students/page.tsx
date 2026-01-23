@@ -80,6 +80,42 @@ export default function StudentsPage() {
       .join(' ')
   }
 
+  // Sınıf formatı helper - "5" -> "5. Sınıf"
+  const formatGrade = (value: string | null | undefined): string => {
+    if (!value) return "Belirtilmemiş"
+    
+    // Eğer zaten "X. Sınıf" formatındaysa olduğu gibi döndür
+    if (value.includes(". Sınıf") || value.includes("Sınıf")) {
+      return value
+    }
+    
+    // Sadece rakam ise "X. Sınıf" formatına çevir
+    const gradeNum = value.trim()
+    if (/^\d+$/.test(gradeNum)) {
+      return `${gradeNum}. Sınıf`
+    }
+    
+    return value
+  }
+
+  // Sınıf değerini dropdown için normalize et - "5" veya "5. Sınıf" -> "5. Sınıf"
+  const normalizeGradeForDropdown = (value: string | null | undefined): string => {
+    if (!value) return ""
+    
+    // Eğer zaten "X. Sınıf" formatındaysa olduğu gibi döndür
+    if (value.includes(". Sınıf")) {
+      return value
+    }
+    
+    // Sadece rakam ise "X. Sınıf" formatına çevir
+    const gradeNum = value.trim()
+    if (/^\d+$/.test(gradeNum)) {
+      return `${gradeNum}. Sınıf`
+    }
+    
+    return value
+  }
+
   const fetchStudents = useCallback(async (page: number = 1, search: string = "", grade: string = "") => {
     try {
       const params = new URLSearchParams({
@@ -205,7 +241,7 @@ export default function StudentsPage() {
       lastName: student.lastName,
       tcNumber: student.tcNumber,
       birthDate: birthDateFormatted,
-      grade: student.grade,
+      grade: normalizeGradeForDropdown(student.grade),
       address: student.address,
       motherName: student.motherName,
       motherTc: student.motherTc,
@@ -763,7 +799,7 @@ export default function StudentsPage() {
                       {student.tcNumber}
                     </td>
                     <td className="px-2 sm:px-3 lg:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
-                      {student.grade}
+                      {formatGrade(student.grade)}
                     </td>
                     <td className="hidden md:table-cell px-6 py-2 sm:py-4 text-xs sm:text-sm text-gray-500 max-w-xs truncate">
                       {student.address}

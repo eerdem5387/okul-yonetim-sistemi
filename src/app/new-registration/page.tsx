@@ -739,9 +739,9 @@ export default function NewRegistrationPage() {
                       required
                     >
                       <option value="">Sınıf Seçiniz</option>
-                      {[5, 6, 7, 8, 9, 10, 11, 12].map((grade) => (
-                        <option key={grade} value={grade.toString()}>
-                          {grade}. Sınıf
+                      {siniflar.map((grade) => (
+                        <option key={grade} value={grade}>
+                          {grade}
                         </option>
                       ))}
                     </select>
