@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Search, Filter, ArrowLeft, Eye, Download, Calendar, User, GraduationCap, Trash2 } from "lucide-react"
+import { Search, Filter, ArrowLeft, Eye, Download, Calendar, User, GraduationCap, Trash2, TrendingUp } from "lucide-react"
 
 interface NewRegistration {
   id: string
@@ -36,6 +36,11 @@ export default function NewRegistrationsListPage() {
   const [filterDate, setFilterDate] = useState("all")
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
+  
+  // İstatistikler
+  const [stats, setStats] = useState({
+    academicYearStats: {} as Record<string, number>,
+  })
 
   const gradeOptions = ["5. Sınıf", "6. Sınıf", "7. Sınıf", "8. Sınıf", "9. Sınıf", "10. Sınıf", "11. Sınıf", "12. Sınıf", "all"]
 
@@ -89,9 +94,26 @@ export default function NewRegistrationsListPage() {
     }
   }, [])
 
+  const fetchStats = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/new-registrations/stats`)
+      if (response.ok) {
+        const data = await response.json()
+        if (data && typeof data === 'object') {
+          setStats({
+            academicYearStats: data.academicYearStats || {}
+          })
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching stats:", error)
+    }
+  }, [])
+
   useEffect(() => {
     fetchRegistrations()
-  }, [fetchRegistrations])
+    fetchStats()
+  }, [fetchRegistrations, fetchStats])
 
   // Filtreleme
   useEffect(() => {
@@ -541,6 +563,34 @@ export default function NewRegistrationsListPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Akademik Yıl Bazında İstatistikler */}
+        {Object.keys(stats.academicYearStats).length > 0 && (
+          <Card className="mb-4 sm:mb-6 shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-blue-600" />
+                Akademik Yıl Bazında Kayıtlar
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+                {Object.entries(stats.academicYearStats)
+                  .sort(([a], [b]) => b.localeCompare(a)) // En yeni yıldan eskiye sırala
+                  .map(([year, count]) => (
+                    <div
+                      key={year}
+                      className="p-3 sm:p-4 rounded-lg border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 hover:border-blue-300 hover:bg-blue-100 transition-all"
+                    >
+                      <p className="text-xs sm:text-sm text-gray-600 mb-1 truncate">{year}</p>
+                      <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-900">{count}</p>
+                      <p className="text-xs text-gray-500 mt-1">Kayıt</p>
+                    </div>
+                  ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Kayıt Listesi */}
         {loading ? (

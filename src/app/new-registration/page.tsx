@@ -31,6 +31,7 @@ export default function NewRegistrationPage() {
     thisWeek: 0,
     thisMonth: 0,
     sinifStats: {} as Record<string, number>,
+    academicYearStats: {} as Record<string, number>,
   })
   
   // Öğrenci Bilgileri Formu
@@ -174,7 +175,8 @@ export default function NewRegistrationPage() {
             today: data.today || 0,
             thisWeek: data.thisWeek || 0,
             thisMonth: data.thisMonth || 0,
-            sinifStats: data.sinifStats || {}
+            sinifStats: data.sinifStats || {},
+            academicYearStats: data.academicYearStats || {}
           })
         } else {
           console.error("[New Registration] Invalid stats data format:", data)
@@ -309,40 +311,73 @@ export default function NewRegistrationPage() {
 
     setIsSubmitting(true)
     try {
-      // Önce öğrenciyi oluştur (yeni kayıt için her zaman yeni öğrenci oluşturulur)
+      // Öğrenciyi bul veya oluştur (TC numarasına göre kontrol et)
       let studentId = createdStudentId
       
       if (!studentId) {
-        // Yeni öğrenci oluştur
-        const studentResponse = await fetch("/api/students", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(studentFormData)
-        })
+        // Önce TC numarasına göre öğrenci var mı kontrol et (tam eşleşme)
+        const existingStudentResponse = await fetch(`/api/students?search=${studentFormData.tcNumber}&limit=100`)
+        let existingStudent = null
+        
+        if (existingStudentResponse.ok) {
+          const studentsData = await existingStudentResponse.json()
+          const students = Array.isArray(studentsData) ? studentsData : (studentsData.students || [])
+          // TC numarasına göre tam eşleşme bul
+          existingStudent = students.find((s: { tcNumber: string }) => s.tcNumber === studentFormData.tcNumber)
+        }
+        
+        if (existingStudent) {
+          // Mevcut öğrenciyi kullan (çift öğrenci oluşturma)
+          studentId = existingStudent.id
+          setCreatedStudentId(studentId)
+        } else {
+          // Yeni öğrenci oluştur
+          const studentResponse = await fetch("/api/students", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(studentFormData)
+          })
 
-        if (!studentResponse.ok) {
-          const errorData = await studentResponse.json()
-          // TC numarası zaten varsa özel mesaj
-          if (errorData.error && errorData.error.includes("TC") && errorData.error.includes("unique")) {
-            alert("⚠️ Bu TC Kimlik Numarası ile kayıtlı bir öğrenci zaten mevcut!\n\nLütfen TC numarasını kontrol edin veya 'Kayıt Yenileme' sayfasını kullanın.")
-            setIsSubmitting(false)
-            return
+          if (!studentResponse.ok) {
+            const errorData = await studentResponse.json()
+            // TC numarası zaten varsa tekrar kontrol et
+            if (errorData.error && errorData.error.includes("TC") && errorData.error.includes("unique")) {
+              // TC numarasına göre tekrar ara
+              const retryResponse = await fetch(`/api/students?search=${studentFormData.tcNumber}&limit=100`)
+              if (retryResponse.ok) {
+                const retryData = await retryResponse.json()
+                const retryStudents = Array.isArray(retryData) ? retryData : (retryData.students || [])
+                const foundStudent = retryStudents.find((s: { tcNumber: string }) => s.tcNumber === studentFormData.tcNumber)
+                if (foundStudent) {
+                  studentId = foundStudent.id
+                  setCreatedStudentId(studentId)
+                } else {
+                  alert("⚠️ Bu TC Kimlik Numarası ile kayıtlı bir öğrenci zaten mevcut!\n\nLütfen TC numarasını kontrol edin.")
+                  setIsSubmitting(false)
+                  return
+                }
+              } else {
+                alert("⚠️ Bu TC Kimlik Numarası ile kayıtlı bir öğrenci zaten mevcut!\n\nLütfen TC numarasını kontrol edin.")
+                setIsSubmitting(false)
+                return
+              }
+            } else {
+              alert(errorData.error || "Öğrenci oluşturulurken hata oluştu!")
+              setIsSubmitting(false)
+              return
+            }
           } else {
-            alert(errorData.error || "Öğrenci oluşturulurken hata oluştu!")
-            setIsSubmitting(false)
-            return
+            const newStudent = await studentResponse.json()
+            // API response formatı: { success: true, student: {...} } veya direkt student objesi
+            studentId = newStudent.student?.id || newStudent.id
+            if (!studentId) {
+              alert("⚠️ Öğrenci oluşturuldu ancak ID alınamadı!")
+              setIsSubmitting(false)
+              return
+            }
+            setCreatedStudentId(studentId)
           }
         }
-
-        const newStudent = await studentResponse.json()
-        // API response formatı: { success: true, student: {...} } veya direkt student objesi
-        studentId = newStudent.student?.id || newStudent.id
-        if (!studentId) {
-          alert("⚠️ Öğrenci oluşturuldu ancak ID alınamadı!")
-          setIsSubmitting(false)
-          return
-        }
-        setCreatedStudentId(studentId)
       }
 
       // Akademik yıl bazlı kontrol - backend'de yapılıyor, burada sadece hata mesajını göster

@@ -127,12 +127,23 @@ export async function GET(request: NextRequest) {
       return createdAt >= thisMonth
     }).length
     
+    // Akademik yıl bazlı istatistikler (sadece kayıt yapılan yıllar)
+    const academicYearStats: Record<string, number> = {}
+    registrations.forEach(reg => {
+      const contractData = reg.contractData as Record<string, unknown>
+      const year = contractData.academicYear as string | undefined
+      if (year && typeof year === 'string') {
+        academicYearStats[year] = (academicYearStats[year] || 0) + 1
+      }
+    })
+    
     const responseData = {
       total: registrations.length,
       today: todayCount,
       thisWeek: thisWeekCount,
       thisMonth: thisMonthCount,
       sinifStats,
+      academicYearStats, // Akademik yıl bazlı istatistikler
     }
     
     // Debug log (sadece development'ta)

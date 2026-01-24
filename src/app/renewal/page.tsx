@@ -56,6 +56,7 @@ export default function RenewalPage() {
     thisWeek: 0,
     thisMonth: 0,
     sinifStats: {} as Record<string, number>,
+    academicYearStats: {} as Record<string, number>,
   })
 
   // Ana Sözleşme Form Verileri
@@ -199,7 +200,8 @@ export default function RenewalPage() {
             today: data.today || 0,
             thisWeek: data.thisWeek || 0,
             thisMonth: data.thisMonth || 0,
-            sinifStats: data.sinifStats || {}
+            sinifStats: data.sinifStats || {},
+            academicYearStats: data.academicYearStats || {}
           })
         } else {
           console.error("[Renewal] Invalid stats data format:", data)

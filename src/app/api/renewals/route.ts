@@ -194,6 +194,17 @@ export async function DELETE(request: NextRequest) {
         const body = await request.json()
         const { contractIds } = body
 
+        const idsToDelete = Array.isArray(contractIds) ? contractIds : [contractIds]
+        
+        // Silinecek kayıtların studentId'lerini al
+        const renewalsToDelete = await prisma.renewal.findMany({
+            where: { id: { in: idsToDelete } },
+            select: { studentId: true }
+        })
+        
+        const studentIds = [...new Set(renewalsToDelete.map(r => r.studentId))]
+        
+        // Kayıtları sil
         if (Array.isArray(contractIds)) {
             // Bulk delete
             await prisma.renewal.deleteMany({
@@ -204,6 +215,28 @@ export async function DELETE(request: NextRequest) {
             await prisma.renewal.delete({
                 where: { id: contractIds }
             })
+        }
+        
+        // Her öğrenci için kontrol et: Eğer başka kayıt (new-registration veya renewal) yoksa öğrenciyi sil
+        for (const studentId of studentIds) {
+            const [remainingNewRegistrations, remainingRenewals] = await Promise.all([
+                prisma.newRegistration.findMany({
+                    where: { studentId },
+                    select: { id: true }
+                }),
+                prisma.renewal.findMany({
+                    where: { studentId },
+                    select: { id: true }
+                })
+            ])
+            
+            // Eğer bu öğrenciye ait hiç kayıt kalmadıysa öğrenciyi sil
+            if (remainingNewRegistrations.length === 0 && remainingRenewals.length === 0) {
+                await prisma.student.delete({
+                    where: { id: studentId }
+                })
+                console.log(`[Delete Renewal] Student ${studentId} deleted (no remaining registrations)`)
+            }
         }
 
         return NextResponse.json({ success: true })
