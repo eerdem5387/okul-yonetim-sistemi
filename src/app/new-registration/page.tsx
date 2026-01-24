@@ -204,7 +204,7 @@ export default function NewRegistrationPage() {
 
   useEffect(() => {
     fetchStats()
-  }, [fetchStats])
+  }, [fetchStats, mainContractData.academicYear])
 
   // Sözleşme numarasını otomatik oluştur
   const generateContractNumber = async (date: string) => {
@@ -345,46 +345,7 @@ export default function NewRegistrationPage() {
         setCreatedStudentId(studentId)
       }
 
-      // Bu öğrenci için zaten yeni kayıt var mı kontrol et
-      const existingRegistrationsResponse = await fetch(`/api/new-registrations?studentId=${studentId}`)
-      if (existingRegistrationsResponse.ok) {
-        const existingRegistrations = await existingRegistrationsResponse.json()
-        if (Array.isArray(existingRegistrations) && existingRegistrations.length > 0) {
-          // Mevcut kayıt varsa, yeni kayıt oluşturma
-          const existingRegistration = existingRegistrations[0]
-          const contractId = existingRegistration.id
-          
-          // PDF'i mevcut kayıt ile indir
-          const pdfResponse = await fetch(`/api/pdf/combined/${contractId}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contractTypes: [
-                "new-registration",
-                "uniform",
-              ],
-              mainContractData: mainContractData,
-              otherContractData: otherContractData
-            })
-          })
-
-          if (pdfResponse.ok) {
-            const blob = await pdfResponse.blob()
-            const url = window.URL.createObjectURL(blob)
-            const a = document.createElement("a")
-            a.href = url
-            a.download = `tum-sozlesmeler-${studentFormData.firstName}-${studentFormData.lastName}.pdf`
-            document.body.appendChild(a)
-            a.click()
-            window.URL.revokeObjectURL(url)
-            document.body.removeChild(a)
-            
-            alert(`✅ PDF başarıyla indirildi!\n\nBu öğrenci için zaten bir kayıt mevcut. Mevcut kayıt kullanıldı.`)
-            setIsSubmitting(false)
-            return
-          }
-        }
-      }
+      // Akademik yıl bazlı kontrol - backend'de yapılıyor, burada sadece hata mesajını göster
 
       // Sonra sözleşmeleri kaydet
       const contracts = [
@@ -443,6 +404,10 @@ export default function NewRegistrationPage() {
           responses.map(async (response, index) => {
             if (!response.ok) {
               const errorData = await response.json().catch(() => ({}))
+              // Akademik yıl bazlı çift kayıt hatası için özel mesaj
+              if (errorData.code === "DUPLICATE_REGISTRATION") {
+                return `⚠️ Bu öğrenci için seçilen akademik yılda (${mainContractData.academicYear}) zaten yeni kayıt yapılmış!\n\nFarklı bir akademik yıl seçebilir veya mevcut kaydı kullanabilirsiniz.`
+              }
               return `${contracts[index].type}: ${errorData.error || errorData.details || "Bilinmeyen hata"}`
             }
             return null
@@ -450,6 +415,7 @@ export default function NewRegistrationPage() {
         )
         const errorMessages = errorDetails.filter(msg => msg !== null)
         alert(`⚠️ Sözleşmeler kaydedilirken hata oluştu!\n\n${errorMessages.join("\n")}`)
+        setIsSubmitting(false)
         return
       }
       

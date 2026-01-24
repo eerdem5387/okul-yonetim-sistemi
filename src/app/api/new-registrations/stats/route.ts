@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const startDate = searchParams.get('startDate') || ''
     const endDate = searchParams.get('endDate') || ''
+    const academicYear = searchParams.get('academicYear') || ''
     
     // Tarih filtresi
     const dateFilter: Record<string, unknown> = {}
@@ -43,7 +44,15 @@ export async function GET(request: NextRequest) {
     })
     
     // Sadece geçerli student'ı olan kayıtları filtrele
-    const registrations = allRegistrations.filter(r => r.student !== null)
+    let registrations = allRegistrations.filter(r => r.student !== null)
+    
+    // Akademik yıl filtresi ekle
+    if (academicYear) {
+      registrations = registrations.filter(reg => {
+        const contractData = reg.contractData as Record<string, unknown>
+        return contractData.academicYear === academicYear
+      })
+    }
     
     // Debug: Toplam kayıt sayısını logla (sadece development'ta)
     if (process.env.NODE_ENV === 'development') {

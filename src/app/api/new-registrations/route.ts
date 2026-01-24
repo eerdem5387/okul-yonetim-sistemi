@@ -52,8 +52,31 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Student not found" }, { status: 404 })
         }
 
-        // Bu öğrenci için zaten yeni kayıt var mı kontrol et (çift kayıt önleme)
-        // Aynı öğrenci için son 5 dakika içinde kayıt yapılmışsa, çift kayıt olarak kabul et
+        // Akademik yıl bazlı çift kayıt kontrolü
+        const contractDataObj = contractData as Record<string, unknown>
+        const academicYear = contractDataObj?.academicYear as string | undefined
+        
+        if (academicYear) {
+            // Bu öğrenci için aynı akademik yılda zaten kayıt var mı kontrol et
+            const existingRegistrations = await prisma.newRegistration.findMany({
+                where: { studentId },
+                select: { contractData: true, id: true, createdAt: true }
+            })
+            
+            const hasExistingRegistration = existingRegistrations.some(reg => {
+                const existingContractData = reg.contractData as Record<string, unknown>
+                return existingContractData.academicYear === academicYear
+            })
+            
+            if (hasExistingRegistration) {
+                return NextResponse.json({ 
+                    error: "Bu öğrenci için seçilen akademik yılda zaten yeni kayıt yapılmış!",
+                    code: "DUPLICATE_REGISTRATION"
+                }, { status: 409 })
+            }
+        }
+
+        // Otomatik çift kayıt önleme: Son 5 dakika içinde aynı öğrenci ve akademik yıl için kayıt var mı?
         const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
         const recentRegistrations = await prisma.newRegistration.findMany({
             where: {
@@ -67,14 +90,20 @@ export async function POST(request: NextRequest) {
             }
         })
 
-        // Eğer son 5 dakika içinde kayıt varsa, en son kaydı döndür (çift kayıt oluşturma)
-        if (recentRegistrations.length > 0) {
-            const latestRegistration = recentRegistrations[0]
-            console.log(`[New Registration] Duplicate prevention: Found recent registration for student ${studentId}, returning existing registration`)
-            return NextResponse.json({
-                ...latestRegistration,
-                duplicatePrevented: true
+        // Eğer son 5 dakika içinde kayıt varsa ve aynı akademik yıl ise, en son kaydı döndür
+        if (recentRegistrations.length > 0 && academicYear) {
+            const matchingRegistration = recentRegistrations.find(reg => {
+                const regContractData = reg.contractData as Record<string, unknown>
+                return regContractData.academicYear === academicYear
             })
+            
+            if (matchingRegistration) {
+                console.log(`[New Registration] Duplicate prevention: Found recent registration for student ${studentId} and academic year ${academicYear}, returning existing registration`)
+                return NextResponse.json({
+                    ...matchingRegistration,
+                    duplicatePrevented: true
+                })
+            }
         }
 
         // Sözleşmeyi oluştur
