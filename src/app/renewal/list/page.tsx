@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Search, Filter, ArrowLeft, Eye, Download, Calendar, User, GraduationCap } from "lucide-react"
+import { Search, Filter, ArrowLeft, Eye, Download, Calendar, User, GraduationCap, Trash2 } from "lucide-react"
 
 interface Renewal {
   id: string
@@ -177,6 +177,38 @@ export default function RenewalsListPage() {
     } catch (error) {
       console.error("Error downloading PDF:", error)
       alert("PDF indirme sırasında bir hata oluştu!")
+    }
+  }
+
+  const handleDeleteRenewal = async (renewalId: string, firstName: string, lastName: string) => {
+    if (!confirm(`"${firstName} ${lastName}" adlı öğrencinin kayıt yenileme kaydını silmek istediğinizden emin misiniz?\n\nBu işlem geri alınamaz!`)) {
+      return
+    }
+
+    try {
+      const response = await fetch('/api/renewals', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ contractIds: renewalId })
+      })
+
+      if (response.ok) {
+        alert('✅ Kayıt yenileme başarıyla silindi!')
+        // Listeyi yenile
+        fetchRenewals()
+        // Eğer silinen kayıt detay görünümündeyse, detay görünümünü kapat
+        if (selectedRenewal?.id === renewalId) {
+          setSelectedRenewal(null)
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        alert(`❌ Kayıt yenileme silinirken hata oluştu: ${errorData.error || 'Bilinmeyen hata'}`)
+      }
+    } catch (error) {
+      console.error("Error deleting renewal:", error)
+      alert("Kayıt yenileme silme sırasında bir hata oluştu!")
     }
   }
 
@@ -550,6 +582,18 @@ export default function RenewalsListPage() {
                         >
                           <Download className="h-4 w-4 mr-2" />
                           PDF
+                        </Button>
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDeleteRenewal(renewal.id, renewal.student?.firstName || "", renewal.student?.lastName || "")
+                          }}
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-300"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Sil
                         </Button>
                       </div>
                     </div>

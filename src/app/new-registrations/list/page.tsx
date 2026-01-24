@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Search, Filter, ArrowLeft, Eye, Download, Calendar, User, GraduationCap } from "lucide-react"
+import { Search, Filter, ArrowLeft, Eye, Download, Calendar, User, GraduationCap, Trash2 } from "lucide-react"
 
 interface NewRegistration {
   id: string
@@ -196,6 +196,38 @@ export default function NewRegistrationsListPage() {
     } catch (error) {
       console.error("Error downloading PDF:", error)
       alert("PDF indirme sırasında bir hata oluştu!")
+    }
+  }
+
+  const handleDeleteRegistration = async (registrationId: string, firstName: string, lastName: string) => {
+    if (!confirm(`"${firstName} ${lastName}" adlı öğrencinin kaydını silmek istediğinizden emin misiniz?\n\nBu işlem geri alınamaz!`)) {
+      return
+    }
+
+    try {
+      const response = await fetch('/api/new-registrations', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ contractIds: registrationId })
+      })
+
+      if (response.ok) {
+        alert('✅ Kayıt başarıyla silindi!')
+        // Listeyi yenile
+        fetchRegistrations()
+        // Eğer silinen kayıt detay görünümündeyse, detay görünümünü kapat
+        if (selectedRegistration?.id === registrationId) {
+          setSelectedRegistration(null)
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        alert(`❌ Kayıt silinirken hata oluştu: ${errorData.error || 'Bilinmeyen hata'}`)
+      }
+    } catch (error) {
+      console.error("Error deleting registration:", error)
+      alert("Kayıt silme sırasında bir hata oluştu!")
     }
   }
 
@@ -569,6 +601,18 @@ export default function NewRegistrationsListPage() {
                         >
                           <Download className="h-4 w-4 mr-2" />
                           PDF
+                        </Button>
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDeleteRegistration(registration.id, registration.student?.firstName || "", registration.student?.lastName || "")
+                          }}
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-300"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Sil
                         </Button>
                       </div>
                     </div>
