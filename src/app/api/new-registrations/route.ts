@@ -52,6 +52,31 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Student not found" }, { status: 404 })
         }
 
+        // Bu öğrenci için zaten yeni kayıt var mı kontrol et (çift kayıt önleme)
+        // Aynı öğrenci için son 5 dakika içinde kayıt yapılmışsa, çift kayıt olarak kabul et
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
+        const recentRegistrations = await prisma.newRegistration.findMany({
+            where: {
+                studentId,
+                createdAt: {
+                    gte: fiveMinutesAgo
+                }
+            },
+            orderBy: {
+                createdAt: "desc"
+            }
+        })
+
+        // Eğer son 5 dakika içinde kayıt varsa, en son kaydı döndür (çift kayıt oluşturma)
+        if (recentRegistrations.length > 0) {
+            const latestRegistration = recentRegistrations[0]
+            console.log(`[New Registration] Duplicate prevention: Found recent registration for student ${studentId}, returning existing registration`)
+            return NextResponse.json({
+                ...latestRegistration,
+                duplicatePrevented: true
+            })
+        }
+
         // Sözleşmeyi oluştur
         const registration = await prisma.newRegistration.create({
             data: {

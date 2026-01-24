@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
         if (academicYear) {
             const existingRenewals = await prisma.renewal.findMany({
                 where: { studentId },
-                select: { contractData: true }
+                select: { contractData: true, id: true, createdAt: true }
             })
             
             const hasExistingRenewal = existingRenewals.some(renewal => {
@@ -85,6 +85,36 @@ export async function POST(request: NextRequest) {
                     error: "Bu öğrenci için seçilen akademik yılda zaten kayıt yenileme yapılmış!",
                     code: "DUPLICATE_RENEWAL"
                 }, { status: 400 })
+            }
+        }
+
+        // Çift kayıt önleme: Son 5 dakika içinde aynı öğrenci için kayıt yenileme var mı kontrol et
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
+        const recentRenewals = await prisma.renewal.findMany({
+            where: {
+                studentId,
+                createdAt: {
+                    gte: fiveMinutesAgo
+                }
+            },
+            orderBy: {
+                createdAt: "desc"
+            }
+        })
+
+        // Eğer son 5 dakika içinde kayıt varsa ve aynı akademik yıl ise, en son kaydı döndür
+        if (recentRenewals.length > 0 && academicYear) {
+            const matchingRenewal = recentRenewals.find(renewal => {
+                const renewalContractData = renewal.contractData as Record<string, unknown>
+                return renewalContractData.academicYear === academicYear
+            })
+            
+            if (matchingRenewal) {
+                console.log(`[Renewal] Duplicate prevention: Found recent renewal for student ${studentId} and academic year ${academicYear}, returning existing renewal`)
+                return NextResponse.json({
+                    ...matchingRenewal,
+                    duplicatePrevented: true
+                })
             }
         }
 
