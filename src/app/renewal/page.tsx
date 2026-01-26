@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Download, Users, Clock, TrendingUp, GraduationCap, List, Search } from "lucide-react"
+import { Download, Users, Clock, TrendingUp, GraduationCap, List, Search, ExternalLink } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 interface Student {
@@ -105,13 +105,117 @@ export default function RenewalPage() {
 
   // Diğer Sözleşme Form Verileri
   const [otherContractData, setOtherContractData] = useState({
-    // Forma Sözleşmesi
+    // Kitap ve Forma Sözleşmesi
     uniformSize: "",
     uniformPrice: "",
     uniformDeliveryDate: "",
     uniformItems: [] as string[],
-    
+    paymentReceived: false,
+    paymentNotReceived: false,
   })
+
+  // Sınıf bazlı kitap ve forma ücret tablosu (TL)
+  const bookAndUniformPrices: Record<string, Record<string, number>> = {
+    "5. Sınıf": {
+      "Şubat": 51348,
+      "Mart": 52883,
+      "Nisan": 54464,
+      "Mayıs": 56093,
+      "Haziran": 57770,
+      "Temmuz": 59497,
+      "Ağustos": 61276,
+      "Eylül": 63108,
+    },
+    "6. Sınıf": {
+      "Şubat": 48396,
+      "Mart": 49843,
+      "Nisan": 51333,
+      "Mayıs": 52868,
+      "Haziran": 54448,
+      "Temmuz": 56076,
+      "Ağustos": 57753,
+      "Eylül": 59480,
+    },
+    "7. Sınıf": {
+      "Şubat": 48396,
+      "Mart": 49843,
+      "Nisan": 51333,
+      "Mayıs": 52868,
+      "Haziran": 54448,
+      "Temmuz": 56076,
+      "Ağustos": 57753,
+      "Eylül": 59480,
+    },
+    "8. Sınıf": {
+      "Şubat": 48396,
+      "Mart": 49843,
+      "Nisan": 51333,
+      "Mayıs": 52868,
+      "Haziran": 54448,
+      "Temmuz": 56076,
+      "Ağustos": 57753,
+      "Eylül": 59480,
+    },
+    "9. Sınıf": {
+      "Şubat": 48444,
+      "Mart": 49892,
+      "Nisan": 51384,
+      "Mayıs": 52920,
+      "Haziran": 54502,
+      "Temmuz": 56132,
+      "Ağustos": 57810,
+      "Eylül": 59539,
+    },
+    "10. Sınıf": {
+      "Şubat": 45492,
+      "Mart": 46852,
+      "Nisan": 48253,
+      "Mayıs": 49695,
+      "Haziran": 51181,
+      "Temmuz": 52712,
+      "Ağustos": 54288,
+      "Eylül": 55911,
+    },
+    "11. Sınıf": {
+      "Şubat": 45492,
+      "Mart": 46852,
+      "Nisan": 48253,
+      "Mayıs": 49695,
+      "Haziran": 51181,
+      "Temmuz": 52712,
+      "Ağustos": 54288,
+      "Eylül": 55911,
+    },
+    "12. Sınıf": {
+      "Şubat": 48660,
+      "Mart": 50114,
+      "Nisan": 51613,
+      "Mayıs": 53156,
+      "Haziran": 54745,
+      "Temmuz": 56382,
+      "Ağustos": 58068,
+      "Eylül": 59805,
+    },
+  }
+
+  // Öğrencinin sınıfına göre fiyat tablosunu al
+  const getPriceTableForGrade = () => {
+    let grade = mainContractData.studentClass
+    if (!grade && selectedStudent) {
+      // Sınıf formatını "X. Sınıf" formatına çevir
+      const studentGrade = selectedStudent.grade || ""
+      if (studentGrade.includes("Sınıf")) {
+        grade = studentGrade
+      } else {
+        const gradeNum = parseInt(studentGrade.replace(/\D/g, ''))
+        if (!isNaN(gradeNum) && gradeNum >= 5 && gradeNum <= 12) {
+          grade = `${gradeNum}. Sınıf`
+        }
+      }
+    }
+    if (!grade) return null
+    return bookAndUniformPrices[grade] || null
+  }
 
   const formatDate = (date: string | Date | null | undefined) => {
     if (!date) return ""
@@ -379,7 +483,10 @@ export default function RenewalPage() {
               uniformSize: otherContractData.uniformSize,
               uniformPrice: otherContractData.uniformPrice,
               deliveryDate: otherContractData.uniformDeliveryDate,
-              uniformItems: otherContractData.uniformItems
+              uniformItems: otherContractData.uniformItems,
+              paymentReceived: otherContractData.paymentReceived,
+              paymentNotReceived: otherContractData.paymentNotReceived,
+              studentClass: mainContractData.studentClass || (selectedStudent ? (selectedStudent.grade?.includes("Sınıf") ? selectedStudent.grade : `${selectedStudent.grade}. Sınıf`) : "")
             }
           }
         },
@@ -1101,22 +1208,93 @@ export default function RenewalPage() {
               </CardContent>
             </Card>
 
-            {/* Forma Sözleşmesi */}
+            {/* Kitap ve Forma Sözleşmesi */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-green-600">Forma Sözleşmesi</CardTitle>
-                <CardDescription>Öğrenci forma sözleşmesi</CardDescription>
+                <CardTitle className="text-green-600">Kitap ve Forma Sözleşmesi</CardTitle>
+                <CardDescription>Öğrenci kitap ve forma sözleşmesi</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
+                  {/* Sınıf Bazlı Fiyat Tablosu */}
+                  {getPriceTableForGrade() && (
+                    <div className="border rounded-lg p-4 bg-gray-50">
+                      <h4 className="font-semibold mb-3 text-gray-700">
+                        {mainContractData.studentClass || (selectedStudent ? (selectedStudent.grade?.includes("Sınıf") ? selectedStudent.grade : `${selectedStudent.grade}. Sınıf`) : "")} - Kitap ve Forma Ücret Tablosu
+                      </h4>
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                          <thead>
+                            <tr className="bg-blue-100">
+                              <th className="border border-gray-300 px-3 py-2 text-left text-sm font-semibold">Ay</th>
+                              <th className="border border-gray-300 px-3 py-2 text-right text-sm font-semibold">Tutar (TL)</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {Object.entries(getPriceTableForGrade()!).map(([month, price]) => (
+                              <tr key={month} className="hover:bg-gray-100">
+                                <td className="border border-gray-300 px-3 py-2 text-sm">{month}</td>
+                                <td className="border border-gray-300 px-3 py-2 text-right text-sm font-medium">
+                                  {price.toLocaleString('tr-TR')} ₺
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Ödeme Linki Butonu */}
                   <div>
-                    <Label htmlFor="contractDate">Sözleşme Tarihi</Label>
-                    <Input
-                      id="contractDate"
-                      type="date"
-                      defaultValue={new Date().toISOString().split('T')[0]}
-                    />
+                    <Button
+                      type="button"
+                      onClick={() => window.open('https://kitap.leventokullari.com', '_blank')}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Ödeme Yapmak İçin Tıklayın
+                    </Button>
                   </div>
+
+                  {/* Ödeme Durumu Checkboxları */}
+                  <div className="space-y-2">
+                    <Label>Ödeme Durumu</Label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={otherContractData.paymentReceived}
+                          onChange={(e) => {
+                            setOtherContractData({
+                              ...otherContractData,
+                              paymentReceived: e.target.checked,
+                              paymentNotReceived: e.target.checked ? false : otherContractData.paymentNotReceived,
+                            })
+                          }}
+                          className="w-4 h-4"
+                        />
+                        <span className="text-sm">Ödeme Alındı</span>
+                      </label>
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={otherContractData.paymentNotReceived}
+                          onChange={(e) => {
+                            setOtherContractData({
+                              ...otherContractData,
+                              paymentNotReceived: e.target.checked,
+                              paymentReceived: e.target.checked ? false : otherContractData.paymentReceived,
+                            })
+                          }}
+                          className="w-4 h-4"
+                        />
+                        <span className="text-sm">Ödeme Alınmadı</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Eski Forma Alanları (Opsiyonel) */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="uniformSize">Forma Bedeni</Label>
@@ -1128,24 +1306,14 @@ export default function RenewalPage() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="uniformPrice">Forma Ücreti</Label>
+                      <Label htmlFor="uniformDeliveryDate">Teslimat Tarihi</Label>
                       <Input
-                        id="uniformPrice"
-                        type="number"
-                        value={otherContractData.uniformPrice}
-                        onChange={(e) => setOtherContractData({ ...otherContractData, uniformPrice: e.target.value })}
-                        placeholder="Örn: 500"
+                        id="uniformDeliveryDate"
+                        type="date"
+                        value={otherContractData.uniformDeliveryDate}
+                        onChange={(e) => setOtherContractData({ ...otherContractData, uniformDeliveryDate: e.target.value })}
                       />
                     </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="uniformDeliveryDate">Teslimat Tarihi</Label>
-                    <Input
-                      id="uniformDeliveryDate"
-                      type="date"
-                      value={otherContractData.uniformDeliveryDate}
-                      onChange={(e) => setOtherContractData({ ...otherContractData, uniformDeliveryDate: e.target.value })}
-                    />
                   </div>
                   <div>
                     <Label htmlFor="uniformItems">Teslim Edilecek Formalar</Label>
@@ -1155,6 +1323,7 @@ export default function RenewalPage() {
                           <input
                             type="checkbox"
                             className="mr-2"
+                            checked={otherContractData.uniformItems.includes(item)}
                             onChange={(e) => {
                               const currentItems = otherContractData.uniformItems || []
                               if (e.target.checked) {

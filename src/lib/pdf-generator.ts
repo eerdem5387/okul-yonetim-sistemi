@@ -853,7 +853,11 @@ function generateOtherContractsHTML(student: { firstName: string; lastName: stri
     html += '<div class="page-break"></div>'
 
     if (hasUniform) {
-      html += generateUniformContractHTML(student, contractData, !hasMeal) // Compact if meal is also present
+      html += generateUniformContractHTML(
+        { ...student, grade: contractData.studentClass as string || student.grade },
+        contractData,
+        !hasMeal
+      ) // Compact if meal is also present
     }
 
     if (hasMeal) {
@@ -865,12 +869,117 @@ function generateOtherContractsHTML(student: { firstName: string; lastName: stri
   return html
 }
 
-function generateUniformContractHTML(student: { firstName: string; lastName: string; tcNumber: string }, contractData: Record<string, unknown>, standalone = true) {
+function generateUniformContractHTML(student: { firstName: string; lastName: string; tcNumber: string; grade?: string }, contractData: Record<string, unknown>, standalone = true) {
+  // Sınıf bazlı kitap ve forma ücret tablosu (TL)
+  const bookAndUniformPrices: Record<string, Record<string, number>> = {
+    "5. Sınıf": {
+      "Şubat": 51348,
+      "Mart": 52883,
+      "Nisan": 54464,
+      "Mayıs": 56093,
+      "Haziran": 57770,
+      "Temmuz": 59497,
+      "Ağustos": 61276,
+      "Eylül": 63108,
+    },
+    "6. Sınıf": {
+      "Şubat": 48396,
+      "Mart": 49843,
+      "Nisan": 51333,
+      "Mayıs": 52868,
+      "Haziran": 54448,
+      "Temmuz": 56076,
+      "Ağustos": 57753,
+      "Eylül": 59480,
+    },
+    "7. Sınıf": {
+      "Şubat": 48396,
+      "Mart": 49843,
+      "Nisan": 51333,
+      "Mayıs": 52868,
+      "Haziran": 54448,
+      "Temmuz": 56076,
+      "Ağustos": 57753,
+      "Eylül": 59480,
+    },
+    "8. Sınıf": {
+      "Şubat": 48396,
+      "Mart": 49843,
+      "Nisan": 51333,
+      "Mayıs": 52868,
+      "Haziran": 54448,
+      "Temmuz": 56076,
+      "Ağustos": 57753,
+      "Eylül": 59480,
+    },
+    "9. Sınıf": {
+      "Şubat": 48444,
+      "Mart": 49892,
+      "Nisan": 51384,
+      "Mayıs": 52920,
+      "Haziran": 54502,
+      "Temmuz": 56132,
+      "Ağustos": 57810,
+      "Eylül": 59539,
+    },
+    "10. Sınıf": {
+      "Şubat": 45492,
+      "Mart": 46852,
+      "Nisan": 48253,
+      "Mayıs": 49695,
+      "Haziran": 51181,
+      "Temmuz": 52712,
+      "Ağustos": 54288,
+      "Eylül": 55911,
+    },
+    "11. Sınıf": {
+      "Şubat": 45492,
+      "Mart": 46852,
+      "Nisan": 48253,
+      "Mayıs": 49695,
+      "Haziran": 51181,
+      "Temmuz": 52712,
+      "Ağustos": 54288,
+      "Eylül": 55911,
+    },
+    "12. Sınıf": {
+      "Şubat": 48660,
+      "Mart": 50114,
+      "Nisan": 51613,
+      "Mayıs": 53156,
+      "Haziran": 54745,
+      "Temmuz": 56382,
+      "Ağustos": 58068,
+      "Eylül": 59805,
+    },
+  }
+
+  // Öğrencinin sınıfına göre fiyat tablosunu al
+  const getPriceTableForGrade = (grade: string | undefined | null) => {
+    if (!grade) return null
+    // Sınıf formatını normalize et
+    let normalizedGrade = grade
+    if (!grade.includes("Sınıf")) {
+      const gradeNum = parseInt(grade.replace(/\D/g, ''))
+      if (!isNaN(gradeNum) && gradeNum >= 5 && gradeNum <= 12) {
+        normalizedGrade = `${gradeNum}. Sınıf`
+      }
+    }
+    return bookAndUniformPrices[normalizedGrade] || null
+  }
+
+  const studentGrade = contractData.studentClass || student.grade || ""
+  const priceTable = getPriceTableForGrade(studentGrade as string)
+
+  // Ödeme durumu
+  const paymentReceived = contractData.paymentReceived === true || contractData.paymentReceived === "true"
+  const paymentNotReceived = contractData.paymentNotReceived === true || contractData.paymentNotReceived === "true"
+
   return `
     ${!standalone ? '<div style="border-top: 2px dashed #000; margin: 20px 0; padding-top: 20px;">' : ''}
     
     <div class="contract-header">
-      <div class="contract-title">FORMA SÖZLEŞMESİ</div>
+      <div class="contract-title">KİTAP VE FORMA SÖZLEŞMESİ</div>
     </div>
 
     <div class="section">
@@ -883,7 +992,12 @@ function generateUniformContractHTML(student: { firstName: string; lastName: str
         <div class="field-label">TC Kimlik No:</div>
         <div class="field-value">${student.tcNumber}</div>
       </div>
+      <div class="field-row">
+        <div class="field-label">Sınıf:</div>
+        <div class="field-value">${studentGrade || '___________'}</div>
+      </div>
     </div>
+
 
     <div class="section">
       <div class="section-title">FORMA BİLGİLERİ</div>
@@ -892,16 +1006,24 @@ function generateUniformContractHTML(student: { firstName: string; lastName: str
         <div class="field-value">${contractData.uniformSize || '___________'}</div>
       </div>
       <div class="field-row">
-        <div class="field-label">Forma Ücreti:</div>
-        <div class="field-value">${contractData.uniformPrice || '___________'} TL</div>
-      </div>
-      <div class="field-row">
         <div class="field-label">Teslim Tarihi:</div>
         <div class="field-value">${contractData.uniformDeliveryDate || '___________'}</div>
       </div>
       <div class="field-row">
         <div class="field-label">Teslim Edilecek:</div>
         <div class="field-value-large">${Array.isArray(contractData.uniformItems) ? contractData.uniformItems.join(', ') : '___________'}</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">ÖDEME DURUMU</div>
+      <div class="field-row">
+        <div class="field-label">Ödeme Alındı:</div>
+        <div class="field-value">${paymentReceived ? '✓' : '☐'}</div>
+      </div>
+      <div class="field-row">
+        <div class="field-label">Ödeme Alınmadı:</div>
+        <div class="field-value">${paymentNotReceived ? '✓' : '☐'}</div>
       </div>
     </div>
 
