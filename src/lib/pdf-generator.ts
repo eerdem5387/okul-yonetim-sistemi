@@ -481,7 +481,7 @@ function generateMainContractHTML(student: { firstName: string; lastName: string
   return `
     <div class="contract-header">
       <div class="contract-title">EĞİTİM ÖĞRETİM HİZMET SÖZLEŞMESİ</div>
-      <div class="contract-subtitle">2024-2025 ÖĞRETİM YILI</div>
+      <div class="contract-subtitle">${contractData.academicYear || '2024-2025'} ÖĞRETİM YILI</div>
     </div>
 
     <div class="contract-info">
