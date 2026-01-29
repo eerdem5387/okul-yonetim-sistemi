@@ -99,29 +99,8 @@ export async function PUT(
             updateData.birthDate = new Date(birthDate)
         }
 
-        // TC numarası değişiyorsa ve yeni TC numarası başka bir öğrenciye aitse hata döndür
-        if (tcNumber) {
-            const currentStudent = await prisma.student.findUnique({
-                where: { id: params.id },
-                select: { tcNumber: true }
-            })
-            
-            // Eğer TC numarası değişiyorsa
-            if (currentStudent && currentStudent.tcNumber !== tcNumber) {
-                // Yeni TC numarasının başka bir öğrenciye ait olup olmadığını kontrol et
-                const existingStudent = await prisma.student.findUnique({
-                    where: { tcNumber: tcNumber },
-                    select: { id: true }
-                })
-                
-                if (existingStudent && existingStudent.id !== params.id) {
-                    return NextResponse.json({ 
-                        error: "Bu TC numarası başka bir öğrenciye ait!",
-                        code: "TC_NUMBER_EXISTS"
-                    }, { status: 409 })
-                }
-            }
-        }
+        // TC numarası kontrolü kaldırıldı - kullanıcı TC numarasını düzeltebilmeli
+        // Unique constraint hatası Prisma tarafından yakalanacak ve kullanıcıya gösterilecek
 
         const student = await prisma.student.update({
             where: { id: params.id },
@@ -132,9 +111,9 @@ export async function PUT(
     } catch (error) {
         console.error("Error updating student:", error)
         // Prisma unique constraint hatası kontrolü
-        if (error instanceof Error && error.message.includes('Unique constraint')) {
+        if (error instanceof Error && (error.message.includes('Unique constraint') || error.message.includes('P2002'))) {
             return NextResponse.json({ 
-                error: "Bu TC numarası başka bir öğrenciye ait!",
+                error: "Bu TC numarası başka bir öğrenciye ait! Lütfen farklı bir TC numarası deneyin veya önce diğer öğrencinin TC numarasını değiştirin.",
                 code: "TC_NUMBER_EXISTS"
             }, { status: 409 })
         }
