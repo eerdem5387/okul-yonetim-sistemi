@@ -14,7 +14,6 @@ import {
   Bus, 
   BookOpen, 
   UserPlus, 
-  History,
   Menu,
   X,
   LogOut,

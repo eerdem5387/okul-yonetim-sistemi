@@ -17,7 +17,6 @@ import {
   LogOut,
   ClipboardList,
   FileText,
-  History,
   Handshake,
 } from "lucide-react"
 import { useState, useEffect } from "react"
