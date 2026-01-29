@@ -183,15 +183,18 @@ export async function GET(request: NextRequest) {
       if (!reg.student) return
       const contractData = reg.contractData as Record<string, unknown>
       const year = contractData.academicYear as string | undefined
-      if (year && typeof year === 'string') {
-        if (!academicYearStudentMap.has(year)) {
-          academicYearStudentMap.set(year, new Set())
-        }
-        // TC numarasını contractData'dan veya student'tan al
-        const tcNumber = getTcNumber(reg)
-        if (tcNumber) {
-          academicYearStudentMap.get(year)!.add(tcNumber)
-        }
+      // Akademik yıl değeri varsa ve geçerli bir string ise kullan, yoksa "Belirtilmemiş" olarak işaretle
+      const yearKey = (year && typeof year === 'string' && year.trim() !== '') 
+        ? year.trim() 
+        : 'Belirtilmemiş'
+      
+      if (!academicYearStudentMap.has(yearKey)) {
+        academicYearStudentMap.set(yearKey, new Set())
+      }
+      // TC numarasını contractData'dan veya student'tan al
+      const tcNumber = getTcNumber(reg)
+      if (tcNumber) {
+        academicYearStudentMap.get(yearKey)!.add(tcNumber)
       }
     })
     

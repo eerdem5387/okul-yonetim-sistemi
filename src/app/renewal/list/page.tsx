@@ -784,7 +784,13 @@ export default function RenewalsListPage() {
             <CardContent>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
                 {Object.entries(stats.academicYearStats)
-                  .sort(([a], [b]) => b.localeCompare(a)) // En yeni yıldan eskiye sırala
+                  .sort(([a], [b]) => {
+                    // "Belirtilmemiş" her zaman en sona gelsin
+                    if (a === 'Belirtilmemiş') return 1
+                    if (b === 'Belirtilmemiş') return -1
+                    // Diğerleri en yeni yıldan eskiye sırala
+                    return b.localeCompare(a)
+                  })
                   .map(([year, count]) => (
                     <div
                       key={year}
