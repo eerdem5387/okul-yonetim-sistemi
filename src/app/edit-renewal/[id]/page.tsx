@@ -227,7 +227,7 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
 
       if (response.ok) {
         alert("Sözleşme ve öğrenci bilgileri başarıyla güncellendi!")
-        window.location.href = "/history"
+        window.location.href = "/renewal/list"
       } else {
         alert("Sözleşme güncellenirken bir hata oluştu.")
       }
@@ -267,7 +267,7 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
     <div className="p-6">
       <div className="mb-6">
         <div className="flex items-center gap-4 mb-4">
-          <Link href="/history">
+          <Link href="/renewal/list">
             <Button variant="outline" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Geri Dön
@@ -541,7 +541,7 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
               <Save className="h-4 w-4 mr-2" />
               {saving ? "Kaydediliyor..." : "Değişiklikleri Kaydet"}
             </Button>
-            <Link href="/history" className="flex-1">
+            <Link href="/renewal/list" className="flex-1">
               <Button variant="outline" className="w-full">
                 İptal
               </Button>

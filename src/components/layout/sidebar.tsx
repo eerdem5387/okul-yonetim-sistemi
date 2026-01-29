@@ -91,7 +91,6 @@ const allNavigation = [
   { name: "Yemek Sözleşmesi", href: "/meal", icon: Utensils, roles: ["admin", "principal", "student_affairs"] },
   { name: "Servis Sözleşmesi", href: "/service", icon: Bus, roles: ["admin", "principal", "student_affairs"] },
   { name: "Kitap Sözleşmesi", href: "/book", icon: BookOpen, roles: ["admin", "principal", "student_affairs"] },
-  { name: "Geçmiş Sözleşmeler", href: "/history", icon: History, roles: ["admin", "principal", "student_affairs", "head_counselor"] },
 ]
 
 export function Sidebar() {

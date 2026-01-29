@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Search, Filter, ArrowLeft, Eye, Download, Calendar, User, GraduationCap, Trash2, TrendingUp } from "lucide-react"
+import { Search, Filter, ArrowLeft, Eye, Download, Calendar, User, GraduationCap, Trash2, TrendingUp, Edit } from "lucide-react"
 
 interface Renewal {
   id: string
@@ -401,6 +401,15 @@ export default function RenewalsListPage() {
                         Detayları Gör
                       </Button>
                       <Button
+                        onClick={() => router.push(`/edit-renewal/${contract.id}`)}
+                        variant="outline"
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        <Edit className="h-4 w-4 mr-2" />
+                        Düzenle
+                      </Button>
+                      <Button
                         onClick={() => handleDownloadPDF(contract.id)}
                         variant="outline"
                         size="sm"
@@ -452,13 +461,23 @@ export default function RenewalsListPage() {
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span>Kayıt Yenileme Detayları</span>
-                <Button
-                  onClick={() => handleDownloadPDF(selectedContract.id)}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  PDF İndir
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => router.push(`/edit-renewal/${selectedContract.id}`)}
+                    variant="outline"
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Düzenle
+                  </Button>
+                  <Button
+                    onClick={() => handleDownloadPDF(selectedContract.id)}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    PDF İndir
+                  </Button>
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -849,6 +868,18 @@ export default function RenewalsListPage() {
                             >
                               <Eye className="h-4 w-4 mr-2" />
                               Detay
+                            </Button>
+                            <Button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                router.push(`/edit-renewal/${latestContract.id}`)
+                              }}
+                              variant="outline"
+                              size="sm"
+                              className="bg-green-600 hover:bg-green-700 text-white"
+                            >
+                              <Edit className="h-4 w-4 mr-2" />
+                              Düzenle
                             </Button>
                             <Button
                               onClick={(e) => {

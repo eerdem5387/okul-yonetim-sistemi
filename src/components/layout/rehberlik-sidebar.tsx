@@ -37,7 +37,6 @@ const headCounselorNavigation = [
   { name: "Teklif Görüşmeleri", href: "/teklif-gorusmeleri", icon: Handshake },
   { name: "Yeni Kayıt", href: "/new-registration", icon: FileText },
   { name: "Kayıt Yenileme", href: "/renewal", icon: FileText },
-  { name: "Geçmiş Sözleşmeler", href: "/history", icon: History },
 ]
 
 export function RehberlikSidebar() {
