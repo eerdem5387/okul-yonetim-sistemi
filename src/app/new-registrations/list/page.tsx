@@ -23,11 +23,24 @@ interface NewRegistration {
   } | null
 }
 
+interface GroupedRegistration {
+  tcNumber: string
+  student: {
+    id: string
+    firstName: string
+    lastName: string
+    tcNumber: string
+    grade?: string | null
+  }
+  contracts: NewRegistration[]
+}
+
 export default function NewRegistrationsListPage() {
   const router = useRouter()
-  const [registrations, setRegistrations] = useState<NewRegistration[]>([])
-  const [filteredRegistrations, setFilteredRegistrations] = useState<NewRegistration[]>([])
-  const [selectedRegistration, setSelectedRegistration] = useState<NewRegistration | null>(null)
+  const [groupedRegistrations, setGroupedRegistrations] = useState<GroupedRegistration[]>([])
+  const [filteredGroupedRegistrations, setFilteredGroupedRegistrations] = useState<GroupedRegistration[]>([])
+  const [selectedGroup, setSelectedGroup] = useState<GroupedRegistration | null>(null)
+  const [selectedContract, setSelectedContract] = useState<NewRegistration | null>(null)
   const [loading, setLoading] = useState(true)
   
   // Filtreleme state'leri
@@ -82,8 +95,11 @@ export default function NewRegistrationsListPage() {
         const validRegistrations = Array.isArray(data) 
           ? data.filter((r: NewRegistration) => r.student !== null)
           : []
-        setRegistrations(validRegistrations)
-        setFilteredRegistrations(validRegistrations)
+        
+        // TC numarasına göre grupla
+        const grouped = groupByTcNumber(validRegistrations)
+        setGroupedRegistrations(grouped)
+        setFilteredGroupedRegistrations(grouped)
       } else {
         console.error("Error fetching registrations:", response.status)
       }
@@ -93,6 +109,28 @@ export default function NewRegistrationsListPage() {
       setLoading(false)
     }
   }, [])
+
+  // TC numarasına göre gruplama fonksiyonu
+  const groupByTcNumber = (regs: NewRegistration[]): GroupedRegistration[] => {
+    const groupedMap = new Map<string, NewRegistration[]>()
+    
+    regs.forEach(reg => {
+      if (!reg.student) return
+      const tcNumber = reg.student.tcNumber
+      if (!groupedMap.has(tcNumber)) {
+        groupedMap.set(tcNumber, [])
+      }
+      groupedMap.get(tcNumber)!.push(reg)
+    })
+    
+    return Array.from(groupedMap.entries()).map(([tcNumber, contracts]) => ({
+      tcNumber,
+      student: contracts[0].student!,
+      contracts: contracts.sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )
+    }))
+  }
 
   const fetchStats = useCallback(async () => {
     try {
@@ -115,31 +153,47 @@ export default function NewRegistrationsListPage() {
     fetchStats()
   }, [fetchRegistrations, fetchStats])
 
+  // Sayfa görünür olduğunda verileri yenile (düzenleme sonrası senkronizasyon için)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchRegistrations()
+        fetchStats()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [fetchRegistrations, fetchStats])
+
   // Filtreleme
   useEffect(() => {
-    let filtered = registrations
+    let filtered = groupedRegistrations
 
     // Arama filtresi
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase()
-      filtered = filtered.filter(reg => {
-        if (!reg.student) return false
+      filtered = filtered.filter(group => {
         return (
-          reg.student.firstName.toLowerCase().includes(searchLower) ||
-          reg.student.lastName.toLowerCase().includes(searchLower) ||
-          reg.student.tcNumber.includes(searchTerm)
+          group.student.firstName.toLowerCase().includes(searchLower) ||
+          group.student.lastName.toLowerCase().includes(searchLower) ||
+          group.student.tcNumber.includes(searchTerm)
         )
       })
     }
 
     // Sınıf filtresi
     if (filterGrade !== "all") {
-      filtered = filtered.filter(reg => {
-        if (!reg.student) return false
-        const contractData = reg.contractData as Record<string, unknown>
-        const studentClass = contractData.studentClass || reg.student.grade || ""
+      filtered = filtered.filter(group => {
         const gradeNum = filterGrade.replace(". Sınıf", "").trim()
-        return String(studentClass).includes(gradeNum) || String(reg.student.grade || "").includes(gradeNum)
+        // En az bir sözleşme filtrelenen sınıfa uyuyorsa göster
+        return group.contracts.some(reg => {
+          const contractData = reg.contractData as Record<string, unknown>
+          const studentClass = contractData.studentClass || reg.student?.grade || ""
+          return String(studentClass).includes(gradeNum) || String(reg.student?.grade || "").includes(gradeNum)
+        })
       })
     }
 
@@ -147,32 +201,45 @@ export default function NewRegistrationsListPage() {
     if (filterDate === "today") {
       const today = new Date()
       today.setHours(0, 0, 0, 0)
-      filtered = filtered.filter(reg => {
-        const createdAt = new Date(reg.createdAt)
-        createdAt.setHours(0, 0, 0, 0)
-        return createdAt.getTime() === today.getTime()
+      filtered = filtered.filter(group => {
+        // En az bir sözleşme bugün oluşturulmuşsa göster
+        return group.contracts.some(reg => {
+          const createdAt = new Date(reg.createdAt)
+          createdAt.setHours(0, 0, 0, 0)
+          return createdAt.getTime() === today.getTime()
+        })
       })
     } else if (filterDate === "week") {
       const weekAgo = new Date()
       weekAgo.setDate(weekAgo.getDate() - 7)
-      filtered = filtered.filter(reg => new Date(reg.createdAt) >= weekAgo)
+      filtered = filtered.filter(group => {
+        return group.contracts.some(reg => new Date(reg.createdAt) >= weekAgo)
+      })
     } else if (filterDate === "month") {
       const monthAgo = new Date()
       monthAgo.setMonth(monthAgo.getMonth() - 1)
-      filtered = filtered.filter(reg => new Date(reg.createdAt) >= monthAgo)
+      filtered = filtered.filter(group => {
+        return group.contracts.some(reg => {
+          const createdAt = new Date(reg.createdAt)
+          createdAt.setHours(0, 0, 0, 0)
+          return createdAt >= monthAgo
+        })
+      })
     } else if (filterDate === "custom" && startDate && endDate) {
       const start = new Date(startDate)
       start.setHours(0, 0, 0, 0)
       const end = new Date(endDate)
       end.setHours(23, 59, 59, 999)
-      filtered = filtered.filter(reg => {
-        const createdAt = new Date(reg.createdAt)
-        return createdAt >= start && createdAt <= end
+      filtered = filtered.filter(group => {
+        return group.contracts.some(reg => {
+          const createdAt = new Date(reg.createdAt)
+          return createdAt >= start && createdAt <= end
+        })
       })
     }
 
-    setFilteredRegistrations(filtered)
-  }, [registrations, searchTerm, filterGrade, filterDate, startDate, endDate])
+    setFilteredGroupedRegistrations(filtered)
+  }, [groupedRegistrations, searchTerm, filterGrade, filterDate, startDate, endDate])
 
   const formatDate = (dateString: string) => {
     try {
@@ -188,8 +255,12 @@ export default function NewRegistrationsListPage() {
     }
   }
 
-  const handleViewDetails = (registration: NewRegistration) => {
-    setSelectedRegistration(registration)
+  const handleViewDetails = (group: GroupedRegistration) => {
+    setSelectedGroup(group)
+  }
+
+  const handleViewContractDetails = (contract: NewRegistration) => {
+    setSelectedContract(contract)
   }
 
   const handleDownloadPDF = async (registrationId: string) => {
@@ -240,8 +311,11 @@ export default function NewRegistrationsListPage() {
         // Listeyi yenile
         fetchRegistrations()
         // Eğer silinen kayıt detay görünümündeyse, detay görünümünü kapat
-        if (selectedRegistration?.id === registrationId) {
-          setSelectedRegistration(null)
+        if (selectedContract?.id === registrationId) {
+          setSelectedContract(null)
+        }
+        if (selectedGroup && selectedGroup.contracts.some(c => c.id === registrationId)) {
+          setSelectedGroup(null)
         }
       } else {
         const errorData = await response.json().catch(() => ({}))
@@ -253,13 +327,113 @@ export default function NewRegistrationsListPage() {
     }
   }
 
-  if (selectedRegistration) {
-    const contractData = selectedRegistration.contractData as Record<string, unknown>
+  // Birden fazla sözleşmesi olan öğrenci için detay görünümü
+  if (selectedGroup && selectedGroup.contracts.length > 1) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-3 sm:p-4 md:p-6 lg:p-8">
         <div className="max-w-6xl mx-auto">
           <Button
-            onClick={() => setSelectedRegistration(null)}
+            onClick={() => setSelectedGroup(null)}
+            variant="outline"
+            className="mb-4"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Geri Dön
+          </Button>
+
+          <Card className="shadow-lg mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5 text-blue-600" />
+                {selectedGroup.student.firstName} {selectedGroup.student.lastName}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <Label className="text-sm text-gray-600">TC Kimlik No</Label>
+                  <p className="font-medium">{selectedGroup.student.tcNumber}</p>
+                </div>
+                <div>
+                  <Label className="text-sm text-gray-600">Toplam Sözleşme</Label>
+                  <p className="font-medium">{selectedGroup.contracts.length} sözleşme</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold mb-4">Sözleşmeler</h2>
+            {selectedGroup.contracts.map((contract) => {
+              const contractData = contract.contractData as Record<string, unknown>
+              return (
+                <Card key={contract.id} className="shadow-md">
+                  <CardHeader>
+                    <CardTitle className="text-lg">
+                      {formatGrade(contractData.studentClass || contract.student?.grade || '')} - {String(contractData.academicYear || 'Belirtilmemiş')}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <Label className="text-sm text-gray-600">Kayıt Tarihi</Label>
+                        <p className="font-medium">{formatDate(contract.createdAt)}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm text-gray-600">Sözleşme No</Label>
+                        <p className="font-medium">{safeString(contractData.contractNo)}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => handleViewContractDetails(contract)}
+                        variant="outline"
+                        size="sm"
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        Detayları Gör
+                      </Button>
+                      <Button
+                        onClick={() => handleDownloadPDF(contract.id)}
+                        variant="outline"
+                        size="sm"
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        PDF İndir
+                      </Button>
+                      <Button
+                        onClick={() => handleDeleteRegistration(contract.id, selectedGroup.student.firstName, selectedGroup.student.lastName)}
+                        variant="outline"
+                        size="sm"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-300"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Sil
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Tek sözleşme detay görünümü
+  if (selectedContract) {
+    const contractData = selectedContract.contractData as Record<string, unknown>
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-3 sm:p-4 md:p-6 lg:p-8">
+        <div className="max-w-6xl mx-auto">
+          <Button
+            onClick={() => {
+              setSelectedContract(null)
+              if (selectedGroup) {
+                setSelectedGroup(null)
+              }
+            }}
             variant="outline"
             className="mb-4"
           >
@@ -272,7 +446,7 @@ export default function NewRegistrationsListPage() {
               <CardTitle className="flex items-center justify-between">
                 <span>Kayıt Detayları</span>
                 <Button
-                  onClick={() => handleDownloadPDF(selectedRegistration.id)}
+                  onClick={() => handleDownloadPDF(selectedContract.id)}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
                   <Download className="h-4 w-4 mr-2" />
@@ -291,16 +465,16 @@ export default function NewRegistrationsListPage() {
                   <div>
                     <Label className="text-sm text-gray-600">Ad Soyad</Label>
                     <p className="font-medium">
-                      {selectedRegistration.student?.firstName} {selectedRegistration.student?.lastName}
+                      {selectedContract.student?.firstName} {selectedContract.student?.lastName}
                     </p>
                   </div>
                   <div>
                     <Label className="text-sm text-gray-600">TC Kimlik No</Label>
-                    <p className="font-medium">{selectedRegistration.student?.tcNumber}</p>
+                    <p className="font-medium">{selectedContract.student?.tcNumber}</p>
                   </div>
                   <div>
                     <Label className="text-sm text-gray-600">Sınıf</Label>
-                    <p className="font-medium">{formatGrade(contractData.studentClass || selectedRegistration.student?.grade)}</p>
+                    <p className="font-medium">{formatGrade(contractData.studentClass || selectedContract.student?.grade)}</p>
                   </div>
                   <div>
                     <Label className="text-sm text-gray-600">Doğum Tarihi</Label>
@@ -322,7 +496,7 @@ export default function NewRegistrationsListPage() {
                   </div>
                   <div>
                     <Label className="text-sm text-gray-600">Kayıt Tarihi</Label>
-                    <p className="font-medium">{formatDate(selectedRegistration.createdAt)}</p>
+                    <p className="font-medium">{formatDate(selectedContract.createdAt)}</p>
                   </div>
                   <div>
                     <Label className="text-sm text-gray-600">Kayıt Sorumlusu</Label>
@@ -599,71 +773,101 @@ export default function NewRegistrationsListPage() {
               <p className="text-gray-500">Yükleniyor...</p>
             </CardContent>
           </Card>
-        ) : filteredRegistrations.length > 0 ? (
+        ) : filteredGroupedRegistrations.length > 0 ? (
           <div className="space-y-3">
-            {filteredRegistrations.map((registration) => {
-              const contractData = registration.contractData as Record<string, unknown>
+            {filteredGroupedRegistrations.map((group) => {
+              const latestContract = group.contracts[0]
+              const contractData = latestContract.contractData as Record<string, unknown>
+              const hasMultipleContracts = group.contracts.length > 1
+              
               return (
-                <Card key={registration.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleViewDetails(registration)}>
+                <Card key={group.tcNumber} className="hover:shadow-md transition-shadow">
                   <CardContent className="p-4">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <User className="h-5 w-5 text-blue-600" />
                           <h3 className="font-semibold text-lg">
-                            {registration.student?.firstName} {registration.student?.lastName}
+                            {group.student.firstName} {group.student.lastName}
                           </h3>
+                          {hasMultipleContracts && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleViewDetails(group)
+                              }}
+                              className="px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-sm font-medium hover:bg-blue-200 transition-colors"
+                            >
+                              {group.contracts.length} sözleşme
+                            </button>
+                          )}
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm text-gray-600">
                           <div className="flex items-center gap-2">
                             <span className="font-medium">TC:</span>
-                            <span>{registration.student?.tcNumber}</span>
+                            <span>{group.student.tcNumber}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <GraduationCap className="h-4 w-4" />
-                            <span>{formatGrade(contractData.studentClass || registration.student?.grade)}</span>
+                            <span>{formatGrade(contractData.studentClass || group.student.grade)}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <Calendar className="h-4 w-4" />
-                            <span>{formatDate(registration.createdAt)}</span>
+                            <span>{formatDate(latestContract.createdAt)}</span>
                           </div>
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <Button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleViewDetails(registration)
-                          }}
-                          variant="outline"
-                          size="sm"
-                        >
-                          <Eye className="h-4 w-4 mr-2" />
-                          Detay
-                        </Button>
-                        <Button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleDownloadPDF(registration.id)
-                          }}
-                          variant="outline"
-                          size="sm"
-                        >
-                          <Download className="h-4 w-4 mr-2" />
-                          PDF
-                        </Button>
-                        <Button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleDeleteRegistration(registration.id, registration.student?.firstName || "", registration.student?.lastName || "")
-                          }}
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-300"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Sil
-                        </Button>
+                        {hasMultipleContracts ? (
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleViewDetails(group)
+                            }}
+                            variant="outline"
+                            size="sm"
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            Tüm Sözleşmeleri Gör
+                          </Button>
+                        ) : (
+                          <>
+                            <Button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleViewContractDetails(latestContract)
+                              }}
+                              variant="outline"
+                              size="sm"
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              Detay
+                            </Button>
+                            <Button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDownloadPDF(latestContract.id)
+                              }}
+                              variant="outline"
+                              size="sm"
+                            >
+                              <Download className="h-4 w-4 mr-2" />
+                              PDF
+                            </Button>
+                            <Button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDeleteRegistration(latestContract.id, group.student.firstName, group.student.lastName)
+                              }}
+                              variant="outline"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-300"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Sil
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </CardContent>

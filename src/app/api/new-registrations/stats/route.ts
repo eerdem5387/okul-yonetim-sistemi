@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
         student: {
           select: {
             grade: true,
+            tcNumber: true,
           }
         }
       }
@@ -128,13 +129,25 @@ export async function GET(request: NextRequest) {
     }).length
     
     // Akademik yıl bazlı istatistikler (sadece kayıt yapılan yıllar)
+    // Benzersiz öğrenci sayısını say (TC numarasına göre)
     const academicYearStats: Record<string, number> = {}
+    const academicYearStudentMap = new Map<string, Set<string>>() // year -> Set of TC numbers
+    
     registrations.forEach(reg => {
+      if (!reg.student) return
       const contractData = reg.contractData as Record<string, unknown>
       const year = contractData.academicYear as string | undefined
       if (year && typeof year === 'string') {
-        academicYearStats[year] = (academicYearStats[year] || 0) + 1
+        if (!academicYearStudentMap.has(year)) {
+          academicYearStudentMap.set(year, new Set())
+        }
+        academicYearStudentMap.get(year)!.add(reg.student.tcNumber)
       }
+    })
+    
+    // Her akademik yıl için benzersiz öğrenci sayısını hesapla
+    academicYearStudentMap.forEach((studentSet, year) => {
+      academicYearStats[year] = studentSet.size
     })
     
     const responseData = {
