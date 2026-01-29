@@ -158,6 +158,7 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
   const [saving, setSaving] = useState(false)
   const [contractId, setContractId] = useState<string>("")
   const [studentId, setStudentId] = useState<string>("")
+  const [studentAddress, setStudentAddress] = useState<string>("") // Öğrenci adresi için state
 
   // URL'den ID'yi al
   useEffect(() => {
@@ -274,6 +275,9 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
         return
       }
       
+      // Öğrenci adresini sakla
+      setStudentAddress(studentData.address || "")
+      
       const contractData = data.contractData || {}
       
       // Ana sözleşme verilerini güncelle
@@ -344,6 +348,43 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
     
     setSaving(true)
     try {
+      // Öğrenci bilgilerini güncelle (tüm alanlar)
+      const studentNameParts = contract.studentName?.split(" ") || []
+      const firstName = studentNameParts[0] || ""
+      const lastName = studentNameParts.slice(1).join(" ") || ""
+      
+      const studentUpdateData: Record<string, unknown> = {
+        firstName,
+        lastName,
+        tcNumber: contract.studentTC || "",
+        grade: contract.studentClass || "",
+        birthDate: contract.studentBirthDate || undefined,
+        address: studentAddress || "", // Mevcut adresi koru
+      }
+      
+      // Öğrenci bilgilerini güncelle
+      const studentResponse = await fetch(`/api/students/${studentId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(studentUpdateData),
+      })
+      
+      if (!studentResponse.ok) {
+        const errorData = await studentResponse.json().catch(() => ({}))
+        const errorMessage = errorData.error || "Öğrenci bilgileri güncellenirken hata oluştu"
+        console.error("Error updating student:", errorMessage)
+        
+        // TC numarası çakışması varsa kullanıcıya bilgi ver ama sözleşmeyi kaydetmeye devam et
+        if (errorData.code === "TC_NUMBER_EXISTS") {
+          console.warn("TC numarası güncellenemedi:", errorMessage)
+        } else {
+          console.warn("Öğrenci bilgileri güncellenemedi:", errorMessage)
+        }
+        // Hata olsa bile sözleşme güncellemesi devam edecek
+      }
+      
       // Ana sözleşmeyi güncelle
       const response = await fetch(`/api/new-registrations/${contractId}`, {
         method: "PUT",
