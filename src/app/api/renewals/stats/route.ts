@@ -60,14 +60,20 @@ export async function GET(request: NextRequest) {
     }
     
     // TC numarasına göre benzersiz öğrenci sayısını hesapla
-    // Önce contractData içindeki tcNumber'ı kontrol et, yoksa student.tcNumber'ı kullan
+    // Önce student.tcNumber'ı kullan (güncel ve doğru kaynak), yoksa contractData.tcNumber'ı kullan
+    // student.tcNumber öncelikli çünkü TC düzeltildiğinde student tablosu güncelleniyor
     const getTcNumber = (renewal: typeof renewals[0]): string => {
       if (!renewal.student) return ''
+      // Önce student.tcNumber'ı kullan (güncel ve doğru kaynak)
+      if (renewal.student.tcNumber && renewal.student.tcNumber.trim() !== '') {
+        return renewal.student.tcNumber.trim()
+      }
+      // Eğer student.tcNumber yoksa, contractData.tcNumber'ı kullan
       const contractData = renewal.contractData as Record<string, unknown>
       const tcNumberFromContract = contractData.tcNumber as string | undefined
       return (tcNumberFromContract && typeof tcNumberFromContract === 'string' && tcNumberFromContract.trim() !== '') 
         ? tcNumberFromContract.trim() 
-        : renewal.student.tcNumber
+        : ''
     }
     
     // Benzersiz öğrenci setleri (TC numarasına göre)

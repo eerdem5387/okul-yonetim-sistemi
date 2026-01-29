@@ -111,19 +111,27 @@ export default function RenewalsListPage() {
   }, [])
 
   // TC numarasına göre gruplama fonksiyonu
-  // Önce contractData içindeki tcNumber'ı kontrol eder, yoksa student.tcNumber'ı kullanır
+  // Önce student.tcNumber'ı kullan (güncel ve doğru kaynak), yoksa contractData.tcNumber'ı kullan
+  // student.tcNumber öncelikli çünkü TC düzeltildiğinde student tablosu güncelleniyor
   const groupByTcNumber = (renewals: Renewal[]): GroupedRenewal[] => {
     const groupedMap = new Map<string, Renewal[]>()
     
     renewals.forEach(renewal => {
       if (!renewal.student) return
-      // Önce contractData içindeki tcNumber'ı kontrol et (güncel olabilir)
-      const contractData = renewal.contractData as Record<string, unknown>
-      const tcNumberFromContract = contractData.tcNumber as string | undefined
-      // contractData'daki tcNumber varsa ve geçerliyse onu kullan, yoksa student.tcNumber'ı kullan
-      const tcNumber = (tcNumberFromContract && typeof tcNumberFromContract === 'string' && tcNumberFromContract.trim() !== '') 
-        ? tcNumberFromContract.trim() 
-        : renewal.student.tcNumber
+      // Önce student.tcNumber'ı kullan (güncel ve doğru kaynak)
+      let tcNumber = ''
+      if (renewal.student.tcNumber && renewal.student.tcNumber.trim() !== '') {
+        tcNumber = renewal.student.tcNumber.trim()
+      } else {
+        // Eğer student.tcNumber yoksa, contractData.tcNumber'ı kullan
+        const contractData = renewal.contractData as Record<string, unknown>
+        const tcNumberFromContract = contractData.tcNumber as string | undefined
+        tcNumber = (tcNumberFromContract && typeof tcNumberFromContract === 'string' && tcNumberFromContract.trim() !== '') 
+          ? tcNumberFromContract.trim() 
+          : ''
+      }
+      
+      if (!tcNumber) return // TC numarası yoksa atla
       
       if (!groupedMap.has(tcNumber)) {
         groupedMap.set(tcNumber, [])
