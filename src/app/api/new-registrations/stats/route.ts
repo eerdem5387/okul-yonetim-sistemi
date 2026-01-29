@@ -70,17 +70,62 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    // Sınıf bazında sayım
-    const sinifStats: Record<string, number> = {}
-    // Önce tüm sınıfları 0 ile başlat (5-12. Sınıf)
-    for (let i = 5; i <= 12; i++) {
-      sinifStats[`${i}. Sınıf`] = 0
+    // TC numarasına göre benzersiz öğrenci sayısını hesapla
+    // Önce contractData içindeki tcNumber'ı kontrol et, yoksa student.tcNumber'ı kullan
+    const getTcNumber = (reg: typeof registrations[0]): string => {
+      if (!reg.student) return ''
+      const contractData = reg.contractData as Record<string, unknown>
+      const tcNumberFromContract = contractData.tcNumber as string | undefined
+      return (tcNumberFromContract && typeof tcNumberFromContract === 'string' && tcNumberFromContract.trim() !== '') 
+        ? tcNumberFromContract.trim() 
+        : reg.student.tcNumber
     }
     
-    // Kayıtları say
+    // Benzersiz öğrenci setleri (TC numarasına göre)
+    const uniqueStudents = new Set<string>()
+    const todayStudents = new Set<string>()
+    const thisWeekStudents = new Set<string>()
+    const thisMonthStudents = new Set<string>()
+    const sinifStudentMap = new Map<string, Set<string>>() // sinif -> Set of TC numbers
+    
+    // Tarih aralıkları
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const thisWeek = new Date()
+    thisWeek.setDate(thisWeek.getDate() - thisWeek.getDay())
+    thisWeek.setHours(0, 0, 0, 0)
+    const thisMonth = new Date()
+    thisMonth.setDate(1)
+    thisMonth.setHours(0, 0, 0, 0)
+    
+    // Kayıtları işle ve benzersiz öğrencileri say
     registrations.forEach(r => {
       if (!r.student) return // Güvenlik kontrolü
       
+      const tcNumber = getTcNumber(r)
+      if (!tcNumber) return
+      
+      // Toplam benzersiz öğrenci
+      uniqueStudents.add(tcNumber)
+      
+      // Tarih bazlı benzersiz öğrenciler
+      const createdAt = new Date(r.createdAt)
+      const createdAtDateOnly = new Date(createdAt)
+      createdAtDateOnly.setHours(0, 0, 0, 0)
+      
+      if (createdAtDateOnly.getTime() === today.getTime()) {
+        todayStudents.add(tcNumber)
+      }
+      
+      if (createdAt >= thisWeek) {
+        thisWeekStudents.add(tcNumber)
+      }
+      
+      if (createdAtDateOnly >= thisMonth) {
+        thisMonthStudents.add(tcNumber)
+      }
+      
+      // Sınıf bazında benzersiz öğrenciler
       const grade = r.student.grade || ''
       // Grade formatını kontrol et (örn: "5. Sınıf" veya "5")
       let sinif = ''
@@ -96,37 +141,32 @@ export async function GET(request: NextRequest) {
         }
       }
       
-      if (sinif && sinifStats.hasOwnProperty(sinif)) {
-        sinifStats[sinif] = (sinifStats[sinif] || 0) + 1
+      if (sinif) {
+        if (!sinifStudentMap.has(sinif)) {
+          sinifStudentMap.set(sinif, new Set())
+        }
+        sinifStudentMap.get(sinif)!.add(tcNumber)
       }
     })
     
-    // Bugün, bu hafta, bu ay
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const thisWeek = new Date()
-    thisWeek.setDate(thisWeek.getDate() - thisWeek.getDay())
-    thisWeek.setHours(0, 0, 0, 0)
-    const thisMonth = new Date()
-    thisMonth.setDate(1)
-    thisMonth.setHours(0, 0, 0, 0)
+    // Sınıf bazında sayım (benzersiz öğrenci sayısı)
+    const sinifStats: Record<string, number> = {}
+    // Önce tüm sınıfları 0 ile başlat (5-12. Sınıf)
+    for (let i = 5; i <= 12; i++) {
+      sinifStats[`${i}. Sınıf`] = 0
+    }
     
-    const todayCount = registrations.filter(r => {
-      const createdAt = new Date(r.createdAt)
-      createdAt.setHours(0, 0, 0, 0)
-      return createdAt.getTime() === today.getTime()
-    }).length
+    // Her sınıf için benzersiz öğrenci sayısını hesapla
+    sinifStudentMap.forEach((studentSet, sinif) => {
+      if (sinifStats.hasOwnProperty(sinif)) {
+        sinifStats[sinif] = studentSet.size
+      }
+    })
     
-    const thisWeekCount = registrations.filter(r => {
-      const createdAt = new Date(r.createdAt)
-      return createdAt >= thisWeek
-    }).length
-    
-    const thisMonthCount = registrations.filter(r => {
-      const createdAt = new Date(r.createdAt)
-      createdAt.setHours(0, 0, 0, 0)
-      return createdAt >= thisMonth
-    }).length
+    const todayCount = todayStudents.size
+    const thisWeekCount = thisWeekStudents.size
+    const thisMonthCount = thisMonthStudents.size
+    const totalCount = uniqueStudents.size
     
     // Akademik yıl bazlı istatistikler (sadece kayıt yapılan yıllar)
     // Benzersiz öğrenci sayısını say (TC numarasına göre)
@@ -141,7 +181,11 @@ export async function GET(request: NextRequest) {
         if (!academicYearStudentMap.has(year)) {
           academicYearStudentMap.set(year, new Set())
         }
-        academicYearStudentMap.get(year)!.add(reg.student.tcNumber)
+        // TC numarasını contractData'dan veya student'tan al
+        const tcNumber = getTcNumber(reg)
+        if (tcNumber) {
+          academicYearStudentMap.get(year)!.add(tcNumber)
+        }
       }
     })
     
@@ -151,7 +195,7 @@ export async function GET(request: NextRequest) {
     })
     
     const responseData = {
-      total: registrations.length,
+      total: totalCount,
       today: todayCount,
       thisWeek: thisWeekCount,
       thisMonth: thisMonthCount,

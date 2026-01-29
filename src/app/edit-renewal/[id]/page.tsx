@@ -201,8 +201,17 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
       })
       
       if (!studentResponse.ok) {
-        console.error("Error updating student:", await studentResponse.text())
-        // Öğrenci güncellemesi başarısız olsa bile sözleşmeyi güncellemeye devam et
+        const errorData = await studentResponse.json().catch(() => ({}))
+        const errorMessage = errorData.error || "Öğrenci bilgileri güncellenirken hata oluştu"
+        console.error("Error updating student:", errorMessage)
+        
+        // TC numarası çakışması varsa kullanıcıya bildir
+        if (errorData.code === "TC_NUMBER_EXISTS") {
+          alert(`⚠️ ${errorMessage}\n\nSözleşme bilgileri güncellendi ancak öğrenci TC numarası güncellenemedi.`)
+        } else {
+          // Diğer hatalar için uyarı ver ama devam et
+          alert(`⚠️ ${errorMessage}\n\nSözleşme bilgileri güncellendi ancak öğrenci bilgileri güncellenemedi.`)
+        }
       }
       
       // Ana sözleşmeyi güncelle

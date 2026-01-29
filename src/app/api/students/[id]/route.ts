@@ -99,6 +99,30 @@ export async function PUT(
             updateData.birthDate = new Date(birthDate)
         }
 
+        // TC numarası değişiyorsa ve yeni TC numarası başka bir öğrenciye aitse hata döndür
+        if (tcNumber) {
+            const currentStudent = await prisma.student.findUnique({
+                where: { id: params.id },
+                select: { tcNumber: true }
+            })
+            
+            // Eğer TC numarası değişiyorsa
+            if (currentStudent && currentStudent.tcNumber !== tcNumber) {
+                // Yeni TC numarasının başka bir öğrenciye ait olup olmadığını kontrol et
+                const existingStudent = await prisma.student.findUnique({
+                    where: { tcNumber: tcNumber },
+                    select: { id: true }
+                })
+                
+                if (existingStudent && existingStudent.id !== params.id) {
+                    return NextResponse.json({ 
+                        error: "Bu TC numarası başka bir öğrenciye ait!",
+                        code: "TC_NUMBER_EXISTS"
+                    }, { status: 409 })
+                }
+            }
+        }
+
         const student = await prisma.student.update({
             where: { id: params.id },
             data: updateData
@@ -107,6 +131,13 @@ export async function PUT(
         return NextResponse.json({ student })
     } catch (error) {
         console.error("Error updating student:", error)
+        // Prisma unique constraint hatası kontrolü
+        if (error instanceof Error && error.message.includes('Unique constraint')) {
+            return NextResponse.json({ 
+                error: "Bu TC numarası başka bir öğrenciye ait!",
+                code: "TC_NUMBER_EXISTS"
+            }, { status: 409 })
+        }
         return NextResponse.json({ error: "Failed to update student" }, { status: 500 })
     }
 }

@@ -111,12 +111,20 @@ export default function NewRegistrationsListPage() {
   }, [])
 
   // TC numarasına göre gruplama fonksiyonu
+  // Önce contractData içindeki tcNumber'ı kontrol eder, yoksa student.tcNumber'ı kullanır
   const groupByTcNumber = (regs: NewRegistration[]): GroupedRegistration[] => {
     const groupedMap = new Map<string, NewRegistration[]>()
     
     regs.forEach(reg => {
       if (!reg.student) return
-      const tcNumber = reg.student.tcNumber
+      // Önce contractData içindeki tcNumber'ı kontrol et (güncel olabilir)
+      const contractData = reg.contractData as Record<string, unknown>
+      const tcNumberFromContract = contractData.tcNumber as string | undefined
+      // contractData'daki tcNumber varsa ve geçerliyse onu kullan, yoksa student.tcNumber'ı kullan
+      const tcNumber = (tcNumberFromContract && typeof tcNumberFromContract === 'string' && tcNumberFromContract.trim() !== '') 
+        ? tcNumberFromContract.trim() 
+        : reg.student.tcNumber
+      
       if (!groupedMap.has(tcNumber)) {
         groupedMap.set(tcNumber, [])
       }
