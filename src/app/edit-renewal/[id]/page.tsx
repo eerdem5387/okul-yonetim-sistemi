@@ -388,6 +388,10 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
           return
         }
       }
+
+      const studentData = await studentResponse.json()
+      // Merge yapıldıysa sözleşme artık başka öğrenciye bağlı; tüm API çağrılarında o öğrenci id'sini kullan
+      const effectiveStudentId = (studentData.merged && studentData.student?.id) ? studentData.student.id : studentId
       
       // Ana sözleşmeyi güncelle
       const response = await fetch(`/api/renewals/${contractId}`, {
@@ -403,8 +407,8 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
         return
       }
 
-      // Yan sözleşmeleri güncelle (uniform contract)
-      const uniformContractsRes = await fetch(`/api/uniform-contracts?studentId=${studentId}`)
+      // Yan sözleşmeleri güncelle (uniform contract) — merge sonrası hedef öğrenci id'si kullan
+      const uniformContractsRes = await fetch(`/api/uniform-contracts?studentId=${effectiveStudentId}`)
       if (uniformContractsRes.ok) {
         const uniformContracts = await uniformContractsRes.json()
         if (uniformContracts.length > 0) {
@@ -436,7 +440,7 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              studentId,
+              studentId: effectiveStudentId,
               contractData: {
                 studentName: contract.studentName,
                 tcNumber: contract.studentTC,
@@ -453,7 +457,11 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
         }
       }
 
-      alert("Sözleşme başarıyla güncellendi!")
+      if (studentData.merged) {
+        alert("Sözleşme bu öğrenciye bağlandı. Listede \"2 sözleşme\" (veya ilgili sayı) olarak görünecektir.")
+      } else {
+        alert("Sözleşme başarıyla güncellendi!")
+      }
       window.location.href = "/renewal/list"
     } catch (error) {
       console.error("Error updating contract:", error)

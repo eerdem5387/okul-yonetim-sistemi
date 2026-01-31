@@ -105,6 +105,48 @@ export async function PUT(
             return NextResponse.json({ error: "Güncellenecek alan bulunamadı." }, { status: 400 })
         }
 
+        // TC değiştiriliyorsa ve bu TC başka bir öğrencide varsa: sözleşmeleri o öğrenciye bağla (merge)
+        if (tcNumber !== undefined && typeof tcNumber === "string" && tcNumber.trim() !== "") {
+            const existingWithTc = await prisma.student.findUnique({
+                where: { tcNumber: tcNumber.trim() }
+            })
+            if (existingWithTc && existingWithTc.id !== params.id) {
+                // Aynı TC'ye sahip başka öğrenci var → bu öğrencinin tüm sözleşmelerini ona taşı, çift kaydı sil
+                await prisma.$transaction(async (tx) => {
+                    const targetId = existingWithTc.id
+                    await tx.newRegistration.updateMany({ where: { studentId: params.id }, data: { studentId: targetId } })
+                    await tx.renewal.updateMany({ where: { studentId: params.id }, data: { studentId: targetId } })
+                    await tx.uniformContract.updateMany({ where: { studentId: params.id }, data: { studentId: targetId } })
+                    await tx.mealContract.updateMany({ where: { studentId: params.id }, data: { studentId: targetId } })
+                    await tx.serviceContract.updateMany({ where: { studentId: params.id }, data: { studentId: targetId } })
+                    await tx.bookContract.updateMany({ where: { studentId: params.id }, data: { studentId: targetId } })
+                    // Hedef öğrenciyi form verisiyle güncelle (isteğe bağlı)
+                    const targetUpdateData: Record<string, unknown> = {}
+                    if (firstName !== undefined) targetUpdateData.firstName = firstName
+                    if (lastName !== undefined) targetUpdateData.lastName = lastName
+                    if (grade !== undefined) targetUpdateData.grade = grade
+                    if (address !== undefined) targetUpdateData.address = address
+                    if (motherName !== undefined) targetUpdateData.motherName = motherName
+                    if (motherTc !== undefined) targetUpdateData.motherTc = motherTc
+                    if (motherPhone !== undefined) targetUpdateData.motherPhone = motherPhone
+                    if (motherAddress !== undefined) targetUpdateData.motherAddress = motherAddress
+                    if (motherOccupation !== undefined) targetUpdateData.motherOccupation = motherOccupation
+                    if (fatherName !== undefined) targetUpdateData.fatherName = fatherName
+                    if (fatherTc !== undefined) targetUpdateData.fatherTc = fatherTc
+                    if (fatherPhone !== undefined) targetUpdateData.fatherPhone = fatherPhone
+                    if (fatherAddress !== undefined) targetUpdateData.fatherAddress = fatherAddress
+                    if (fatherOccupation !== undefined) targetUpdateData.fatherOccupation = fatherOccupation
+                    if (birthDate) targetUpdateData.birthDate = new Date(birthDate)
+                    if (Object.keys(targetUpdateData).length > 0) {
+                        await tx.student.update({ where: { id: targetId }, data: targetUpdateData as object })
+                    }
+                    await tx.student.delete({ where: { id: params.id } })
+                })
+                const updatedTarget = await prisma.student.findUnique({ where: { id: existingWithTc.id } })
+                return NextResponse.json({ student: updatedTarget, merged: true })
+            }
+        }
+
         const student = await prisma.student.update({
             where: { id: params.id },
             data: updateData
@@ -113,7 +155,7 @@ export async function PUT(
         return NextResponse.json({ student })
     } catch (error) {
         console.error("Error updating student:", error)
-        // Prisma unique constraint (P2002) - TC numarası çakışması
+        // Prisma unique constraint (P2002) - TC numarası çakışması (merge dışı kalan edge case)
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
             return NextResponse.json({ 
                 error: "Bu TC numarası başka bir öğrenciye ait! Lütfen farklı bir TC numarası deneyin veya önce diğer öğrencinin TC numarasını değiştirin.",
