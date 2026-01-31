@@ -376,13 +376,17 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
         const errorMessage = errorData.error || "Öğrenci bilgileri güncellenirken hata oluştu"
         console.error("Error updating student:", errorMessage)
         
-        // TC numarası çakışması varsa kullanıcıya bilgi ver ama sözleşmeyi kaydetmeye devam et
+        // TC numarası çakışması varsa kullanıcıya açık bir mesaj göster
         if (errorData.code === "TC_NUMBER_EXISTS") {
-          console.warn("TC numarası güncellenemedi:", errorMessage)
+          alert(`⚠️ TC Numarası Güncellenemedi!\n\n${errorMessage}\n\nLütfen TC numarasını kontrol edin veya önce diğer öğrencinin TC numarasını değiştirin.`)
+          setSaving(false)
+          return // TC numarası güncellenemediyse sözleşmeyi de kaydetme
         } else {
-          console.warn("Öğrenci bilgileri güncellenemedi:", errorMessage)
+          // Diğer hatalar için de kullanıcıya bilgi ver
+          alert(`⚠️ Öğrenci Bilgileri Güncellenemedi!\n\n${errorMessage}`)
+          setSaving(false)
+          return
         }
-        // Hata olsa bile sözleşme güncellemesi devam edecek
       }
       
       // Ana sözleşmeyi güncelle

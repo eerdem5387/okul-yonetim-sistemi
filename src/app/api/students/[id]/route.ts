@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 
 export async function GET(
@@ -50,23 +51,23 @@ export async function PUT(
         // Kullanıcı rolünü kontrol et (sadece admin öğrenim ücreti alanlarını güncelleyebilir)
         // Frontend'den gelen role bilgisini header'dan al
 
-        const updateData: Record<string, unknown> = {
-            firstName,
-            lastName,
-            tcNumber,
-            grade,
-            address,
-            motherName,
-            motherTc,
-            motherPhone,
-            motherAddress,
-            motherOccupation,
-            fatherName,
-            fatherTc,
-            fatherPhone,
-            fatherAddress,
-            fatherOccupation
-        }
+        // Sadece tanımlı (undefined olmayan) alanları güncelle - Prisma undefined ile sorun çıkarabilir
+        const updateData: Record<string, unknown> = {}
+        if (firstName !== undefined) updateData.firstName = firstName
+        if (lastName !== undefined) updateData.lastName = lastName
+        if (tcNumber !== undefined) updateData.tcNumber = tcNumber
+        if (grade !== undefined) updateData.grade = grade
+        if (address !== undefined) updateData.address = address
+        if (motherName !== undefined) updateData.motherName = motherName
+        if (motherTc !== undefined) updateData.motherTc = motherTc
+        if (motherPhone !== undefined) updateData.motherPhone = motherPhone
+        if (motherAddress !== undefined) updateData.motherAddress = motherAddress
+        if (motherOccupation !== undefined) updateData.motherOccupation = motherOccupation
+        if (fatherName !== undefined) updateData.fatherName = fatherName
+        if (fatherTc !== undefined) updateData.fatherTc = fatherTc
+        if (fatherPhone !== undefined) updateData.fatherPhone = fatherPhone
+        if (fatherAddress !== undefined) updateData.fatherAddress = fatherAddress
+        if (fatherOccupation !== undefined) updateData.fatherOccupation = fatherOccupation
 
         // Öğrenim ücreti alanları sadece admin tarafından güncellenebilir
         // Frontend'den gelen role bilgisini kontrol et (localStorage'dan)
@@ -99,8 +100,10 @@ export async function PUT(
             updateData.birthDate = new Date(birthDate)
         }
 
-        // TC numarası kontrolü kaldırıldı - kullanıcı TC numarasını düzeltebilmeli
-        // Unique constraint hatası Prisma tarafından yakalanacak ve kullanıcıya gösterilecek
+        // En az bir alan güncellenecek olmalı
+        if (Object.keys(updateData).length === 0) {
+            return NextResponse.json({ error: "Güncellenecek alan bulunamadı." }, { status: 400 })
+        }
 
         const student = await prisma.student.update({
             where: { id: params.id },
@@ -110,8 +113,14 @@ export async function PUT(
         return NextResponse.json({ student })
     } catch (error) {
         console.error("Error updating student:", error)
-        // Prisma unique constraint hatası kontrolü
-        if (error instanceof Error && (error.message.includes('Unique constraint') || error.message.includes('P2002'))) {
+        // Prisma unique constraint (P2002) - TC numarası çakışması
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+            return NextResponse.json({ 
+                error: "Bu TC numarası başka bir öğrenciye ait! Lütfen farklı bir TC numarası deneyin veya önce diğer öğrencinin TC numarasını değiştirin.",
+                code: "TC_NUMBER_EXISTS"
+            }, { status: 409 })
+        }
+        if (error instanceof Error && (error.message.includes("Unique constraint") || error.message.includes("P2002"))) {
             return NextResponse.json({ 
                 error: "Bu TC numarası başka bir öğrenciye ait! Lütfen farklı bir TC numarası deneyin veya önce diğer öğrencinin TC numarasını değiştirin.",
                 code: "TC_NUMBER_EXISTS"
