@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label"
 import { 
   Search, Eye, User, Phone, School, 
   X, Filter, ChevronDown, ChevronUp, 
-  FileSpreadsheet, Plus, Trash2, Edit, Clock, Handshake, MessageSquare, History
+  FileSpreadsheet, Plus, Trash2, Edit, Clock, Handshake, MessageSquare, History,
+  CheckCircle2, XCircle, HelpCircle, Calendar, UserCircle
 } from "lucide-react"
 import { ToastContainer, useToast } from "@/components/ui/toast"
 
@@ -448,10 +449,15 @@ export default function TeklifGorusmeleriPage() {
                             <button
                               type="button"
                               onClick={() => setSelectedTeklif(teklif)}
-                              className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-300 text-sm text-slate-700 transition-colors"
+                              className="mt-2 inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-slate-50 to-slate-100 hover:from-slate-100 hover:to-slate-200 border border-slate-200/80 text-sm font-medium text-slate-700 shadow-sm hover:shadow transition-all duration-200"
                             >
-                              <History className="h-4 w-4" />
-                              {teklif._count?.kayitlar ?? teklif.kayitlar.length} geçmiş görüşme mevcut
+                              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/80 border border-slate-200">
+                                <History className="h-4 w-4 text-slate-600" />
+                              </span>
+                              <span>
+                                <span className="text-slate-500 font-normal">Geçmiş:</span>{" "}
+                                {teklif._count?.kayitlar ?? teklif.kayitlar.length} görüşme
+                              </span>
                             </button>
                           )}
                         </div>
@@ -600,180 +606,162 @@ function TeklifDetailModal({
   }, [initialTeklif.id])
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-        <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle>Teklif Görüşmesi Detayı – Geçmiş Görüşmeler</CardTitle>
-            <div className="flex items-center gap-2">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col rounded-2xl bg-white shadow-2xl" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="shrink-0 border-b border-slate-200/80 bg-gradient-to-b from-slate-50 to-white px-6 py-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <h2 className="text-xl font-bold text-slate-900 tracking-tight">Geçmiş Görüşmeler</h2>
+              <p className="mt-0.5 text-sm text-slate-500 truncate">
+                {teklif.ogrenciAdSoyad} · {teklif.teklifEdilenFiyat.toLocaleString("tr-TR", { style: "currency", currency: "TRY" })}
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
               {onAddMeeting && (
                 <Button
                   variant="default"
                   size="sm"
                   onClick={onAddMeeting}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-blue-600 hover:bg-blue-700 shadow-sm rounded-lg"
                 >
                   <MessageSquare className="h-4 w-4 mr-2" />
-                  Yeni Görüşme Ekle
+                  Yeni Görüşme
                 </Button>
               )}
-              <Button variant="ghost" size="sm" onClick={onClose}>
+              <Button variant="ghost" size="icon" onClick={onClose} className="rounded-lg hover:bg-slate-100" aria-label="Kapat">
                 <X className="h-5 w-5" />
               </Button>
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+            <div className="flex flex-col items-center justify-center py-16">
+              <div className="h-10 w-10 rounded-full border-2 border-blue-600 border-t-transparent animate-spin" />
+              <p className="mt-4 text-sm text-slate-500">Görüşmeler yükleniyor...</p>
             </div>
           ) : (
-            <>
-          {/* Öğrenci Bilgileri */}
-          <div>
-            <h3 className="text-lg font-semibold mb-3 text-gray-900">Öğrenci Bilgileri</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-gray-600">Ad Soyad</Label>
-                <p className="font-semibold">{teklif.ogrenciAdSoyad}</p>
-              </div>
-              <div>
-                <Label className="text-gray-600">Okul</Label>
-                <p className="font-semibold">{teklif.okul}</p>
-              </div>
-              <div>
-                <Label className="text-gray-600">Sınıf</Label>
-                <p className="font-semibold">{teklif.sinif}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Veli Bilgileri */}
-          <div>
-            <h3 className="text-lg font-semibold mb-3 text-gray-900">Veli Bilgileri</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-gray-600">Ad Soyad</Label>
-                <p className="font-semibold">{teklif.veliAdSoyad}</p>
-              </div>
-              <div>
-                <Label className="text-gray-600">Telefon</Label>
-                <p className="font-semibold">{teklif.veliTelefon}</p>
-              </div>
-              {teklif.veliEmail && (
-                <div>
-                  <Label className="text-gray-600">Email</Label>
-                  <p className="font-semibold">{teklif.veliEmail}</p>
-                </div>
-              )}
-              {teklif.veliMeslek && (
-                <div>
-                  <Label className="text-gray-600">Meslek</Label>
-                  <p className="font-semibold">{teklif.veliMeslek}</p>
-                </div>
-              )}
-              {teklif.veliAdres && (
-                <div className="md:col-span-2">
-                  <Label className="text-gray-600">Adres</Label>
-                  <p className="font-semibold">{teklif.veliAdres}</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Teklif Bilgileri */}
-          <div>
-            <h3 className="text-lg font-semibold mb-3 text-gray-900">Teklif Bilgileri</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-gray-600">Teklif Edilen Fiyat</Label>
-                <p className="text-xl font-bold text-blue-600">
-                  {teklif.teklifEdilenFiyat.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
-                </p>
-              </div>
-              <div>
-                <Label className="text-gray-600">Okul Fiyatı</Label>
-                <p className="text-xl font-bold text-gray-700">
-                  {teklif.okulFiyati.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
-                </p>
-              </div>
-              {teklif.sonGecerlilikTarihi && (
-                <div>
-                  <Label className="text-gray-600">Teklifin Son Geçerlilik Tarihi</Label>
-                  <p className="text-lg font-semibold text-orange-600">
-                    {new Date(teklif.sonGecerlilikTarihi).toLocaleDateString('tr-TR', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Görüşme Geçmişi (Timeline) */}
-          <div>
-            <h3 className="text-lg font-semibold mb-3 text-gray-900">Görüşme Geçmişi</h3>
-            {teklif.kayitlar.length === 0 ? (
-              <p className="text-gray-500 py-4">Henüz görüşme kaydı yok.</p>
-            ) : (
-            <div className="space-y-4">
-              {teklif.kayitlar.map((kayit) => {
-                const durumBadges = {
-                  OLUMLU: "bg-green-100 text-green-800 border-green-300",
-                  OLUMSUZ: "bg-red-100 text-red-800 border-red-300",
-                  BELIRSIZ: "bg-yellow-100 text-yellow-800 border-yellow-300",
-                }
-                const durumLabels = {
-                  OLUMLU: "Olumlu",
-                  OLUMSUZ: "Olumsuz",
-                  BELIRSIZ: "Belirsiz",
-                }
-                return (
-                  <div
-                    key={kayit.id}
-                    className="border-l-4 border-blue-500 pl-4 pb-4 relative"
-                  >
-                    <div className="absolute -left-2 top-0 w-4 h-4 bg-blue-500 rounded-full border-2 border-white"></div>
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-semibold text-gray-700">
-                            {new Date(kayit.gorusmeTarihi).toLocaleString('tr-TR')}
-                          </span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${durumBadges[kayit.durum]}`}>
-                            {durumLabels[kayit.durum]}
-                          </span>
-                        </div>
-                        <span className="text-sm text-gray-600">
-                          {kayit.gorusmeyiYapan}
-                        </span>
-                      </div>
-                      {kayit.durumNotu && (
-                        <div className="mt-2">
-                          <Label className="text-gray-600 text-sm">Durum Notu</Label>
-                          <p className="text-sm text-gray-700">{kayit.durumNotu}</p>
-                        </div>
-                      )}
-                      {kayit.genelNot && (
-                        <div className="mt-2">
-                          <Label className="text-gray-600 text-sm">Genel Not</Label>
-                          <p className="text-sm text-gray-700">{kayit.genelNot}</p>
-                        </div>
-                      )}
-                    </div>
+            <div className="p-6 space-y-6">
+              {/* Teklif özeti – kompakt */}
+              <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Teklif özeti</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <p className="text-slate-500">Öğrenci</p>
+                    <p className="font-semibold text-slate-900">{teklif.ogrenciAdSoyad}</p>
+                    <p className="text-slate-500">{teklif.okul} · {teklif.sinif}</p>
                   </div>
-                )
-              })}
+                  <div>
+                    <p className="text-slate-500">Veli</p>
+                    <p className="font-semibold text-slate-900">{teklif.veliAdSoyad}</p>
+                    <p className="text-slate-500">{teklif.veliTelefon}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Teklif</p>
+                    <p className="font-bold text-blue-600">{teklif.teklifEdilenFiyat.toLocaleString("tr-TR", { style: "currency", currency: "TRY" })}</p>
+                  </div>
+                  {teklif.sonGecerlilikTarihi && (
+                    <div>
+                      <p className="text-slate-500">Geçerlilik</p>
+                      <p className="font-semibold text-slate-900">{new Date(teklif.sonGecerlilikTarihi).toLocaleDateString("tr-TR", { day: "numeric", month: "short", year: "numeric" })}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Görüşme geçmişi – timeline */}
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-base font-semibold text-slate-900">Görüşme geçmişi</h3>
+                  {teklif.kayitlar.length > 0 && (
+                    <span className="text-xs text-slate-500">{teklif.kayitlar.length} kayıt</span>
+                  )}
+                </div>
+
+                {teklif.kayitlar.length === 0 ? (
+                  <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 py-12 px-6 text-center">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-slate-200/80">
+                      <MessageSquare className="h-7 w-7 text-slate-500" />
+                    </div>
+                    <p className="mt-4 text-sm font-medium text-slate-700">Henüz görüşme kaydı yok</p>
+                    <p className="mt-1 text-sm text-slate-500">Bu teklif için ilk görüşmeyi ekleyerek başlayın.</p>
+                    {onAddMeeting && (
+                      <Button variant="outline" size="sm" onClick={onAddMeeting} className="mt-4 rounded-lg">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Yeni Görüşme Ekle
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="relative">
+                    {/* Dikey çizgi */}
+                    <div className="absolute left-[19px] top-2 bottom-2 w-px bg-slate-200" />
+                    <ul className="space-y-0">
+                      {teklif.kayitlar.map((kayit, index) => {
+                        const isOlumlu = kayit.durum === "OLUMLU"
+                        const isOlumsuz = kayit.durum === "OLUMSUZ"
+                        const borderColor = isOlumlu ? "border-emerald-500" : isOlumsuz ? "border-red-500" : "border-amber-500"
+                        const iconBg = isOlumlu ? "bg-emerald-100 text-emerald-700" : isOlumsuz ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
+                        const Icon = isOlumlu ? CheckCircle2 : isOlumsuz ? XCircle : HelpCircle
+                        const durumLabels = { OLUMLU: "Olumlu", OLUMSUZ: "Olumsuz", BELIRSIZ: "Belirsiz" }
+                        const badgeClass = isOlumlu ? "bg-emerald-100 text-emerald-800 border-emerald-200" : isOlumsuz ? "bg-red-100 text-red-800 border-red-200" : "bg-amber-100 text-amber-800 border-amber-200"
+                        return (
+                          <li key={kayit.id} className="relative flex gap-4 pb-6 last:pb-0">
+                            <div className={`relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-white bg-white shadow-sm ${iconBg}`}>
+                              <Icon className="h-5 w-5" />
+                            </div>
+                            <div className={`min-w-0 flex-1 rounded-xl border-l-4 ${borderColor} bg-white p-4 shadow-sm ring-1 ring-slate-200/80`}>
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-900">
+                                    <Calendar className="h-4 w-4 text-slate-400" />
+                                    {new Date(kayit.gorusmeTarihi).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" })}
+                                    <span className="text-slate-400 font-normal">·</span>
+                                    {new Date(kayit.gorusmeTarihi).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
+                                  </span>
+                                  <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${badgeClass}`}>
+                                    {durumLabels[kayit.durum]}
+                                  </span>
+                                  {index === 0 && (
+                                    <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">Son görüşme</span>
+                                  )}
+                                </div>
+                                <span className="inline-flex items-center gap-1 text-sm text-slate-500">
+                                  <UserCircle className="h-4 w-4" />
+                                  {kayit.gorusmeyiYapan}
+                                </span>
+                              </div>
+                              {(kayit.durumNotu || kayit.genelNot) && (
+                                <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
+                                  {kayit.durumNotu && (
+                                    <div>
+                                      <p className="text-xs font-medium text-slate-400">Durum notu</p>
+                                      <p className="text-sm text-slate-700 mt-0.5">{kayit.durumNotu}</p>
+                                    </div>
+                                  )}
+                                  {kayit.genelNot && (
+                                    <div>
+                                      <p className="text-xs font-medium text-slate-400">Genel not</p>
+                                      <p className="text-sm text-slate-700 mt-0.5">{kayit.genelNot}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </div>
+                )}
+              </div>
             </div>
-            )}
-          </div>
-            </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }
