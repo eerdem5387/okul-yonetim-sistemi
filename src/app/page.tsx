@@ -57,16 +57,24 @@ export default function HomePage() {
       const clubsRes = await fetch("/api/clubs")
       const clubs = clubsRes.ok ? await clubsRes.json() : []
       
-      const [newRegRes, renewalRes, uniformRes, mealRes, serviceRes, bookRes] = await Promise.all([
+      const [newRegRes, renewalRes, newRegStatsRes, renewalStatsRes, uniformRes, mealRes, serviceRes, bookRes] = await Promise.all([
         fetch("/api/new-registrations"),
         fetch("/api/renewals"),
+        fetch("/api/new-registrations/stats"),
+        fetch("/api/renewals/stats"),
         fetch("/api/uniform-contracts"),
         fetch("/api/meal-contracts"),
         fetch("/api/service-contracts"),
         fetch("/api/book-contracts")
       ])
       
-      // Her sözleşme türüne type bilgisini ekle
+      // Yeni Kayıt ve Kayıt Yenileme sayıları stats API'den (sunucuda doğru tarih/saat hesaplaması)
+      const newRegStats = newRegStatsRes.ok ? (await newRegStatsRes.json()) as { today?: number } : { today: 0 }
+      const renewalStats = renewalStatsRes.ok ? (await renewalStatsRes.json()) as { thisMonth?: number } : { thisMonth: 0 }
+      const todayNewRegistrations = newRegStats.today ?? 0
+      const monthRenewals = renewalStats.thisMonth ?? 0
+      
+      // Her sözleşme türüne type bilgisini ekle (Son İşlemler için)
       const newRegistrations = newRegRes.ok ? (await newRegRes.json()).map((c: { id: string; studentId: string; createdAt: string }) => ({ ...c, type: "new-registration" })) : []
       const renewals = renewalRes.ok ? (await renewalRes.json()).map((c: { id: string; studentId: string; createdAt: string }) => ({ ...c, type: "renewal" })) : []
       const uniforms = uniformRes.ok ? (await uniformRes.json()).map((c: { id: string; studentId: string; createdAt: string }) => ({ ...c, type: "uniform" })) : []
@@ -82,15 +90,6 @@ export default function HomePage() {
         ...services,
         ...books
       ]
-      
-      const today = new Date().toISOString().split('T')[0]
-      const thisMonth = new Date().toISOString().slice(0, 7)
-      const todayNewRegistrations = newRegistrations.filter((c: { createdAt?: string }) =>
-        c.createdAt && c.createdAt.startsWith(today)
-      ).length
-      const monthRenewals = renewals.filter((c: { createdAt?: string }) =>
-        c.createdAt && c.createdAt.startsWith(thisMonth)
-      ).length
       
       const clubCapacityAverage = clubs.length > 0
         ? clubs.reduce((acc: number, club: { selections?: unknown[]; capacity?: number }) => {
