@@ -7,8 +7,8 @@ import Link from "next/link"
 
 interface DashboardStats {
   totalStudents: number
-  todayContracts: number
-  monthContracts: number
+  todayNewRegistrations: number
+  monthRenewals: number
   totalClubs: number
   clubCapacityAverage: number
 }
@@ -32,8 +32,8 @@ interface RecentActivity {
 export default function HomePage() {
   const [stats, setStats] = useState<DashboardStats>({
     totalStudents: 0,
-    todayContracts: 0,
-    monthContracts: 0,
+    todayNewRegistrations: 0,
+    monthRenewals: 0,
     totalClubs: 0,
     clubCapacityAverage: 0
   })
@@ -84,12 +84,11 @@ export default function HomePage() {
       ]
       
       const today = new Date().toISOString().split('T')[0]
-      const todayContracts = allContracts.filter(c => 
+      const thisMonth = new Date().toISOString().slice(0, 7)
+      const todayNewRegistrations = newRegistrations.filter((c: { createdAt?: string }) =>
         c.createdAt && c.createdAt.startsWith(today)
       ).length
-      
-      const thisMonth = new Date().toISOString().slice(0, 7)
-      const monthContracts = allContracts.filter(c => 
+      const monthRenewals = renewals.filter((c: { createdAt?: string }) =>
         c.createdAt && c.createdAt.startsWith(thisMonth)
       ).length
       
@@ -102,8 +101,8 @@ export default function HomePage() {
       
       setStats({
         totalStudents: Array.isArray(students) ? students.length : 0,
-        todayContracts,
-        monthContracts,
+        todayNewRegistrations,
+        monthRenewals,
         totalClubs: Array.isArray(clubs) ? clubs.length : 0,
         clubCapacityAverage: Math.round(clubCapacityAverage)
       })
@@ -191,10 +190,10 @@ export default function HomePage() {
             <div className="text-[10px] sm:text-xs text-gray-500 font-medium">Bugün</div>
           </div>
           <div className="stat-card-value text-xl sm:text-2xl lg:text-3xl">
-            {loading ? <div className="spinner" /> : stats.todayContracts}
+            {loading ? <div className="spinner" /> : stats.todayNewRegistrations}
           </div>
-          <div className="stat-card-label text-xs sm:text-sm">Yeni Sözleşme</div>
-          <Link href="/history" className="mt-2 sm:mt-3 lg:mt-4 text-[10px] sm:text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 hover:gap-2 transition-all">
+          <div className="stat-card-label text-xs sm:text-sm">Yeni Kayıt</div>
+          <Link href="/new-registrations/list" className="mt-2 sm:mt-3 lg:mt-4 text-[10px] sm:text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 hover:gap-2 transition-all">
             <span className="hidden sm:inline">Detayları Gör</span>
             <span className="sm:hidden">Detay</span>
             <ArrowRight className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
@@ -209,13 +208,14 @@ export default function HomePage() {
             <div className="text-[10px] sm:text-xs text-gray-500 font-medium">Bu Ay</div>
           </div>
           <div className="stat-card-value text-xl sm:text-2xl lg:text-3xl">
-            {loading ? <div className="spinner" /> : stats.monthContracts}
+            {loading ? <div className="spinner" /> : stats.monthRenewals}
           </div>
-          <div className="stat-card-label text-xs sm:text-sm">Aylık Sözleşme</div>
-          <div className="mt-2 sm:mt-3 lg:mt-4 flex items-center gap-1.5 sm:gap-2">
-            <div className="h-1.5 w-1.5 sm:h-2 sm:w-2 bg-orange-500 rounded-full animate-pulse" />
-            <span className="text-[10px] sm:text-xs text-gray-500">Aktif dönem</span>
-          </div>
+          <div className="stat-card-label text-xs sm:text-sm">Kayıt Yenileme</div>
+          <Link href="/renewal/list" className="mt-2 sm:mt-3 lg:mt-4 text-[10px] sm:text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 hover:gap-2 transition-all">
+            <span className="hidden sm:inline">Detayları Gör</span>
+            <span className="sm:hidden">Detay</span>
+            <ArrowRight className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+          </Link>
         </div>
 
         <div className="stat-card group">
