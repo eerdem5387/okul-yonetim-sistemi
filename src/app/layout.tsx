@@ -323,7 +323,8 @@ export default function RootLayout({
       }
       return
     }
-  }, [pathname, router, isLoading]) // authRole dependency'sini kaldırdık çünkü yukarıda zaten kontrol ediyoruz
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- authRole session'dan geliyor, pathname/isLoading değişince yeterli
+  }, [pathname, router, isLoading])
 
   // Loading durumu
   if (isLoading) {

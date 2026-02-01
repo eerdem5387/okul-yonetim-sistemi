@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
     // Toplam kayıt sayısı
     const total = await prisma.teklifGorusmesi.count({ where })
 
-    // Teklif görüşmelerini getir (en son kayıt ile birlikte)
+    // Teklif görüşmelerini getir (en son kayıt + toplam görüşme sayısı)
     const teklifGorusmeleri = await prisma.teklifGorusmesi.findMany({
       where,
       skip,
@@ -88,7 +88,8 @@ export async function GET(request: NextRequest) {
         kayitlar: {
           orderBy: { gorusmeTarihi: 'desc' },
           take: 1, // En son kayıt
-        }
+        },
+        _count: { select: { kayitlar: true } }
       }
     })
 

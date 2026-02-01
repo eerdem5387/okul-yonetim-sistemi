@@ -656,7 +656,7 @@ export default function RenewalPage() {
     }
 
     checkExistingRenewal()
-  }, [selectedStudent?.id, mainContractData.academicYear])
+  }, [selectedStudent, mainContractData.academicYear])
 
   return (
     <div className="p-6">

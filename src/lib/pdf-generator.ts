@@ -969,7 +969,7 @@ function generateUniformContractHTML(student: { firstName: string; lastName: str
   }
 
   const studentGrade = contractData.studentClass || student.grade || ""
-  const priceTable = getPriceTableForGrade(studentGrade as string)
+  void getPriceTableForGrade(studentGrade as string) // ileride fiyat tablosu kullanılabilir
 
   // Ödeme durumu
   const paymentReceived = contractData.paymentReceived === true || contractData.paymentReceived === "true"

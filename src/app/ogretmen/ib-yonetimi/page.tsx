@@ -263,7 +263,7 @@ export default function OgretmenIbYonetimiPage() {
       const url = editingActivity ? `/api/activities/${editingActivity.id}` : "/api/activities"
       const method = editingActivity ? "PUT" : "POST"
 
-      const payload: any = {
+      const payload: Record<string, unknown> = {
         studentIds: formData.studentIds.filter(id => id !== ""),
         type: formData.type,
         title: formData.title,

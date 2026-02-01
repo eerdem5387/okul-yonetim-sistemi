@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { 
   Search, Eye, User, Phone, School, 
   X, Filter, ChevronDown, ChevronUp, 
-  FileSpreadsheet, Plus, Trash2, Edit, Clock, Handshake
+  FileSpreadsheet, Plus, Trash2, Edit, Clock, Handshake, MessageSquare, History
 } from "lucide-react"
 import { ToastContainer, useToast } from "@/components/ui/toast"
 
@@ -35,6 +35,7 @@ interface TeklifGorusmesi {
     durumNotu: string | null
     genelNot: string | null
   }>
+  _count?: { kayitlar: number }
 }
 
 const siniflar = [
@@ -443,19 +444,23 @@ export default function TeklifGorusmeleriPage() {
                               </>
                             )}
                           </div>
-                          {teklif.kayitlar.length > 1 && (
-                            <div className="mt-2 text-xs text-gray-500">
-                              Toplam {teklif.kayitlar.length} görüşme kaydı
-                            </div>
+                          {(teklif._count?.kayitlar ?? teklif.kayitlar.length) > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedTeklif(teklif)}
+                              className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-300 text-sm text-slate-700 transition-colors"
+                            >
+                              <History className="h-4 w-4" />
+                              {teklif._count?.kayitlar ?? teklif.kayitlar.length} geçmiş görüşme mevcut
+                            </button>
                           )}
                         </div>
-                        <div className="flex gap-2 ml-4">
+                        <div className="flex flex-col sm:flex-row gap-2 ml-4 shrink-0">
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => {
-                              setSelectedTeklif(teklif)
-                            }}
+                            onClick={() => setSelectedTeklif(teklif)}
+                            title="Detay / Geçmiş görüşmeler"
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -466,6 +471,20 @@ export default function TeklifGorusmeleriPage() {
                               setEditingTeklif(teklif)
                               setShowFormModal(true)
                             }}
+                            title="Yeni görüşme ekle"
+                            className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                          >
+                            <MessageSquare className="h-4 w-4 sm:mr-1" />
+                            <span className="hidden sm:inline">Yeni Görüşme</span>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setEditingTeklif(teklif)
+                              setShowFormModal(true)
+                            }}
+                            title="Düzenle"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -517,11 +536,16 @@ export default function TeklifGorusmeleriPage() {
         </CardContent>
       </Card>
 
-      {/* Detail Modal */}
+      {/* Detail Modal (geçmiş görüşmeler) */}
       {selectedTeklif && (
         <TeklifDetailModal
           teklif={selectedTeklif}
           onClose={() => setSelectedTeklif(null)}
+          onAddMeeting={() => {
+            setEditingTeklif(selectedTeklif)
+            setSelectedTeklif(null)
+            setShowFormModal(true)
+          }}
         />
       )}
 
@@ -544,26 +568,68 @@ export default function TeklifGorusmeleriPage() {
   )
 }
 
-// Detail Modal Component
+// Detail Modal Component (geçmiş görüşmeler – tam liste için fetch yapar)
 function TeklifDetailModal({
-  teklif,
+  teklif: initialTeklif,
   onClose,
+  onAddMeeting,
 }: {
   teklif: TeklifGorusmesi
   onClose: () => void
+  onAddMeeting?: () => void
 }) {
+  const [teklif, setTeklif] = useState<TeklifGorusmesi>(initialTeklif)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    async function fetchFull() {
+      try {
+        const res = await fetch(`/api/teklif-gorusmeleri/${initialTeklif.id}`)
+        if (!res.ok || cancelled) return
+        const data = await res.json()
+        if (data.teklifGorusmesi && !cancelled) {
+          setTeklif(data.teklifGorusmesi)
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    fetchFull()
+    return () => { cancelled = true }
+  }, [initialTeklif.id])
+
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Teklif Görüşmesi Detayı</CardTitle>
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              <X className="h-5 w-5" />
-            </Button>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle>Teklif Görüşmesi Detayı – Geçmiş Görüşmeler</CardTitle>
+            <div className="flex items-center gap-2">
+              {onAddMeeting && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={onAddMeeting}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Yeni Görüşme Ekle
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" onClick={onClose}>
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+            </div>
+          ) : (
+            <>
           {/* Öğrenci Bilgileri */}
           <div>
             <h3 className="text-lg font-semibold mb-3 text-gray-900">Öğrenci Bilgileri</h3>
@@ -650,6 +716,9 @@ function TeklifDetailModal({
           {/* Görüşme Geçmişi (Timeline) */}
           <div>
             <h3 className="text-lg font-semibold mb-3 text-gray-900">Görüşme Geçmişi</h3>
+            {teklif.kayitlar.length === 0 ? (
+              <p className="text-gray-500 py-4">Henüz görüşme kaydı yok.</p>
+            ) : (
             <div className="space-y-4">
               {teklif.kayitlar.map((kayit) => {
                 const durumBadges = {
@@ -699,7 +768,10 @@ function TeklifDetailModal({
                 )
               })}
             </div>
+            )}
           </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>
