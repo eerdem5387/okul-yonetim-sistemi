@@ -821,7 +821,7 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
                     "DİĞER KREDİ KARTLARI 2 TAKSİT",
                     "İŞBANKASI OTS 3 TAKSİT",
                     "VAKIFBANK OTS 3 TAKSİT",
-                    "AKBANK OTS 3 TAKSİT",
+                    "AKBANK 2 + 4 TAKSİT",
                     "ZİRAAT OTS 4 TAKSİT"
                   ].map((plan) => (
                     <label key={plan} className="flex items-center gap-2 p-3 border rounded-md cursor-pointer hover:bg-gray-50">
