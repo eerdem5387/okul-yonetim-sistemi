@@ -1154,12 +1154,12 @@ export default function RenewalPage() {
                         "İŞBANK KREDİ KARTI 2+4 TAKSİT",
                         "ZİRAATBANK KREDİ KARTI 2+8 TAKSİT",
                         "YAPIKREDİ KREDİ KARTI 3 TAKSİT",
-                        "AKBANK KREDİ KARTI 2+8+4 TAKSİT",
+                        "AKBANK KREDİ KARTI 2 + 4 TAKSİT",
                         "BONUS KREDİ KARTI 2 TAKSİT",
                         "DİĞER KREDİ KARTLARI 2 TAKSİT",
                         "İŞBANKASI OTS 3 TAKSİT",
                         "VAKIFBANK OTS 3 TAKSİT",
-                        "AKBANK 2 + 4 TAKSİT",
+                        "AKBANK OTS 3 TAKSİT",
                         "ZİRAAT OTS 4 TAKSİT"
                       ].map((plan) => (
                         <label key={plan} className="flex items-center gap-2 p-3 border rounded-md cursor-pointer hover:bg-gray-50">
