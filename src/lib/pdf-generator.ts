@@ -663,6 +663,10 @@ function generateMainContractHTML(student: { firstName: string; lastName: string
         <div class="field-label">Öğrenci Adı:</div>
         <div class="field-value">${contractData.contractStudentName || student.firstName + ' ' + student.lastName}</div>
       </div>
+      <div class="field-row">
+        <div class="field-label">Öğrenci için belirlenen ücret:</div>
+        <div class="field-value">${formatTL(contractData.studentTotal ?? contractData.studentTuitionFee)} TL</div>
+      </div>
       <div style="display:flex; gap: 20px;">
         <div style="flex:1;">
           <div class="section-title" style="text-decoration:none; margin-bottom:6px;">Öğrenci Anne Bilgileri</div>
