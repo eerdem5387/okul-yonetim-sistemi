@@ -643,12 +643,12 @@ function generateMainContractHTML(student: { firstName: string; lastName: string
     <div class="signature-section">
       <div class="signature-box">
         <div class="signature-line"></div>
-        <div class="signature-label"><strong>Okul Kurucusu</strong></div>
-        <div style="margin-top: 5px; font-weight: bold;">ABDULKADİR ERDEM</div>
+        <div class="signature-label"><strong>Öğrenci Velisi</strong></div>
       </div>
       <div class="signature-box">
         <div class="signature-line"></div>
-        <div class="signature-label"><strong>Öğrenci Velisi</strong></div>
+        <div class="signature-label"><strong>Okul Kurucusu</strong></div>
+        <div style="margin-top: 5px; font-weight: bold;">ABDULKADİR ERDEM</div>
       </div>
     </div>
 
