@@ -697,15 +697,11 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
                     value={contract.announcedTuitionFee}
                     onChange={(e) => setContract({ ...contract, announcedTuitionFee: e.target.value })}
                     placeholder="0"
-                    readOnly
-                    className="bg-gray-100 cursor-not-allowed"
                   />
                   <Input
                     value={contract.studentTuitionFee}
                     onChange={(e) => setContract({ ...contract, studentTuitionFee: e.target.value })}
                     placeholder="0"
-                    readOnly
-                    className="bg-gray-100 cursor-not-allowed"
                   />
                 </div>
 
@@ -759,12 +755,16 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
                     placeholder="0"
                     className="font-semibold"
                   />
-                  <Input
-                    value={contract.studentTotal}
-                    onChange={(e) => setContract({ ...contract, studentTotal: e.target.value })}
-                    placeholder="0"
-                    className="font-semibold"
-                  />
+                  <div>
+                    <Label htmlFor="studentTotal" className="text-xs font-normal text-gray-500 block mb-1">Öğrenci için belirlenen ücret (toplam) — düzenlenebilir</Label>
+                    <Input
+                      id="studentTotal"
+                      value={contract.studentTotal}
+                      onChange={(e) => setContract({ ...contract, studentTotal: e.target.value })}
+                      placeholder="0"
+                      className="font-semibold"
+                    />
+                  </div>
                 </div>
               </div>
 

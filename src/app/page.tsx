@@ -120,34 +120,40 @@ export default function HomePage() {
       const teklifData = teklifRes.ok ? await teklifRes.json() : {}
       setRecentTeklifGorusmeleri(teklifData.teklifGorusmeleri || [])
 
-      // Sözleşme tutarları: Öğrenci için belirlenen ücret (studentTotal) bazında, eğitim öğretim dönemine göre
+      // Sözleşme tutarları: Öğrenci için belirlenen ücret (studentTotal) bazında, eğitim öğretim dönemine göre.
+      // Akademik yıl belirtilmeyen sözleşmeler "Belirtilmemiş" grubuna alınır ve "Tümü" toplamına dahil edilir.
       const byYear: Record<string, ContractTotals> = {}
-      let overallNewReg = 0
-      let overallRenewal = 0
+      const normalizeYear = (val: unknown) => {
+        const s = String(val ?? "").trim()
+        return s === "" ? "Belirtilmemiş" : s
+      }
       for (const item of newRegList) {
         const data = (item.contractData || {}) as Record<string, unknown>
         const fee = parseContractFee(data.studentTotal ?? data.studentTuitionFee)
-        const year = String(data.academicYear || "Belirtilmemiş").trim()
+        const year = normalizeYear(data.academicYear)
         if (!byYear[year]) byYear[year] = { newRegTotal: 0, renewalTotal: 0, total: 0 }
         byYear[year].newRegTotal += fee
         byYear[year].total += fee
-        overallNewReg += fee
       }
       for (const item of renewalList) {
         const data = (item.contractData || {}) as Record<string, unknown>
         const fee = parseContractFee(data.studentTotal ?? data.studentTuitionFee)
-        const year = String(data.academicYear || "Belirtilmemiş").trim()
+        const year = normalizeYear(data.academicYear)
         if (!byYear[year]) byYear[year] = { newRegTotal: 0, renewalTotal: 0, total: 0 }
         byYear[year].renewalTotal += fee
         byYear[year].total += fee
-        overallRenewal += fee
       }
       setContractTotalsByYear(byYear)
-      setOverallContractTotals({
-        newRegTotal: overallNewReg,
-        renewalTotal: overallRenewal,
-        total: overallNewReg + overallRenewal
-      })
+      // "Tümü" = tüm dönemlerin toplamı (Belirtilmemiş dahil)
+      const overall = Object.values(byYear).reduce<ContractTotals>(
+        (acc, t) => ({
+          newRegTotal: acc.newRegTotal + t.newRegTotal,
+          renewalTotal: acc.renewalTotal + t.renewalTotal,
+          total: acc.total + t.total
+        }),
+        { newRegTotal: 0, renewalTotal: 0, total: 0 }
+      )
+      setOverallContractTotals(overall)
 
       // Her sözleşme türüne type bilgisini ekle (Son İşlemler için)
       const newRegistrations = newRegList.map((c: { id: string; studentId: string; createdAt: string }) => ({ ...c, type: "new-registration" }))
