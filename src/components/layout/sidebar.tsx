@@ -29,67 +29,43 @@ import {
 } from "lucide-react"
 import { useState, useEffect } from "react"
 const allNavigation = [
-  // Dashboard - Tüm roller (Öğretmen hariç)
+  // 1. Dashboard
   { name: "Dashboard", href: "/", icon: LayoutDashboard, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
-  
-  // Neredeyiz - Admin, Müdür, Öğrenci İşleri, Rehberlik, Baş Rehberlik
-  { name: "Neredeyiz?", href: "/neredeyiz", icon: Target, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
-  
-  // Sınıf Yönetimi - YENI MODÜL
-  { name: "Sınıf Yönetimi", href: "/sinif-yonetimi", icon: School, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
-  
-  // Onay Paneli - Sadece Admin ve Müdür
-  { name: "Onay Paneli", href: "/onay-paneli", icon: ClipboardList, roles: ["admin", "principal"] },
-  
-  // Neredeyiz - Öğretmen (özel sayfa) - En üstte
-  { name: "Neredeyiz?", href: "/ogretmen/neredeyiz", icon: Target, roles: ["teacher"] },
-  
-  // Ders Programım - Sadece Öğretmen
-  { name: "Ders Programım", href: "/ogretmen/ders-programim", icon: LayoutDashboard, roles: ["teacher"] },
-  
-  // FAZ 2: Ödevler ve Yoklama - Sadece Öğretmen
-  { name: "Ödevlerim", href: "/ogretmen/odevler", icon: BookOpen, roles: ["teacher"] },
-  { name: "Yoklama", href: "/ogretmen/yoklama", icon: ClipboardList, roles: ["teacher"] },
-  { name: "Öğrenci Görüşleri", href: "/ogretmen/gorusler", icon: MessageSquare, roles: ["teacher"] },
-  { name: "Öğrenci Dashboard", href: "/ogretmen/ogrenci-dashboard", icon: LayoutDashboard, roles: ["teacher"] },
-  
-  // Bursluluk Başvuruları - Admin, Müdür, Öğrenci İşleri, Baş Rehberlik
-  { name: "Bursluluk Başvuruları", href: "/basvurular", icon: ClipboardList, roles: ["admin", "principal", "student_affairs", "head_counselor"] },
-  
-  // Teklif Görüşmeleri - Admin, Müdür, Öğrenci İşleri, Baş Rehberlik
+  // 2. Yeni Kayıt
+  { name: "Yeni Kayıt", href: "/new-registration", icon: FileText, roles: ["admin", "principal", "student_affairs", "head_counselor"] },
+  // 3. Kayıt Yenileme
+  { name: "Kayıt Yenileme", href: "/renewal", icon: FileText, roles: ["admin", "principal", "student_affairs", "head_counselor"] },
+  // 4. Teklif Görüşmeleri
   { name: "Teklif Görüşmeleri", href: "/teklif-gorusmeleri", icon: Handshake, roles: ["admin", "principal", "student_affairs", "head_counselor"] },
-  
-  // Gezi Yönetimi - Rehberlik ve Baş Rehberlik dahil
-  { name: "Gezi Yönetimi", href: "/gezi", icon: MapPin, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
-  
-  // Öğrenci Yönetimi - Admin, Müdür, Öğrenci İşleri
+  // 5. Veli Görüşmeleri
+  { name: "Veli Görüşmeleri", href: "/yonetim/parent-meetings", icon: MessageSquare, roles: ["admin", "principal", "student_affairs"] },
+  // 6. Öğrenci Yönetimi
   { name: "Öğrenci Yönetimi", href: "/students", icon: UserPlus, roles: ["admin", "principal", "student_affairs"] },
   { name: "Öğrenci Dashboard", href: "/ogrenci-dashboard", icon: LayoutDashboard, roles: ["admin", "principal", "student_affairs"] },
-  
-  // Personel Yönetimi - Admin, Müdür, Öğrenci İşleri
+  // 7. Personel Yönetimi
   { name: "Personel Yönetimi", href: "/personel", icon: Briefcase, roles: ["admin", "principal", "student_affairs"] },
-  
-  // Kulüp Yönetimi - Rehberlik ve Baş Rehberlik dahil
+  // Neredeyiz
+  { name: "Neredeyiz?", href: "/neredeyiz", icon: Target, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
+  { name: "Sınıf Yönetimi", href: "/sinif-yonetimi", icon: School, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
+  { name: "Onay Paneli", href: "/onay-paneli", icon: ClipboardList, roles: ["admin", "principal"] },
+  { name: "Bursluluk Başvuruları", href: "/basvurular", icon: ClipboardList, roles: ["admin", "principal", "student_affairs", "head_counselor"] },
+  { name: "Gezi Yönetimi", href: "/gezi", icon: MapPin, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
   { name: "Kulüp Yönetimi", href: "/clubs", icon: Users, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
-  
-  // IB Faaliyet Yönetimi - Rehberlik ve Baş Rehberlik dahil
   { name: "IB Faaliyet Yönetimi", href: "/activities", icon: Award, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
-  
-  // Veli Görüşmeleri - Admin, Müdür, Öğrenci İşleri için yönetim sayfasına yönlendir
-  { name: "Veli Görüşmeleri", href: "/yonetim/parent-meetings", icon: MessageSquare, roles: ["admin", "principal", "student_affairs"] },
-  
-  // FAZ 3: Sınav Yönetimi - Rehberlik ve Baş Rehberlik
   { name: "Sınav Yönetimi", href: "/rehberlik/sinavlar", icon: FileText, roles: ["counselor", "head_counselor"] },
   { name: "Öğrenci Görüşleri", href: "/rehberlik/gorusler", icon: MessageSquare, roles: ["counselor", "head_counselor"] },
   { name: "Öğrenci Dashboard", href: "/rehberlik/ogrenci-dashboard", icon: LayoutDashboard, roles: ["counselor", "head_counselor"] },
-  
-  // Kayıt ve Sözleşmeler - Admin, Müdür, Öğrenci İşleri, Baş Rehberlik
-  { name: "Yeni Kayıt", href: "/new-registration", icon: FileText, roles: ["admin", "principal", "student_affairs", "head_counselor"] },
-  { name: "Kayıt Yenileme", href: "/renewal", icon: FileText, roles: ["admin", "principal", "student_affairs", "head_counselor"] },
   { name: "Forma Sözleşmesi", href: "/uniform", icon: Shirt, roles: ["admin", "principal", "student_affairs"] },
   { name: "Yemek Sözleşmesi", href: "/meal", icon: Utensils, roles: ["admin", "principal", "student_affairs"] },
   { name: "Servis Sözleşmesi", href: "/service", icon: Bus, roles: ["admin", "principal", "student_affairs"] },
   { name: "Kitap Sözleşmesi", href: "/book", icon: BookOpen, roles: ["admin", "principal", "student_affairs"] },
+  // Öğretmen menüsü
+  { name: "Neredeyiz?", href: "/ogretmen/neredeyiz", icon: Target, roles: ["teacher"] },
+  { name: "Ders Programım", href: "/ogretmen/ders-programim", icon: LayoutDashboard, roles: ["teacher"] },
+  { name: "Ödevlerim", href: "/ogretmen/odevler", icon: BookOpen, roles: ["teacher"] },
+  { name: "Yoklama", href: "/ogretmen/yoklama", icon: ClipboardList, roles: ["teacher"] },
+  { name: "Öğrenci Görüşleri", href: "/ogretmen/gorusler", icon: MessageSquare, roles: ["teacher"] },
+  { name: "Öğrenci Dashboard", href: "/ogretmen/ogrenci-dashboard", icon: LayoutDashboard, roles: ["teacher"] },
 ]
 
 export function Sidebar() {

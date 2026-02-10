@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, FileText, Shirt, Utensils, Bus, BookOpen, UserPlus, TrendingUp, Calendar, Activity, ArrowRight, Sparkles, Target, ClipboardList } from "lucide-react"
+import { Users, FileText, Shirt, Utensils, Bus, BookOpen, UserPlus, TrendingUp, Calendar, Activity, ArrowRight, Sparkles, Target, ClipboardList, Handshake } from "lucide-react"
 import Link from "next/link"
 
 interface DashboardStats {
@@ -29,6 +29,26 @@ interface RecentActivity {
   contractType: string
 }
 
+interface RecentNewRegistration {
+  id: string
+  createdAt: string
+  student?: { firstName: string; lastName: string; grade: string }
+}
+
+interface RecentRenewal {
+  id: string
+  createdAt: string
+  student?: { firstName: string; lastName: string; grade: string }
+}
+
+interface RecentTeklifGorusmesi {
+  id: string
+  ogrenciAdSoyad: string
+  sinif: string
+  createdAt: string
+  kayitlar: Array<{ durum: "OLUMLU" | "OLUMSUZ" | "BELIRSIZ" }>
+}
+
 export default function HomePage() {
   const [stats, setStats] = useState<DashboardStats>({
     totalStudents: 0,
@@ -39,6 +59,9 @@ export default function HomePage() {
   })
   const [recentStudents, setRecentStudents] = useState<RecentStudent[]>([])
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([])
+  const [recentNewRegistrations, setRecentNewRegistrations] = useState<RecentNewRegistration[]>([])
+  const [recentRenewals, setRecentRenewals] = useState<RecentRenewal[]>([])
+  const [recentTeklifGorusmeleri, setRecentTeklifGorusmeleri] = useState<RecentTeklifGorusmesi[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -57,11 +80,12 @@ export default function HomePage() {
       const clubsRes = await fetch("/api/clubs")
       const clubs = clubsRes.ok ? await clubsRes.json() : []
       
-      const [newRegRes, renewalRes, newRegStatsRes, renewalStatsRes, uniformRes, mealRes, serviceRes, bookRes] = await Promise.all([
+      const [newRegRes, renewalRes, newRegStatsRes, renewalStatsRes, teklifRes, uniformRes, mealRes, serviceRes, bookRes] = await Promise.all([
         fetch("/api/new-registrations"),
         fetch("/api/renewals"),
         fetch("/api/new-registrations/stats"),
         fetch("/api/renewals/stats"),
+        fetch("/api/teklif-gorusmeleri?limit=5&page=1"),
         fetch("/api/uniform-contracts"),
         fetch("/api/meal-contracts"),
         fetch("/api/service-contracts"),
@@ -74,9 +98,17 @@ export default function HomePage() {
       const todayNewRegistrations = newRegStats.today ?? 0
       const monthRenewals = renewalStats.thisMonth ?? 0
       
+      // Yeni Kayıt / Kayıt Yenileme büyük kartları için son 5 kayıt
+      const newRegList = newRegRes.ok ? await newRegRes.json() : []
+      const renewalList = renewalRes.ok ? await renewalRes.json() : []
+      setRecentNewRegistrations(newRegList.slice(0, 5))
+      setRecentRenewals(renewalList.slice(0, 5))
+      const teklifData = teklifRes.ok ? await teklifRes.json() : {}
+      setRecentTeklifGorusmeleri(teklifData.teklifGorusmeleri || [])
+
       // Her sözleşme türüne type bilgisini ekle (Son İşlemler için)
-      const newRegistrations = newRegRes.ok ? (await newRegRes.json()).map((c: { id: string; studentId: string; createdAt: string }) => ({ ...c, type: "new-registration" })) : []
-      const renewals = renewalRes.ok ? (await renewalRes.json()).map((c: { id: string; studentId: string; createdAt: string }) => ({ ...c, type: "renewal" })) : []
+      const newRegistrations = newRegList.map((c: { id: string; studentId: string; createdAt: string }) => ({ ...c, type: "new-registration" }))
+      const renewals = renewalList.map((c: { id: string; studentId: string; createdAt: string }) => ({ ...c, type: "renewal" }))
       const uniforms = uniformRes.ok ? (await uniformRes.json()).map((c: { id: string; studentId: string; createdAt: string }) => ({ ...c, type: "uniform" })) : []
       const meals = mealRes.ok ? (await mealRes.json()).map((c: { id: string; studentId: string; createdAt: string }) => ({ ...c, type: "meal" })) : []
       const services = serviceRes.ok ? (await serviceRes.json()).map((c: { id: string; studentId: string; createdAt: string }) => ({ ...c, type: "service" })) : []
@@ -232,6 +264,190 @@ export default function HomePage() {
             <div className="progress-fill" style={{width: `${stats.clubCapacityAverage}%`}} />
           </div>
         </div>
+      </div>
+
+      {/* Yeni Kayıt, Kayıt Yenileme, Teklif Görüşmeleri - Büyük kartlar */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-4 sm:mb-6 lg:mb-8">
+        {/* Yeni Kayıt */}
+        <Card className="card-premium animate-fade-in border-0">
+          <CardHeader className="border-b border-gray-100 bg-gradient-to-br from-emerald-50 to-green-50 px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                <div className="p-1.5 sm:p-2 bg-emerald-100 rounded-lg flex-shrink-0">
+                  <Calendar className="h-4 w-4 sm:h-5 sm:w-5 icon-green" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <CardTitle className="text-sm sm:text-base lg:text-lg gradient-text-blue truncate">Yeni Kayıt</CardTitle>
+                  <CardDescription className="text-[10px] sm:text-xs">Bugün {stats.todayNewRegistrations} · Son 5 kayıt</CardDescription>
+                </div>
+              </div>
+              <Link href="/new-registrations/list" className="text-[10px] sm:text-xs text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1 hover-scale flex-shrink-0">
+                <span className="hidden sm:inline">Tümü</span>
+                <ArrowRight className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-3 sm:pt-4 px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
+            {loading ? (
+              <div className="flex items-center justify-center py-6 sm:py-8">
+                <div className="spinner" />
+              </div>
+            ) : recentNewRegistrations.length > 0 ? (
+              <div className="space-y-1.5 sm:space-y-2">
+                {recentNewRegistrations.map((reg, index) => (
+                  <Link
+                    key={reg.id}
+                    href="/new-registrations/list"
+                    className="flex items-center justify-between p-2 sm:p-3 hover:bg-emerald-50 rounded-lg sm:rounded-xl transition-all duration-200 group border border-transparent hover:border-emerald-200"
+                    style={{ animationDelay: `${index * 50}ms` }}
+                  >
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                      <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-gradient-to-br from-emerald-600 to-green-600 flex items-center justify-center text-white font-bold text-xs sm:text-sm shadow-lg flex-shrink-0">
+                        {reg.student ? `${reg.student.firstName[0]}${reg.student.lastName[0]}` : "—"}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-xs sm:text-sm text-gray-900 group-hover:text-emerald-700 transition-colors truncate">
+                          {reg.student ? `${reg.student.firstName} ${reg.student.lastName}` : "Bilinmeyen"}
+                        </p>
+                        <p className="text-[10px] sm:text-xs text-gray-500 truncate">{reg.student?.grade ?? "—"}</p>
+                      </div>
+                    </div>
+                    <span className="badge badge-blue text-[9px] sm:text-[10px] flex-shrink-0 ml-2">
+                      {new Date(reg.createdAt).toLocaleDateString("tr-TR", { day: "2-digit", month: "short" })}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6 sm:py-8 text-gray-500">
+                <FileText className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-2 text-gray-300" />
+                <p className="text-xs sm:text-sm">Henüz yeni kayıt yok</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Kayıt Yenileme */}
+        <Card className="card-premium animate-fade-in border-0">
+          <CardHeader className="border-b border-gray-100 bg-gradient-to-br from-orange-50 to-amber-50 px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                <div className="p-1.5 sm:p-2 bg-orange-100 rounded-lg flex-shrink-0">
+                  <FileText className="h-4 w-4 sm:h-5 sm:w-5 icon-orange" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <CardTitle className="text-sm sm:text-base lg:text-lg gradient-text-purple truncate">Kayıt Yenileme</CardTitle>
+                  <CardDescription className="text-[10px] sm:text-xs">Bu ay {stats.monthRenewals} · Son 5 yenileme</CardDescription>
+                </div>
+              </div>
+              <Link href="/renewal/list" className="text-[10px] sm:text-xs text-orange-600 hover:text-orange-700 font-medium flex items-center gap-1 hover-scale flex-shrink-0">
+                <span className="hidden sm:inline">Tümü</span>
+                <ArrowRight className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-3 sm:pt-4 px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
+            {loading ? (
+              <div className="flex items-center justify-center py-6 sm:py-8">
+                <div className="spinner" />
+              </div>
+            ) : recentRenewals.length > 0 ? (
+              <div className="space-y-1.5 sm:space-y-2">
+                {recentRenewals.map((reg, index) => (
+                  <Link
+                    key={reg.id}
+                    href="/renewal/list"
+                    className="flex items-center justify-between p-2 sm:p-3 hover:bg-orange-50 rounded-lg sm:rounded-xl transition-all duration-200 group border border-transparent hover:border-orange-200"
+                    style={{ animationDelay: `${index * 50}ms` }}
+                  >
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                      <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-gradient-to-br from-orange-600 to-amber-600 flex items-center justify-center text-white font-bold text-xs sm:text-sm shadow-lg flex-shrink-0">
+                        {reg.student ? `${reg.student.firstName[0]}${reg.student.lastName[0]}` : "—"}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-xs sm:text-sm text-gray-900 group-hover:text-orange-700 transition-colors truncate">
+                          {reg.student ? `${reg.student.firstName} ${reg.student.lastName}` : "Bilinmeyen"}
+                        </p>
+                        <p className="text-[10px] sm:text-xs text-gray-500 truncate">{reg.student?.grade ?? "—"}</p>
+                      </div>
+                    </div>
+                    <span className="badge badge-blue text-[9px] sm:text-[10px] flex-shrink-0 ml-2">
+                      {new Date(reg.createdAt).toLocaleDateString("tr-TR", { day: "2-digit", month: "short" })}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6 sm:py-8 text-gray-500">
+                <FileText className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-2 text-gray-300" />
+                <p className="text-xs sm:text-sm">Henüz kayıt yenileme yok</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Teklif Görüşmeleri */}
+        <Card className="card-premium animate-fade-in border-0">
+          <CardHeader className="border-b border-gray-100 bg-gradient-to-br from-violet-50 to-purple-50 px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                <div className="p-1.5 sm:p-2 bg-violet-100 rounded-lg flex-shrink-0">
+                  <Handshake className="h-4 w-4 sm:h-5 sm:w-5 text-violet-600" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <CardTitle className="text-sm sm:text-base lg:text-lg gradient-text-purple truncate">Teklif Görüşmeleri</CardTitle>
+                  <CardDescription className="text-[10px] sm:text-xs">Son 5 teklif görüşmesi</CardDescription>
+                </div>
+              </div>
+              <Link href="/teklif-gorusmeleri" className="text-[10px] sm:text-xs text-violet-600 hover:text-violet-700 font-medium flex items-center gap-1 hover-scale flex-shrink-0">
+                <span className="hidden sm:inline">Tümü</span>
+                <ArrowRight className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-3 sm:pt-4 px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
+            {loading ? (
+              <div className="flex items-center justify-center py-6 sm:py-8">
+                <div className="spinner" />
+              </div>
+            ) : recentTeklifGorusmeleri.length > 0 ? (
+              <div className="space-y-1.5 sm:space-y-2">
+                {recentTeklifGorusmeleri.map((teklif, index) => {
+                  const sonDurum = teklif.kayitlar?.[0]?.durum ?? "BELIRSIZ"
+                  const durumLabel = sonDurum === "OLUMLU" ? "Olumlu" : sonDurum === "OLUMSUZ" ? "Olumsuz" : "Belirsiz"
+                  return (
+                    <Link
+                      key={teklif.id}
+                      href="/teklif-gorusmeleri"
+                      className="flex items-center justify-between p-2 sm:p-3 hover:bg-violet-50 rounded-lg sm:rounded-xl transition-all duration-200 group border border-transparent hover:border-violet-200"
+                      style={{ animationDelay: `${index * 50}ms` }}
+                    >
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                        <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-gradient-to-br from-violet-600 to-purple-600 flex items-center justify-center text-white font-bold text-xs sm:text-sm shadow-lg flex-shrink-0">
+                          {teklif.ogrenciAdSoyad?.slice(0, 2).toUpperCase() ?? "—"}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-xs sm:text-sm text-gray-900 group-hover:text-violet-700 transition-colors truncate">
+                            {teklif.ogrenciAdSoyad || "—"}
+                          </p>
+                          <p className="text-[10px] sm:text-xs text-gray-500 truncate">{teklif.sinif} · {durumLabel}</p>
+                        </div>
+                      </div>
+                      <span className="badge badge-blue text-[9px] sm:text-[10px] flex-shrink-0 ml-2">
+                        {new Date(teklif.createdAt).toLocaleDateString("tr-TR", { day: "2-digit", month: "short" })}
+                      </span>
+                    </Link>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-6 sm:py-8 text-gray-500">
+                <Handshake className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-2 text-gray-300" />
+                <p className="text-xs sm:text-sm">Henüz teklif görüşmesi yok</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Grid Layout for Recent Items */}
