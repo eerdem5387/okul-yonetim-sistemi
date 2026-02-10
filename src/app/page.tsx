@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, FileText, Shirt, Utensils, Bus, BookOpen, UserPlus, TrendingUp, Calendar, Activity, ArrowRight, Sparkles, Target, ClipboardList, Handshake } from "lucide-react"
+import { Users, FileText, UserPlus, TrendingUp, Calendar, Activity, ArrowRight, Sparkles, Target, Handshake, Briefcase } from "lucide-react"
 import Link from "next/link"
 
 interface DashboardStats {
   totalStudents: number
-  todayNewRegistrations: number
-  monthRenewals: number
+  totalNewRegistrations: number
+  totalRenewals: number
+  totalStaff: number
   totalClubs: number
   clubCapacityAverage: number
 }
@@ -49,11 +50,28 @@ interface RecentTeklifGorusmesi {
   kayitlar: Array<{ durum: "OLUMLU" | "OLUMSUZ" | "BELIRSIZ" }>
 }
 
+/** Öğrenci için belirlenen ücret (studentTotal) alanını sayıya çevirir */
+function parseContractFee(val: unknown): number {
+  if (val == null || val === "") return 0
+  const s = String(val).trim().replace(/\s/g, "")
+  const cleaned = s.replace(/[^\d,.]/g, "")
+  const noThousands = cleaned.replace(/\./g, "").replace(",", ".")
+  const num = parseFloat(noThousands)
+  return Number.isNaN(num) ? 0 : num
+}
+
+interface ContractTotals {
+  newRegTotal: number
+  renewalTotal: number
+  total: number
+}
+
 export default function HomePage() {
   const [stats, setStats] = useState<DashboardStats>({
     totalStudents: 0,
-    todayNewRegistrations: 0,
-    monthRenewals: 0,
+    totalNewRegistrations: 0,
+    totalRenewals: 0,
+    totalStaff: 0,
     totalClubs: 0,
     clubCapacityAverage: 0
   })
@@ -62,6 +80,9 @@ export default function HomePage() {
   const [recentNewRegistrations, setRecentNewRegistrations] = useState<RecentNewRegistration[]>([])
   const [recentRenewals, setRecentRenewals] = useState<RecentRenewal[]>([])
   const [recentTeklifGorusmeleri, setRecentTeklifGorusmeleri] = useState<RecentTeklifGorusmesi[]>([])
+  const [contractTotalsByYear, setContractTotalsByYear] = useState<Record<string, ContractTotals>>({})
+  const [overallContractTotals, setOverallContractTotals] = useState<ContractTotals>({ newRegTotal: 0, renewalTotal: 0, total: 0 })
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState<string>("all")
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -80,31 +101,53 @@ export default function HomePage() {
       const clubsRes = await fetch("/api/clubs")
       const clubs = clubsRes.ok ? await clubsRes.json() : []
       
-      const [newRegRes, renewalRes, newRegStatsRes, renewalStatsRes, teklifRes, uniformRes, mealRes, serviceRes, bookRes] = await Promise.all([
+      const [newRegRes, renewalRes, teklifRes, staffRes, uniformRes, mealRes, serviceRes, bookRes] = await Promise.all([
         fetch("/api/new-registrations"),
         fetch("/api/renewals"),
-        fetch("/api/new-registrations/stats"),
-        fetch("/api/renewals/stats"),
         fetch("/api/teklif-gorusmeleri?limit=5&page=1"),
+        fetch("/api/staff?limit=1&page=1"),
         fetch("/api/uniform-contracts"),
         fetch("/api/meal-contracts"),
         fetch("/api/service-contracts"),
         fetch("/api/book-contracts")
       ])
       
-      // Yeni Kayıt ve Kayıt Yenileme sayıları stats API'den (sunucuda doğru tarih/saat hesaplaması)
-      const newRegStats = newRegStatsRes.ok ? (await newRegStatsRes.json()) as { today?: number } : { today: 0 }
-      const renewalStats = renewalStatsRes.ok ? (await renewalStatsRes.json()) as { thisMonth?: number } : { thisMonth: 0 }
-      const todayNewRegistrations = newRegStats.today ?? 0
-      const monthRenewals = renewalStats.thisMonth ?? 0
-      
-      // Yeni Kayıt / Kayıt Yenileme büyük kartları için son 5 kayıt
+      // Yeni Kayıt / Kayıt Yenileme büyük kartları için son 5 kayıt ve toplam sayılar
       const newRegList = newRegRes.ok ? await newRegRes.json() : []
       const renewalList = renewalRes.ok ? await renewalRes.json() : []
       setRecentNewRegistrations(newRegList.slice(0, 5))
       setRecentRenewals(renewalList.slice(0, 5))
       const teklifData = teklifRes.ok ? await teklifRes.json() : {}
       setRecentTeklifGorusmeleri(teklifData.teklifGorusmeleri || [])
+
+      // Sözleşme tutarları: Öğrenci için belirlenen ücret (studentTotal) bazında, eğitim öğretim dönemine göre
+      const byYear: Record<string, ContractTotals> = {}
+      let overallNewReg = 0
+      let overallRenewal = 0
+      for (const item of newRegList) {
+        const data = (item.contractData || {}) as Record<string, unknown>
+        const fee = parseContractFee(data.studentTotal ?? data.studentTuitionFee)
+        const year = String(data.academicYear || "Belirtilmemiş").trim()
+        if (!byYear[year]) byYear[year] = { newRegTotal: 0, renewalTotal: 0, total: 0 }
+        byYear[year].newRegTotal += fee
+        byYear[year].total += fee
+        overallNewReg += fee
+      }
+      for (const item of renewalList) {
+        const data = (item.contractData || {}) as Record<string, unknown>
+        const fee = parseContractFee(data.studentTotal ?? data.studentTuitionFee)
+        const year = String(data.academicYear || "Belirtilmemiş").trim()
+        if (!byYear[year]) byYear[year] = { newRegTotal: 0, renewalTotal: 0, total: 0 }
+        byYear[year].renewalTotal += fee
+        byYear[year].total += fee
+        overallRenewal += fee
+      }
+      setContractTotalsByYear(byYear)
+      setOverallContractTotals({
+        newRegTotal: overallNewReg,
+        renewalTotal: overallRenewal,
+        total: overallNewReg + overallRenewal
+      })
 
       // Her sözleşme türüne type bilgisini ekle (Son İşlemler için)
       const newRegistrations = newRegList.map((c: { id: string; studentId: string; createdAt: string }) => ({ ...c, type: "new-registration" }))
@@ -130,10 +173,14 @@ export default function HomePage() {
           }, 0) / clubs.length
         : 0
       
+      const staffData = staffRes.ok ? await staffRes.json() : {}
+      const totalStaff = staffData.pagination?.total ?? 0
+
       setStats({
         totalStudents: Array.isArray(students) ? students.length : 0,
-        todayNewRegistrations,
-        monthRenewals,
+        totalNewRegistrations: newRegList.length,
+        totalRenewals: renewalList.length,
+        totalStaff,
         totalClubs: Array.isArray(clubs) ? clubs.length : 0,
         clubCapacityAverage: Math.round(clubCapacityAverage)
       })
@@ -193,7 +240,7 @@ export default function HomePage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 lg:gap-6 mb-4 sm:mb-6 lg:mb-8 animate-slide-in-right">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4 lg:gap-6 mb-4 sm:mb-6 lg:mb-8 animate-slide-in-right">
         <div className="stat-card group">
           <div className="flex items-center justify-between mb-2 sm:mb-3 lg:mb-4">
             <div className="stat-card-icon bg-blue-100 group-hover:bg-blue-200 transition-colors p-1.5 sm:p-2">
@@ -218,10 +265,10 @@ export default function HomePage() {
             <div className="stat-card-icon bg-emerald-100 group-hover:bg-emerald-200 transition-colors p-1.5 sm:p-2">
               <Calendar className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 icon-green" />
             </div>
-            <div className="text-[10px] sm:text-xs text-gray-500 font-medium">Bugün</div>
+            <div className="text-[10px] sm:text-xs text-gray-500 font-medium">Toplam</div>
           </div>
           <div className="stat-card-value text-xl sm:text-2xl lg:text-3xl">
-            {loading ? <div className="spinner" /> : stats.todayNewRegistrations}
+            {loading ? <div className="spinner" /> : stats.totalNewRegistrations}
           </div>
           <div className="stat-card-label text-xs sm:text-sm">Yeni Kayıt</div>
           <Link href="/new-registrations/list" className="mt-2 sm:mt-3 lg:mt-4 text-[10px] sm:text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 hover:gap-2 transition-all">
@@ -236,13 +283,31 @@ export default function HomePage() {
             <div className="stat-card-icon bg-orange-100 group-hover:bg-orange-200 transition-colors p-1.5 sm:p-2">
               <FileText className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 icon-orange" />
             </div>
-            <div className="text-[10px] sm:text-xs text-gray-500 font-medium">Bu Ay</div>
+            <div className="text-[10px] sm:text-xs text-gray-500 font-medium">Toplam</div>
           </div>
           <div className="stat-card-value text-xl sm:text-2xl lg:text-3xl">
-            {loading ? <div className="spinner" /> : stats.monthRenewals}
+            {loading ? <div className="spinner" /> : stats.totalRenewals}
           </div>
           <div className="stat-card-label text-xs sm:text-sm">Kayıt Yenileme</div>
           <Link href="/renewal/list" className="mt-2 sm:mt-3 lg:mt-4 text-[10px] sm:text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 hover:gap-2 transition-all">
+            <span className="hidden sm:inline">Detayları Gör</span>
+            <span className="sm:hidden">Detay</span>
+            <ArrowRight className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+          </Link>
+        </div>
+
+        <div className="stat-card group">
+          <div className="flex items-center justify-between mb-2 sm:mb-3 lg:mb-4">
+            <div className="stat-card-icon bg-slate-100 group-hover:bg-slate-200 transition-colors p-1.5 sm:p-2">
+              <Briefcase className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-slate-600" />
+            </div>
+            <div className="text-[10px] sm:text-xs text-gray-500 font-medium">Toplam</div>
+          </div>
+          <div className="stat-card-value text-xl sm:text-2xl lg:text-3xl">
+            {loading ? <div className="spinner" /> : stats.totalStaff}
+          </div>
+          <div className="stat-card-label text-xs sm:text-sm">Personel</div>
+          <Link href="/personel" className="mt-2 sm:mt-3 lg:mt-4 text-[10px] sm:text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 hover:gap-2 transition-all">
             <span className="hidden sm:inline">Detayları Gör</span>
             <span className="sm:hidden">Detay</span>
             <ArrowRight className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
@@ -278,7 +343,7 @@ export default function HomePage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <CardTitle className="text-sm sm:text-base lg:text-lg gradient-text-blue truncate">Yeni Kayıt</CardTitle>
-                  <CardDescription className="text-[10px] sm:text-xs">Bugün {stats.todayNewRegistrations} · Son 5 kayıt</CardDescription>
+                  <CardDescription className="text-[10px] sm:text-xs">Toplam {stats.totalNewRegistrations} · Son 5 kayıt</CardDescription>
                 </div>
               </div>
               <Link href="/new-registrations/list" className="text-[10px] sm:text-xs text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1 hover-scale flex-shrink-0">
@@ -337,7 +402,7 @@ export default function HomePage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <CardTitle className="text-sm sm:text-base lg:text-lg gradient-text-purple truncate">Kayıt Yenileme</CardTitle>
-                  <CardDescription className="text-[10px] sm:text-xs">Bu ay {stats.monthRenewals} · Son 5 yenileme</CardDescription>
+                  <CardDescription className="text-[10px] sm:text-xs">Toplam {stats.totalRenewals} · Son 5 yenileme</CardDescription>
                 </div>
               </div>
               <Link href="/renewal/list" className="text-[10px] sm:text-xs text-orange-600 hover:text-orange-700 font-medium flex items-center gap-1 hover-scale flex-shrink-0">
@@ -576,156 +641,96 @@ export default function HomePage() {
         </Card>
       </div>
 
-      {/* Quick Actions */}
-      <div className="section-header animate-fade-in mb-3 sm:mb-4 lg:mb-6">
-        <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-blue-600" />
-        <h2 className="section-title text-base sm:text-lg lg:text-xl">Hızlı İşlemler</h2>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 animate-slide-in-right">
-        <Link href="/students">
-          <div className="dashboard-card relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-600/5 to-indigo-600/5 group-hover:from-blue-600/10 group-hover:to-indigo-600/10 transition-all" />
-            <CardHeader className="relative px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
-              <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-                <div className="p-2 sm:p-3 bg-blue-100 rounded-lg sm:rounded-xl group-hover:scale-110 transition-transform">
-                  <UserPlus className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 icon-blue" />
-                </div>
-                <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
-              </div>
-              <CardTitle className="text-sm sm:text-base lg:text-lg font-bold text-gray-900">Öğrenci Yönetimi</CardTitle>
-              <CardDescription className="text-xs sm:text-sm">Öğrenci bilgilerini yönetin</CardDescription>
-            </CardHeader>
+      {/* Sözleşme Tutarları (Öğrenci için belirlenen ücret bazında) */}
+      <div className="animate-fade-in mb-4 sm:mb-6 lg:mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 sm:p-2 bg-emerald-100 rounded-lg">
+              <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
+            </div>
+            <h2 className="section-title text-base sm:text-lg lg:text-xl">Yapılan Sözleşmelerin Tutarları</h2>
           </div>
-        </Link>
+          <label className="flex items-center gap-2 text-sm text-gray-600">
+            <span className="whitespace-nowrap">Eğitim Öğretim Dönemi:</span>
+            <select
+              value={selectedAcademicYear}
+              onChange={(e) => setSelectedAcademicYear(e.target.value)}
+              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            >
+              <option value="all">Tümü</option>
+              {Object.keys(contractTotalsByYear)
+                .filter((y) => y !== "Belirtilmemiş")
+                .sort()
+                .reverse()
+                .map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              {contractTotalsByYear["Belirtilmemiş"] && (
+                <option value="Belirtilmemiş">Belirtilmemiş</option>
+              )}
+            </select>
+          </label>
+        </div>
 
-        <Link href="/basvurular">
-          <div className="dashboard-card relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-cyan-600/5 to-blue-600/5 group-hover:from-cyan-600/10 group-hover:to-blue-600/10 transition-all" />
-            <CardHeader className="relative px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
-              <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-                <div className="p-2 sm:p-3 bg-cyan-100 rounded-lg sm:rounded-xl group-hover:scale-110 transition-transform">
-                  <ClipboardList className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-cyan-600" />
-                </div>
-                <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 group-hover:text-cyan-600 group-hover:translate-x-1 transition-all" />
-              </div>
-              <CardTitle className="text-sm sm:text-base lg:text-lg font-bold text-gray-900">Başvurular</CardTitle>
-              <CardDescription className="text-xs sm:text-sm">Bursluluk sınavı başvuruları</CardDescription>
-            </CardHeader>
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="spinner" />
           </div>
-        </Link>
-
-        <Link href="/clubs">
-          <div className="dashboard-card relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/5 to-teal-600/5 group-hover:from-emerald-600/10 group-hover:to-teal-600/10 transition-all" />
-            <CardHeader className="relative px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
-              <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-                <div className="p-2 sm:p-3 bg-emerald-100 rounded-lg sm:rounded-xl group-hover:scale-110 transition-transform">
-                  <Users className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 icon-green" />
-                </div>
-                <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 group-hover:text-emerald-600 group-hover:translate-x-1 transition-all" />
-              </div>
-              <CardTitle className="text-sm sm:text-base lg:text-lg font-bold text-gray-900">Kulüp Yönetimi</CardTitle>
-              <CardDescription className="text-xs sm:text-sm">Kulüpleri düzenleyin</CardDescription>
-            </CardHeader>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
+            {(() => {
+              const totals =
+                selectedAcademicYear === "all"
+                  ? overallContractTotals
+                  : contractTotalsByYear[selectedAcademicYear] ?? {
+                      newRegTotal: 0,
+                      renewalTotal: 0,
+                      total: 0
+                    }
+              const formatTL = (n: number) =>
+                new Intl.NumberFormat("tr-TR", { style: "decimal", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n) + " TL"
+              return (
+                <>
+                  <Card className="card-premium border-0 bg-gradient-to-br from-emerald-50 to-green-50">
+                    <CardHeader className="pb-2">
+                      <CardDescription className="text-xs sm:text-sm">Yeni Kayıt Toplamı</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-emerald-700">
+                        {formatTL(totals.newRegTotal)}
+                      </p>
+                      <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Öğrenci için belirlenen ücret toplamı</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="card-premium border-0 bg-gradient-to-br from-orange-50 to-amber-50">
+                    <CardHeader className="pb-2">
+                      <CardDescription className="text-xs sm:text-sm">Kayıt Yenileme Toplamı</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-orange-700">
+                        {formatTL(totals.renewalTotal)}
+                      </p>
+                      <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Öğrenci için belirlenen ücret toplamı</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="card-premium border-0 bg-gradient-to-br from-blue-50 to-indigo-50">
+                    <CardHeader className="pb-2">
+                      <CardDescription className="text-xs sm:text-sm">Tüm Sözleşmeler Toplamı</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-700">
+                        {formatTL(totals.total)}
+                      </p>
+                      <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Yeni kayıt + Kayıt yenileme</p>
+                    </CardContent>
+                  </Card>
+                </>
+              )
+            })()}
           </div>
-        </Link>
-
-        <Link href="/new-registration">
-          <div className="dashboard-card relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-600/5 to-pink-600/5 group-hover:from-purple-600/10 group-hover:to-pink-600/10 transition-all" />
-            <CardHeader className="relative px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
-              <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-                <div className="p-2 sm:p-3 bg-purple-100 rounded-lg sm:rounded-xl group-hover:scale-110 transition-transform">
-                  <FileText className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 icon-purple" />
-                </div>
-                <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 group-hover:text-purple-600 group-hover:translate-x-1 transition-all" />
-              </div>
-              <CardTitle className="text-sm sm:text-base lg:text-lg font-bold text-gray-900">Yeni Kayıt</CardTitle>
-              <CardDescription className="text-xs sm:text-sm">Yeni öğrenci kaydı</CardDescription>
-            </CardHeader>
-          </div>
-        </Link>
-
-        <Link href="/renewal">
-          <div className="dashboard-card relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-orange-600/5 to-amber-600/5 group-hover:from-orange-600/10 group-hover:to-amber-600/10 transition-all" />
-            <CardHeader className="relative px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
-              <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-                <div className="p-2 sm:p-3 bg-orange-100 rounded-lg sm:rounded-xl group-hover:scale-110 transition-transform">
-                  <FileText className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 icon-orange" />
-                </div>
-                <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 group-hover:text-orange-600 group-hover:translate-x-1 transition-all" />
-              </div>
-              <CardTitle className="text-sm sm:text-base lg:text-lg font-bold text-gray-900">Kayıt Yenileme</CardTitle>
-              <CardDescription className="text-xs sm:text-sm">Kayıt yenileme işlemleri</CardDescription>
-            </CardHeader>
-          </div>
-        </Link>
-
-        <Link href="/uniform">
-          <div className="dashboard-card relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-pink-600/5 to-rose-600/5 group-hover:from-pink-600/10 group-hover:to-rose-600/10 transition-all" />
-            <CardHeader className="relative px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
-              <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-                <div className="p-2 sm:p-3 bg-pink-100 rounded-lg sm:rounded-xl group-hover:scale-110 transition-transform">
-                  <Shirt className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 icon-pink" />
-                </div>
-                <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 group-hover:text-pink-600 group-hover:translate-x-1 transition-all" />
-              </div>
-              <CardTitle className="text-sm sm:text-base lg:text-lg font-bold text-gray-900">Forma Sözleşmesi</CardTitle>
-              <CardDescription className="text-xs sm:text-sm">Forma sözleşmeleri</CardDescription>
-            </CardHeader>
-          </div>
-        </Link>
-
-        <Link href="/meal">
-          <div className="dashboard-card relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-teal-600/5 to-cyan-600/5 group-hover:from-teal-600/10 group-hover:to-cyan-600/10 transition-all" />
-            <CardHeader className="relative px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
-              <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-                <div className="p-2 sm:p-3 bg-teal-100 rounded-lg sm:rounded-xl group-hover:scale-110 transition-transform">
-                  <Utensils className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 icon-teal" />
-                </div>
-                <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 group-hover:text-teal-600 group-hover:translate-x-1 transition-all" />
-              </div>
-              <CardTitle className="text-sm sm:text-base lg:text-lg font-bold text-gray-900">Yemek Sözleşmesi</CardTitle>
-              <CardDescription className="text-xs sm:text-sm">Yemek sözleşmeleri</CardDescription>
-            </CardHeader>
-          </div>
-        </Link>
-
-        <Link href="/service">
-          <div className="dashboard-card relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/5 to-blue-600/5 group-hover:from-indigo-600/10 group-hover:to-blue-600/10 transition-all" />
-            <CardHeader className="relative px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
-              <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-                <div className="p-2 sm:p-3 bg-indigo-100 rounded-lg sm:rounded-xl group-hover:scale-110 transition-transform">
-                  <Bus className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-indigo-600" />
-                </div>
-                <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" />
-              </div>
-              <CardTitle className="text-sm sm:text-base lg:text-lg font-bold text-gray-900">Servis Sözleşmesi</CardTitle>
-              <CardDescription className="text-xs sm:text-sm">Servis sözleşmeleri</CardDescription>
-            </CardHeader>
-          </div>
-        </Link>
-
-        <Link href="/book">
-          <div className="dashboard-card relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-amber-600/5 to-yellow-600/5 group-hover:from-amber-600/10 group-hover:to-yellow-600/10 transition-all" />
-            <CardHeader className="relative px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
-              <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-                <div className="p-2 sm:p-3 bg-amber-100 rounded-lg sm:rounded-xl group-hover:scale-110 transition-transform">
-                  <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-amber-600" />
-                </div>
-                <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 group-hover:text-amber-600 group-hover:translate-x-1 transition-all" />
-              </div>
-              <CardTitle className="text-sm sm:text-base lg:text-lg font-bold text-gray-900">Kitap Sözleşmesi</CardTitle>
-              <CardDescription className="text-xs sm:text-sm">Kitap sözleşmeleri</CardDescription>
-            </CardHeader>
-          </div>
-        </Link>
+        )}
       </div>
     </div>
   )
