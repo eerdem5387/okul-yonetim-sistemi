@@ -120,22 +120,23 @@ export async function GET(request: NextRequest) {
         thisMonthStudents.add(tcNumber)
       }
       
-      // Sınıf bazında benzersiz öğrenciler
-      const grade = r.student.grade || ''
-      // Grade formatını kontrol et (örn: "5. Sınıf" veya "5")
+      // Sınıf bazında: Kayıt yenileme bir sonraki yıl için yapıldığından sözleşmedeki sınıf (studentClass) kullanılır.
+      // Öğrenci şu an 5. sınıfta olsa bile sözleşme 6. sınıf için ise sayı 6. Sınıf sütununda artar.
+      const contractData = r.contractData as Record<string, unknown>
+      const contractGrade = (contractData?.studentClass as string) || r.student.grade || ''
+      const grade = typeof contractGrade === 'string' ? contractGrade.trim() : ''
       let sinif = ''
-      if (grade && typeof grade === 'string') {
+      if (grade) {
         if (grade.includes('Sınıf')) {
           sinif = grade
         } else {
-          // Sadece sayı varsa "5. Sınıf" formatına çevir
           const gradeNum = parseInt(grade.replace(/\D/g, ''))
           if (!isNaN(gradeNum) && gradeNum >= 5 && gradeNum <= 12) {
             sinif = `${gradeNum}. Sınıf`
           }
         }
       }
-      
+
       if (sinif) {
         if (!sinifStudentMap.has(sinif)) {
           sinifStudentMap.set(sinif, new Set())
