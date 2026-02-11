@@ -665,6 +665,8 @@ model TeklifGorusmesi {
   teklifEdilenFiyat Float // Teklif edilen fiyat
   okulFiyati        Float // Okul fiyatı
   sonGecerlilikTarihi DateTime? // Teklifin son geçerlilik tarihi (manuel giriş)
+  // Görüşmeyi Sonlandır ile işaretlenene kadar tamamlanmış sayılmaz
+  sonlandirildi      Boolean  @default(false)
   // Sistem Bilgileri
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -678,6 +680,7 @@ model TeklifGorusmesi {
   @@index([sinif])
   @@index([createdAt])
   @@index([sonGecerlilikTarihi])
+  @@index([sonlandirildi])
   @@map("teklif_gorusmeleri")
 }
 

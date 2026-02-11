@@ -61,6 +61,7 @@ export async function PUT(
       durumNotu,
       genelNot,
       createdBy, // ✅ Otomatik kullanıcı adı için
+      sonlandir, // true = "Görüşmeyi Sonlandır" ile işaretlendi, teklif tamamlanmış sayılır
     } = body
 
     // Mevcut teklif görüşmesini kontrol et
@@ -112,6 +113,11 @@ export async function PUT(
     // Son geçerlilik tarihi güncellemesi
     if (sonGecerlilikTarihi !== undefined) {
       updateData.sonGecerlilikTarihi = sonGecerlilikTarihiDate
+    }
+
+    // "Görüşmeyi Sonlandır" ile işaretlendiyse tamamlanmış say
+    if (sonlandir === true) {
+      updateData.sonlandirildi = true
     }
 
     await prisma.teklifGorusmesi.update({

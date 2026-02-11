@@ -650,6 +650,7 @@ function SonlandirModal({
           durumNotu: not.trim() || null,
           gorusmeTarihi: new Date().toISOString(),
           gorusmeyiYapan: "Sistem",
+          sonlandir: true, // Sadece bu butonla işaretlenen görüşmeler tamamlanmış sayılır
         }),
       })
       if (!res.ok) {

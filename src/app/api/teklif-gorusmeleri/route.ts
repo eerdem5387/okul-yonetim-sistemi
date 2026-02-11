@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const durum = searchParams.get('durum') || ''
     const startDate = searchParams.get('startDate') || ''
     const endDate = searchParams.get('endDate') || ''
-    const tamamlandi = searchParams.get('tamamlandi') || '' // "true" = sadece tamamlanan (son kayıt OLUMLU/OLUMSUZ), "false" = sadece devam eden (son kayıt BELIRSIZ veya yok)
+    const tamamlandi = searchParams.get('tamamlandi') || '' // "true" = sadece Görüşmeyi Sonlandır ile işaretlenenler, "false" = devam eden (sonlandirildi=false)
     
     const skip = (page - 1) * limit
 
@@ -76,12 +76,19 @@ export async function GET(request: NextRequest) {
         }
       : {}
 
-    // tamamlandi filtresi: son kayıt durumuna göre devam eden / tamamlanan
+    // tamamlandi filtresi: sadece "Görüşmeyi Sonlandır" ile işaretlenenler tamamlanmış sayılır
     const filterByTamamlandi = tamamlandi === 'true' || tamamlandi === 'false'
-
     if (filterByTamamlandi) {
-      const allMatching = await prisma.teklifGorusmesi.findMany({
-        where,
+      const sonlandirildiFilter = tamamlandi === 'true'
+      const whereWithSonlandi = {
+        ...where,
+        sonlandirildi: sonlandirildiFilter,
+      } as Record<string, unknown>
+      const total = await prisma.teklifGorusmesi.count({ where: whereWithSonlandi })
+      const teklifGorusmeleri = await prisma.teklifGorusmesi.findMany({
+        where: whereWithSonlandi,
+        skip,
+        take: limit,
         orderBy: { createdAt: 'desc' },
         include: {
           kayitlar: {
@@ -91,15 +98,6 @@ export async function GET(request: NextRequest) {
           _count: { select: { kayitlar: true } }
         }
       })
-      const isCompleted = (t: { kayitlar: Array<{ durum: string }> }) => {
-        const son = t.kayitlar[0]
-        return son ? (son.durum === 'OLUMLU' || son.durum === 'OLUMSUZ') : false
-      }
-      const filtered = tamamlandi === 'true'
-        ? allMatching.filter(isCompleted)
-        : allMatching.filter((t) => !isCompleted(t))
-      const total = filtered.length
-      const teklifGorusmeleri = filtered.slice(skip, skip + limit)
       return NextResponse.json({
         teklifGorusmeleri,
         pagination: {
