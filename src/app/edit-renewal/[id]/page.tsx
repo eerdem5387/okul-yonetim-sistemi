@@ -348,7 +348,9 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
     
     setSaving(true)
     try {
-      // Öğrenci bilgilerini güncelle (tüm alanlar)
+      // Öğrenci bilgilerini güncelle (ad, TC, doğum tarihi, adres).
+      // Sınıf (grade) güncellenmez: sözleşmedeki studentClass gelecek eğitim yılına ait sınıfı ifade eder;
+      // öğrencinin mevcut sınıfı Öğrenci Yönetimi'nde ayrıca yönetilir.
       const studentNameParts = contract.studentName?.split(" ") || []
       const firstName = studentNameParts[0] || ""
       const lastName = studentNameParts.slice(1).join(" ") || ""
@@ -357,7 +359,6 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
         firstName,
         lastName,
         tcNumber: contract.studentTC || "",
-        grade: contract.studentClass || "",
         birthDate: contract.studentBirthDate || undefined,
         address: studentAddress || "", // Mevcut adresi koru
       }
