@@ -66,6 +66,20 @@ export default function RenewalsListPage() {
     return "Belirtilmemiş"
   }
 
+  // Sözleşmedeki sınıfı "X. Sınıf" formatına çevir (filtre karşılaştırması için)
+  const normalizeContractGrade = (value: unknown): string => {
+    const s = String(value ?? "").trim()
+    if (!s) return ""
+    if (s.includes("Sınıf")) {
+      const num = s.replace(/\D/g, "").trim()
+      if (num) return `${num}. Sınıf`
+      return s
+    }
+    const num = s.replace(/\D/g, "")
+    if (num && !isNaN(parseInt(num, 10))) return `${num}. Sınıf`
+    return s
+  }
+
   // Sınıf formatı helper - "5" -> "5. Sınıf"
   const formatGrade = (value: unknown): string => {
     const gradeStr = safeString(value)
@@ -200,17 +214,24 @@ export default function RenewalsListPage() {
       })
     }
 
-    // Sınıf filtresi
+    // Sınıf filtresi: sadece sözleşmedeki sınıfa (contractData.studentClass) göre
     if (filterGrade !== "all") {
-      filtered = filtered.filter(group => {
-        const gradeNum = filterGrade.replace(". Sınıf", "").trim()
-        // En az bir sözleşme filtrelenen sınıfa uyuyorsa göster
-        return group.contracts.some(renewal => {
-          const contractData = renewal.contractData as Record<string, unknown>
-          const studentClass = contractData.studentClass || renewal.student?.grade || ""
-          return String(studentClass).includes(gradeNum) || String(renewal.student?.grade || "").includes(gradeNum)
-        })
-      })
+      filtered = filtered
+        .filter(group =>
+          group.contracts.some(renewal => {
+            const contractData = renewal.contractData as Record<string, unknown>
+            const contractGrade = normalizeContractGrade(contractData.studentClass)
+            return contractGrade === filterGrade
+          })
+        )
+        .map(group => ({
+          ...group,
+          contracts: group.contracts.filter(renewal => {
+            const contractData = renewal.contractData as Record<string, unknown>
+            const contractGrade = normalizeContractGrade(contractData.studentClass)
+            return contractGrade === filterGrade
+          })
+        }))
     }
 
     // Tarih filtresi
