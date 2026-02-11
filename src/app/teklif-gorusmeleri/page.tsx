@@ -9,7 +9,7 @@ import {
   Search, Eye, User, Phone, School, 
   X, Filter, ChevronDown, ChevronUp, 
   FileSpreadsheet, Plus, Trash2, Edit, Clock, Handshake, MessageSquare, History,
-  CheckCircle2, XCircle, HelpCircle, Calendar, UserCircle
+  CheckCircle2, XCircle, HelpCircle, Calendar, UserCircle, Flag
 } from "lucide-react"
 import { ToastContainer, useToast } from "@/components/ui/toast"
 
@@ -72,6 +72,10 @@ export default function TeklifGorusmeleriPage() {
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
   const [showFilters, setShowFilters] = useState(false)
+  /** "devam" = Devam Eden Görüşmeler, "tamamlanan" = Tamamlanan Görüşmeler */
+  const [viewMode, setViewMode] = useState<"devam" | "tamamlanan">("devam")
+  /** Görüşmeyi Sonlandır modalı */
+  const [sonlandirTeklif, setSonlandirTeklif] = useState<TeklifGorusmesi | null>(null)
 
   // Benzersiz okullar
   const uniqueOkullar = useMemo(() => {
@@ -86,6 +90,7 @@ export default function TeklifGorusmeleriPage() {
         page: currentPage.toString(),
         limit: "20",
       })
+      params.append("tamamlandi", viewMode === "tamamlanan" ? "true" : "false")
 
       if (searchTerm) params.append("search", searchTerm)
       if (selectedSinif) params.append("sinif", selectedSinif)
@@ -112,7 +117,7 @@ export default function TeklifGorusmeleriPage() {
   useEffect(() => {
     fetchTeklifGorusmeleri()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, searchTerm, selectedSinif, selectedOkul, selectedDurum, startDate, endDate])
+  }, [currentPage, searchTerm, selectedSinif, selectedOkul, selectedDurum, startDate, endDate, viewMode])
 
   const handleDelete = async (id: string) => {
     if (!confirm("Bu teklif görüşmesini silmek istediğinize emin misiniz?")) {
@@ -368,9 +373,23 @@ export default function TeklifGorusmeleriPage() {
       {/* Results */}
       <Card>
         <CardHeader>
-          <CardTitle>
-            Teklif Görüşmeleri ({totalTeklifler})
-          </CardTitle>
+          <div className="flex flex-wrap items-center gap-2">
+            <CardTitle className="mb-0">
+              {viewMode === "devam" ? "Devam Eden Görüşmeler" : "Tamamlanan Görüşmeler"} ({totalTeklifler})
+            </CardTitle>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setViewMode(viewMode === "devam" ? "tamamlanan" : "devam")
+                setCurrentPage(1)
+              }}
+              className="shrink-0"
+            >
+              {viewMode === "devam" ? "Tamamlanan Görüşmeler" : "Devam Eden Görüşmeler"}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -461,51 +480,66 @@ export default function TeklifGorusmeleriPage() {
                             </button>
                           )}
                         </div>
-                        <div className="flex flex-col sm:flex-row gap-2 ml-4 shrink-0">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelectedTeklif(teklif)}
-                            title="Detay / Geçmiş görüşmeler"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setEditingTeklif(teklif)
-                              setShowFormModal(true)
-                            }}
-                            title="Yeni görüşme ekle"
-                            className="text-blue-600 border-blue-300 hover:bg-blue-50"
-                          >
-                            <MessageSquare className="h-4 w-4 sm:mr-1" />
-                            <span className="hidden sm:inline">Yeni Görüşme</span>
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setEditingTeklif(teklif)
-                              setShowFormModal(true)
-                            }}
-                            title="Düzenle"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDelete(teklif.id)}
-                            disabled={deletingId === teklif.id}
-                          >
-                            {deletingId === teklif.id ? (
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
-                            ) : (
-                              <Trash2 className="h-4 w-4 text-red-600" />
-                            )}
-                          </Button>
+                        <div className="flex flex-col gap-2 ml-4 shrink-0">
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedTeklif(teklif)}
+                              title="Detay / Geçmiş görüşmeler"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setEditingTeklif(teklif)
+                                setShowFormModal(true)
+                              }}
+                              title="Yeni görüşme ekle"
+                              className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                            >
+                              <MessageSquare className="h-4 w-4 sm:mr-1" />
+                              <span className="hidden sm:inline">Yeni Görüşme</span>
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setEditingTeklif(teklif)
+                                setShowFormModal(true)
+                              }}
+                              title="Düzenle"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDelete(teklif.id)}
+                              disabled={deletingId === teklif.id}
+                            >
+                              {deletingId === teklif.id ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                              ) : (
+                                <Trash2 className="h-4 w-4 text-red-600" />
+                              )}
+                            </Button>
+                          </div>
+                          {viewMode === "devam" && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSonlandirTeklif(teklif)}
+                              className="w-full border-amber-300 text-amber-700 hover:bg-amber-50"
+                              title="Görüşmeyi sonlandır"
+                            >
+                              <Flag className="h-4 w-4 mr-1" />
+                              Görüşmeyi Sonlandır
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -570,6 +604,107 @@ export default function TeklifGorusmeleriPage() {
           }}
         />
       )}
+
+      {/* Görüşmeyi Sonlandır Modal */}
+      {sonlandirTeklif && (
+        <SonlandirModal
+          teklif={sonlandirTeklif}
+          onClose={() => setSonlandirTeklif(null)}
+          onSuccess={() => {
+            setSonlandirTeklif(null)
+            fetchTeklifGorusmeleri()
+            success("Görüşme sonlandırıldı")
+          }}
+          onError={(msg) => error(msg)}
+        />
+      )}
+    </div>
+  )
+}
+
+// Görüşmeyi Sonlandır modalı: Olumlu/Olumsuz seçimi + son durum notu
+function SonlandirModal({
+  teklif,
+  onClose,
+  onSuccess,
+  onError,
+}: {
+  teklif: TeklifGorusmesi
+  onClose: () => void
+  onSuccess: () => void
+  onError: (msg: string) => void
+}) {
+  const [sonucDurum, setSonucDurum] = useState<"OLUMLU" | "OLUMSUZ">("OLUMLU")
+  const [not, setNot] = useState("")
+  const [submitting, setSubmitting] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSubmitting(true)
+    try {
+      const res = await fetch(`/api/teklif-gorusmeleri/${teklif.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          durum: sonucDurum,
+          durumNotu: not.trim() || null,
+          gorusmeTarihi: new Date().toISOString(),
+          gorusmeyiYapan: "Sistem",
+        }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        onError(data.error || "Görüşme sonlandırılamadı")
+        return
+      }
+      onSuccess()
+    } catch (err) {
+      console.error(err)
+      onError("Bir hata oluştu")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl p-6" onClick={e => e.stopPropagation()}>
+        <h2 className="text-lg font-bold text-gray-900 mb-4">Görüşmeyi Sonlandır</h2>
+        <p className="text-sm text-gray-600 mb-4">{teklif.ogrenciAdSoyad}</p>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="sonuc-durum">Sonuç</Label>
+            <select
+              id="sonuc-durum"
+              value={sonucDurum}
+              onChange={(e) => setSonucDurum(e.target.value as "OLUMLU" | "OLUMSUZ")}
+              className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="OLUMLU">Olumlu</option>
+              <option value="OLUMSUZ">Olumsuz</option>
+            </select>
+          </div>
+          <div>
+            <Label htmlFor="sonuc-not">Son durum notu</Label>
+            <textarea
+              id="sonuc-not"
+              value={not}
+              onChange={(e) => setNot(e.target.value)}
+              placeholder="Tamamlanan görüşmeye ait not..."
+              rows={3}
+              className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+            />
+          </div>
+          <div className="flex gap-2 justify-end pt-2">
+            <Button type="button" variant="outline" onClick={onClose}>
+              İptal
+            </Button>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? "Kaydediliyor..." : "Sonlandır"}
+            </Button>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }

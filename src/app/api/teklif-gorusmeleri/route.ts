@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
     const durum = searchParams.get('durum') || ''
     const startDate = searchParams.get('startDate') || ''
     const endDate = searchParams.get('endDate') || ''
+    const tamamlandi = searchParams.get('tamamlandi') || '' // "true" = sadece tamamlanan (son kayıt OLUMLU/OLUMSUZ), "false" = sadece devam eden (son kayıt BELIRSIZ veya yok)
     
     const skip = (page - 1) * limit
 
@@ -74,6 +75,41 @@ export async function GET(request: NextRequest) {
           ]
         }
       : {}
+
+    // tamamlandi filtresi: son kayıt durumuna göre devam eden / tamamlanan
+    const filterByTamamlandi = tamamlandi === 'true' || tamamlandi === 'false'
+
+    if (filterByTamamlandi) {
+      const allMatching = await prisma.teklifGorusmesi.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          kayitlar: {
+            orderBy: { gorusmeTarihi: 'desc' },
+            take: 1,
+          },
+          _count: { select: { kayitlar: true } }
+        }
+      })
+      const isCompleted = (t: { kayitlar: Array<{ durum: string }> }) => {
+        const son = t.kayitlar[0]
+        return son ? (son.durum === 'OLUMLU' || son.durum === 'OLUMSUZ') : false
+      }
+      const filtered = tamamlandi === 'true'
+        ? allMatching.filter(isCompleted)
+        : allMatching.filter((t) => !isCompleted(t))
+      const total = filtered.length
+      const teklifGorusmeleri = filtered.slice(skip, skip + limit)
+      return NextResponse.json({
+        teklifGorusmeleri,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit) || 1,
+        }
+      })
+    }
 
     // Toplam kayıt sayısı
     const total = await prisma.teklifGorusmesi.count({ where })
