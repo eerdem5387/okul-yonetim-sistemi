@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { checkIbAccess } from "@/lib/access-control"
 
@@ -126,6 +127,7 @@ export async function POST(request: NextRequest) {
       evidence,
       notes,
       createdBy,
+      certificateContents,
     } = body
 
     // Tarih kontrolü - geçmiş tarih olabilir ama gelecek tarih kontrolü yapılabilir
@@ -137,27 +139,30 @@ export async function POST(request: NextRequest) {
     // Batch creation if studentIds provided
     if (Array.isArray(body.studentIds) && body.studentIds.length > 0) {
       const studentIds = body.studentIds as string[]
+      const certList = Array.isArray(certificateContents) ? certificateContents as Record<string, unknown>[] : []
 
       const activities = await prisma.$transaction(
-        studentIds.map((sid) =>
-          prisma.activity.create({
-            data: {
-              studentId: sid,
-              type,
-              title,
-              description,
-              activityDate: date,
-              location,
-              organizer,
-              duration: duration ? parseInt(duration) : null,
-              participants: participants ? parseInt(participants) : null,
-              outcome,
-              evidence: evidence || "",
-              notes,
-              createdBy,
-            },
+        studentIds.map((sid, i) => {
+          const createData = {
+            studentId: sid,
+            type,
+            title,
+            description,
+            activityDate: date,
+            location,
+            organizer,
+            duration: duration ? parseInt(duration) : null,
+            participants: participants ? parseInt(participants) : null,
+            outcome,
+            evidence: evidence || "",
+            notes,
+            createdBy,
+            certificateData: certList[i] ?? undefined,
+          }
+          return prisma.activity.create({
+            data: createData as unknown as Prisma.ActivityCreateInput,
           })
-        )
+        })
       )
 
       return NextResponse.json({
@@ -168,22 +173,27 @@ export async function POST(request: NextRequest) {
     }
 
     // Legacy: Single student creation
+    const certData = Array.isArray(certificateContents) && certificateContents.length > 0
+      ? (certificateContents[0] as Record<string, unknown>)
+      : undefined
+    const createData = {
+      studentId,
+      type,
+      title,
+      description,
+      activityDate: date,
+      location,
+      organizer,
+      duration: duration ? parseInt(duration) : null,
+      participants: participants ? parseInt(participants) : null,
+      outcome,
+      evidence: evidence || "",
+      notes,
+      createdBy,
+      certificateData: certData,
+    }
     const activity = await prisma.activity.create({
-      data: {
-        studentId,
-        type,
-        title,
-        description,
-        activityDate: date, // Bu tarih asla değiştirilemez
-        location,
-        organizer,
-        duration: duration ? parseInt(duration) : null,
-        participants: participants ? parseInt(participants) : null,
-        outcome,
-        evidence: evidence || "",
-        notes,
-        createdBy,
-      },
+      data: createData as unknown as Prisma.ActivityCreateInput,
       include: {
         student: {
           select: {

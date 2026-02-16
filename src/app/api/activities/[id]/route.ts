@@ -76,6 +76,7 @@ export async function PUT(
       isVerified,
       verifiedBy,
       verifiedAt,
+      certificateData,
     } = body
 
     // Mevcut faaliyeti kontrol et
@@ -99,6 +100,7 @@ export async function PUT(
       outcome: outcome ?? null,
       evidence,
       notes: notes ?? null,
+      certificateData: certificateData !== undefined ? (certificateData as object) : undefined,
     }
 
     // Doğrulama bilgileri

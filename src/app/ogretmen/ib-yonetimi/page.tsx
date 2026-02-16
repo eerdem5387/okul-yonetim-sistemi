@@ -51,6 +51,16 @@ interface Student {
   tcNumber: string
 }
 
+// Sertifika içeriği - PDF çıktısında kullanılır (öğrenci başına bir blok)
+export interface CertificateContentForm {
+  certificateTitle: string
+  educationDescription: string
+  educationStartCompletionDate: string
+  teacherName: string
+  principalName: string
+  date: string
+}
+
 interface Activity {
   id: string
   studentId: string
@@ -68,6 +78,7 @@ interface Activity {
   verifiedBy: string | null
   verifiedAt: string | null
   notes: string | null
+  certificateData?: Record<string, unknown> | null
   createdAt: string
   updatedAt: string
   student: {
@@ -75,6 +86,7 @@ interface Activity {
     firstName: string
     lastName: string
     grade: string
+    tcNumber?: string
   }
 }
 
@@ -106,6 +118,15 @@ export default function OgretmenIbYonetimiPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [totalActivities, setTotalActivities] = useState(0)
 
+  const emptyCertificateContent = (): CertificateContentForm => ({
+    certificateTitle: "",
+    educationDescription: "",
+    educationStartCompletionDate: "",
+    teacherName: "",
+    principalName: "",
+    date: "",
+  })
+
   const [formData, setFormData] = useState({
     studentIds: [""] as string[],
     type: "ETKINLIK" as ActivityType,
@@ -121,6 +142,9 @@ export default function OgretmenIbYonetimiPage() {
     notes: "",
   })
 
+  // Sertifika içeriği - öğrenci sayısı kadar blok (formda Başlık üstünde)
+  const [certificateContents, setCertificateContents] = useState<CertificateContentForm[]>([emptyCertificateContent()])
+
   // Tekil studentId ile uyumluluk (düzenleme modu için) ve çoğul seçim state'i
   const handleStudentChange = (index: number, value: string) => {
     const newStudentIds = [...formData.studentIds]
@@ -130,12 +154,24 @@ export default function OgretmenIbYonetimiPage() {
 
   const addStudentRow = () => {
     setFormData({ ...formData, studentIds: [...formData.studentIds, ""] })
+    setCertificateContents((prev) => [...prev, emptyCertificateContent()])
   }
 
   const removeStudentRow = (index: number) => {
     const newStudentIds = formData.studentIds.filter((_, i) => i !== index)
     setFormData({ ...formData, studentIds: newStudentIds })
+    setCertificateContents((prev) => prev.filter((_, i) => i !== index))
   }
+
+  const handleCertificateChange = (index: number, field: keyof CertificateContentForm, value: string) => {
+    setCertificateContents((prev) => {
+      const next = [...prev]
+      if (!next[index]) next[index] = emptyCertificateContent()
+      next[index] = { ...next[index], [field]: value }
+      return next
+    })
+  }
+
   const [evidenceUrl, setEvidenceUrl] = useState("")
   const [uploading, setUploading] = useState(false)
   const [uploadedFile, setUploadedFile] = useState<{
@@ -160,6 +196,16 @@ export default function OgretmenIbYonetimiPage() {
     DEGER: "Değerler Eğitimi",
     DIGER: "Diğer",
   }
+
+  const certificateTitleOptions = [
+    { value: "", label: "Seçiniz..." },
+    { value: "Katılım Sertifikası", label: "Katılım Sertifikası" },
+    { value: "Başarı Sertifikası", label: "Başarı Sertifikası" },
+    { value: "Eğitim Sertifikası", label: "Eğitim Sertifikası" },
+    { value: "Etkinlik Sertifikası", label: "Etkinlik Sertifikası" },
+    { value: "Workshop Sertifikası", label: "Workshop Sertifikası" },
+    { value: "Diğer", label: "Diğer" },
+  ]
 
   // Yetki kontrolü
   useEffect(() => {
@@ -263,8 +309,9 @@ export default function OgretmenIbYonetimiPage() {
       const url = editingActivity ? `/api/activities/${editingActivity.id}` : "/api/activities"
       const method = editingActivity ? "PUT" : "POST"
 
+      const validStudentIds = formData.studentIds.filter(id => id !== "")
       const payload: Record<string, unknown> = {
-        studentIds: formData.studentIds.filter(id => id !== ""),
+        studentIds: validStudentIds,
         type: formData.type,
         title: formData.title,
         description: formData.description,
@@ -276,6 +323,25 @@ export default function OgretmenIbYonetimiPage() {
         outcome: formData.outcome,
         evidence: finalEvidence,
         notes: formData.notes,
+      }
+
+      // Sertifika içeriği: öğrenci adı/TC eklenerek gönderilir
+      if (editingActivity) {
+        const stu = editingActivity.student
+        payload.certificateData = {
+          ...certificateContents[0],
+          participantName: stu ? `${stu.firstName} ${stu.lastName}`.trim() : "",
+          participantTrId: (stu && "tcNumber" in stu) ? (stu as { tcNumber?: string }).tcNumber ?? "" : "",
+        }
+      } else if (validStudentIds.length > 0) {
+        payload.certificateContents = validStudentIds.map((studentId, i) => {
+          const stu = students.find((s) => s.id === studentId)
+          return {
+            ...certificateContents[i],
+            participantName: stu ? `${stu.firstName} ${stu.lastName}`.trim() : "",
+            participantTrId: stu?.tcNumber ?? "",
+          }
+        })
       }
 
       // Tarih değişikliği koruması - PUT'ta activityDate göndermiyoruz
@@ -295,6 +361,7 @@ export default function OgretmenIbYonetimiPage() {
         setEditingActivity(null)
         setUploadedFile(null)
         setEvidenceUrl("")
+        setCertificateContents([emptyCertificateContent()])
         setFormData({
           studentIds: [""],
           type: "ETKINLIK",
@@ -373,8 +440,28 @@ export default function OgretmenIbYonetimiPage() {
     }
   }
 
+  const parseCertificateData = (data: unknown): CertificateContentForm => {
+    if (!data || typeof data !== "object") return emptyCertificateContent()
+    const o = data as Record<string, unknown>
+    return {
+      certificateTitle: typeof o.certificateTitle === "string" ? o.certificateTitle : "",
+      educationDescription: typeof o.educationDescription === "string" ? o.educationDescription : "",
+      educationStartCompletionDate: typeof o.educationStartCompletionDate === "string" ? o.educationStartCompletionDate : "",
+      teacherName: typeof o.teacherName === "string" ? o.teacherName : "",
+      principalName: typeof o.principalName === "string" ? o.principalName : "",
+      date: typeof o.date === "string" ? o.date : "",
+    }
+  }
+
   const handleEdit = (activity: Activity) => {
     setEditingActivity(activity)
+    
+    // Sertifika içeriği - tek öğrenci
+    setCertificateContents(
+      activity.certificateData
+        ? [parseCertificateData(activity.certificateData)]
+        : [emptyCertificateContent()]
+    )
     
     // Evidence'ın bir HTTP URL olup olmadığını kontrol et (dosya yolu değilse)
     const isHttpUrl = activity.evidence && 
@@ -515,6 +602,7 @@ export default function OgretmenIbYonetimiPage() {
               setShowForm(true)
               setUploadedFile(null)
               setEvidenceUrl("")
+              setCertificateContents([emptyCertificateContent()])
             }}
           >
             <Plus className="h-4 w-4 mr-2" />
@@ -894,6 +982,96 @@ export default function OgretmenIbYonetimiPage() {
                     ))}
                   </select>
                 </div>
+              </div>
+
+              {/* Sertifika İçeriği - Başlık üstünde, öğrenci sayısı kadar blok */}
+              <div className="space-y-4 rounded-xl border border-amber-200 bg-amber-50/50 p-4">
+                <h3 className="text-sm font-semibold text-amber-900">Sertifika İçeriği</h3>
+                <p className="text-xs text-amber-800">Bu alanlar PDF sertifikada ilgili yerlere otomatik yerleştirilir.</p>
+                {formData.studentIds.map((studentId, index) => {
+                  const student = studentId ? students.find((s) => s.id === studentId) : null
+                  const cert = certificateContents[index] ?? emptyCertificateContent()
+                  return (
+                    <div key={index} className="rounded-lg border border-amber-100 bg-white p-4 space-y-3">
+                      <div className="text-xs font-medium text-amber-800">
+                        Öğrenci {formData.studentIds.length > 1 ? index + 1 : ""}
+                      </div>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div>
+                          <Label className="text-xs text-gray-500">Participant Name Surname</Label>
+                          <div className="mt-1 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                            {student ? `${student.firstName} ${student.lastName}` : "Öğrenci seçin..."}
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-xs text-gray-500">Participant TR ID No</Label>
+                          <div className="mt-1 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 font-mono">
+                            {student?.tcNumber ?? "—"}
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-gray-500">Sertifika Başlığı</Label>
+                        <select
+                          value={cert.certificateTitle}
+                          onChange={(e) => handleCertificateChange(index, "certificateTitle", e.target.value)}
+                          className="mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
+                        >
+                          {certificateTitleOptions.map((opt) => (
+                            <option key={opt.value || "empty"} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-gray-500">Education Description</Label>
+                        <Input
+                          value={cert.educationDescription}
+                          onChange={(e) => handleCertificateChange(index, "educationDescription", e.target.value)}
+                          placeholder="Kısa eğitim açıklaması"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-gray-500">Education Start and Completion Date</Label>
+                        <Input
+                          type="date"
+                          value={cert.educationStartCompletionDate}
+                          onChange={(e) => handleCertificateChange(index, "educationStartCompletionDate", e.target.value)}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div>
+                          <Label className="text-xs text-gray-500">Teacher Name Surname</Label>
+                          <Input
+                            value={cert.teacherName}
+                            onChange={(e) => handleCertificateChange(index, "teacherName", e.target.value)}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-gray-500">Principal Name Surname</Label>
+                          <Input
+                            value={cert.principalName}
+                            onChange={(e) => handleCertificateChange(index, "principalName", e.target.value)}
+                            className="mt-1"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-gray-500">Date</Label>
+                        <Input
+                          type="date"
+                          value={cert.date}
+                          onChange={(e) => handleCertificateChange(index, "date", e.target.value)}
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
 
               <div>

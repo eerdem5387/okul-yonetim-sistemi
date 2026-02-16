@@ -457,6 +457,7 @@ export default function RenewalPage() {
     try {
       // Önce sözleşmeleri kaydet (eğer kaydedilmemişse)
       // Tüm sözleşmeleri ayrı ayrı kaydet
+      // Sözleşmedeki sınıf tamamen formdan gelir; öğrencinin sistemdeki sınıfı kullanılmaz ve sistemde değişiklik yapılmaz.
       const contracts = [
         {
           type: "renewal",
@@ -466,7 +467,7 @@ export default function RenewalPage() {
               ...mainContractData,
               studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
               studentTC: selectedStudent.tcNumber,
-              studentClass: selectedStudent.grade,
+              studentClass: mainContractData.studentClass || selectedStudent.grade,
               studentBirthDate: formatDate(selectedStudent.birthDate),
               contractStudentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
               contractParentName: ""

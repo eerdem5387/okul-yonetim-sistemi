@@ -253,11 +253,12 @@ model Activity {
   isVerified   Boolean      @default(false) // Doğrulandı mı?
   verifiedBy   String? // Doğrulayan kişi
   verifiedAt   DateTime? // Doğrulama tarihi
-  notes        String? // Notlar
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  notes            String? // Notlar
+  certificateData  Json? // Sertifika PDF: başlık, eğitim açıklaması, tarihler, öğretmen/müdür adı
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
   // Tarih değişikliği koruması için - activityDate asla güncellenemez
-  createdBy    String? // Oluşturan kullanıcı
+  createdBy        String? // Oluşturan kullanıcı
 
   // Relations
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
