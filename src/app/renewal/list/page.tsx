@@ -214,23 +214,19 @@ export default function RenewalsListPage() {
       })
     }
 
-    // Sınıf filtresi: sadece sözleşmedeki sınıfa (contractData.studentClass) göre
+    // Sınıf filtresi: sözleşmedeki sınıf (studentClass) yoksa öğrenci sınıfı (student.grade) kullanılır – liste ile aynı mantık
     if (filterGrade !== "all") {
+      const gradeMatch = (renewal: Renewal) => {
+        const contractData = renewal.contractData as Record<string, unknown>
+        const rawGrade = (contractData?.studentClass as string) || renewal.student?.grade || ""
+        const normalized = normalizeContractGrade(rawGrade)
+        return normalized === filterGrade
+      }
       filtered = filtered
-        .filter(group =>
-          group.contracts.some(renewal => {
-            const contractData = renewal.contractData as Record<string, unknown>
-            const contractGrade = normalizeContractGrade(contractData.studentClass)
-            return contractGrade === filterGrade
-          })
-        )
+        .filter(group => group.contracts.some(gradeMatch))
         .map(group => ({
           ...group,
-          contracts: group.contracts.filter(renewal => {
-            const contractData = renewal.contractData as Record<string, unknown>
-            const contractGrade = normalizeContractGrade(contractData.studentClass)
-            return contractGrade === filterGrade
-          })
+          contracts: group.contracts.filter(gradeMatch)
         }))
     }
 
