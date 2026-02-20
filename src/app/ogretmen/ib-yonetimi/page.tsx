@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -207,38 +208,17 @@ export default function OgretmenIbYonetimiPage() {
     { value: "Diğer", label: "Diğer" },
   ]
 
-  // Yetki kontrolü
+  // Yetki kontrolü - tüm yetkili roller (admin, principal, student_affairs, counselor, head_counselor, teacher) erişebilir
   useEffect(() => {
     if (typeof window !== "undefined") {
       const role = localStorage.getItem("auth_role")
-      const staffId = localStorage.getItem("staff_id")
-      
-      // Admin, principal, student_affairs, counselor için varsayılan erişim var
-      if (role === "admin" || role === "principal" || role === "student_affairs" || role === "counselor") {
+      const allowedRoles = ["admin", "principal", "student_affairs", "counselor", "head_counselor", "teacher"]
+      if (role && allowedRoles.includes(role)) {
         setHasAccess(true)
         return
       }
-      
-      // Teacher için yetki kontrolü
-      if (role === "teacher" && staffId) {
-        fetch(`/api/staff/${staffId}`)
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.hasIbAccess) {
-              setHasAccess(true)
-            } else {
-              setHasAccess(false)
-              router.push("/ogretmen")
-            }
-          })
-          .catch(() => {
-            setHasAccess(false)
-            router.push("/ogretmen")
-          })
-      } else {
-        setHasAccess(false)
-        router.push("/login")
-      }
+      setHasAccess(false)
+      router.push("/login")
     }
   }, [router])
 
@@ -597,7 +577,14 @@ export default function OgretmenIbYonetimiPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Link href="/ogretmen/ib-yonetimi/faaliyet-ekle">
+            <Button variant="default">
+              <Plus className="h-4 w-4 mr-2" />
+              Faaliyet Ekle
+            </Button>
+          </Link>
           <Button
+            variant="outline"
             onClick={() => {
               setShowForm(true)
               setUploadedFile(null)
@@ -606,7 +593,7 @@ export default function OgretmenIbYonetimiPage() {
             }}
           >
             <Plus className="h-4 w-4 mr-2" />
-            Yeni Faaliyet
+            Eski form ile ekle
           </Button>
         </div>
       </div>

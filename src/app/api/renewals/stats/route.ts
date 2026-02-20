@@ -120,20 +120,16 @@ export async function GET(request: NextRequest) {
         thisMonthStudents.add(tcNumber)
       }
       
-      // Sınıf bazında: Kayıt yenileme bir sonraki yıl için yapıldığından sözleşmedeki sınıf (studentClass) kullanılır.
-      // Öğrenci şu an 5. sınıfta olsa bile sözleşme 6. sınıf için ise sayı 6. Sınıf sütununda artar.
+      // Sınıf bazında: Listeyle aynı mantık – sözleşmedeki sınıf (studentClass) yoksa öğrencinin sınıfı (student.grade) kullanılır.
+      // Sınıf anahtarı her zaman "X. Sınıf" (boşluklu) olmalı ki sinifStats ile eşleşsin.
       const contractData = r.contractData as Record<string, unknown>
       const contractGrade = (contractData?.studentClass as string) || r.student.grade || ''
       const grade = typeof contractGrade === 'string' ? contractGrade.trim() : ''
       let sinif = ''
       if (grade) {
-        if (grade.includes('Sınıf')) {
-          sinif = grade
-        } else {
-          const gradeNum = parseInt(grade.replace(/\D/g, ''))
-          if (!isNaN(gradeNum) && gradeNum >= 5 && gradeNum <= 12) {
-            sinif = `${gradeNum}. Sınıf`
-          }
+        const gradeNum = parseInt(grade.replace(/\D/g, ''), 10)
+        if (!isNaN(gradeNum) && gradeNum >= 5 && gradeNum <= 12) {
+          sinif = `${gradeNum}. Sınıf`
         }
       }
 

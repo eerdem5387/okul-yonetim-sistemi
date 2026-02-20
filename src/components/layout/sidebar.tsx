@@ -25,7 +25,8 @@ import {
   Target,
   Handshake,
   School,
-  GraduationCap
+  GraduationCap,
+  Plus
 } from "lucide-react"
 import { useState, useEffect } from "react"
 const allNavigation = [
@@ -52,6 +53,7 @@ const allNavigation = [
   { name: "Gezi Yönetimi", href: "/gezi", icon: MapPin, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
   { name: "Kulüp Yönetimi", href: "/clubs", icon: Users, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
   { name: "IB Faaliyet Yönetimi", href: "/activities", icon: Award, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
+  { name: "Faaliyet Ekle", href: "/faaliyet-ekle", icon: Plus, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
   { name: "Sınav Yönetimi", href: "/rehberlik/sinavlar", icon: FileText, roles: ["counselor", "head_counselor"] },
   { name: "Öğrenci Görüşleri", href: "/rehberlik/gorusler", icon: MessageSquare, roles: ["counselor", "head_counselor"] },
   { name: "Öğrenci Dashboard", href: "/rehberlik/ogrenci-dashboard", icon: LayoutDashboard, roles: ["counselor", "head_counselor"] },
@@ -127,15 +129,9 @@ export function Sidebar() {
       if (currentRole === "teacher" && hasGeziAccess !== true) return false
     }
     
-    // IB Faaliyet Yönetimi için yetki kontrolü
-    if (item.href === "/activities" || item.href.startsWith("/activities")) {
-      // Admin, principal, student_affairs, counselor, head_counselor için her zaman göster
-      if (currentRole === "admin" || currentRole === "principal" || currentRole === "student_affairs" || currentRole === "counselor" || currentRole === "head_counselor") {
-        return true
-      }
-      
-      // Teacher için mutlaka hasIbAccess true olmalı
-      if (currentRole === "teacher" && hasIbAccess !== true) return false
+    // IB Faaliyet Yönetimi ve Faaliyet Ekle - tüm yetkili roller görebilir (teacher bu sidebar'da değil)
+    if (item.href === "/activities" || item.href.startsWith("/activities") || item.href === "/faaliyet-ekle") {
+      return true
     }
     
     return true

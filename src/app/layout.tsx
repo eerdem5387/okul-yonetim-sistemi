@@ -126,7 +126,7 @@ export default function RootLayout({
       return
     }
 
-    // Öğretmen sayfaları için kontrol
+    // Öğretmen sayfaları için kontrol – sadece öğretmen erişir (Faaliyet Ekle admin vb. için /faaliyet-ekle)
     if (pathname?.startsWith("/ogretmen")) {
       if (normalizedRole !== "teacher") {
         if (!redirectingRef.current) {
@@ -273,6 +273,27 @@ export default function RootLayout({
     // Teklif Görüşmeleri sayfası için kontrol (admin, principal, student_affairs, head_counselor erişebilir)
     if (pathname === "/teklif-gorusmeleri") {
       if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "head_counselor") {
+        return
+      }
+      if (!redirectingRef.current) {
+        redirectingRef.current = true
+        router.push("/login")
+        setTimeout(() => { redirectingRef.current = false }, 100)
+      }
+      return
+    }
+
+    // Faaliyet Ekle – admin, principal, student_affairs, counselor, head_counselor kendi panelinden erişir
+    if (pathname === "/faaliyet-ekle") {
+      if (["admin", "principal", "student_affairs", "counselor", "head_counselor"].includes(normalizedRole)) {
+        return
+      }
+      if (normalizedRole === "teacher") {
+        if (!redirectingRef.current) {
+          redirectingRef.current = true
+          router.push("/ogretmen/ib-yonetimi/faaliyet-ekle")
+          setTimeout(() => { redirectingRef.current = false }, 100)
+        }
         return
       }
       if (!redirectingRef.current) {

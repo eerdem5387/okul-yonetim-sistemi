@@ -858,11 +858,22 @@ export default function RenewalPage() {
                     </div>
                     <div>
                       <Label htmlFor="studentClass">Sınıfı</Label>
-                      <Input
+                      <select
                         id="studentClass"
-                        value={mainContractData.studentClass}
+                        value={(() => {
+                          const g = (mainContractData.studentClass || "").trim()
+                          const num = parseInt(g.replace(/\D/g, ""), 10)
+                          if (!isNaN(num) && num >= 5 && num <= 12) return `${num}. Sınıf`
+                          return g || ""
+                        })()}
                         onChange={(e) => setMainContractData({ ...mainContractData, studentClass: e.target.value })}
-                      />
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring mt-1"
+                      >
+                        <option value="">Seçiniz</option>
+                        {[5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
+                          <option key={n} value={`${n}. Sınıf`}>{n}. Sınıf</option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <Label htmlFor="studentTC">TC</Label>

@@ -20,6 +20,7 @@ import {
   Target,
   MapPin,
   Award,
+  Plus,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -85,7 +86,9 @@ export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
     { name: "Gecikmeler", href: "/ogretmen/gecikmeler", icon: AlertTriangle },
     // Yetki bazlı modüller - Sadece yetkisi varsa göster
     ...(hasGeziAccess === true ? [{ name: "Gezi Yönetimi", href: "/ogretmen/gezi-yonetimi", icon: MapPin }] : []),
-    ...(hasIbAccess === true ? [{ name: "IB Faaliyet Yönetimi", href: "/ogretmen/ib-yonetimi", icon: Award }] : []),
+    // IB Faaliyet - tüm öğretmenler görebilir
+    { name: "IB Faaliyet Yönetimi", href: "/ogretmen/ib-yonetimi", icon: Award },
+    { name: "Faaliyet Ekle", href: "/ogretmen/ib-yonetimi/faaliyet-ekle", icon: Plus },
   ]
 
   return (
