@@ -285,7 +285,7 @@ export default function RootLayout({
 
     // Faaliyet Ekle – admin, principal, student_affairs, counselor, head_counselor kendi panelinden erişir
     if (pathname === "/faaliyet-ekle") {
-      if (["admin", "principal", "student_affairs", "counselor", "head_counselor"].includes(normalizedRole)) {
+      if (normalizedRole != null && ["admin", "principal", "student_affairs", "counselor", "head_counselor"].includes(normalizedRole)) {
         return
       }
       if (normalizedRole === "teacher") {

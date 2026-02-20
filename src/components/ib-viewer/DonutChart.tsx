@@ -68,7 +68,7 @@ export function DonutChart({
         className="overflow-visible"
         style={{ width: size, height: size }}
       >
-        {segments.map((seg, i) => (
+        {segments.map((seg) => (
           <circle
             key={seg.key}
             cx="50"

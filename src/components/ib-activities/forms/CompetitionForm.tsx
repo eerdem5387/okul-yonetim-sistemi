@@ -1,7 +1,6 @@
 "use client"
 
 import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { CommonFields } from "./CommonFields"
 import type { IbActivityCommon, IbCompetitionSpecific } from "@/types/ib-activity"

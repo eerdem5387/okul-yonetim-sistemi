@@ -15,6 +15,10 @@ import { CompetitionForm } from "@/components/ib-activities/forms/CompetitionFor
 import {
   type IbActivityType,
   type IbActivityFormData,
+  type IbEducationSpecific,
+  type IbEventSpecific,
+  type IbSportSpecific,
+  type IbCompetitionSpecific,
   emptyCommon,
   emptyEducationSpecific,
   emptyEventSpecific,
@@ -53,7 +57,7 @@ export function FaaliyetEkleContent({ fallbackRedirect = "/" }: FaaliyetEkleCont
   const [selectedType, setSelectedType] = useState<IbActivityType | null>(null)
   const [formData, setFormData] = useState<IbActivityFormData | null>(null)
   const [students, setStudents] = useState<StudentOption[]>([])
-  const [loadingStudents, setLoadingStudents] = useState(false)
+  const [, setLoadingStudents] = useState(false)
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -130,19 +134,19 @@ export function FaaliyetEkleContent({ fallbackRedirect = "/" }: FaaliyetEkleCont
     setFormData({ ...formData, common })
   }
 
-  const updateEducationSpecific = (specific: IbActivityFormData extends { type: "education" } ? IbActivityFormData["specific"] : never) => {
+  const updateEducationSpecific = (specific: IbEducationSpecific) => {
     if (!formData || formData.type !== "education") return
     setFormData({ ...formData, specific })
   }
-  const updateEventSpecific = (specific: IbActivityFormData extends { type: "event" } ? IbActivityFormData["specific"] : never) => {
+  const updateEventSpecific = (specific: IbEventSpecific) => {
     if (!formData || formData.type !== "event") return
     setFormData({ ...formData, specific })
   }
-  const updateSportSpecific = (specific: IbActivityFormData extends { type: "sport" } ? IbActivityFormData["specific"] : never) => {
+  const updateSportSpecific = (specific: IbSportSpecific) => {
     if (!formData || formData.type !== "sport") return
     setFormData({ ...formData, specific })
   }
-  const updateCompetitionSpecific = (specific: IbActivityFormData extends { type: "competition" } ? IbActivityFormData["specific"] : never) => {
+  const updateCompetitionSpecific = (specific: IbCompetitionSpecific) => {
     if (!formData || formData.type !== "competition") return
     setFormData({ ...formData, specific })
   }

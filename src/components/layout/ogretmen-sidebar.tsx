@@ -35,7 +35,7 @@ export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
   const [staffName, setStaffName] = useState("")
   const [staffSubject, setStaffSubject] = useState("")
   const [hasGeziAccess, setHasGeziAccess] = useState<boolean>(false)
-  const [hasIbAccess, setHasIbAccess] = useState<boolean>(false)
+  const [, setHasIbAccess] = useState<boolean>(false)
 
   useEffect(() => {
     if (typeof window !== "undefined") {

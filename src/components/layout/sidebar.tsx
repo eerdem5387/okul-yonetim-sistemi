@@ -76,7 +76,7 @@ export function Sidebar() {
   const [currentRole, setCurrentRole] = useState<string | null>(null)
   const [staffName, setStaffName] = useState<string>("")
   const [hasGeziAccess, setHasGeziAccess] = useState<boolean | null>(null) // null = henüz kontrol edilmedi
-  const [hasIbAccess, setHasIbAccess] = useState<boolean | null>(null) // null = henüz kontrol edilmedi
+  const [, setHasIbAccess] = useState<boolean | null>(null) // null = henüz kontrol edilmedi
 
   useEffect(() => {
     if (typeof window !== "undefined") {
