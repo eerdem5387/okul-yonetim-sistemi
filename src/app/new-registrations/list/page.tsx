@@ -164,6 +164,25 @@ export default function NewRegistrationsListPage() {
     }
   }, [])
 
+  const handleExportExcel = useCallback(async () => {
+    try {
+      const res = await fetch("/api/new-registrations/export")
+      if (!res.ok) throw new Error("Export failed")
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = "yeni-kayitlar.xlsx"
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (e) {
+      console.error("Export error:", e)
+      alert("Excel dışa aktarım başarısız oldu")
+    }
+  }, [])
+
   useEffect(() => {
     fetchRegistrations()
     fetchStats()
@@ -686,13 +705,24 @@ export default function NewRegistrationsListPage() {
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Yeni Kayıtlar</h1>
             <p className="text-gray-600 mt-2 text-sm sm:text-base">Yapılan tüm yeni kayıtları görüntüleyin</p>
           </div>
-          <Button
-            onClick={() => router.push('/new-registration')}
-            variant="outline"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Geri Dön
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleExportExcel}
+              className="flex items-center justify-center text-xs sm:text-sm"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Excel&apos;e Aktar
+            </Button>
+            <Button
+              onClick={() => router.push("/new-registration")}
+              variant="outline"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Geri Dön
+            </Button>
+          </div>
         </div>
 
         {/* Filtreleme */}
