@@ -118,6 +118,11 @@ export default function OgretmenIbYonetimiPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalActivities, setTotalActivities] = useState(0)
+  const [dashboardStats, setDashboardStats] = useState<{
+    total: number
+    byType: Record<string, number>
+    topStudents: Array<{ studentId: string; fullName: string; grade: string; tcNumber: string; count: number }>
+  } | null>(null)
 
   const emptyCertificateContent = (): CertificateContentForm => ({
     certificateTitle: "",
@@ -256,7 +261,7 @@ export default function OgretmenIbYonetimiPage() {
 
   const fetchStudents = useCallback(async () => {
     try {
-      const response = await fetch("/api/students?limit=1000")
+      const response = await fetch("/api/students?limit=1000", { headers: getAuthHeaders() })
       if (!response.ok) throw new Error("Failed to fetch students")
 
       const data = await response.json()
@@ -268,12 +273,28 @@ export default function OgretmenIbYonetimiPage() {
     }
   }, [])
 
+  const fetchDashboardStats = useCallback(async () => {
+    try {
+      const res = await fetch("/api/activities/stats", { headers: getAuthHeaders() })
+      if (!res.ok) return
+      const data = await res.json()
+      setDashboardStats({
+        total: data.total ?? 0,
+        byType: data.byType ?? {},
+        topStudents: data.topStudents ?? [],
+      })
+    } catch {
+      setDashboardStats(null)
+    }
+  }, [])
+
   useEffect(() => {
     if (hasAccess === true) {
       fetchActivities()
       fetchStudents()
+      fetchDashboardStats()
     }
-  }, [hasAccess, fetchActivities, fetchStudents])
+  }, [hasAccess, fetchActivities, fetchStudents, fetchDashboardStats])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -661,6 +682,84 @@ export default function OgretmenIbYonetimiPage() {
         </Card>
       </div>
 
+      {/* Faaliyet türüne göre + En çok katılan öğrenciler */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="border-0 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-blue-600" />
+              Faaliyet türüne göre
+            </CardTitle>
+            <CardDescription>Her türden kaç faaliyet girildiği</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {dashboardStats ? (
+              <ul className="space-y-2">
+                {Object.entries(activityTypeLabels).map(([type, label]) => {
+                  const count = (dashboardStats.byType as Record<string, number>)[type] ?? 0
+                  return (
+                    <li
+                      key={type}
+                      className="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50/50 px-4 py-3"
+                    >
+                      <span className="font-medium text-gray-800">{label}</span>
+                      <span className="text-lg font-bold text-blue-600">{count}</span>
+                    </li>
+                  )
+                })}
+              </ul>
+            ) : (
+              <div className="flex items-center justify-center py-8 text-gray-400">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-5 w-5 text-emerald-600" />
+              En çok faaliyete katılan öğrenciler
+            </CardTitle>
+            <CardDescription>Faaliyet sayısına göre sıralı liste</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {dashboardStats?.topStudents && dashboardStats.topStudents.length > 0 ? (
+              <ul className="space-y-2">
+                {dashboardStats.topStudents.slice(0, 15).map((row, index) => (
+                  <li key={row.studentId}>
+                    <Link
+                      href={`/ogretmen/ib-yonetimi/ogrenci/${row.studentId}`}
+                      className="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50/50 px-4 py-3 transition-colors hover:bg-blue-50 hover:border-blue-100"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">
+                          {index + 1}
+                        </span>
+                        <div>
+                          <p className="font-medium text-gray-900">{row.fullName}</p>
+                          <p className="text-xs text-gray-500">{row.grade}</p>
+                        </div>
+                      </div>
+                      <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-700">
+                        {row.count} faaliyet
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : dashboardStats && (!dashboardStats.topStudents || dashboardStats.topStudents.length === 0) ? (
+              <p className="py-6 text-center text-gray-500">Henüz katılım kaydı yok</p>
+            ) : (
+              <div className="flex items-center justify-center py-8 text-gray-400">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Filters */}
       <Card className="border-0 shadow-lg">
         <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -815,10 +914,14 @@ export default function OgretmenIbYonetimiPage() {
                             </div>
                             <div className="mt-2 space-y-1 text-sm text-gray-600">
                               <div className="flex items-center gap-2">
-                                <User className="h-4 w-4" />
-                                <span>
-                                  {activity.student.firstName} {activity.student.lastName} - {activity.student.grade}
-                                </span>
+                                <User className="h-4 w-4 shrink-0" />
+                                <Link
+                                  href={`/ogretmen/ib-yonetimi/ogrenci/${activity.student.id}`}
+                                  className="font-medium text-blue-600 hover:underline"
+                                >
+                                  {activity.student.firstName} {activity.student.lastName}
+                                </Link>
+                                <span>- {activity.student.grade}</span>
                               </div>
                               <div className="flex items-center gap-2">
                                 <Calendar className="h-4 w-4" />

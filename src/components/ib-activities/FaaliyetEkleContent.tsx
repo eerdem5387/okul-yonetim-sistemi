@@ -24,7 +24,6 @@ import {
   emptyEventSpecific,
   emptySportSpecific,
   emptyCompetitionSpecific,
-  IB_ACTIVITY_TYPE_LABELS,
 } from "@/types/ib-activity"
 import { validateActivityForm } from "@/lib/ib-activity-validation"
 
@@ -170,21 +169,129 @@ export function FaaliyetEkleContent({ fallbackRedirect = "/" }: FaaliyetEkleCont
           id,
           name: s ? `${s.firstName} ${s.lastName}` : "",
           tcNumber: s?.tcNumber ?? "",
+          grade: s?.grade ?? "",
         }
       })
     : []
 
-  const handleSubmit = () => {
+  const downloadEducationActivityPdf = async () => {
+    if (!formData || formData.type !== "education") return
+    if (participantsForPdf.length === 0) {
+      alert("En az bir katılımcı seçin.")
+      return
+    }
+    try {
+      const res = await fetch("/api/ib/pdf/education-activity", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({
+          common: formData.common,
+          specific: formData.specific,
+          participants: participantsForPdf,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || "PDF oluşturulamadı")
+      }
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = "egitim-faaliyet-sertifika-ve-belgeler.pdf"
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (e) {
+      console.error(e)
+      alert(e instanceof Error ? e.message : "PDF indirilemedi.")
+    }
+  }
+
+  /** IB form türünü Prisma ActivityType enum değerine eşler */
+  const mapToActivityType = (type: IbActivityType): string => {
+    switch (type) {
+      case "education":
+        return "SEMINER"
+      case "event":
+        return "ETKINLIK"
+      case "sport":
+        return "SPORT"
+      case "competition":
+        return "YARISMA"
+      default:
+        return "DIGER"
+    }
+  }
+
+  const [submitting, setSubmitting] = useState(false)
+
+  const handleSubmit = async () => {
+    if (!formData) return
     const result = validateActivityForm(formData)
     if (!result.valid) {
       alert("Lütfen formu kontrol edin:\n\n" + result.errors.join("\n"))
       return
     }
-    alert(
-      "Form doğrulandı. Kaydetme ve PDF üretimi için API entegrasyonu sonraki adımda eklenecek.\n\n" +
-        `Tür: ${formData ? IB_ACTIVITY_TYPE_LABELS[formData.type] : ""}\n` +
-        `Katılımcı sayısı: ${formData?.common.participantIds.length ?? 0}`
-    )
+    if (formData.common.participantIds.length === 0) {
+      alert("En az bir katılımcı seçin.")
+      return
+    }
+    const activityDate = formData.common.startDate || formData.common.endDate
+    if (!activityDate) {
+      alert("Başlangıç veya bitiş tarihi girin.")
+      return
+    }
+    setSubmitting(true)
+    try {
+      let duration: number | null = null
+      if (formData.type === "education") {
+        const d = formData.specific.durationDays
+        const h = formData.specific.durationHours
+        const m = formData.specific.durationMinutes
+        const days = typeof d === "string" ? parseInt(d, 10) || 0 : 0
+        const hours = typeof h === "string" ? parseInt(h, 10) || 0 : 0
+        const mins = typeof m === "string" ? parseInt(m, 10) || 0 : 0
+        duration = days * 24 * 60 + hours * 60 + mins
+      }
+      const certificateContents: Record<string, unknown>[] = []
+      if (formData.type === "education") {
+        for (let i = 0; i < formData.common.participantIds.length; i++) {
+          certificateContents.push(formData.specific.certificatePdfContent ?? {})
+        }
+      }
+      const res = await fetch("/api/activities", {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          studentIds: formData.common.participantIds,
+          type: mapToActivityType(formData.type),
+          title: formData.common.title,
+          description: formData.common.description,
+          activityDate,
+          organizer: formData.common.organizer,
+          duration: duration ?? undefined,
+          participants: formData.common.participantIds.length,
+          outcome: formData.common.description || undefined,
+          evidence: "",
+          notes: "",
+          certificateContents: certificateContents.length > 0 ? certificateContents : undefined,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data.error || "Faaliyet kaydedilemedi")
+      }
+      const count = data.count ?? formData.common.participantIds.length
+      alert(`${count} adet faaliyet başarıyla kaydedildi.`)
+      handleBack()
+    } catch (e) {
+      console.error(e)
+      alert(e instanceof Error ? e.message : "Kayıt sırasında hata oluştu.")
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   if (hasAccess === null) {
@@ -257,18 +364,33 @@ export function FaaliyetEkleContent({ fallbackRedirect = "/" }: FaaliyetEkleCont
               <PdfGenerator
                 formData={formData}
                 participants={participantsForPdf}
-                onGeneratePerParticipant={(participantId) => {
-                  // Her katılımcı için ayrı PDF – API entegrasyonunda bu id ile tekil PDF isteği atılacak
-                  const p = participantsForPdf.find((x) => x.id === participantId)
-                  if (p) alert(`PDF üretimi: ${p.name} (${p.tcNumber})\n\nAPI entegrasyonu sonrasında bu katılımcı için PDF indirilecek.`)
-                }}
+                onGeneratePerParticipant={
+                  formData?.type === "education"
+                    ? () => downloadEducationActivityPdf()
+                    : async (participantId) => {
+                        const p = participantsForPdf.find((x) => x.id === participantId)
+                        if (p) alert(`PDF: ${p.name}\n\nEğitim dışı türler için PDF üretimi planlanıyor.`)
+                      }
+                }
+                onGenerateAll={
+                  formData?.type === "education" ? () => downloadEducationActivityPdf() : undefined
+                }
               />
             </CardContent>
           </Card>
 
           <div className="flex gap-2">
-            <Button onClick={handleSubmit}>Kaydet</Button>
-            <Button type="button" variant="outline" onClick={handleBack}>
+            <Button onClick={handleSubmit} disabled={submitting}>
+              {submitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Kaydediliyor…
+                </>
+              ) : (
+                "Kaydet"
+              )}
+            </Button>
+            <Button type="button" variant="outline" onClick={handleBack} disabled={submitting}>
               İptal
             </Button>
           </div>

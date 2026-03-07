@@ -90,6 +90,25 @@ export function PreviewPanel({ data, participantNames = [] }: PreviewPanelProps)
             <p className="text-gray-700">{data.specific.educationType}</p>
           </div>
         )}
+        {"educationDescription" in data.specific &&
+          (data.specific as { educationDescription?: string }).educationDescription && (
+          <div>
+            <p className="text-xs text-gray-500">Eğitim açıklaması</p>
+            <p className="text-gray-700 line-clamp-3">
+              {(data.specific as { educationDescription: string }).educationDescription}
+            </p>
+          </div>
+        )}
+        {"successScore" in data.specific &&
+          data.specific.successScore !== "" &&
+          data.specific.successScore !== undefined && (
+          <div>
+            <p className="text-xs text-gray-500">Başarı puanı</p>
+            <p className="text-gray-700">
+              {String(data.specific.successScore)} / 100
+            </p>
+          </div>
+        )}
         {"eventType" in data.specific && data.specific.eventType && (
           <div>
             <p className="text-xs text-gray-500">Etkinlik türü</p>

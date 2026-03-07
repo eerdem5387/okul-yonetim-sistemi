@@ -29,7 +29,10 @@ function escapeHTML(text: string | null | undefined): string {
     .replace(/'/g, '&#39;')
 }
 
-export async function generatePDF(html: string, options?: { format?: string; margin?: Record<string, string> }) {
+export async function generatePDF(
+  html: string,
+  options?: { format?: string; landscape?: boolean; margin?: Record<string, string> }
+) {
   const browser = await puppeteer.launch({
     args: chromium.args,
     executablePath: await chromium.executablePath(),
@@ -38,20 +41,18 @@ export async function generatePDF(html: string, options?: { format?: string; mar
 
   const page = await browser.newPage()
 
-  // Türkçe karakterleri HTML entity'lere çevir
   const encodedHTML = encodeHTMLEntities(html)
-
-  // HTML'i setContent ile yükle
   await page.setContent(encodedHTML, { waitUntil: 'networkidle0' })
 
   const pdf = await page.pdf({
     format: (options?.format || 'A4') as 'A4',
+    landscape: options?.landscape ?? false,
     margin: options?.margin || {
       top: '10mm',
       right: '15mm',
       bottom: '10mm',
-      left: '15mm'
-    }
+      left: '15mm',
+    },
   })
 
   await browser.close()

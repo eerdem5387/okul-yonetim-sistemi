@@ -29,6 +29,14 @@ export interface IbEducationSpecific {
   durationDays: string
   durationHours: string
   durationMinutes: string
+  /** Eğitim açıklaması (manuel – sertifika/başarı belgesi metninde kullanılır) */
+  educationDescription: string
+  /** Seçilen eğitmen personel id */
+  teacherId: string
+  /** Seçilen eğitmen ad soyad (gösterim ve PDF) */
+  teacherName: string
+  /** Başarı puanı 1–100 (başarı belgesi için) */
+  successScore: number | ""
   /** Müfredat PDF şablon verisi */
   curriculumPdfContent: Record<string, unknown>
   /** Sertifika belgesi PDF şablon verisi (katılımcı bazlı) */
@@ -98,6 +106,10 @@ export function emptyEducationSpecific(): IbEducationSpecific {
     durationDays: "",
     durationHours: "",
     durationMinutes: "",
+    educationDescription: "",
+    teacherId: "",
+    teacherName: "",
+    successScore: "",
     curriculumPdfContent: {},
     certificatePdfContent: {},
     achievementPdfContent: {},

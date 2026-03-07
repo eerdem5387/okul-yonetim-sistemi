@@ -10,12 +10,18 @@ interface CommonFieldsProps {
   data: IbActivityCommon
   onChange: (common: IbActivityCommon) => void
   participantOptions: { id: string; label: string }[]
+  /** Eğitim türünde eğitmen dropdown için: personel listesi (id + ad soyad) */
+  organizerOptions?: { id: string; label: string }[]
+  /** Eğitmen seçildiğinde (id, ad soyad) – sadece organizerOptions verildiğinde kullanılır */
+  onOrganizerSelect?: (id: string, name: string) => void
 }
 
 export function CommonFields({
   data,
   onChange,
   participantOptions,
+  organizerOptions,
+  onOrganizerSelect,
 }: CommonFieldsProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -162,12 +168,32 @@ export function CommonFields({
       </div>
       <div>
         <Label>Organizatör / Eğitmen</Label>
-        <Input
-          value={data.organizer}
-          onChange={(e) => update({ organizer: e.target.value })}
-          placeholder="Ad Soyad"
-          className="mt-1"
-        />
+        {organizerOptions ? (
+          <select
+            value={data.organizer}
+            onChange={(e) => {
+              const label = e.target.value
+              const opt = organizerOptions.find((o) => o.label === label)
+              update({ organizer: label })
+              onOrganizerSelect?.(opt?.id ?? "", opt?.label ?? "")
+            }}
+            className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="">Seçiniz</option>
+            {organizerOptions.map((opt) => (
+              <option key={opt.id} value={opt.label}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <Input
+            value={data.organizer}
+            onChange={(e) => update({ organizer: e.target.value })}
+            placeholder="Ad Soyad"
+            className="mt-1"
+          />
+        )}
       </div>
       <div>
         <Label>Açıklama, Sonuç ve Kazanım</Label>
