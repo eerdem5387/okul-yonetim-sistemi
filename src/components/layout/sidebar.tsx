@@ -187,6 +187,7 @@ export function Sidebar() {
                 src="/logo.png"
                 alt="Okul Logosu"
                 fill
+                sizes="56px"
                 className="object-contain rounded-lg"
                 priority
               />

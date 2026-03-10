@@ -1,5 +1,28 @@
 import puppeteer from 'puppeteer-core'
 import chromium from '@sparticuz/chromium'
+import { existsSync } from 'fs'
+import { join } from 'path'
+
+/** Yerel geliştirme için Chrome/Chromium yolu (macOS / Linux). Production'da @sparticuz/chromium kullanılır. */
+function getLocalChromePath(): string | undefined {
+  if (process.platform === 'darwin') {
+    const paths = [
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      '/Applications/Chromium.app/Contents/MacOS/Chromium',
+      join(process.env.HOME || '', 'Applications', 'Chromium.app', 'Contents', 'MacOS', 'Chromium'),
+    ]
+    for (const p of paths) {
+      if (p && existsSync(p)) return p
+    }
+  }
+  if (process.platform === 'linux') {
+    const paths = ['/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser']
+    for (const p of paths) {
+      if (p && existsSync(p)) return p
+    }
+  }
+  return undefined
+}
 
 // Türkçe karakterleri HTML entity'lere çevir
 function encodeHTMLEntities(text: string): string {
@@ -33,11 +56,37 @@ export async function generatePDF(
   html: string,
   options?: { format?: string; landscape?: boolean; margin?: Record<string, string> }
 ) {
-  const browser = await puppeteer.launch({
-    args: chromium.args,
-    executablePath: await chromium.executablePath(),
-    headless: true,
-  })
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
+  let browser: Awaited<ReturnType<typeof puppeteer.launch>>
+
+  if (isProduction) {
+    browser = await puppeteer.launch({
+      args: chromium.args,
+      executablePath: await chromium.executablePath(),
+      headless: true,
+    })
+  } else {
+    const localChrome = getLocalChromePath()
+    if (localChrome) {
+      browser = await puppeteer.launch({
+        executablePath: localChrome,
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+      })
+    } else {
+      try {
+        browser = await puppeteer.launch({
+          args: chromium.args,
+          executablePath: await chromium.executablePath(),
+          headless: true,
+        })
+      } catch {
+        throw new Error(
+          'PDF oluşturmak için yerelde Google Chrome yüklü olmalı (Applications içinde). Vercel’de otomatik çalışır.'
+        )
+      }
+    }
+  }
 
   const page = await browser.newPage()
 
@@ -1096,6 +1145,183 @@ function generateMealContractHTML(student: { firstName: string; lastName: string
 
 
 
+/**
+ * Sertifika / Katılım / Başarı belgesi HTML (ekran görüntüsü şablonu: kırmızı-altın çerçeve, logo, alanlar).
+ * Her öğrenci için ayrı sayfa; alanlar otomatik doldurulur.
+ */
+export function generateCertificateHTML(data: {
+  logoBase64: string
+  /** Üst satır: LEVENT COLLEGE IB PROGRAMME */
+  programmeLine?: string
+  /** Belge başlığı (örn. CERTIFICATE OF LANGUAGE EDUCATION) */
+  certificateTitle: string
+  /** Sırayla gösterilecek alanlar: etiket + değer */
+  fields: Array<{ label: string; value: string }>
+  /** Puan/seviye paragrafı (varsa) */
+  outcomeParagraph?: string
+  /** Dil: 'en' | 'tr' – ek açıklama metni için */
+  language?: 'tr' | 'en'
+}): string {
+  const {
+    logoBase64,
+    programmeLine = 'LEVENT COLLEGE IB PROGRAMME',
+    certificateTitle,
+    fields,
+    outcomeParagraph,
+    language = 'en',
+  } = data
+
+  const defaultFooter = language === 'en'
+    ? 'Throughout the training process, the participant demonstrated consistent effort, progress, and engagement in all language skills. The evidence of their performance and assessment results is provided in the attached file.'
+    : 'Eğitim sürecinde katılımcı tüm dil becerilerinde tutarlı çaba, ilerleme ve katılım gösterdi. Performans ve değerlendirme sonuçlarının kanıtı ekli dosyada sunulmaktadır.'
+
+  const fieldRows = fields.map(
+    (f) => `
+    <div style="margin-bottom: 10px;">
+      <span style="font-weight: 600; font-size: 11px;">${escapeHTML(f.label)}</span>
+      <span style="margin-left: 4px; border-bottom: 1px solid #333; padding: 0 6px; font-size: 11px;">${escapeHTML(f.value || '')}</span>
+    </div>`
+  ).join('')
+
+  return `
+  <div style="page-break-after: always;">
+    <div style="
+      background: linear-gradient(180deg, #1e3a5f 0%, #152a45 100%);
+      padding: 24px;
+      margin: -20px -15px 0 -15px;
+      min-height: 100%;
+      box-sizing: border-box;
+    ">
+      <div style="
+        background: #fff;
+        border: 4px solid #b71c1c;
+        outline: 2px solid #d4af37;
+        outline-offset: 2px;
+        border-radius: 8px;
+        padding: 28px 32px;
+        max-width: 100%;
+        box-sizing: border-box;
+      ">
+        <div style="text-align: center; margin-bottom: 16px;">
+          <img src="data:image/png;base64,${logoBase64}" alt="Logo" style="max-height: 72px; width: auto;" />
+        </div>
+        <div style="text-align: center; margin-bottom: 8px;">
+          <div style="font-size: 14px; font-weight: bold; color: #1a1a1a; letter-spacing: 0.5px;">${escapeHTML(programmeLine)}</div>
+          <div style="font-size: 15px; font-weight: bold; text-transform: uppercase; color: #1a1a1a; margin-top: 4px;">${escapeHTML(certificateTitle)}</div>
+        </div>
+        <div style="margin-top: 20px; font-size: 11px; color: #333;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px 24px;">
+            ${fieldRows}
+          </div>
+          ${outcomeParagraph ? `
+          <div style="margin-top: 18px; padding: 12px 0; line-height: 1.6; font-size: 11px;">
+            ${escapeHTML(outcomeParagraph)}
+          </div>
+          <div style="margin-top: 10px; font-size: 10px; color: #555;">
+            ${defaultFooter}
+          </div>
+          ` : ''}
+        </div>
+      </div>
+    </div>
+  </div>
+  `
+}
+
+/** Müfredat sayfası HTML (logo, program bilgisi tablosu, aylık haftalık tablolar – ekran görüntüsü şablonu) */
+export function generateMufredatPageHTML(data: {
+  logoBase64: string
+  programTitle: string
+  programmeName?: string
+  instructorName?: string
+  programmeDurationWeeks?: string
+  participantName?: string
+  participantTrId?: string
+  months: Array<{
+    label: string
+    rows: Array<{
+      week: string
+      subject: string
+      objective: string
+      practice: string
+      achievements: string
+    }>
+  }>
+}): string {
+  const {
+    logoBase64,
+    programTitle,
+    programmeName = "LEVENT COLLEGE IB",
+    instructorName = "",
+    programmeDurationWeeks = "40 weeks",
+    participantName = "",
+    participantTrId = "",
+    months,
+  } = data
+
+  const monthTables = months
+    .map(
+      (m) => `
+    <tr>
+      <td colspan="5" style="padding: 10px; background-color: #e8e8e8; font-weight: bold; text-align: center; border: 1px solid #000;">
+        ${escapeHTML(m.label)}
+      </td>
+    </tr>
+    <tr>
+      <th style="border: 1px solid #000; padding: 8px; text-align: center;">Week</th>
+      <th style="border: 1px solid #000; padding: 8px; text-align: center;">Subject</th>
+      <th style="border: 1px solid #000; padding: 8px; text-align: center;">Objective</th>
+      <th style="border: 1px solid #000; padding: 8px; text-align: center;">Practice / Assignment</th>
+      <th style="border: 1px solid #000; padding: 8px; text-align: center;">Achievements</th>
+    </tr>
+    ${m.rows
+      .map(
+        (r) => `
+    <tr>
+      <td style="border: 1px solid #000; padding: 6px; vertical-align: top;">${escapeHTML(r.week)}</td>
+      <td style="border: 1px solid #000; padding: 6px; vertical-align: top;">${escapeHTML(r.subject)}</td>
+      <td style="border: 1px solid #000; padding: 6px; vertical-align: top;">${escapeHTML(r.objective)}</td>
+      <td style="border: 1px solid #000; padding: 6px; vertical-align: top;">${escapeHTML(r.practice)}</td>
+      <td style="border: 1px solid #000; padding: 6px; vertical-align: top;">${escapeHTML(r.achievements)}</td>
+    </tr>`
+      )
+      .join("")}`
+    )
+    .join("")
+
+  return `
+  <div style="page-break-after: always;">
+    <div style="text-align: center; margin-bottom: 16px;">
+      <img src="data:image/png;base64,${logoBase64}" alt="Logo" style="max-height: 80px; width: auto;" />
+    </div>
+    <h1 style="text-align: center; font-size: 16px; font-weight: bold; text-transform: uppercase; margin-bottom: 16px;">
+      ${escapeHTML(programTitle)}
+    </h1>
+    <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 20px;">
+      <tr>
+        <td style="border: 1px solid #000; padding: 8px; width: 22%; font-weight: bold;">Programme Name</td>
+        <td style="border: 1px solid #000; padding: 8px; width: 28%;">${escapeHTML(programmeName)}</td>
+        <td style="border: 1px solid #000; padding: 8px; width: 22%; font-weight: bold;">Instructor Name</td>
+        <td style="border: 1px solid #000; padding: 8px; width: 28%;">${escapeHTML(instructorName)}</td>
+      </tr>
+      <tr>
+        <td style="border: 1px solid #000; padding: 8px; font-weight: bold;">Programme Duration (week)</td>
+        <td style="border: 1px solid #000; padding: 8px;">${escapeHTML(programmeDurationWeeks)}</td>
+        <td style="border: 1px solid #000; padding: 8px; font-weight: bold;">Participant Name</td>
+        <td style="border: 1px solid #000; padding: 8px;">${escapeHTML(participantName)}</td>
+      </tr>
+      <tr>
+        <td colspan="2" style="border: 1px solid #000; padding: 8px; font-weight: bold;">Participant TR ID No .</td>
+        <td colspan="2" style="border: 1px solid #000; padding: 8px;">${escapeHTML(participantTrId)}</td>
+      </tr>
+    </table>
+    <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+      ${monthTables}
+    </table>
+  </div>
+  `
+}
+
 // IB Activity Report HTML Generator (Türkçe/İngilizce)
 export function generateIBActivityReportHTML(data: {
   student: {
@@ -1119,8 +1345,10 @@ export function generateIBActivityReportHTML(data: {
     verifiedAt: string | null
   }>
   language: 'tr' | 'en'
+  /** Müfredat sayfası HTML (varsa faaliyet raporundan önce eklenir) */
+  mufredatHtml?: string
 }) {
-  const { student, activities, language } = data
+  const { student, activities, language, mufredatHtml } = data
   const isEnglish = language === 'en'
 
   const translations = {
@@ -1365,6 +1593,7 @@ export function generateIBActivityReportHTML(data: {
       </style>
     </head>
     <body>
+      ${mufredatHtml ?? ""}
       <div class="header">
         <h1>${t.title}</h1>
       </div>

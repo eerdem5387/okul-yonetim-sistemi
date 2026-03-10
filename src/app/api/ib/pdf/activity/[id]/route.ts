@@ -1,6 +1,20 @@
 import { NextRequest, NextResponse } from "next/server"
+import { readFileSync } from "fs"
+import { join } from "path"
 import { prisma } from "@/lib/prisma"
-import { generatePDF, generateIBActivityReportHTML } from "@/lib/pdf-generator"
+import { getMufredatIcerikIdForSubtype, type CategoryId } from "@/lib/ib-activity-config"
+import { getMufredatYapisi } from "@/lib/ib-mufredat-icerikleri"
+import { generatePDF, generateIBActivityReportHTML, generateMufredatPageHTML } from "@/lib/pdf-generator"
+
+function getLogoBase64(): string {
+  try {
+    const path = join(process.cwd(), "public", "logo.png")
+    const buf = readFileSync(path)
+    return buf.toString("base64")
+  } catch {
+    return ""
+  }
+}
 
 export async function GET(
   request: NextRequest,
@@ -30,6 +44,7 @@ export async function GET(
             lastName: true,
             grade: true,
             birthDate: true,
+            tcNumber: true,
           },
         },
       },
@@ -46,6 +61,27 @@ export async function GET(
 
     if (!activity.student.birthDate) {
       return NextResponse.json({ error: "Student birth date is missing" }, { status: 400 })
+    }
+
+    let mufredatHtml: string | undefined
+    const certData = activity.certificateData as Record<string, unknown> | null
+    const category = certData?.category as CategoryId | undefined
+    const subtype = certData?.subtype as string | undefined
+    if (category && subtype) {
+      const mufredatId = getMufredatIcerikIdForSubtype(category, subtype)
+      const yapisi = mufredatId ? getMufredatYapisi(mufredatId) : null
+      if (yapisi && yapisi.months.length > 0) {
+        const logoBase64 = getLogoBase64()
+        mufredatHtml = generateMufredatPageHTML({
+          logoBase64,
+          programTitle: yapisi.programTitle,
+          participantName: `${activity.student.firstName} ${activity.student.lastName}`.trim(),
+          participantTrId: activity.student.tcNumber ?? "",
+          instructorName: activity.organizer ?? "",
+          programmeDurationWeeks: "40 weeks",
+          months: yapisi.months,
+        })
+      }
     }
 
     // Generate HTML for single activity
@@ -73,6 +109,7 @@ export async function GET(
         },
       ],
       language,
+      mufredatHtml,
     })
 
     // Generate PDF

@@ -15,7 +15,7 @@ function getAuthHeaders(): HeadersInit {
   return headers
 }
 
-export default function IbOgrenciDetayPage() {
+export default function ActivityStudentDetailPage() {
   const params = useParams()
   const router = useRouter()
   const studentId = typeof params.id === "string" ? params.id : ""
@@ -69,24 +69,35 @@ export default function IbOgrenciDetayPage() {
   }, [studentId])
 
   useEffect(() => {
-    if (typeof window === "undefined") return
-    const role = localStorage.getItem("auth_role")
-    const staffId = localStorage.getItem("staff_id")
-    if (role !== "teacher" || !staffId) {
-      setHasAccess(false)
-      router.push("/login")
-      return
-    }
-    fetch(`/api/staff/${staffId}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setHasAccess(!!data.hasIbAccess)
-        if (!data.hasIbAccess) router.push("/ogretmen")
-      })
-      .catch(() => {
+    if (typeof window !== "undefined") {
+      const role = localStorage.getItem("auth_role")
+      const staffId = localStorage.getItem("staff_id")
+      if (
+        role === "admin" ||
+        role === "principal" ||
+        role === "student_affairs" ||
+        role === "counselor" ||
+        role === "head_counselor"
+      ) {
+        setHasAccess(true)
+        return
+      }
+      if (role === "teacher" && staffId) {
+        fetch(`/api/staff/${staffId}`)
+          .then((res) => res.json())
+          .then((data) => {
+            setHasAccess(!!data.hasIbAccess)
+            if (!data.hasIbAccess) router.push("/ogretmen")
+          })
+          .catch(() => {
+            setHasAccess(false)
+            router.push("/login")
+          })
+      } else {
         setHasAccess(false)
         router.push("/login")
-      })
+      }
+    }
   }, [router])
 
   useEffect(() => {
@@ -113,8 +124,8 @@ export default function IbOgrenciDetayPage() {
       student={student}
       activities={activities}
       totalInSystem={totalInSystem}
-      backHref="/ogretmen/ib-yonetimi"
-      backLabel="IB Yönetimine Dön"
+      backHref="/activities"
+      backLabel="IB Faaliyet Yönetimine Dön"
     />
   )
 }

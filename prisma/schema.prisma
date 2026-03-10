@@ -237,6 +237,13 @@ enum ActivityType {
   DIGER // Diğer
 }
 
+// Doğrulama protokolü: İmza sürecinde → Onay bekliyor → Onaylandı
+enum ActivityVerificationStatus {
+  IMZA_SURECINDE  // PDF indirildi, belgeler imzalanıyor / imzalı belge henüz yüklenmedi
+  ONAY_BEKLIYOR   // İmzalı belgeler yüklendi, inceleme bekliyor
+  ONAYLANDI       // Yetkili tarafından onaylandı
+}
+
 model Activity {
   id           String       @id @default(cuid())
   studentId    String
@@ -250,14 +257,20 @@ model Activity {
   participants Int? // Katılımcı sayısı
   outcome      String? // Sonuç/Kazanım
   evidence     String? // Kanıt (dosya yolu, link vb.)
-  isVerified   Boolean      @default(false) // Doğrulandı mı?
-  verifiedBy   String? // Doğrulayan kişi
-  verifiedAt   DateTime? // Doğrulama tarihi
+  isVerified   Boolean      @default(false) // ONAYLANDI ise true (geriye dönük uyumluluk)
+  verifiedBy   String? // Doğrulayan/onaylayan kişi
+  verifiedAt   DateTime? // Doğrulama/onay tarihi
   notes            String? // Notlar
   certificateData  Json? // Sertifika PDF: başlık, eğitim açıklaması, tarihler, öğretmen/müdür adı
+  // Faaliyet Ekle ile uyum: kategori ve alt tür (Eğitim, Etkinlik, Spor, Yarışma)
+  category           String? // egitim | etkinlik | spor | yarisma
+  subtype            String? // Alt tür (örn: spanish, basketbol)
+  participationPhotoUrl String? // Bu öğrencinin faaliyete katılımını kanıtlayan fotoğraf (max 5MB)
+  // Doğrulama protokolü: 3 aşama (imza sürecinde → imzalı belge yükle → onaylandı)
+  verificationStatus    ActivityVerificationStatus @default(IMZA_SURECINDE)
+  signedDocumentUrls    String[] @default([]) // Taranıp yüklenen imzalı belge URL'leri (ONAY_BEKLIYOR için)
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
-  // Tarih değişikliği koruması için - activityDate asla güncellenemez
   createdBy        String? // Oluşturan kullanıcı
 
   // Relations
@@ -267,6 +280,8 @@ model Activity {
   @@index([activityDate])
   @@index([type])
   @@index([isVerified])
+  @@index([category])
+  @@index([verificationStatus])
   @@map("activities")
 }
 

@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get("startDate") || ""
     const endDate = searchParams.get("endDate") || ""
     const isVerified = searchParams.get("isVerified") || ""
+    const verificationStatus = searchParams.get("verificationStatus") || ""
 
     const skip = (page - 1) * limit
 
@@ -54,7 +55,9 @@ export async function GET(request: NextRequest) {
       whereConditions.push({ activityDate: { lte: new Date(endDate) } })
     }
 
-    if (isVerified === "true") {
+    if (verificationStatus === "IMZA_SURECINDE" || verificationStatus === "ONAY_BEKLIYOR" || verificationStatus === "ONAYLANDI") {
+      whereConditions.push({ verificationStatus })
+    } else if (isVerified === "true") {
       whereConditions.push({ isVerified: true })
     } else if (isVerified === "false") {
       whereConditions.push({ isVerified: false })
@@ -128,6 +131,10 @@ export async function POST(request: NextRequest) {
       notes,
       createdBy,
       certificateContents,
+      category,
+      subtype,
+      participationPhotoUrl,
+      participantPhotoUrls,
     } = body
 
     // Tarih kontrolü - geçmiş tarih olabilir ama gelecek tarih kontrolü yapılabilir
@@ -136,10 +143,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Geçersiz tarih formatı" }, { status: 400 })
     }
 
-    // Batch creation if studentIds provided
+    // Batch creation if studentIds provided (Faaliyet Ekle formu)
     if (Array.isArray(body.studentIds) && body.studentIds.length > 0) {
       const studentIds = body.studentIds as string[]
       const certList = Array.isArray(certificateContents) ? certificateContents as Record<string, unknown>[] : []
+      const photoUrls = Array.isArray(participantPhotoUrls) ? participantPhotoUrls as string[] : []
 
       const activities = await prisma.$transaction(
         studentIds.map((sid, i) => {
@@ -158,6 +166,9 @@ export async function POST(request: NextRequest) {
             notes,
             createdBy,
             certificateData: certList[i] ?? undefined,
+            category: category ?? undefined,
+            subtype: subtype ?? undefined,
+            participationPhotoUrl: photoUrls[i] ?? undefined,
           }
           return prisma.activity.create({
             data: createData as unknown as Prisma.ActivityCreateInput,
@@ -191,6 +202,9 @@ export async function POST(request: NextRequest) {
       notes,
       createdBy,
       certificateData: certData,
+      category: category ?? undefined,
+      subtype: subtype ?? undefined,
+      participationPhotoUrl: participationPhotoUrl ?? undefined,
     }
     const activity = await prisma.activity.create({
       data: createData as unknown as Prisma.ActivityCreateInput,

@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
-    "cleanup-duplicates": "tsx scripts/cleanup-duplicate-registrations.ts"
+    "cleanup-duplicates": "tsx scripts/cleanup-duplicate-registrations.ts",
+    "migrate-activities": "tsx scripts/migrate-activities-to-new-structure.ts",
+    "migrate-activities:dry": "tsx scripts/migrate-activities-to-new-structure.ts --dry-run"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

@@ -1,7 +1,7 @@
 "use client"
 
-import { FaaliyetEkleContent } from "@/components/ib-activities/FaaliyetEkleContent"
+import { FaaliyetEklePage } from "@/components/faaliyet-ekle/FaaliyetEklePage"
 
-export default function FaaliyetEklePage() {
-  return <FaaliyetEkleContent fallbackRedirect="/ogretmen" />
+export default function OgretmenFaaliyetEklePage() {
+  return <FaaliyetEklePage fallbackRedirect="/ogretmen" />
 }
