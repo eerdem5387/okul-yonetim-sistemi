@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { checkIbAccess } from "@/lib/access-control"
 import { generatePDF } from "@/lib/pdf-generator"
-import { buildActivityPdfHtml } from "@/app/api/activities/[id]/pdf/route"
+import { buildActivityPdfHtml } from "@/lib/activity-pdf"
 
 /**
  * Tam HTML'den sadece <body> içeriğini çıkarır.
