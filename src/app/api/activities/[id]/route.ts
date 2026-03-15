@@ -41,13 +41,13 @@ export async function GET(
     })
 
     if (!activity) {
-      return NextResponse.json({ error: "Activity not found" }, { status: 404 })
+      return NextResponse.json({ error: "Faaliyet bulunamadı" }, { status: 404 })
     }
 
     return NextResponse.json(activity)
   } catch (error) {
     console.error("Error fetching activity:", error)
-    return NextResponse.json({ error: "Failed to fetch activity" }, { status: 500 })
+    return NextResponse.json({ error: "Faaliyet yüklenirken hata oluştu" }, { status: 500 })
   }
 }
 
@@ -96,7 +96,7 @@ export async function PUT(
     })
 
     if (!existingActivity) {
-      return NextResponse.json({ error: "Activity not found" }, { status: 404 })
+      return NextResponse.json({ error: "Faaliyet bulunamadı" }, { status: 404 })
     }
 
     const currentStatus = (existingActivity as { verificationStatus?: ActivityVerificationStatus }).verificationStatus ?? "IMZA_SURECINDE"
@@ -186,7 +186,7 @@ export async function PUT(
     return NextResponse.json(activity)
   } catch (error) {
     console.error("Error updating activity:", error)
-    return NextResponse.json({ error: "Failed to update activity" }, { status: 500 })
+    return NextResponse.json({ error: "Faaliyet güncellenirken hata oluştu" }, { status: 500 })
   }
 }
 
@@ -213,7 +213,7 @@ export async function DELETE(
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("Error deleting activity:", error)
-    return NextResponse.json({ error: "Failed to delete activity" }, { status: 500 })
+    return NextResponse.json({ error: "Faaliyet silinirken hata oluştu" }, { status: 500 })
   }
 }
 

@@ -96,7 +96,14 @@ export function SubtypeStep({
         <Button type="button" variant="outline" onClick={onBack} className="w-full sm:min-w-[120px] min-h-[48px] touch-manipulation">
           Geri
         </Button>
-        <Button onClick={onNext} className="w-full sm:flex-1 min-h-[48px] touch-manipulation">Devam: Katılımcılar</Button>
+        <Button
+          onClick={onNext}
+          className="w-full sm:flex-1 min-h-[48px] touch-manipulation"
+          disabled={mode === "manual" && !subtype.trim()}
+          title={mode === "manual" && !subtype.trim() ? "Alt tür (serbest metin) zorunludur" : undefined}
+        >
+          Devam: Katılımcılar
+        </Button>
       </div>
     </div>
   )

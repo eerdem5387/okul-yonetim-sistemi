@@ -19,6 +19,7 @@ import {
 import {
   CATEGORY_TO_ACTIVITY_TYPE,
   getCategorySubtypeFromLegacyType,
+  getAchievementLevel,
   type CategoryId,
 } from "@/lib/ib-activity-config"
 
@@ -56,6 +57,7 @@ interface ActivityForEdit {
   category: string | null
   subtype: string | null
   participationPhotoUrl: string | null
+  certificateData?: Record<string, unknown> | null
   student: {
     id: string
     firstName: string
@@ -106,13 +108,25 @@ export function FaaliyetDuzenlePage({
           ? { category: act.category as CategoryId, subtype: act.subtype ?? "" }
           : getCategorySubtypeFromLegacyType(act.type)
         const subtypeStr = resolved.subtype ?? ""
+        const cert = (act.certificateData || {}) as Record<string, unknown>
+        const savedScore = cert.successScore != null ? Number(cert.successScore) : null
+        const savedTeacherName = (cert.teacherName as string) || act.organizer || ""
+        const teacherMatch = teachers.find(
+          (t) =>
+            savedTeacherName &&
+            `${t.firstName} ${t.lastName}`.trim().toLowerCase() === savedTeacherName.trim().toLowerCase()
+        )
         const participant: ParticipantRow = {
           studentId: act.student.id,
           studentName: `${act.student.firstName} ${act.student.lastName}`.trim(),
           tcNumber: act.student.tcNumber ?? "",
           grade: act.student.grade ?? "",
-          successScore: "",
-          achievementLevel: "",
+          successScore:
+            savedScore != null && !Number.isNaN(savedScore) ? savedScore : "",
+          achievementLevel:
+            savedScore != null && !Number.isNaN(savedScore)
+              ? getAchievementLevel(savedScore)
+              : "",
           personalDescription: "",
           participationPhotoUrl: act.participationPhotoUrl ?? undefined,
         }
@@ -132,8 +146,8 @@ export function FaaliyetDuzenlePage({
             outcome: act.outcome ?? undefined,
             evidence: act.evidence ?? undefined,
           },
-          teacherId: "",
-          teacherName: "",
+          teacherId: teacherMatch?.id ?? "",
+          teacherName: teacherMatch ? `${teacherMatch.firstName} ${teacherMatch.lastName}`.trim() : savedTeacherName,
           participants: [participant],
           resultDocumentUrl: "",
         })
@@ -193,6 +207,53 @@ export function FaaliyetDuzenlePage({
       alert("Başlık zorunludur.")
       return
     }
+    if (!state.common.description?.trim()) {
+      alert("Açıklama zorunludur.")
+      return
+    }
+    if (!state.common.organizer?.trim()) {
+      alert("Organizatör / Eğitmen zorunludur.")
+      return
+    }
+    if (!state.common.location?.trim()) {
+      alert("Konum zorunludur.")
+      return
+    }
+    if (!state.common.duration?.trim() || Number.isNaN(parseInt(state.common.duration, 10))) {
+      alert("Süre (dakika) zorunludur.")
+      return
+    }
+    if (!state.common.outcome?.trim()) {
+      alert("Sonuç / Kazanım zorunludur.")
+      return
+    }
+    if (!state.common.evidence?.trim()) {
+      alert("Kanıt (link veya dosya) zorunludur.")
+      return
+    }
+    if ((state.category === "egitim" || state.category === "yarisma") && !state.teacherId) {
+      alert("Öğretmen (belgelerde imza) seçimi zorunludur.")
+      return
+    }
+    if ((state.category === "egitim" || state.category === "yarisma") && valid.some((p) => p.successScore === "")) {
+      alert("Eğitim ve yarışma faaliyetlerinde her katılımcı için başarı puanı (1–100) zorunludur.")
+      return
+    }
+    if (!valid[0]?.participationPhotoUrl?.trim()) {
+      alert("Katılım kanıt fotoğrafı zorunludur.")
+      return
+    }
+    const existingCert = (activity.certificateData || {}) as Record<string, unknown>
+    const certificateData: Record<string, unknown> = {
+      ...existingCert,
+      category: state.category,
+      subtype: state.subtype || null,
+      teacherName: state.teacherName || state.common.organizer || null,
+      educationDescription: state.common.description || title,
+      educationStartEndDateStart: state.common.startDate || null,
+      educationStartEndDateEnd: state.common.endDate || null,
+      successScore: valid[0]?.successScore !== "" && valid[0]?.successScore !== undefined ? Number(valid[0].successScore) : null,
+    }
     setSubmitting(true)
     try {
       const res = await fetch(`/api/activities/${activityId}`, {
@@ -212,6 +273,7 @@ export function FaaliyetDuzenlePage({
           category: state.category,
           subtype: state.subtype || null,
           participationPhotoUrl: valid[0]?.participationPhotoUrl || null,
+          certificateData,
         }),
       })
       const data = await res.json().catch(() => ({}))

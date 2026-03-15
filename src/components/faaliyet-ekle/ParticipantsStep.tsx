@@ -238,6 +238,83 @@ export function ParticipantsStep({
                   />
                 </div>
               </div>
+              <div>
+                <Label>Konum *</Label>
+                <Input
+                  value={common.location ?? ""}
+                  onChange={(e) => onCommonChange({ ...common, location: e.target.value })}
+                  placeholder="Faaliyet konumu"
+                  className="mt-1.5 min-h-[44px] touch-manipulation"
+                />
+              </div>
+              <div>
+                <Label>Süre (dakika) *</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={common.duration ?? ""}
+                  onChange={(e) => onCommonChange({ ...common, duration: e.target.value })}
+                  placeholder="Örn: 90"
+                  className="mt-1.5 min-h-[44px] touch-manipulation"
+                />
+              </div>
+              <div>
+                <Label>Sonuç / Kazanım *</Label>
+                <Input
+                  value={common.outcome ?? ""}
+                  onChange={(e) => onCommonChange({ ...common, outcome: e.target.value })}
+                  placeholder="Faaliyet sonucu veya kazanım"
+                  className="mt-1.5 min-h-[44px] touch-manipulation"
+                />
+              </div>
+              <div>
+                <Label>Kanıt (link veya dosya) *</Label>
+                {common.evidence ? (
+                  <div className="mt-1.5 space-y-2">
+                    {isImageUrl(common.evidence) ? (
+                      <div className="flex flex-wrap items-start gap-3">
+                        <a href={common.evidence} target="_blank" rel="noopener noreferrer" className="block rounded-lg border border-gray-200 overflow-hidden bg-gray-50 shrink-0">
+                          <img src={common.evidence} alt="Kanıt önizleme" className="h-28 w-28 sm:h-36 sm:w-36 object-cover" />
+                        </a>
+                        <div className="flex flex-col gap-2 min-w-0 flex-1">
+                          <p className="text-xs text-gray-500 truncate max-w-full" title={common.evidence}>{common.evidence}</p>
+                          <div className="flex flex-wrap gap-2">
+                            <Button type="button" variant="outline" size="sm" className="text-red-600 hover:text-red-700" onClick={() => onCommonChange({ ...common, evidence: "" })}>
+                              <Trash2 className="h-4 w-4 mr-1" /> Sil
+                            </Button>
+                            <input ref={evidenceFileInputRef} type="file" accept=".pdf,image/jpeg,image/jpg,image/png,image/gif,image/webp" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleEvidenceFile(f) }} />
+                            <Button type="button" variant="outline" size="sm" disabled={uploadingEvidence} onClick={() => evidenceFileInputRef.current?.click()}>
+                              {uploadingEvidence ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4 mr-1" />}
+                              {uploadingEvidence ? "Yükleniyor…" : "Yenisi yükle"}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <Input value={common.evidence} onChange={(e) => onCommonChange({ ...common, evidence: e.target.value })} placeholder="https://..." className="min-h-[44px]" />
+                        <div className="flex flex-wrap gap-2">
+                          <Button type="button" variant="outline" size="sm" className="text-red-600 hover:text-red-700" onClick={() => onCommonChange({ ...common, evidence: "" })}><Trash2 className="h-4 w-4 mr-1" /> Sil</Button>
+                          <input ref={evidenceFileInputRef} type="file" accept=".pdf,image/jpeg,image/jpg,image/png,image/gif,image/webp" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleEvidenceFile(f) }} />
+                          <Button type="button" variant="outline" size="sm" disabled={uploadingEvidence} onClick={() => evidenceFileInputRef.current?.click()}>
+                            {uploadingEvidence ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4 mr-1" />}
+                            {uploadingEvidence ? "Yükleniyor…" : "Dosya yükle"}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="mt-1.5 space-y-2">
+                    <Input value={common.evidence ?? ""} onChange={(e) => onCommonChange({ ...common, evidence: e.target.value })} placeholder="URL yapıştırın veya aşağıdan dosya yükleyin" className="min-h-[44px] touch-manipulation" />
+                    <input ref={evidenceFileInputRef} type="file" accept=".pdf,image/jpeg,image/jpg,image/png,image/gif,image/webp" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleEvidenceFile(f) }} />
+                    <Button type="button" variant="outline" size="sm" disabled={uploadingEvidence} onClick={() => evidenceFileInputRef.current?.click()}>
+                      {uploadingEvidence ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Upload className="h-4 w-4 mr-1" />}
+                      {uploadingEvidence ? "Yükleniyor…" : "Dosya yükle"}
+                    </Button>
+                  </div>
+                )}
+              </div>
             </>
           )}
           {editMode && (
@@ -250,7 +327,7 @@ export function ParticipantsStep({
                 <div className="sm:col-span-1" />
               </div>
               <div>
-                <Label>Konum</Label>
+                <Label>Konum *</Label>
                 <Input
                   value={common.location ?? ""}
                   onChange={(e) => onCommonChange({ ...common, location: e.target.value })}
@@ -259,7 +336,7 @@ export function ParticipantsStep({
                 />
               </div>
               <div>
-                <Label>Süre (dakika)</Label>
+                <Label>Süre (dakika) *</Label>
                 <Input
                   type="number"
                   min={0}
@@ -270,7 +347,7 @@ export function ParticipantsStep({
                 />
               </div>
               <div>
-                <Label>Sonuç / Kazanım</Label>
+                <Label>Sonuç / Kazanım *</Label>
                 <Input
                   value={common.outcome ?? ""}
                   onChange={(e) => onCommonChange({ ...common, outcome: e.target.value })}
@@ -279,7 +356,7 @@ export function ParticipantsStep({
                 />
               </div>
               <div>
-                <Label>Kanıt (link veya dosya)</Label>
+                <Label>Kanıt (link veya dosya) *</Label>
                 {common.evidence ? (
                   <div className="mt-1.5 space-y-2">
                     {isImageUrl(common.evidence) ? (
@@ -413,7 +490,7 @@ export function ParticipantsStep({
             </>
           )}
           <div>
-            <Label>Organizatör / Eğitmen</Label>
+            <Label>Organizatör / Eğitmen *</Label>
             <Input
               value={common.organizer}
               onChange={(e) => onCommonChange({ ...common, organizer: e.target.value })}
@@ -422,7 +499,7 @@ export function ParticipantsStep({
             />
           </div>
           <div>
-            <Label>Açıklama, Sonuç ve Kazanım</Label>
+            <Label>Açıklama, Sonuç ve Kazanım *</Label>
             <textarea
               className="mt-1.5 w-full min-h-[100px] sm:min-h-[80px] rounded-md border border-gray-200 px-3 py-2.5 text-sm touch-manipulation"
               value={common.description}

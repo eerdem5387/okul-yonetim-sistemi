@@ -38,9 +38,11 @@ function getAuthHeaders(): HeadersInit {
 
 export interface FaaliyetEklePageProps {
   fallbackRedirect?: string
+  /** Kayıt sonrası "Listeye git" derse yönlendirilecek sayfa (örn. /ogretmen/ib-yonetimi veya /rehberlik/activities) */
+  successRedirect?: string
 }
 
-export function FaaliyetEklePage({ fallbackRedirect = "/" }: FaaliyetEklePageProps) {
+export function FaaliyetEklePage({ fallbackRedirect = "/", successRedirect }: FaaliyetEklePageProps) {
   const router = useRouter()
   const [hasAccess, setHasAccess] = useState<boolean | null>(null)
   const [state, setState] = useState<FaaliyetFormState>(initialFormState)
@@ -126,7 +128,14 @@ export function FaaliyetEklePage({ fallbackRedirect = "/" }: FaaliyetEklePagePro
       alert("Başlık zorunludur.")
       return
     }
-    const activityDate = state.common.startDate || state.common.endDate
+    if (!state.common.description?.trim()) {
+      alert("Açıklama zorunludur.")
+      return
+    }
+    if (!state.common.organizer?.trim()) {
+      alert("Organizatör / Eğitmen zorunludur.")
+      return
+    }
     if (!state.common.startDate) {
       alert("Başlangıç tarihi zorunludur.")
       return
@@ -135,10 +144,36 @@ export function FaaliyetEklePage({ fallbackRedirect = "/" }: FaaliyetEklePagePro
       alert("Bitiş tarihi zorunludur.")
       return
     }
-    if (!activityDate) {
-      alert("Başlangıç veya bitiş tarihi girin.")
+    if (!state.common.location?.trim()) {
+      alert("Konum zorunludur.")
       return
     }
+    if (!state.common.duration?.trim() || Number.isNaN(parseInt(state.common.duration, 10))) {
+      alert("Süre (dakika) zorunludur.")
+      return
+    }
+    if (!state.common.outcome?.trim()) {
+      alert("Sonuç / Kazanım zorunludur.")
+      return
+    }
+    if (!state.common.evidence?.trim()) {
+      alert("Kanıt (link veya dosya) zorunludur.")
+      return
+    }
+    if ((state.category === "egitim" || state.category === "yarisma") && !state.teacherId) {
+      alert("Öğretmen (belgelerde imza) seçimi zorunludur.")
+      return
+    }
+    if ((state.category === "egitim" || state.category === "yarisma") && valid.some((p) => p.successScore === "")) {
+      alert("Eğitim ve yarışma faaliyetlerinde her katılımcı için başarı puanı (1–100) zorunludur.")
+      return
+    }
+    const missingPhoto = valid.find((p) => !p.participationPhotoUrl?.trim())
+    if (missingPhoto) {
+      alert("Her katılımcı için katılım kanıt fotoğrafı zorunludur.")
+      return
+    }
+    const activityDate = state.common.startDate || state.common.endDate
     setSubmitting(true)
     try {
       const res = await fetch("/api/activities", {
@@ -151,9 +186,11 @@ export function FaaliyetEklePage({ fallbackRedirect = "/" }: FaaliyetEklePagePro
           description: state.common.description,
           activityDate,
           organizer: state.common.organizer,
+          location: state.common.location || null,
+          duration: state.common.duration ? parseInt(state.common.duration, 10) : null,
           participants: valid.length,
-          outcome: state.common.description || undefined,
-          evidence: "",
+          outcome: state.common.outcome || state.common.description || undefined,
+          evidence: state.common.evidence ?? "",
           notes: "",
           category: state.category,
           subtype: state.subtype || undefined,
@@ -164,7 +201,7 @@ export function FaaliyetEklePage({ fallbackRedirect = "/" }: FaaliyetEklePagePro
               category: state.category,
               subtype: state.subtype || undefined,
               teacherName: state.teacherName || state.common.organizer || undefined,
-              educationDescription: state.common.title || undefined,
+              educationDescription: state.common.description || state.common.title || undefined,
               educationStartEndDateStart: state.common.startDate || undefined,
               educationStartEndDateEnd: state.common.endDate || undefined,
               successScore: score !== undefined && !Number.isNaN(score) ? score : undefined,
@@ -175,15 +212,19 @@ export function FaaliyetEklePage({ fallbackRedirect = "/" }: FaaliyetEklePagePro
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || "Kayıt başarısız")
       const count = data.count ?? valid.length
-      alert(`${count} faaliyet kaydedildi.`)
       setState(initialFormState)
+      if (successRedirect && window.confirm(`${count} faaliyet kaydedildi. Faaliyet listesine gitmek ister misiniz?`)) {
+        router.push(successRedirect)
+      } else if (!successRedirect) {
+        alert(`${count} faaliyet kaydedildi.`)
+      }
     } catch (e) {
       console.error(e)
       alert(e instanceof Error ? e.message : "Kayıt sırasında hata oluştu.")
     } finally {
       setSubmitting(false)
     }
-  }, [state])
+  }, [state, router, successRedirect])
 
   const studentOptions = students.map((s) => ({
     id: s.id,

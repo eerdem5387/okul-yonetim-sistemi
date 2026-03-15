@@ -102,6 +102,7 @@ export function IBFaaliyetDashboard({
   const [loadingList, setLoadingList] = useState(false)
   const [studentFilter, setStudentFilter] = useState("")
   const [typeFilter, setTypeFilter] = useState("")
+  const [categoryFilter, setCategoryFilter] = useState("")
   const [search, setSearch] = useState("")
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
@@ -111,6 +112,9 @@ export function IBFaaliyetDashboard({
   const [uploadModalActivityId, setUploadModalActivityId] = useState<string | null>(null)
   const [uploadingSigned, setUploadingSigned] = useState(false)
   const [downloadingPdfId, setDownloadingPdfId] = useState<string | null>(null)
+  const [downloadingBatchPdf, setDownloadingBatchPdf] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [pdfLanguage, setPdfLanguage] = useState<"tr" | "en">("tr")
   const [totalPages, setTotalPages] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
 
@@ -129,6 +133,7 @@ export function IBFaaliyetDashboard({
       const params = new URLSearchParams({ page: String(page), limit: "20" })
       if (studentFilter) params.set("studentId", studentFilter)
       if (typeFilter) params.set("type", typeFilter)
+      if (categoryFilter) params.set("category", categoryFilter)
       if (search) params.set("search", search)
       if (startDate) params.set("startDate", startDate)
       if (endDate) params.set("endDate", endDate)
@@ -146,7 +151,7 @@ export function IBFaaliyetDashboard({
     } finally {
       setLoadingList(false)
     }
-  }, [page, studentFilter, typeFilter, search, startDate, endDate, verifiedFilter, verificationStatusFilter])
+  }, [page, studentFilter, typeFilter, categoryFilter, search, startDate, endDate, verifiedFilter, verificationStatusFilter])
 
   const fetchStudents = useCallback(async () => {
     try {
@@ -195,7 +200,7 @@ export function IBFaaliyetDashboard({
   const handleDownloadPdf = async (activityId: string) => {
     setDownloadingPdfId(activityId)
     try {
-      const res = await fetch(`/api/activities/${activityId}/pdf`, {
+      const res = await fetch(`/api/activities/${activityId}/pdf?lang=${pdfLanguage}`, {
         headers: getAuthHeaders(),
       })
       if (!res.ok) {
@@ -216,6 +221,55 @@ export function IBFaaliyetDashboard({
       alert(e instanceof Error ? e.message : "PDF indirilemedi.")
     } finally {
       setDownloadingPdfId(null)
+    }
+  }
+
+  const handleDownloadBatchPdf = async () => {
+    const ids = Array.from(selectedIds)
+    if (ids.length === 0) return
+    setDownloadingBatchPdf(true)
+    try {
+      const res = await fetch("/api/activities/batch-pdf", {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ activityIds: ids, lang: pdfLanguage }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }))
+        throw new Error(err.error || "PDF alınamadı")
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const disposition = res.headers.get("Content-Disposition")
+      const match = disposition?.match(/filename="?([^";]+)"?/)
+      const fileName = match?.[1]?.trim() || `faaliyet-${ids.length}-ogrenci.pdf`
+      const a = document.createElement("a")
+      a.href = url
+      a.download = fileName
+      a.click()
+      URL.revokeObjectURL(url)
+      setSelectedIds(new Set())
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "PDF indirilemedi.")
+    } finally {
+      setDownloadingBatchPdf(false)
+    }
+  }
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size >= activities.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(activities.map((a) => a.id)))
     }
   }
 
@@ -258,8 +312,11 @@ export function IBFaaliyetDashboard({
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Bu faaliyeti silmek istediğinizden emin misiniz?")) return
+  const handleDelete = async (id: string, title?: string) => {
+    const message = title
+      ? `"${title}" faaliyetini silmek istediğinizden emin misiniz?`
+      : "Bu faaliyeti silmek istediğinizden emin misiniz?"
+    if (!confirm(message)) return
     try {
       const res = await fetch(`/api/activities/${id}`, { method: "DELETE", headers: getAuthHeaders() })
       if (res.ok) {
@@ -274,6 +331,7 @@ export function IBFaaliyetDashboard({
   const resetFilters = () => {
     setStudentFilter("")
     setTypeFilter("")
+    setCategoryFilter("")
     setSearch("")
     setStartDate("")
     setEndDate("")
@@ -524,6 +582,19 @@ export function IBFaaliyetDashboard({
               </select>
             </div>
             <div>
+              <Label className="text-xs">Kategori</Label>
+              <select
+                value={categoryFilter}
+                onChange={(e) => { setCategoryFilter(e.target.value); setPage(1) }}
+                className="mt-1.5 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
+              >
+                <option value="">Tümü</option>
+                {Object.entries(CATEGORY_META).map(([id, { label }]) => (
+                  <option key={id} value={id}>{label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
               <Label className="text-xs">Başlangıç</Label>
               <Input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setPage(1) }} className="mt-1.5" />
             </div>
@@ -570,11 +641,37 @@ export function IBFaaliyetDashboard({
 
       {/* Faaliyet listesi */}
       <Card className="border-0 shadow-md">
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
           <div>
             <CardTitle className="text-lg font-semibold">Faaliyet Listesi</CardTitle>
             <CardDescription>Toplam {totalCount} kayıt</CardDescription>
           </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Label className="text-xs text-gray-500 whitespace-nowrap">PDF dili:</Label>
+            <select
+              value={pdfLanguage}
+              onChange={(e) => setPdfLanguage(e.target.value as "tr" | "en")}
+              className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm"
+            >
+              <option value="tr">Türkçe</option>
+              <option value="en">English</option>
+            </select>
+          </div>
+          {selectedIds.size > 0 && (
+            <Button
+              size="sm"
+              onClick={handleDownloadBatchPdf}
+              disabled={downloadingBatchPdf}
+              className="text-blue-600 border-blue-200 bg-blue-50 hover:bg-blue-100"
+            >
+              {downloadingBatchPdf ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2 inline" />
+              ) : (
+                <FileDown className="h-4 w-4 mr-2 inline" />
+              )}
+              Seçilenlerin PDF&apos;ini indir ({selectedIds.size} öğrenci)
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           {loadingList ? (
@@ -592,8 +689,18 @@ export function IBFaaliyetDashboard({
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-200 text-left text-gray-500">
+                      <th className="pb-3 font-medium px-2 w-10">
+                        <input
+                          type="checkbox"
+                          checked={activities.length > 0 && selectedIds.size >= activities.length}
+                          onChange={toggleSelectAll}
+                          title="Tümünü seç / kaldır"
+                          className="rounded border-gray-300"
+                        />
+                      </th>
                       <th className="pb-3 font-medium px-2">Başlık</th>
                       <th className="pb-3 font-medium px-2">Öğrenci</th>
+                      <th className="pb-3 font-medium px-2">Kategori</th>
                       <th className="pb-3 font-medium px-2">Tür</th>
                       <th className="pb-3 font-medium px-2">Tarih</th>
                       <th className="pb-3 font-medium px-2">Durum</th>
@@ -603,12 +710,30 @@ export function IBFaaliyetDashboard({
                   <tbody>
                     {activities.map((a) => (
                       <tr key={a.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+                        <td className="py-3 px-2 w-10">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(a.id)}
+                            onChange={() => toggleSelect(a.id)}
+                            title="Bu öğrencinin PDF'ine dahil et"
+                            className="rounded border-gray-300"
+                          />
+                        </td>
                         <td className="py-3 px-2 font-medium text-gray-900">{a.title}</td>
                         <td className="py-3 px-2">
                           <Link href={studentDetailHref(a.studentId)} className="text-indigo-600 hover:underline">
                             {a.student.firstName} {a.student.lastName}
                           </Link>
                           {a.student.grade && <span className="text-gray-500 ml-1">({a.student.grade})</span>}
+                        </td>
+                        <td className="py-3 px-2">
+                          {a.category && CATEGORY_META[a.category] ? (
+                            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${CATEGORY_META[a.category].color}`}>
+                              {CATEGORY_META[a.category].label}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
                         </td>
                         <td className="py-3 px-2 text-gray-600">{typeLabels[a.type] ?? a.type}</td>
                         <td className="py-3 px-2 text-gray-600">
@@ -675,7 +800,7 @@ export function IBFaaliyetDashboard({
                                 <XCircle className="h-4 w-4" />
                               </Button>
                             )}
-                            <Button variant="ghost" size="sm" className="text-red-600 h-8 w-8 p-0" onClick={() => handleDelete(a.id)} title="Sil">
+                            <Button variant="ghost" size="sm" className="text-red-600 h-8 w-8 p-0" onClick={() => handleDelete(a.id, a.title)} title="Sil">
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>

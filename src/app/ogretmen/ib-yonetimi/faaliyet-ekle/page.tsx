@@ -3,5 +3,5 @@
 import { FaaliyetEklePage } from "@/components/faaliyet-ekle/FaaliyetEklePage"
 
 export default function OgretmenFaaliyetEklePage() {
-  return <FaaliyetEklePage fallbackRedirect="/ogretmen" />
+  return <FaaliyetEklePage fallbackRedirect="/ogretmen" successRedirect="/ogretmen/ib-yonetimi" />
 }

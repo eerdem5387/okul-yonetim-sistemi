@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "50")
     const studentId = searchParams.get("studentId") || ""
     const type = searchParams.get("type") || ""
+    const category = searchParams.get("category") || ""
     const search = searchParams.get("search") || ""
     const startDate = searchParams.get("startDate") || ""
     const endDate = searchParams.get("endDate") || ""
@@ -35,6 +36,10 @@ export async function GET(request: NextRequest) {
 
     if (type) {
       whereConditions.push({ type })
+    }
+
+    if (category && ["egitim", "etkinlik", "spor", "yarisma"].includes(category)) {
+      whereConditions.push({ category })
     }
 
     if (search) {
@@ -99,7 +104,7 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error("Error fetching activities:", error)
-    return NextResponse.json({ error: "Failed to fetch activities" }, { status: 500 })
+    return NextResponse.json({ error: "Faaliyetler yüklenirken hata oluştu" }, { status: 500 })
   }
 }
 
@@ -223,7 +228,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(activity)
   } catch (error) {
     console.error("Error creating activity:", error)
-    return NextResponse.json({ error: "Failed to create activity" }, { status: 500 })
+    return NextResponse.json({ error: "Faaliyet oluşturulurken hata oluştu" }, { status: 500 })
   }
 }
 
