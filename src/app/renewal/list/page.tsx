@@ -178,6 +178,25 @@ export default function RenewalsListPage() {
     }
   }, [])
 
+  const handleExportExcel = useCallback(async () => {
+    try {
+      const res = await fetch("/api/renewals/export")
+      if (!res.ok) throw new Error("Export failed")
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = "kayit-yenilemeler.xlsx"
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (e) {
+      console.error("Export error:", e)
+      alert("Excel dışa aktarım başarısız oldu")
+    }
+  }, [])
+
   useEffect(() => {
     fetchRenewals()
     fetchStats()
@@ -702,13 +721,24 @@ export default function RenewalsListPage() {
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Kayıt Yenilemeleri</h1>
             <p className="text-gray-600 mt-2 text-sm sm:text-base">Yapılan tüm kayıt yenilemelerini görüntüleyin</p>
           </div>
-          <Button
-            onClick={() => router.push('/renewal')}
-            variant="outline"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Geri Dön
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleExportExcel}
+              className="flex items-center justify-center text-xs sm:text-sm"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Excel&apos;e Aktar
+            </Button>
+            <Button
+              onClick={() => router.push('/renewal')}
+              variant="outline"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Geri Dön
+            </Button>
+          </div>
         </div>
 
         {/* Filtreleme */}
