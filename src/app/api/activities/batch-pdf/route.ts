@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}))
     const activityIds = Array.isArray(body.activityIds) ? body.activityIds as string[] : []
     // Panelden toplu indirilen IB faaliyet PDF'leri zorunlu olarak İngilizce üretilir.
-    const language: "en" = "en"
+    const language = "en" as const
 
     if (activityIds.length === 0) {
       return NextResponse.json(
