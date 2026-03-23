@@ -15,7 +15,7 @@ function extractBodyContent(fullHtml: string): string {
 /**
  * POST /api/activities/batch-pdf
  * Birden fazla faaliyet için tek PDF döner. Her faaliyet (her öğrenci) için ayrı rapor + sertifika/belge sayfaları oluşturulur.
- * Body: { activityIds: string[], lang?: "tr" | "en" }
+ * Body: { activityIds: string[] }
  */
 export async function POST(request: NextRequest) {
   const { hasAccess } = await checkIbAccess(request)
@@ -26,7 +26,8 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}))
     const activityIds = Array.isArray(body.activityIds) ? body.activityIds as string[] : []
-    const language = (body.lang === "en" ? "en" : "tr") as "tr" | "en"
+    // Panelden toplu indirilen IB faaliyet PDF'leri zorunlu olarak İngilizce üretilir.
+    const language: "en" = "en"
 
     if (activityIds.length === 0) {
       return NextResponse.json(

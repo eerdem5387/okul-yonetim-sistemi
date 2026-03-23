@@ -20,7 +20,8 @@ export async function GET(
   try {
     const params = await context.params
     const activityId = params.id
-    const language = (new URL(request.url).searchParams.get("lang") || "tr") as "tr" | "en"
+    // Panelden indirilen IB faaliyet PDF'leri zorunlu olarak İngilizce üretilir.
+    const language: "en" = "en"
 
     const activity = await prisma.activity.findUnique({
       where: { id: activityId },

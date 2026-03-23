@@ -154,6 +154,19 @@ export async function POST(request: NextRequest) {
       const certList = Array.isArray(certificateContents) ? certificateContents as Record<string, unknown>[] : []
       const photoUrls = Array.isArray(participantPhotoUrls) ? participantPhotoUrls as string[] : []
 
+      if (certList.length !== studentIds.length) {
+        return NextResponse.json(
+          { error: "Her öğrenci için belge içeriği zorunludur." },
+          { status: 400 }
+        )
+      }
+      if (photoUrls.length !== studentIds.length || photoUrls.some((url) => !String(url || "").trim())) {
+        return NextResponse.json(
+          { error: "Her öğrenci için katılım kanıt fotoğrafı zorunludur." },
+          { status: 400 }
+        )
+      }
+
       const activities = await prisma.$transaction(
         studentIds.map((sid, i) => {
           const createData = {

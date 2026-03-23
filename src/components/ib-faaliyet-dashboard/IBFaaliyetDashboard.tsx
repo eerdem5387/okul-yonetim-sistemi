@@ -114,7 +114,6 @@ export function IBFaaliyetDashboard({
   const [downloadingPdfId, setDownloadingPdfId] = useState<string | null>(null)
   const [downloadingBatchPdf, setDownloadingBatchPdf] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [pdfLanguage, setPdfLanguage] = useState<"tr" | "en">("tr")
   const [totalPages, setTotalPages] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
 
@@ -200,7 +199,7 @@ export function IBFaaliyetDashboard({
   const handleDownloadPdf = async (activityId: string) => {
     setDownloadingPdfId(activityId)
     try {
-      const res = await fetch(`/api/activities/${activityId}/pdf?lang=${pdfLanguage}`, {
+      const res = await fetch(`/api/activities/${activityId}/pdf`, {
         headers: getAuthHeaders(),
       })
       if (!res.ok) {
@@ -232,7 +231,7 @@ export function IBFaaliyetDashboard({
       const res = await fetch("/api/activities/batch-pdf", {
         method: "POST",
         headers: getAuthHeaders(),
-        body: JSON.stringify({ activityIds: ids, lang: pdfLanguage }),
+        body: JSON.stringify({ activityIds: ids }),
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: res.statusText }))
@@ -645,17 +644,6 @@ export function IBFaaliyetDashboard({
           <div>
             <CardTitle className="text-lg font-semibold">Faaliyet Listesi</CardTitle>
             <CardDescription>Toplam {totalCount} kayıt</CardDescription>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Label className="text-xs text-gray-500 whitespace-nowrap">PDF dili:</Label>
-            <select
-              value={pdfLanguage}
-              onChange={(e) => setPdfLanguage(e.target.value as "tr" | "en")}
-              className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm"
-            >
-              <option value="tr">Türkçe</option>
-              <option value="en">English</option>
-            </select>
           </div>
           {selectedIds.size > 0 && (
             <Button
