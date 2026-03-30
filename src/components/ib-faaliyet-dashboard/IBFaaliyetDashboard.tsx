@@ -404,7 +404,7 @@ export function IBFaaliyetDashboard({
         <Card className="border-0 shadow-md lg:col-span-1">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold">Kategorilere Göre</CardTitle>
-            <CardDescription>Faaliyet Ekle ile uyumlu</CardDescription>
+            <CardDescription>Faaliyet oluşturma modülü ile uyumlu</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-3">
@@ -469,7 +469,7 @@ export function IBFaaliyetDashboard({
               <div className="flex flex-col items-center justify-center py-12 text-gray-500">
                 <Users className="h-12 w-12 mb-3 text-gray-300" />
                 <p className="text-sm">Henüz katılım verisi yok</p>
-                <p className="text-xs mt-1">Faaliyet Ekle ile kayıt oluşturun</p>
+                <p className="text-xs mt-1">Faaliyet oluşturma modülü ile kayıt oluşturun</p>
               </div>
             )}
           </CardContent>

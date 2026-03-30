@@ -41,9 +41,15 @@ const MAIN_TYPES: ActivityMainType[] = [
   "TURNUVA",
 ]
 
-export function CategoryTiles() {
+export interface CategoryTilesProps {
+  /** Örn. /faaliyet-yonetimi/yeni — sonunda / olmamalı */
+  basePath?: string
+}
+
+export function CategoryTiles({ basePath = "/faaliyet-yonetimi/yeni" }: CategoryTilesProps) {
   const router = useRouter()
   const [expanded, setExpanded] = useState<ActivityMainType | null>(null)
+  const prefix = basePath.replace(/\/$/, "")
 
   const handleMainClick = (type: ActivityMainType) => {
     const subtypes = SUBTYPES_BY_MAIN_TYPE[type]
@@ -52,14 +58,14 @@ export function CategoryTiles() {
     }
     // Tek alt tür varsa (örn: Gezi) — alt tür seçim ekranı atlanır, doğrudan forma yönlendir
     if (subtypes.length === 1) {
-      router.push(`/faaliyet-yonetimi/yeni/${type.toLowerCase()}/${subtypes[0].id}`)
+      router.push(`${prefix}/${type.toLowerCase()}/${subtypes[0].id}`)
       return
     }
     setExpanded(expanded === type ? null : type)
   }
 
   const handleSubtypeClick = (mainType: ActivityMainType, subtypeId: string) => {
-    router.push(`/faaliyet-yonetimi/yeni/${mainType.toLowerCase()}/${subtypeId}`)
+    router.push(`${prefix}/${mainType.toLowerCase()}/${subtypeId}`)
   }
 
   return (
