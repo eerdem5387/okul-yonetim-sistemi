@@ -1,5 +1,9 @@
--- CreateEnum
-CREATE TYPE "TeklifGorusmeDurumu" AS ENUM ('OLUMLU', 'OLUMSUZ', 'BELIRSIZ');
+-- CreateEnum (idempotent)
+DO $$ BEGIN
+    CREATE TYPE "TeklifGorusmeDurumu" AS ENUM ('OLUMLU', 'OLUMSUZ', 'BELIRSIZ');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
 
 -- CreateTable
 CREATE TABLE "teklif_gorusmeleri" (

@@ -1,5 +1,9 @@
--- CreateEnum: AttendanceStatus
-CREATE TYPE "AttendanceStatus" AS ENUM ('PRESENT', 'ABSENT', 'LATE', 'EXCUSED');
+-- CreateEnum: AttendanceStatus (idempotent — DB'de zaten varsa atla)
+DO $$ BEGIN
+    CREATE TYPE "AttendanceStatus" AS ENUM ('PRESENT', 'ABSENT', 'LATE', 'EXCUSED');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
 
 -- CreateTable: homeworks (Ödevler)
 CREATE TABLE "homeworks" (

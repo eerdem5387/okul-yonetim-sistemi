@@ -1,5 +1,9 @@
--- CreateEnum: ParentRelation
-CREATE TYPE "ParentRelation" AS ENUM ('ANNE', 'BABA', 'VASI');
+-- CreateEnum: ParentRelation (idempotent)
+DO $$ BEGIN
+    CREATE TYPE "ParentRelation" AS ENUM ('ANNE', 'BABA', 'VASI');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
 
 -- CreateTable: parents (Öğrenci TC bazlı veli hesapları)
 CREATE TABLE "parents" (

@@ -4,8 +4,12 @@ ALTER TABLE "staff" ADD COLUMN "isFirstLogin" BOOLEAN NOT NULL DEFAULT true;
 ALTER TABLE "staff" ADD COLUMN "mustChangePassword" BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE "staff" ADD COLUMN "lastLoginAt" TIMESTAMP(3);
 
--- CreateEnum: ApprovalStatus
-CREATE TYPE "ApprovalStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
+-- CreateEnum: ApprovalStatus (idempotent)
+DO $$ BEGIN
+    CREATE TYPE "ApprovalStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
 
 -- CreateTable: classes
 CREATE TABLE "classes" (

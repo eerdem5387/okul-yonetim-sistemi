@@ -1,5 +1,9 @@
--- CreateEnum: CommentType
-CREATE TYPE "CommentType" AS ENUM ('ACADEMIC', 'BEHAVIORAL', 'GENERAL');
+-- CreateEnum: CommentType (idempotent)
+DO $$ BEGIN
+    CREATE TYPE "CommentType" AS ENUM ('ACADEMIC', 'BEHAVIORAL', 'GENERAL');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
 
 -- CreateTable: student_comments (Öğrenci Görüşleri)
 CREATE TABLE "student_comments" (

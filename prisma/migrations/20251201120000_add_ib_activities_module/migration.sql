@@ -1,5 +1,9 @@
--- CreateEnum
-CREATE TYPE "ActivityType" AS ENUM ('ETKINLIK', 'GEZI', 'PROJE', 'SINAV', 'YARISMA', 'SEMINER', 'WORKSHOP', 'SPORT', 'SANAT', 'SOSYAL', 'DIL', 'BILIM', 'DEGER', 'DIGER');
+-- CreateEnum (idempotent)
+DO $$ BEGIN
+    CREATE TYPE "ActivityType" AS ENUM ('ETKINLIK', 'GEZI', 'PROJE', 'SINAV', 'YARISMA', 'SEMINER', 'WORKSHOP', 'SPORT', 'SANAT', 'SOSYAL', 'DIL', 'BILIM', 'DEGER', 'DIGER');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
 
 -- CreateTable
 CREATE TABLE "activities" (

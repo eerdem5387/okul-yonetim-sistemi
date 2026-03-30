@@ -1,11 +1,21 @@
--- CreateEnum
-CREATE TYPE "DisruptionType" AS ENUM ('PLANLI_OKUL', 'PLANDISI_DOGAL', 'OGRETMEN_KAYNAKLI');
+-- CreateEnum (idempotent)
+DO $$ BEGIN
+    CREATE TYPE "DisruptionType" AS ENUM ('PLANLI_OKUL', 'PLANDISI_DOGAL', 'OGRETMEN_KAYNAKLI');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
 
--- CreateEnum
-CREATE TYPE "HolidayType" AS ENUM ('RESMI_TATIL', 'YARILYIL_TATILI', 'ARA_TATIL', 'DIGER');
+DO $$ BEGIN
+    CREATE TYPE "HolidayType" AS ENUM ('RESMI_TATIL', 'YARILYIL_TATILI', 'ARA_TATIL', 'DIGER');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
 
--- CreateEnum
-CREATE TYPE "ProgressStatus" AS ENUM ('PLANLANDI', 'DEVAM_EDIYOR', 'TAMAMLANDI', 'ERTELENDI');
+DO $$ BEGIN
+    CREATE TYPE "ProgressStatus" AS ENUM ('PLANLANDI', 'DEVAM_EDIYOR', 'TAMAMLANDI', 'ERTELENDI');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
 
 -- CreateTable
 CREATE TABLE "academic_years" (

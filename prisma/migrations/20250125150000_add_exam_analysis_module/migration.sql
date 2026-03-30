@@ -1,5 +1,9 @@
--- CreateEnum: ExamType
-CREATE TYPE "ExamType" AS ENUM ('YKS', 'LGS', 'KPSS', 'DENEME', 'DIGER');
+-- CreateEnum: ExamType (idempotent)
+DO $$ BEGIN
+    CREATE TYPE "ExamType" AS ENUM ('YKS', 'LGS', 'KPSS', 'DENEME', 'DIGER');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
 
 -- CreateTable: exams (Sınavlar)
 CREATE TABLE "exams" (
