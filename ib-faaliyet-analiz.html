@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IB & Faaliyet Yönetimi — Derin Analiz</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3248;
+      --text: #e2e8f0;
+      --muted: #7c85a0;
+      --accent: #6366f1;
+      --accent2: #818cf8;
+      --green: #10b981;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --blue: #3b82f6;
+      --purple: #a855f7;
+      --cyan: #06b6d4;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ---- NAV ---- */
+    .nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(15,17,23,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      display: flex; align-items: center; gap: 0;
+      height: 52px;
+    }
+    .nav-brand { font-weight: 700; font-size: 14px; color: var(--accent2); margin-right: 32px; white-space: nowrap; }
+    .nav-tabs { display: flex; gap: 4px; overflow-x: auto; }
+    .tab-btn {
+      padding: 6px 16px; border: none; border-radius: 8px;
+      background: transparent; color: var(--muted);
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      white-space: nowrap; transition: all .15s;
+    }
+    .tab-btn:hover { color: var(--text); background: var(--surface2); }
+    .tab-btn.active { background: var(--accent); color: #fff; }
+
+    /* ---- PAGES ---- */
+    .page { display: none; padding: 28px 28px 60px; max-width: 1280px; margin: 0 auto; }
+    .page.active { display: block; }
+
+    /* ---- SECTION HEADER ---- */
+    .section-title {
+      font-size: 22px; font-weight: 700; margin-bottom: 4px;
+    }
+    .section-sub { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
+
+    /* ---- CARDS ---- */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+    }
+    .card-title { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 12px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    @media (max-width: 900px) { .grid-4 { grid-template-columns: 1fr 1fr; } .grid-3 { grid-template-columns: 1fr; } .grid-2 { grid-template-columns: 1fr; } }
+
+    /* ---- BADGE ---- */
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: 99px;
+      font-size: 11px; font-weight: 600;
+    }
+    .badge-green { background: rgba(16,185,129,.15); color: var(--green); }
+    .badge-amber { background: rgba(245,158,11,.15); color: var(--amber); }
+    .badge-red   { background: rgba(239,68,68,.15);  color: var(--red); }
+    .badge-blue  { background: rgba(59,130,246,.15); color: var(--blue); }
+    .badge-purple{ background: rgba(168,85,247,.15); color: var(--purple); }
+    .badge-slate { background: rgba(100,116,139,.15); color: #94a3b8; }
+    .badge-cyan  { background: rgba(6,182,212,.15);  color: var(--cyan); }
+    .badge-indigo{ background: rgba(99,102,241,.2);  color: var(--accent2); }
+
+    /* ---- FLOW ---- */
+    .flow { display: flex; align-items: center; gap: 0; flex-wrap: wrap; }
+    .flow-node {
+      padding: 10px 18px; border-radius: 10px;
+      font-size: 13px; font-weight: 600; text-align: center;
+      border: 2px solid;
+    }
+    .flow-arrow {
+      font-size: 20px; color: var(--muted); padding: 0 8px;
+    }
+    .fn-slate   { background: rgba(100,116,139,.12); border-color: #475569; color: #94a3b8; }
+    .fn-amber   { background: rgba(245,158,11,.12);  border-color: #d97706; color: var(--amber); }
+    .fn-green   { background: rgba(16,185,129,.12);  border-color: #059669; color: var(--green); }
+    .fn-blue    { background: rgba(59,130,246,.12);  border-color: #2563eb; color: var(--blue); }
+    .fn-purple  { background: rgba(168,85,247,.12);  border-color: #9333ea; color: var(--purple); }
+    .fn-red     { background: rgba(239,68,68,.12);   border-color: #dc2626; color: var(--red); }
+    .fn-cyan    { background: rgba(6,182,212,.12);   border-color: #0891b2; color: var(--cyan); }
+    .fn-indigo  { background: rgba(99,102,241,.15);  border-color: var(--accent); color: var(--accent2); }
+
+    /* ---- TABLE ---- */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { padding: 10px 14px; text-align: left; color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--border); }
+    td { padding: 10px 14px; border-bottom: 1px solid rgba(46,50,72,.5); vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(99,102,241,.05); }
+
+    /* ---- ROLE MATRIX ---- */
+    .check { color: var(--green); font-size: 15px; }
+    .cross { color: rgba(100,116,139,.4); font-size: 15px; }
+    .cond  { color: var(--amber); font-size: 11px; font-weight: 600; }
+
+    /* ---- FIELD LIST ---- */
+    .field-list { display: flex; flex-direction: column; gap: 6px; }
+    .field-row {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 8px 12px; border-radius: 8px;
+      background: var(--surface2); border: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .field-name { font-weight: 600; color: var(--accent2); min-width: 180px; }
+    .field-type { color: var(--cyan); min-width: 80px; font-size: 11px; font-family: monospace; padding-top: 2px; }
+    .field-desc { color: var(--muted); flex: 1; }
+    .field-req  { color: var(--red); font-size: 10px; font-weight: 700; margin-left: auto; white-space: nowrap; }
+    .field-immut{ color: var(--amber); font-size: 10px; font-weight: 700; margin-left: auto; white-space: nowrap; }
+
+    /* ---- PROBLEM CARD ---- */
+    .problem-card {
+      border-radius: 12px; padding: 16px 18px;
+      border-left: 4px solid; margin-bottom: 12px;
+    }
+    .pc-red    { background: rgba(239,68,68,.07);   border-color: var(--red); }
+    .pc-amber  { background: rgba(245,158,11,.07);  border-color: var(--amber); }
+    .pc-blue   { background: rgba(59,130,246,.07);  border-color: var(--blue); }
+    .pc-green  { background: rgba(16,185,129,.07);  border-color: var(--green); }
+    .pc-purple { background: rgba(168,85,247,.07);  border-color: var(--purple); }
+    .problem-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+    .problem-body  { font-size: 13px; color: var(--muted); line-height: 1.6; }
+    .problem-tag   { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; opacity: .7; margin-bottom: 6px; }
+
+    /* ---- STEP INDICATOR ---- */
+    .steps { display: flex; gap: 0; align-items: center; margin-bottom: 20px; }
+    .step-item { display: flex; align-items: center; gap: 0; }
+    .step-circle {
+      width: 36px; height: 36px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 15px;
+    }
+    .step-label { font-size: 12px; font-weight: 600; margin-left: 8px; margin-right: 16px; }
+    .step-line { flex: 1; height: 2px; background: var(--border); min-width: 24px; max-width: 48px; }
+    .sc-1 { background: rgba(100,116,139,.2); color: #94a3b8; border: 2px solid #475569; }
+    .sc-2 { background: rgba(245,158,11,.15);  color: var(--amber); border: 2px solid var(--amber); }
+    .sc-3 { background: rgba(16,185,129,.15);  color: var(--green); border: 2px solid var(--green); }
+
+    /* ---- ARCH BOXES ---- */
+    .arch-layer { margin-bottom: 16px; }
+    .arch-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 8px; }
+    .arch-boxes { display: flex; gap: 10px; flex-wrap: wrap; }
+    .arch-box {
+      padding: 10px 16px; border-radius: 10px;
+      font-size: 13px; font-weight: 600; border: 1px solid;
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .arch-box small { font-weight: 400; font-size: 11px; opacity: .65; }
+
+    /* ---- HIGHLIGHT ---- */
+    code {
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 12px; background: var(--surface2);
+      padding: 2px 6px; border-radius: 4px; color: var(--cyan);
+    }
+    .divider { height: 1px; background: var(--border); margin: 24px 0; }
+
+    /* ---- STAT CARDS ---- */
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 20px;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .stat-num { font-size: 36px; font-weight: 800; line-height: 1; }
+    .stat-label { font-size: 12px; color: var(--muted); font-weight: 500; }
+    .stat-sub { font-size: 11px; color: var(--muted); }
+
+    /* ---- IMPROVEMENTS ---- */
+    .imp-row {
+      display: flex; gap: 12px; align-items: flex-start;
+      padding: 14px 16px; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px;
+    }
+    .imp-num {
+      min-width: 28px; height: 28px; border-radius: 50%;
+      background: var(--accent); color: #fff;
+      font-weight: 700; font-size: 13px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .imp-content h4 { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+    .imp-content p  { font-size: 13px; color: var(--muted); line-height: 1.5; }
+    .imp-priority { margin-left: auto; flex-shrink: 0; }
+
+    /* ---- ROUTE LIST ---- */
+    .route-row {
+      display: flex; gap: 12px; align-items: center;
+      padding: 10px 14px; border-bottom: 1px solid rgba(46,50,72,.5);
+      font-size: 13px;
+    }
+    .route-row:last-child { border-bottom: none; }
+    .route-method {
+      min-width: 60px; text-align: center; padding: 3px 0;
+      border-radius: 6px; font-size: 11px; font-weight: 700;
+    }
+    .rm-get    { background: rgba(16,185,129,.15); color: var(--green); }
+    .rm-post   { background: rgba(245,158,11,.15);  color: var(--amber); }
+    .rm-put    { background: rgba(59,130,246,.15);  color: var(--blue); }
+    .rm-delete { background: rgba(239,68,68,.15);   color: var(--red); }
+    .route-path { font-family: monospace; color: var(--cyan); min-width: 280px; }
+    .route-desc { color: var(--muted); flex: 1; }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<div class="nav">
+  <div class="nav-brand">🔍 IB & Faaliyet Analizi</div>
+  <div class="nav-tabs">
+    <button class="tab-btn active" onclick="showPage('overview')">Genel Bakış</button>
+    <button class="tab-btn" onclick="showPage('architecture')">Mimari</button>
+    <button class="tab-btn" onclick="showPage('datamodel')">Veri Modeli</button>
+    <button class="tab-btn" onclick="showPage('userflows')">Kullanıcı Akışları</button>
+    <button class="tab-btn" onclick="showPage('verification')">Doğrulama Protokolü</button>
+    <button class="tab-btn" onclick="showPage('access')">Erişim Kontrolü</button>
+    <button class="tab-btn" onclick="showPage('apis')">API Haritası</button>
+    <button class="tab-btn" onclick="showPage('problems')">Sorunlar & Fırsatlar</button>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PAGE: OVERVIEW -->
+<!-- ============================================================ -->
+<div class="page active" id="page-overview">
+  <div class="section-title">IB Faaliyet & IB Yönetimi — Derin Sistem Analizi</div>
+  <div class="section-sub">Next.js 15 · Prisma/PostgreSQL · Vercel Blob · Puppeteer PDF</div>
+
+  <div class="grid-4" style="margin-bottom:20px">
+    <div class="stat-card">
+      <div class="stat-num" style="color:var(--accent2)">1</div>
+      <div class="stat-label">Merkezi Veri Modeli</div>
+      <div class="stat-sub">Activity tablosu — hem faaliyet hem IB verisi</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" style="color:var(--green)">3</div>
+      <div class="stat-label">Doğrulama Aşaması</div>
+      <div class="stat-sub">İmza sürecinde → Onay bekliyor → Onaylandı</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" style="color:var(--amber)">4</div>
+      <div class="stat-label">Faaliyet Kategorisi</div>
+      <div class="stat-sub">Eğitim · Etkinlik · Spor · Yarışma</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" style="color:var(--cyan)">3</div>
+      <div class="stat-label">Kullanıcı Rolü</div>
+      <div class="stat-sub">Personel · Öğretmen (IB) · IB Viewer</div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:20px">
+    <div class="card">
+      <div class="card-title">Sistem Ne Yapıyor?</div>
+      <p style="font-size:14px; line-height:1.8; color:var(--muted)">
+        Bu sistem, bir IB (International Baccalaureate) programı yürüten özel okula ait
+        <strong style="color:var(--text)">öğrenci faaliyet kayıt ve doğrulama sistemidir</strong>.
+        Öğrencilerin katıldığı eğitim, etkinlik, spor ve yarışma faaliyetleri kaydedilir;
+        her faaliyet için <strong style="color:var(--text)">katılım kanıt fotoğrafı</strong> ve
+        <strong style="color:var(--text)">imzalı belge</strong> zorunludur.
+        Onaylanan faaliyetler, harici IB gözlemcileri tarafından görüntülenebilir.
+        PDF çıktıları (sertifika, başarı belgesi, müfredat) Puppeteer ile üretilir.
+      </p>
+    </div>
+    <div class="card">
+      <div class="card-title">Temel Tasarım Kararları</div>
+      <div style="display:flex; flex-direction:column; gap:8px; font-size:13px;">
+        <div class="field-row" style="gap:8px; padding:8px 12px;">
+          <span style="color:var(--green)">✓</span>
+          <span><strong>Tek Activity tablosu</strong> — faaliyet ve IB verisi ayrılmadı; <code>category</code> ve <code>subtype</code> alanlarıyla ayrım</span>
+        </div>
+        <div class="field-row" style="gap:8px; padding:8px 12px;">
+          <span style="color:var(--green)">✓</span>
+          <span><strong>activityDate immutable</strong> — bir kez girildi mi asla değiştirilemez (API'de kasıtlı olarak atılıyor)</span>
+        </div>
+        <div class="field-row" style="gap:8px; padding:8px 12px;">
+          <span style="color:var(--green)">✓</span>
+          <span><strong>Batch create</strong> — tek formda birden fazla öğrenciye aynı anda faaliyet eklenebilir</span>
+        </div>
+        <div class="field-row" style="gap:8px; padding:8px 12px;">
+          <span style="color:var(--green)">✓</span>
+          <span><strong>IB Viewer izolasyonu</strong> — sadece <code>isVerified:true</code> kayıtlar görünür, ayrı token sistemi</span>
+        </div>
+        <div class="field-row" style="gap:8px; padding:8px 12px;">
+          <span style="color:var(--amber)">!</span>
+          <span><strong>Auth localStorage'da</strong> — middleware yok; token'lar <code>localStorage</code> ile yönetiliyor</span>
+        </div>
+        <div class="field-row" style="gap:8px; padding:8px 12px;">
+          <span style="color:var(--amber)">!</span>
+          <span><strong>Token formatı zayıf</strong> — <code>role_staffId</code> formatı, gerçek JWT değil</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Modüller Arası İlişki Haritası</div>
+    <div style="overflow-x:auto; padding-top:8px;">
+      <div style="display:grid; grid-template-columns: auto 40px auto 40px auto 40px auto; align-items:center; gap:0; min-width:700px;">
+        <!-- Row 1 -->
+        <div class="fn-indigo flow-node" style="text-align:center">
+          <div style="font-size:11px; color:var(--muted)">Staff</div>
+          <div>Faaliyet Ekle</div>
+          <div style="font-size:11px; color:var(--muted)">/faaliyet-ekle</div>
+        </div>
+        <div class="flow-arrow" style="text-align:center">→</div>
+        <div class="fn-blue flow-node" style="text-align:center">
+          <div style="font-size:11px; color:var(--muted)">API</div>
+          <div>POST /api/activities</div>
+          <div style="font-size:11px; color:var(--muted)">Batch create</div>
+        </div>
+        <div class="flow-arrow" style="text-align:center">→</div>
+        <div class="fn-slate flow-node" style="text-align:center">
+          <div style="font-size:11px; color:var(--muted)">PostgreSQL</div>
+          <div>Activity Table</div>
+          <div style="font-size:11px; color:var(--muted)">verificationStatus: IMZA_SURECINDE</div>
+        </div>
+        <div class="flow-arrow" style="text-align:center">→</div>
+        <div class="fn-amber flow-node" style="text-align:center">
+          <div style="font-size:11px; color:var(--muted)">IB Dashboard</div>
+          <div>Doğrulama</div>
+          <div style="font-size:11px; color:var(--muted)">PDF İndir · İmza Yükle</div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:center; margin:12px 0; color:var(--muted); font-size:13px;">↓ ONAYLANDI sonrası ↓</div>
+      <div style="display:grid; grid-template-columns: auto 40px auto 40px auto; align-items:center; gap:0; max-width:600px; margin:0 auto; min-width:400px;">
+        <div class="fn-green flow-node" style="text-align:center">
+          <div style="font-size:11px; color:var(--muted)">isVerified: true</div>
+          <div>IB Viewer API</div>
+          <div style="font-size:11px; color:var(--muted)">/api/ib/*</div>
+        </div>
+        <div class="flow-arrow" style="text-align:center">→</div>
+        <div class="fn-cyan flow-node" style="text-align:center">
+          <div style="font-size:11px; color:var(--muted)">Token Auth</div>
+          <div>IB Viewer Portal</div>
+          <div style="font-size:11px; color:var(--muted)">/ib-viewer</div>
+        </div>
+        <div class="flow-arrow" style="text-align:center">→</div>
+        <div class="fn-purple flow-node" style="text-align:center">
+          <div style="font-size:11px; color:var(--muted)">Puppeteer</div>
+          <div>PDF Üretimi</div>
+          <div style="font-size:11px; color:var(--muted)">Sertifika · Müfredat</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PAGE: ARCHITECTURE -->
+<!-- ============================================================ -->
+<div class="page" id="page-architecture">
+  <div class="section-title">Sistem Mimarisi</div>
+  <div class="section-sub">Next.js 15 App Router · Katmanlı yapı</div>
+
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-title">Katman Haritası</div>
+
+    <div class="arch-layer">
+      <div class="arch-label">🌐 UI / Sayfa Katmanı (App Router Pages)</div>
+      <div class="arch-boxes">
+        <div class="arch-box" style="background:rgba(99,102,241,.1); border-color:var(--accent)">
+          <span>/activities</span><small>Ana IB Dashboard (Admin/Rehber)</small>
+        </div>
+        <div class="arch-box" style="background:rgba(99,102,241,.1); border-color:var(--accent)">
+          <span>/faaliyet-ekle</span><small>Faaliyet oluşturma (3 adım)</small>
+        </div>
+        <div class="arch-box" style="background:rgba(99,102,241,.1); border-color:var(--accent)">
+          <span>/faaliyet-duzenle/[id]</span><small>Faaliyet düzenleme</small>
+        </div>
+        <div class="arch-box" style="background:rgba(99,102,241,.1); border-color:var(--accent)">
+          <span>/activities/student/[id]</span><small>Öğrenci detay (Staff)</small>
+        </div>
+        <div class="arch-box" style="background:rgba(168,85,247,.1); border-color:var(--purple)">
+          <span>/ogretmen/ib-yonetimi</span><small>Öğretmen IB Dashboard</small>
+        </div>
+        <div class="arch-box" style="background:rgba(168,85,247,.1); border-color:var(--purple)">
+          <span>/ogretmen/ib-yonetimi/faaliyet-ekle</span><small>Öğretmen → Ekle</small>
+        </div>
+        <div class="arch-box" style="background:rgba(6,182,212,.1); border-color:var(--cyan)">
+          <span>/ib-viewer</span><small>Dış IB Gözlemci (sadece onaylı)</small>
+        </div>
+        <div class="arch-box" style="background:rgba(6,182,212,.1); border-color:var(--cyan)">
+          <span>/rehberlik/activities</span><small>Rehberlik → IB Dashboard</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="arch-layer">
+      <div class="arch-label">🧩 Bileşen Katmanı (Shared Components)</div>
+      <div class="arch-boxes">
+        <div class="arch-box" style="background:rgba(16,185,129,.1); border-color:var(--green)">
+          <span>IBFaaliyetDashboard</span><small>Ortak dashboard → props ile farklı route'lar</small>
+        </div>
+        <div class="arch-box" style="background:rgba(16,185,129,.1); border-color:var(--green)">
+          <span>FaaliyetEklePage</span><small>3 adımlı wizard form</small>
+        </div>
+        <div class="arch-box" style="background:rgba(16,185,129,.1); border-color:var(--green)">
+          <span>CategoryStep</span><small>Adım 1: Kategori seçimi</small>
+        </div>
+        <div class="arch-box" style="background:rgba(16,185,129,.1); border-color:var(--green)">
+          <span>SubtypeStep</span><small>Adım 2: Alt tür + müfredat önizleme</small>
+        </div>
+        <div class="arch-box" style="background:rgba(16,185,129,.1); border-color:var(--green)">
+          <span>ParticipantsStep</span><small>Adım 3: Katılımcı + fotoğraf + puan</small>
+        </div>
+        <div class="arch-box" style="background:rgba(16,185,129,.1); border-color:var(--green)">
+          <span>PreviewPanel</span><small>Canlı önizleme (sağ panel)</small>
+        </div>
+        <div class="arch-box" style="background:rgba(16,185,129,.1); border-color:var(--green)">
+          <span>StudentActivityDetail</span><small>Öğrenci bazlı faaliyet listesi</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="arch-layer">
+      <div class="arch-label">⚡ API Katmanı (Route Handlers)</div>
+      <div class="arch-boxes">
+        <div class="arch-box" style="background:rgba(245,158,11,.1); border-color:var(--amber)">
+          <span>/api/activities</span><small>CRUD + filtreleme + sayfalama</small>
+        </div>
+        <div class="arch-box" style="background:rgba(245,158,11,.1); border-color:var(--amber)">
+          <span>/api/activities/[id]</span><small>Tek kayıt GET/PUT/DELETE</small>
+        </div>
+        <div class="arch-box" style="background:rgba(245,158,11,.1); border-color:var(--amber)">
+          <span>/api/activities/stats</span><small>KPI aggregates</small>
+        </div>
+        <div class="arch-box" style="background:rgba(245,158,11,.1); border-color:var(--amber)">
+          <span>/api/activities/upload</span><small>Vercel Blob yükleme</small>
+        </div>
+        <div class="arch-box" style="background:rgba(245,158,11,.1); border-color:var(--amber)">
+          <span>/api/activities/[id]/pdf</span><small>Tek faaliyet PDF</small>
+        </div>
+        <div class="arch-box" style="background:rgba(245,158,11,.1); border-color:var(--amber)">
+          <span>/api/activities/batch-pdf</span><small>Toplu PDF</small>
+        </div>
+        <div class="arch-box" style="background:rgba(6,182,212,.1); border-color:var(--cyan)">
+          <span>/api/ib/*</span><small>IB Viewer: auth, dashboard, activities, pdf</small>
+        </div>
+        <div class="arch-box" style="background:rgba(6,182,212,.1); border-color:var(--cyan)">
+          <span>/api/ib-viewers</span><small>IB Viewer hesap yönetimi (Staff only)</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="arch-layer">
+      <div class="arch-label">📚 Kütüphane / Konfigürasyon Katmanı</div>
+      <div class="arch-boxes">
+        <div class="arch-box" style="background:rgba(239,68,68,.1); border-color:var(--red)">
+          <span>access-control.ts</span><small>checkIbAccess / checkGeziAccess</small>
+        </div>
+        <div class="arch-box" style="background:rgba(239,68,68,.1); border-color:var(--red)">
+          <span>ib-activity-config.ts</span><small>Kategoriler, alt türler, müfredat metinleri</small>
+        </div>
+        <div class="arch-box" style="background:rgba(239,68,68,.1); border-color:var(--red)">
+          <span>ib-belge-tanimlari.ts</span><small>Belge ID → şablon eşlemesi</small>
+        </div>
+        <div class="arch-box" style="background:rgba(239,68,68,.1); border-color:var(--red)">
+          <span>ib-mufredat-icerikleri.ts</span><small>Tam müfredat metinleri</small>
+        </div>
+        <div class="arch-box" style="background:rgba(239,68,68,.1); border-color:var(--red)">
+          <span>activity-pdf.ts</span><small>HTML → PDF oluşturucu</small>
+        </div>
+        <div class="arch-box" style="background:rgba(239,68,68,.1); border-color:var(--red)">
+          <span>pdf-generator.ts</span><small>IB rapor HTML üretici</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="arch-layer">
+      <div class="arch-label">🗄️ Veri Katmanı</div>
+      <div class="arch-boxes">
+        <div class="arch-box" style="background:rgba(59,130,246,.1); border-color:var(--blue)">
+          <span>PostgreSQL</span><small>Prisma 6 ORM · activities tablosu</small>
+        </div>
+        <div class="arch-box" style="background:rgba(59,130,246,.1); border-color:var(--blue)">
+          <span>Vercel Blob</span><small>Fotoğraflar, imzalı belgeler, PDF'ler</small>
+        </div>
+        <div class="arch-box" style="background:rgba(59,130,246,.1); border-color:var(--blue)">
+          <span>localStorage</span><small>auth_token · auth_role · ib_viewer_token</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Auth Akışı — Önemli Not</div>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:12px;">
+      Gerçek bir JWT middleware yoktur. Token formatı: <code>role_staffId</code> (örn: <code>admin_cm1abc123</code>).
+      API'ler her istekte <strong style="color:var(--amber)">DB'ye sorgu atarak</strong> staff'ın varlığını ve erişim iznini doğrular.
+    </p>
+    <div class="flow" style="gap:0; flex-wrap:wrap">
+      <div class="fn-slate flow-node" style="font-size:12px">localStorage<br/><small>auth_token</small></div>
+      <div class="flow-arrow">→</div>
+      <div class="fn-amber flow-node" style="font-size:12px">Bearer Header<br/><small>Authorization</small></div>
+      <div class="flow-arrow">→</div>
+      <div class="fn-blue flow-node" style="font-size:12px">token.split("_")[1]<br/><small>staffId çıkar</small></div>
+      <div class="flow-arrow">→</div>
+      <div class="fn-purple flow-node" style="font-size:12px">prisma.staff.findUnique<br/><small>Her istekte DB sorgusu</small></div>
+      <div class="flow-arrow">→</div>
+      <div class="fn-green flow-node" style="font-size:12px">department + hasIbAccess<br/><small>Karar ver</small></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PAGE: DATA MODEL -->
+<!-- ============================================================ -->
+<div class="page" id="page-datamodel">
+  <div class="section-title">Veri Modeli</div>
+  <div class="section-sub">Activity modeli — merkezi veri yapısı</div>
+
+  <div class="grid-2" style="margin-bottom:20px">
+    <div class="card">
+      <div class="card-title">Activity Model — Tüm Alanlar</div>
+      <div class="field-list">
+        <div class="field-row"><span class="field-name">id</span><span class="field-type">cuid()</span><span class="field-desc">Benzersiz kimlik</span></div>
+        <div class="field-row"><span class="field-name">studentId</span><span class="field-type">String</span><span class="field-desc">İlişkili öğrenci (cascade delete)</span><span class="field-req">ZOR</span></div>
+        <div class="field-row"><span class="field-name">type</span><span class="field-type">ActivityType</span><span class="field-desc">Prisma enum (14 değer) — yeni sistemde category/subtype öncelikli</span><span class="field-req">ZOR</span></div>
+        <div class="field-row"><span class="field-name">title</span><span class="field-type">String</span><span class="field-desc">Faaliyet başlığı</span><span class="field-req">ZOR</span></div>
+        <div class="field-row"><span class="field-name">description</span><span class="field-type">String?</span><span class="field-desc">Detaylı açıklama</span></div>
+        <div class="field-row"><span class="field-name">activityDate</span><span class="field-type">DateTime</span><span class="field-desc">Faaliyet tarihi</span><span class="field-immut">IMMUTABLE</span></div>
+        <div class="field-row"><span class="field-name">location</span><span class="field-type">String?</span><span class="field-desc">Konum</span></div>
+        <div class="field-row"><span class="field-name">organizer</span><span class="field-type">String?</span><span class="field-desc">Organizatör / Eğitmen adı</span></div>
+        <div class="field-row"><span class="field-name">duration</span><span class="field-type">Int?</span><span class="field-desc">Süre (dakika cinsinden)</span></div>
+        <div class="field-row"><span class="field-name">participants</span><span class="field-type">Int?</span><span class="field-desc">Katılımcı sayısı</span></div>
+        <div class="field-row"><span class="field-name">outcome</span><span class="field-type">String?</span><span class="field-desc">Sonuç / Kazanım</span></div>
+        <div class="field-row"><span class="field-name">evidence</span><span class="field-type">String?</span><span class="field-desc">Kanıt (link veya dosya)</span></div>
+        <div class="field-row"><span class="field-name">category</span><span class="field-type">String?</span><span class="field-desc">egitim | etkinlik | spor | yarisma</span></div>
+        <div class="field-row"><span class="field-name">subtype</span><span class="field-type">String?</span><span class="field-desc">Alt tür (örn: spanish, basketbol, robotics)</span></div>
+        <div class="field-row"><span class="field-name">certificateData</span><span class="field-type">Json?</span><span class="field-desc">PDF üretimi için sertifika verileri</span></div>
+        <div class="field-row"><span class="field-name">participationPhotoUrl</span><span class="field-type">String?</span><span class="field-desc">Katılım kanıt fotoğrafı URL (Vercel Blob)</span><span class="field-req">ZOR</span></div>
+        <div class="field-row"><span class="field-name">verificationStatus</span><span class="field-type">Enum</span><span class="field-desc">IMZA_SURECINDE | ONAY_BEKLIYOR | ONAYLANDI</span></div>
+        <div class="field-row"><span class="field-name">signedDocumentUrls</span><span class="field-type">String[]</span><span class="field-desc">Taranmış imzalı belge URL'leri</span></div>
+        <div class="field-row"><span class="field-name">isVerified</span><span class="field-type">Boolean</span><span class="field-desc">ONAYLANDI ise true (geriye dönük uyumluluk)</span></div>
+        <div class="field-row"><span class="field-name">verifiedBy</span><span class="field-type">String?</span><span class="field-desc">Onaylayan kişi adı</span></div>
+        <div class="field-row"><span class="field-name">verifiedAt</span><span class="field-type">DateTime?</span><span class="field-desc">Onay tarihi</span></div>
+        <div class="field-row"><span class="field-name">notes</span><span class="field-type">String?</span><span class="field-desc">Serbest notlar</span></div>
+        <div class="field-row"><span class="field-name">createdBy</span><span class="field-type">String?</span><span class="field-desc">Oluşturan kullanıcı (Staff ID)</span></div>
+        <div class="field-row"><span class="field-name">createdAt / updatedAt</span><span class="field-type">DateTime</span><span class="field-desc">Audit timestamps</span></div>
+      </div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:16px">
+      <div class="card">
+        <div class="card-title">certificateData JSON Yapısı</div>
+        <p style="font-size:13px; color:var(--muted); margin-bottom:10px">PDF belgesi üretilirken kullanılan öğrenci-bazlı veri. Batch kayıtta her öğrenci için ayrı.</p>
+        <div class="field-list">
+          <div class="field-row"><span class="field-name">category</span><span class="field-desc">egitim | etkinlik | spor | yarisma</span></div>
+          <div class="field-row"><span class="field-name">subtype</span><span class="field-desc">Alt tür id'si</span></div>
+          <div class="field-row"><span class="field-name">teacherName</span><span class="field-desc">Belgeye imza atacak öğretmen</span></div>
+          <div class="field-row"><span class="field-name">educationDescription</span><span class="field-desc">Eğitim açıklaması (PDF'te kullanılır)</span></div>
+          <div class="field-row"><span class="field-name">educationStartEndDateStart</span><span class="field-desc">Başlangıç tarihi</span></div>
+          <div class="field-row"><span class="field-name">educationStartEndDateEnd</span><span class="field-desc">Bitiş tarihi</span></div>
+          <div class="field-row"><span class="field-name">successScore</span><span class="field-desc">Başarı puanı (1–100) · Eğitim/Yarışma zorunlu</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">ActivityType Enum (14 Değer)</div>
+        <p style="font-size:12px; color:var(--amber); margin-bottom:10px">⚠️ Bu enum artık LEGACY — yeni sistem category+subtype kullanıyor. Migration scripti mevcut.</p>
+        <div style="display:flex; flex-wrap:wrap; gap:6px">
+          <span class="badge badge-slate">ETKINLIK</span>
+          <span class="badge badge-slate">GEZI</span>
+          <span class="badge badge-slate">PROJE</span>
+          <span class="badge badge-slate">SINAV</span>
+          <span class="badge badge-slate">YARISMA</span>
+          <span class="badge badge-slate">SEMINER</span>
+          <span class="badge badge-slate">WORKSHOP</span>
+          <span class="badge badge-slate">SPORT</span>
+          <span class="badge badge-slate">SANAT</span>
+          <span class="badge badge-slate">SOSYAL</span>
+          <span class="badge badge-slate">DIL</span>
+          <span class="badge badge-slate">BILIM</span>
+          <span class="badge badge-slate">DEGER</span>
+          <span class="badge badge-slate">DIGER</span>
+        </div>
+        <div style="margin-top:12px">
+          <p style="font-size:12px; color:var(--muted)">Yeni sistemde mapping:</p>
+          <div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap; font-size:12px">
+            <span><code>egitim</code> → <code>SEMINER</code></span>
+            <span><code>etkinlik</code> → <code>ETKINLIK</code></span>
+            <span><code>spor</code> → <code>SPORT</code></span>
+            <span><code>yarisma</code> → <code>YARISMA</code></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">IBViewer Model</div>
+        <div class="field-list">
+          <div class="field-row"><span class="field-name">username</span><span class="field-desc">Benzersiz kullanıcı adı (giriş için)</span><span class="field-req">ZOR</span></div>
+          <div class="field-row"><span class="field-name">password</span><span class="field-desc">bcrypt hash</span><span class="field-req">ZOR</span></div>
+          <div class="field-row"><span class="field-name">fullName</span><span class="field-desc">IB personelinin adı soyadı</span></div>
+          <div class="field-row"><span class="field-name">email</span><span class="field-desc">İletişim e-posta (opsiyonel)</span></div>
+          <div class="field-row"><span class="field-name">organization</span><span class="field-desc">Hangi IB kurumundan (opsiyonel)</span></div>
+          <div class="field-row"><span class="field-name">isActive</span><span class="field-desc">Hesap aktif mi? (deaktif edilebilir)</span></div>
+          <div class="field-row"><span class="field-name">lastLoginAt</span><span class="field-desc">Son giriş tarihi (audit)</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PAGE: USER FLOWS -->
+<!-- ============================================================ -->
+<div class="page" id="page-userflows">
+  <div class="section-title">Kullanıcı Akışları</div>
+  <div class="section-sub">3 farklı kullanıcı tipi · Her biri farklı rotada</div>
+
+  <!-- FLOW 1 -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-title">
+      <span class="badge badge-indigo" style="margin-right:8px">PERSONEL / REHBERLİK / ÖĞRENCI İŞLERİ</span>
+      Ana Akış — Faaliyet Ekleme ve Yönetimi
+    </div>
+    <div style="display:flex; flex-direction:column; gap:12px; margin-top:8px;">
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap">
+        <div class="fn-slate flow-node" style="font-size:12px; min-width:120px; text-align:center">Giriş Yap<br/><small>/login</small></div>
+        <div class="flow-arrow">→</div>
+        <div class="fn-blue flow-node" style="font-size:12px; min-width:160px; text-align:center">IB Faaliyet Yönetimi<br/><small>/activities</small></div>
+        <div class="flow-arrow">→</div>
+        <div class="fn-amber flow-node" style="font-size:12px; min-width:140px; text-align:center">KPI Dashboard<br/><small>Stat kartları · Öğrenci listesi</small></div>
+      </div>
+
+      <div style="padding-left:40px; border-left:2px dashed var(--border)">
+        <p style="font-size:12px; color:var(--muted); margin-bottom:8px">Buradan üç yönde gidilebilir:</p>
+        <div style="display:flex; flex-direction:column; gap:8px">
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap">
+            <span style="font-size:12px; color:var(--green); font-weight:700">A)</span>
+            <div class="fn-green flow-node" style="font-size:12px">Faaliyet Ekle<br/><small>/faaliyet-ekle</small></div>
+            <div class="flow-arrow">→</div>
+            <div class="fn-green flow-node" style="font-size:12px">Kategori Seç<br/><small>Adım 1</small></div>
+            <div class="flow-arrow">→</div>
+            <div class="fn-green flow-node" style="font-size:12px">Alt Tür<br/><small>Adım 2</small></div>
+            <div class="flow-arrow">→</div>
+            <div class="fn-green flow-node" style="font-size:12px">Katılımcılar<br/><small>Adım 3 + Fotoğraf</small></div>
+            <div class="flow-arrow">→</div>
+            <div class="fn-green flow-node" style="font-size:12px">Kaydet (Batch)<br/><small>N öğrenci = N kayıt</small></div>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap">
+            <span style="font-size:12px; color:var(--amber); font-weight:700">B)</span>
+            <div class="fn-amber flow-node" style="font-size:12px">Listedeki Faaliyet<br/><small>Tablo satırı</small></div>
+            <div class="flow-arrow">→</div>
+            <div class="fn-amber flow-node" style="font-size:12px">PDF İndir<br/><small>Puppeteer</small></div>
+            <div class="flow-arrow">→</div>
+            <div class="fn-amber flow-node" style="font-size:12px">İmzalı Belge Yükle<br/><small>Upload modal</small></div>
+            <div class="flow-arrow">→</div>
+            <div class="fn-amber flow-node" style="font-size:12px">Onayla<br/><small>yetkili onayı</small></div>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap">
+            <span style="font-size:12px; color:var(--cyan); font-weight:700">C)</span>
+            <div class="fn-cyan flow-node" style="font-size:12px">Öğrenci Adı Tıkla<br/><small>Linkli isim</small></div>
+            <div class="flow-arrow">→</div>
+            <div class="fn-cyan flow-node" style="font-size:12px">Öğrenci Detayı<br/><small>/activities/student/[id]</small></div>
+            <div class="flow-arrow">→</div>
+            <div class="fn-cyan flow-node" style="font-size:12px">Tüm Faaliyetleri Gör<br/><small>Öğrenci bazlı filtre</small></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOW 2 -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-title">
+      <span class="badge badge-purple" style="margin-right:8px">ÖĞRETMEN (hasIbAccess:true)</span>
+      IB Koordinatörü Öğretmen Akışı
+    </div>
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:8px">
+      <div class="fn-purple flow-node" style="font-size:12px; text-align:center">Öğretmen Giriş<br/><small>/ogretmen/login</small></div>
+      <div class="flow-arrow">→</div>
+      <div class="fn-purple flow-node" style="font-size:12px; text-align:center">IB Yönetimi<br/><small>/ogretmen/ib-yonetimi</small></div>
+      <div class="flow-arrow">→</div>
+      <div class="fn-purple flow-node" style="font-size:12px; text-align:center">Aynı IBFaaliyetDashboard<br/><small>(farklı props)</small></div>
+      <div class="flow-arrow">→</div>
+      <div class="fn-purple flow-node" style="font-size:12px; text-align:center">Faaliyet Ekle / Düzenle<br/><small>Farklı route prefix</small></div>
+    </div>
+    <div style="margin-top:12px; padding:12px; background:rgba(168,85,247,.07); border-radius:8px; border:1px solid rgba(168,85,247,.2)">
+      <p style="font-size:13px; color:var(--muted)">
+        <strong style="color:var(--purple)">Önemli:</strong> Öğretmen, admin paneline giremez. Aynı <code>IBFaaliyetDashboard</code> bileşeni
+        <code>faaliyetEkleHref="/ogretmen/ib-yonetimi/faaliyet-ekle"</code> ve
+        <code>showViewerButton=false</code> props'larıyla kullanılır.
+        IB Viewer yönetimi (hesap oluşturma) öğretmene kapalıdır.
+      </p>
+    </div>
+  </div>
+
+  <!-- FLOW 3 -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-title">
+      <span class="badge badge-cyan" style="margin-right:8px">IB VIEWER (Harici)</span>
+      Dış IB Gözlemci Akışı — Sadece Onaylı Veriler
+    </div>
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:8px">
+      <div class="fn-cyan flow-node" style="font-size:12px; text-align:center">Giriş<br/><small>/ib-viewer/login</small></div>
+      <div class="flow-arrow">→</div>
+      <div class="fn-cyan flow-node" style="font-size:12px; text-align:center">POST /api/ib/auth<br/><small>bcrypt + token</small></div>
+      <div class="flow-arrow">→</div>
+      <div class="fn-cyan flow-node" style="font-size:12px; text-align:center">localStorage<br/><small>ib_viewer_token</small></div>
+      <div class="flow-arrow">→</div>
+      <div class="fn-cyan flow-node" style="font-size:12px; text-align:center">IB Paneli<br/><small>/ib-viewer</small></div>
+      <div class="flow-arrow">→</div>
+      <div class="fn-cyan flow-node" style="font-size:12px; text-align:center">Sadece isVerified:true<br/><small>Aggregate istatistik</small></div>
+      <div class="flow-arrow">→</div>
+      <div class="fn-cyan flow-node" style="font-size:12px; text-align:center">PDF Link<br/><small>?token=... ile</small></div>
+    </div>
+    <div style="margin-top:12px; padding:12px; background:rgba(6,182,212,.07); border-radius:8px; border:1px solid rgba(6,182,212,.2)">
+      <p style="font-size:13px; color:var(--muted)">
+        <strong style="color:var(--cyan)">Kritik:</strong> IB Viewer, hiçbir zaman onaylanmamış faaliyet göremez. 
+        Tüm <code>/api/ib/*</code> route'ları <code>isVerified: true</code> filtresiyle çalışır.
+        PDF linkleri <code>?token=ib_viewer_token_değeri</code> ile korunur.
+      </p>
+    </div>
+  </div>
+
+  <!-- FORM WIZARD -->
+  <div class="card">
+    <div class="card-title">Faaliyet Ekleme Formu — 3 Adımlı Wizard Detayı</div>
+    <div class="steps" style="margin-bottom:20px">
+      <div class="step-item">
+        <div class="step-circle sc-1">1</div>
+        <div class="step-label" style="color:#94a3b8">Faaliyet Türü</div>
+      </div>
+      <div class="step-line"></div>
+      <div class="step-item">
+        <div class="step-circle sc-2">2</div>
+        <div class="step-label" style="color:var(--amber)">Alt Tür</div>
+      </div>
+      <div class="step-line"></div>
+      <div class="step-item">
+        <div class="step-circle sc-3">3</div>
+        <div class="step-label" style="color:var(--green)">Katılımcılar</div>
+      </div>
+    </div>
+    <div class="grid-3">
+      <div class="card" style="border-color:rgba(100,116,139,.3)">
+        <div class="card-title">Adım 1 — Kategori</div>
+        <p style="font-size:13px; color:var(--muted); margin-bottom:10px">4 kart gösterilir:</p>
+        <div style="display:flex; flex-wrap:wrap; gap:6px">
+          <span class="badge badge-purple">Eğitim</span>
+          <span class="badge badge-blue">Etkinlik</span>
+          <span class="badge badge-amber">Spor</span>
+          <span class="badge badge-green">Yarışma</span>
+        </div>
+        <p style="font-size:12px; color:var(--muted); margin-top:8px">Seçim form state'ini sıfırlar, step 2'ye geçer.</p>
+      </div>
+      <div class="card" style="border-color:rgba(245,158,11,.3)">
+        <div class="card-title">Adım 2 — Alt Tür + Müfredat</div>
+        <p style="font-size:13px; color:var(--muted); margin-bottom:8px">
+          <strong>Eğitim/Spor:</strong> preset liste (Spanish, English A1–B2, Robotics, AI, Painting, Music, Basketbol…)<br/>
+          <strong>Etkinlik/Yarışma:</strong> serbest metin (manual mode)
+        </p>
+        <p style="font-size:12px; color:var(--amber)">Eğitim seçilirse müfredat özeti readonly alanda gösterilir.</p>
+      </div>
+      <div class="card" style="border-color:rgba(16,185,129,.3)">
+        <div class="card-title">Adım 3 — Katılımcılar</div>
+        <p style="font-size:13px; color:var(--muted); margin-bottom:8px">
+          • Başlık, açıklama, tarih aralığı, konum, süre, kanıt (ortak)<br/>
+          • Öğretmen seçimi (Eğitim/Yarışma için zorunlu)<br/>
+          • Her öğrenci için: katılım fotoğrafı yükleme<br/>
+          • Eğitim/Yarışma için: başarı puanı (1–100)
+        </p>
+        <p style="font-size:12px; color:var(--green)">Sağ panelde canlı PreviewPanel önizlemesi.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PAGE: VERIFICATION -->
+<!-- ============================================================ -->
+<div class="page" id="page-verification">
+  <div class="section-title">Doğrulama Protokolü</div>
+  <div class="section-sub">3 Aşamalı Süreç — Katı geçiş kuralları</div>
+
+  <!-- MAIN FLOW -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-title">Durum Geçiş Diyagramı</div>
+    <div style="display:flex; align-items:stretch; gap:0; margin-top:8px; flex-wrap:wrap">
+
+      <div style="flex:1; min-width:200px; border:2px solid #475569; border-radius:12px; padding:16px; background:rgba(100,116,139,.08)">
+        <div class="badge badge-slate" style="margin-bottom:10px">IMZA_SURECINDE (başlangıç)</div>
+        <p style="font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:10px">
+          Her yeni faaliyet bu durumda oluşturulur. PDF belgesi indirilip yazdırılır. Öğrenci/veli ve okul yetkilisi imzalar.
+        </p>
+        <div style="font-size:12px; color:var(--muted)">
+          <div><strong style="color:var(--text)">isVerified:</strong> false</div>
+          <div><strong style="color:var(--text)">UI aksiyonu:</strong> PDF İndir + İmzalı Belge Yükle butonu</div>
+          <div><strong style="color:var(--text)">signedDocumentUrls:</strong> [] (boş)</div>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:0 16px">
+        <div style="font-size:12px; color:var(--amber); font-weight:600; margin-bottom:4px">İmzalı belge yüklendi</div>
+        <div style="font-size:24px">→</div>
+        <div style="font-size:11px; color:var(--muted); margin-top:4px">signedDocumentUrls zorunlu</div>
+      </div>
+
+      <div style="flex:1; min-width:200px; border:2px solid var(--amber); border-radius:12px; padding:16px; background:rgba(245,158,11,.07)">
+        <div class="badge badge-amber" style="margin-bottom:10px">ONAY_BEKLIYOR</div>
+        <p style="font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:10px">
+          İmzalı taranmış belgeler yüklendi. Yetkili incelemesi bekleniyor. Geri alınabilir (IMZA_SURECINDE'ye dön).
+        </p>
+        <div style="font-size:12px; color:var(--muted)">
+          <div><strong style="color:var(--text)">isVerified:</strong> false</div>
+          <div><strong style="color:var(--text)">UI aksiyonu:</strong> ✓ Onayla + 📄 Belgeye Bak</div>
+          <div><strong style="color:var(--text)">signedDocumentUrls:</strong> [url1, url2...]</div>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:0 16px">
+        <div style="font-size:12px; color:var(--green); font-weight:600; margin-bottom:4px">Yetkili onayladı</div>
+        <div style="font-size:24px">→</div>
+        <div style="font-size:11px; color:var(--muted); margin-top:4px">verifiedAt otomatik set</div>
+      </div>
+
+      <div style="flex:1; min-width:200px; border:2px solid var(--green); border-radius:12px; padding:16px; background:rgba(16,185,129,.07)">
+        <div class="badge badge-green" style="margin-bottom:10px">ONAYLANDI</div>
+        <p style="font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:10px">
+          IB programı için hazır. Harici IB Viewer bu kaydı görebilir. Onay kaldırılabilir (ONAY_BEKLIYOR'a döner).
+        </p>
+        <div style="font-size:12px; color:var(--muted)">
+          <div><strong style="color:var(--text)">isVerified:</strong> true</div>
+          <div><strong style="color:var(--text)">UI aksiyonu:</strong> ✗ Onayı Kaldır</div>
+          <div><strong style="color:var(--text)">IB Viewer:</strong> görünür</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRANSITION RULES -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Geçiş Kuralları — VALID_STATUS_TRANSITIONS</div>
+      <table>
+        <thead>
+          <tr><th>Mevcut Durum</th><th>İzin Verilen Geçişler</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="badge badge-slate">IMZA_SURECINDE</span></td>
+            <td><span class="badge badge-amber">ONAY_BEKLIYOR</span> <span style="font-size:11px; color:var(--muted)">(+ signedDocumentUrls zorunlu)</span></td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-amber">ONAY_BEKLIYOR</span></td>
+            <td>
+              <span class="badge badge-green">ONAYLANDI</span>
+              <span class="badge badge-slate" style="margin-left:4px">IMZA_SURECINDE</span>
+              <div style="font-size:11px; color:var(--muted); margin-top:4px">Geri al mümkün (signedDocs sıfırlanır)</div>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-green">ONAYLANDI</span></td>
+            <td><span class="badge badge-amber">ONAY_BEKLIYOR</span> <span style="font-size:11px; color:var(--muted)">(onay kaldır)</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Durum Yönetimindeki Çift Kayıt</div>
+      <p style="font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:12px">
+        Sistemde iki paralel alan var: <code>verificationStatus</code> (yeni) ve <code>isVerified</code> (eski). 
+        Bu "geriye dönük uyumluluk" için var ama belirsizlik yaratıyor.
+      </p>
+      <div style="display:flex; flex-direction:column; gap:6px; font-size:13px">
+        <div class="field-row">
+          <span style="color:var(--green)">ONAYLANDI</span>
+          <span style="margin-left:8px; color:var(--muted)">→ isVerified = <strong style="color:var(--green)">true</strong>, verifiedAt = şimdi</span>
+        </div>
+        <div class="field-row">
+          <span style="color:var(--amber)">ONAY_BEKLIYOR</span>
+          <span style="margin-left:8px; color:var(--muted)">→ isVerified = <strong style="color:var(--red)">false</strong></span>
+        </div>
+        <div class="field-row">
+          <span style="color:#94a3b8">IMZA_SURECINDE</span>
+          <span style="margin-left:8px; color:var(--muted)">→ isVerified = <strong style="color:var(--red)">false</strong>, verifiedBy/At = null</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PAGE: ACCESS -->
+<!-- ============================================================ -->
+<div class="page" id="page-access">
+  <div class="section-title">Erişim Kontrolü</div>
+  <div class="section-sub">Kim ne yapabilir — Role Matrix</div>
+
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-title">Rol Bazlı Erişim Matrisi</div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>İşlem</th>
+            <th>Super Admin / Müdür</th>
+            <th>Rehberlik / Öğ. İşleri</th>
+            <th>Öğretmen (hasIbAccess)</th>
+            <th>Öğretmen (no IB)</th>
+            <th>IB Viewer</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Faaliyet Listesi Görüntüle</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="cross">—</td><td class="cross">—</td></tr>
+          <tr><td>Faaliyet Ekle</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="cross">—</td><td class="cross">—</td></tr>
+          <tr><td>Faaliyet Düzenle</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="cross">—</td><td class="cross">—</td></tr>
+          <tr><td>Faaliyet Sil</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="cross">—</td><td class="cross">—</td></tr>
+          <tr><td>PDF İndir (panel)</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="cross">—</td><td class="cross">—</td></tr>
+          <tr><td>İmzalı Belge Yükle</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="cross">—</td><td class="cross">—</td></tr>
+          <tr><td>Faaliyet Onayla</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="cross">—</td><td class="cross">—</td></tr>
+          <tr><td>IB Viewer Hesabı Yönet</td><td class="check">✓</td><td class="check">✓</td><td class="cross">—</td><td class="cross">—</td><td class="cross">—</td></tr>
+          <tr><td>ONAYLANDI faaliyetleri gör</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="cross">—</td><td class="check">✓ (sadece)</td></tr>
+          <tr><td>Öğrenci Bazlı PDF</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="cross">—</td><td class="check">✓ (token ile)</td></tr>
+          <tr><td>Sertifika PDF</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="cross">—</td><td class="check">✓ (token ile)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">checkIbAccess Mantığı</div>
+      <p style="font-size:13px; color:var(--muted); margin-bottom:12px">Her API isteğinde çalışır. Token'dan staffId çıkarılır → DB sorgusu → karar.</p>
+      <div class="flow" style="flex-direction:column; gap:8px; align-items:stretch">
+        <div class="field-row">
+          <span style="color:var(--green)">✓</span>
+          <span><code>SUPER_ADMIN</code> / <code>MUDUR</code> / <code>MUDUR_YARDIMCISI</code></span>
+          <span class="badge badge-green" style="margin-left:auto">hasAccess: true</span>
+        </div>
+        <div class="field-row">
+          <span style="color:var(--green)">✓</span>
+          <span><code>OGRENCI_ISLERI</code> / <code>REHBERLIK</code> / <code>BAS_REHBERLIK</code></span>
+          <span class="badge badge-green" style="margin-left:auto">hasAccess: true</span>
+        </div>
+        <div class="field-row">
+          <span style="color:var(--amber)">!</span>
+          <span><code>OGRETMEN</code> + <code>hasIbAccess: true</code></span>
+          <span class="badge badge-green" style="margin-left:auto">hasAccess: true</span>
+        </div>
+        <div class="field-row">
+          <span style="color:var(--red)">✗</span>
+          <span><code>OGRETMEN</code> + <code>hasIbAccess: false</code></span>
+          <span class="badge badge-red" style="margin-left:auto">hasAccess: false</span>
+        </div>
+        <div class="field-row">
+          <span style="color:var(--red)">✗</span>
+          <span>Diğer departmanlar (Muhasebe, Teknik, vb.)</span>
+          <span class="badge badge-red" style="margin-left:auto">hasAccess: false</span>
+        </div>
+        <div class="field-row">
+          <span style="color:var(--red)">✗</span>
+          <span>Token yok / geçersiz / pasif hesap</span>
+          <span class="badge badge-red" style="margin-left:auto">403 Forbidden</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">IB Viewer Ayrı Auth Sistemi</div>
+      <p style="font-size:13px; color:var(--muted); margin-bottom:12px">Staff auth'undan tamamen bağımsız. Kendi IBViewer tablosu.</p>
+      <div class="flow" style="flex-direction:column; gap:8px; align-items:stretch">
+        <div class="field-row">
+          <span style="font-weight:700; color:var(--cyan); min-width:80px">Giriş</span>
+          <span><code>POST /api/ib/auth</code> → username/password → bcrypt.compare</span>
+        </div>
+        <div class="field-row">
+          <span style="font-weight:700; color:var(--cyan); min-width:80px">Token</span>
+          <span><code>ib_viewer_token</code> localStorage'a kaydedilir (gerçek token değeri)</span>
+        </div>
+        <div class="field-row">
+          <span style="font-weight:700; color:var(--cyan); min-width:80px">API</span>
+          <span><code>/api/ib/*</code> route'ları → Authorization header veya query <code>?token=</code></span>
+        </div>
+        <div class="field-row">
+          <span style="font-weight:700; color:var(--cyan); min-width:80px">Filtre</span>
+          <span>Tüm sorgulara otomatik <code>isVerified: true</code> eklenir</span>
+        </div>
+        <div class="field-row">
+          <span style="font-weight:700; color:var(--red); min-width:80px">⚠️ Risk</span>
+          <span>Token değeri URL'de görünebilir: <code>?token=xxx</code> → log kayıtlarına düşer</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PAGE: APIs -->
+<!-- ============================================================ -->
+<div class="page" id="page-apis">
+  <div class="section-title">API Haritası</div>
+  <div class="section-sub">Tüm aktivite ve IB route'ları</div>
+
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-title">Staff API — /api/activities/*</div>
+    <div class="route-row">
+      <span class="route-method rm-get">GET</span>
+      <span class="route-path">/api/activities</span>
+      <span class="route-desc">Faaliyet listesi. Filtre: studentId, type, category, search, startDate, endDate, verificationStatus. Sayfalama: page, limit</span>
+    </div>
+    <div class="route-row">
+      <span class="route-method rm-post">POST</span>
+      <span class="route-path">/api/activities</span>
+      <span class="route-desc">Yeni faaliyet oluştur. studentIds[] ile batch create. certificateContents[] ve participantPhotoUrls[] eşit uzunlukta olmalı</span>
+    </div>
+    <div class="route-row">
+      <span class="route-method rm-get">GET</span>
+      <span class="route-path">/api/activities/[id]</span>
+      <span class="route-desc">Tek faaliyet detayı</span>
+    </div>
+    <div class="route-row">
+      <span class="route-method rm-put">PUT</span>
+      <span class="route-path">/api/activities/[id]</span>
+      <span class="route-desc">Faaliyet güncelle. activityDate ASLA güncellenmez. verificationStatus geçişleri VALID_STATUS_TRANSITIONS ile sınırlı</span>
+    </div>
+    <div class="route-row">
+      <span class="route-method rm-delete">DELETE</span>
+      <span class="route-path">/api/activities/[id]</span>
+      <span class="route-desc">Faaliyet sil (cascade: öğrenciden de kalkar)</span>
+    </div>
+    <div class="route-row">
+      <span class="route-method rm-get">GET</span>
+      <span class="route-path">/api/activities/stats</span>
+      <span class="route-desc">Dashboard KPI: total, thisYear, verified, byCategory, topStudents (count'a göre sıralı)</span>
+    </div>
+    <div class="route-row">
+      <span class="route-method rm-post">POST</span>
+      <span class="route-path">/api/activities/upload</span>
+      <span class="route-desc">Dosya yükleme. type=participation | signed_document | evidence. Vercel Blob'a gider, URL döner</span>
+    </div>
+    <div class="route-row">
+      <span class="route-method rm-get">GET</span>
+      <span class="route-path">/api/activities/[id]/pdf</span>
+      <span class="route-desc">Tek faaliyet PDF'i. Puppeteer ile HTML → PDF. Content-Disposition: attachment ile döner</span>
+    </div>
+    <div class="route-row">
+      <span class="route-method rm-post">POST</span>
+      <span class="route-path">/api/activities/batch-pdf</span>
+      <span class="route-desc">Toplu PDF. { activityIds: string[] } → birleşik PDF blob</span>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-title">IB Viewer API — /api/ib/*</div>
+    <div class="route-row">
+      <span class="route-method rm-post">POST</span>
+      <span class="route-path">/api/ib/auth</span>
+      <span class="route-desc">IB Viewer girişi. { username, password } → bcrypt → { token, name }</span>
+    </div>
+    <div class="route-row">
+      <span class="route-method rm-get">GET</span>
+      <span class="route-path">/api/ib/dashboard</span>
+      <span class="route-desc">Sadece onaylı faaliyetlerin aggregate istatistiği. Token ile korunur</span>
+    </div>
+    <div class="route-row">
+      <span class="route-method rm-get">GET</span>
+      <span class="route-path">/api/ib/activities</span>
+      <span class="route-desc">Onaylı faaliyet listesi. isVerified: true filtresi zorunlu</span>
+    </div>
+    <div class="route-row">
+      <span class="route-method rm-get">GET</span>
+      <span class="route-path">/api/ib/student/[id]/dashboard</span>
+      <span class="route-desc">Öğrenci bazlı onaylı faaliyet istatistiği</span>
+    </div>
+    <div class="route-row">
+      <span class="route-method rm-get">GET</span>
+      <span class="route-path">/api/ib/pdf/activity/[id]</span>
+      <span class="route-desc">Tek onaylı faaliyet PDF'i. ?token=... zorunlu</span>
+    </div>
+    <div class="route-row">
+      <span class="route-method rm-get">GET</span>
+      <span class="route-path">/api/ib/pdf/student/[id]</span>
+      <span class="route-desc">Öğrencinin tüm onaylı faaliyetlerinin PDF paketi. ?token=... zorunlu</span>
+    </div>
+    <div class="route-row">
+      <span class="route-method rm-get">GET</span>
+      <span class="route-path">/api/ib/pdf/certificate/[activityId]</span>
+      <span class="route-desc">Sertifika PDF'i. ?token=... veya Bearer ile erişilir</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">IB Viewer Yönetimi — /api/ib-viewers/*</div>
+    <div class="route-row">
+      <span class="route-method rm-get">GET</span>
+      <span class="route-path">/api/ib-viewers</span>
+      <span class="route-desc">IB Viewer hesaplarını listele (sadece Staff erişimi)</span>
+    </div>
+    <div class="route-row">
+      <span class="route-method rm-post">POST</span>
+      <span class="route-path">/api/ib-viewers</span>
+      <span class="route-desc">Yeni IB Viewer hesabı oluştur. Şifre bcrypt ile hash'lenir</span>
+    </div>
+    <div class="route-row">
+      <span class="route-method rm-put">PUT</span>
+      <span class="route-path">/api/ib-viewers/[id]</span>
+      <span class="route-desc">IB Viewer güncelle (isActive, şifre, vb.)</span>
+    </div>
+    <div class="route-row">
+      <span class="route-method rm-delete">DELETE</span>
+      <span class="route-path">/api/ib-viewers/[id]</span>
+      <span class="route-desc">IB Viewer hesabını sil</span>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PAGE: PROBLEMS -->
+<!-- ============================================================ -->
+<div class="page" id="page-problems">
+  <div class="section-title">Sorunlar, Riskler & Geliştirme Fırsatları</div>
+  <div class="section-sub">Kullanıcı gözüyle mantık ve teknik değerlendirme</div>
+
+  <div style="margin-bottom:24px">
+    <h3 style="font-size:15px; font-weight:700; color:var(--red); margin-bottom:12px">🔴 Kritik Sorunlar</h3>
+
+    <div class="problem-card pc-red">
+      <div class="problem-tag" style="color:var(--red)">Güvenlik</div>
+      <div class="problem-title">Token Formatı Güvensiz</div>
+      <div class="problem-body">
+        Token formatı <code>role_staffId</code> (örn: <code>admin_cm1abc123</code>) gerçek bir JWT değil.
+        Herhangi biri geçerli bir staffId bilirse doğrudan yetki taklidi yapabilir.
+        Her API isteğinde DB sorgusu gitmesi kısmen hafifletiyor ama temel zafiyeti ortadan kaldırmıyor.
+        <strong style="color:var(--text)"> → Çözüm:</strong> JWT + refresh token sistemi veya en azından HMAC imzalı token.
+      </div>
+    </div>
+
+    <div class="problem-card pc-red">
+      <div class="problem-tag" style="color:var(--red)">Güvenlik</div>
+      <div class="problem-title">IB Viewer Token URL'de Açık</div>
+      <div class="problem-body">
+        PDF linkleri <code>/api/ib/pdf/...?token=GERÇEK_TOKEN_DEĞERİ</code> formatında.
+        Bu token browser geçmişine, sunucu loglarına ve paylaşılan linklere düşer.
+        <strong style="color:var(--text)"> → Çözüm:</strong> Token'ı URL'den kaldırıp Authorization header'a taşı veya kısa ömürlü, tek kullanımlık PDF token'ları üret.
+      </div>
+    </div>
+
+    <div class="problem-card pc-red">
+      <div class="problem-tag" style="color:var(--red)">Middleware Eksikliği</div>
+      <div class="problem-title">Sunucu Taraflı Route Koruması Yok</div>
+      <div class="problem-body">
+        <code>middleware.ts</code> dosyası yoktur. Route koruması sadece client-side localStorage kontrolüne dayanır.
+        JavaScript devre dışıyken veya direkt URL ile erişildiğinde sayfa render olabilir (API'ler 403 dönse de).
+        <strong style="color:var(--text)"> → Çözüm:</strong> Next.js middleware ile cookie-based session veya SSR'de yetki kontrolü.
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-bottom:24px">
+    <h3 style="font-size:15px; font-weight:700; color:var(--amber); margin-bottom:12px">🟡 Teknik Borç / İyileştirme Gerektiren Alanlar</h3>
+
+    <div class="problem-card pc-amber">
+      <div class="problem-tag" style="color:var(--amber)">Veri Tutarsızlığı</div>
+      <div class="problem-title">Çift Doğrulama Alanı: isVerified + verificationStatus</div>
+      <div class="problem-body">
+        Hem eski <code>isVerified: Boolean</code> hem yeni <code>verificationStatus: Enum</code> var.
+        API'de senkron tutulmaya çalışılıyor ama bu karmaşıklık yaratıyor.
+        IB Viewer filtresi <code>isVerified: true</code> kullanıyor; gelecekte tutarsızlık riski var.
+        <strong style="color:var(--text)"> → Çözüm:</strong> isVerified'ı kaldır, sadece verificationStatus kullan. IB Viewer sorgusunu <code>verificationStatus: "ONAYLANDI"</code> olarak güncelle.
+      </div>
+    </div>
+
+    <div class="problem-card pc-amber">
+      <div class="problem-tag" style="color:var(--amber)">Legacy Enum</div>
+      <div class="problem-title">ActivityType Enum 14 Değerle Şişmiş — category/subtype ile Çakışıyor</div>
+      <div class="problem-body">
+        Yeni sistem <code>category</code> + <code>subtype</code> kullanıyor ama eski <code>ActivityType</code> enum hâlâ var ve zorunlu.
+        Config'de <code>CATEGORY_TO_ACTIVITY_TYPE</code> ve <code>LEGACY_TYPE_TO_CATEGORY</code> mapping'leri belirsizlik yaratıyor.
+        Migration scripti var ama eski kayıtlar hâlâ karışık.
+        <strong style="color:var(--text)"> → Çözüm:</strong> ActivityType'ı nullable yap veya 4 değerle sınırla; category/subtype'ı birincil yap.
+      </div>
+    </div>
+
+    <div class="problem-card pc-amber">
+      <div class="problem-tag" style="color:var(--amber)">Performans</div>
+      <div class="problem-title">Her İstekte DB Sorgusu ile Auth Doğrulama</div>
+      <div class="problem-body">
+        Her API isteğinde <code>prisma.staff.findUnique()</code> çağrısı yapılıyor.
+        Yoğun kullanımda N+1 sorununa benzer bir yük oluşturur.
+        <strong style="color:var(--text)"> → Çözüm:</strong> Redis veya in-memory cache ile 5 dakikalık staff bilgisi cache'i. Veya gerçek JWT (DB sorgusu olmadan verify edilir).
+      </div>
+    </div>
+
+    <div class="problem-card pc-amber">
+      <div class="problem-tag" style="color:var(--amber)">UX</div>
+      <div class="problem-title">Onay Yetkisi Ayrımı Yok — Herkes Onaylayabiliyor</div>
+      <div class="problem-body">
+        IB erişimi olan herkes (rehberlik dahil) başkasının faaliyetini onaylayabiliyor.
+        "Kim onayladı" bilgisi <code>verifiedBy</code> alanında saklansa da enforce edilmiyor.
+        Gerçek dünyada okul müdürü veya IB koordinatörü onaylamalı.
+        <strong style="color:var(--text)"> → Çözüm:</strong> Onaylama yetkisini sadece belirli rollere (MUDUR, BAS_REHBERLIK) kısıtla.
+      </div>
+    </div>
+
+    <div class="problem-card pc-amber">
+      <div class="problem-tag" style="color:var(--amber)">UX</div>
+      <div class="problem-title">Silme İşleminde Onaylı Faaliyet Koruması Yok</div>
+      <div class="problem-body">
+        <code>ONAYLANDI</code> durumundaki bir faaliyet bile silinebilir; sadece <code>confirm()</code> dialog'u var.
+        IB programına raporlanmış bir faaliyet silinirse IB Viewer'da kaybolur.
+        <strong style="color:var(--text)"> → Çözüm:</strong> ONAYLANDI durumdaki faaliyetlerin silinmesini engelle veya "arşivle" yerine "sil" mantığı getir.
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-bottom:24px">
+    <h3 style="font-size:15px; font-weight:700; color:var(--blue); margin-bottom:12px">🔵 Geliştirme Fırsatları</h3>
+
+    <div class="problem-card pc-blue">
+      <div class="problem-tag" style="color:var(--blue)">Feature</div>
+      <div class="problem-title">Bildirim Sistemi — Doğrulama Durumu Değiştiğinde</div>
+      <div class="problem-body">
+        Şu an <code>Notification</code> modeli mevcut ama faaliyet doğrulama olaylarına bağlı değil.
+        Faaliyet onaylandığında veya reddedildiğinde öğretmene/rehberliğe bildirim gönderilebilir.
+      </div>
+    </div>
+
+    <div class="problem-card pc-blue">
+      <div class="problem-tag" style="color:var(--blue)">Feature</div>
+      <div class="problem-title">Yıl/Dönem Bazlı Faaliyet Takibi</div>
+      <div class="problem-body">
+        Şu an tarih filtresi var ama akademik yıla göre otomatik gruplama yok.
+        <code>AcademicYear</code> modeli var; Activity'nin bir akademik yıla bağlanması IB raporlamayı kolaylaştırır.
+      </div>
+    </div>
+
+    <div class="problem-card pc-blue">
+      <div class="problem-tag" style="color:var(--blue)">Feature</div>
+      <div class="problem-title">Öğrenci Başına Min/Max Faaliyet Hedefi</div>
+      <div class="problem-body">
+        IB programında öğrencilerin belirli kategorilerde minimum faaliyet sayısına ulaşması gerekebilir.
+        Dashboard'a "hedef vs gerçekleşen" metriği eklenebilir.
+      </div>
+    </div>
+
+    <div class="problem-card pc-blue">
+      <div class="problem-tag" style="color:var(--blue)">Feature</div>
+      <div class="problem-title">Faaliyete Öğretmen / Danışman Yorumu</div>
+      <div class="problem-body">
+        <code>StudentComment</code> modeli var ama Activity'e doğrudan bağlı değil.
+        Bir faaliyete "bu öğrenci iyi performans gösterdi" gibi yorum eklenebilir.
+      </div>
+    </div>
+
+    <div class="problem-card pc-green">
+      <div class="problem-tag" style="color:var(--green)">Güçlü Yan</div>
+      <div class="problem-title">Mevcut Güçlü Tasarım Kararları</div>
+      <div class="problem-body">
+        ✅ Tek bileşen farklı route'larda çalışıyor (IBFaaliyetDashboard props ile)<br/>
+        ✅ Batch create tek form submit ile N öğrenciye kayıt<br/>
+        ✅ activityDate immutability — audit açısından kritik doğru karar<br/>
+        ✅ IB Viewer tamamen izole — sadece onaylı veri görebiliyor<br/>
+        ✅ Doğrulama workflow'u katı geçiş kurallarıyla<br/>
+        ✅ PDF hem panel hem IB Viewer'a farklı formatlarda<br/>
+        ✅ Müfredat içerikleri merkezi config'de — kod tekrarı yok
+      </div>
+    </div>
+  </div>
+
+  <!-- IMPROVEMENT ROADMAP -->
+  <div class="card">
+    <div class="card-title">Önerilen Geliştirme Öncelikleri</div>
+    <div class="imp-row">
+      <div class="imp-num">1</div>
+      <div class="imp-content">
+        <h4>isVerified alanını kaldır → sadece verificationStatus kullan</h4>
+        <p>Veri tutarsızlığını önler. IB Viewer sorgusu güncellenir. Migration: tüm ONAYLANDI kayıtlar zaten senkron.</p>
+      </div>
+      <div class="imp-priority"><span class="badge badge-red">Kritik</span></div>
+    </div>
+    <div class="imp-row">
+      <div class="imp-num">2</div>
+      <div class="imp-content">
+        <h4>ONAYLANDI faaliyetlerin silinmesini engelle</h4>
+        <p>DELETE API'de verificationStatus === "ONAYLANDI" ise 409 dön. UI'da da buton disabled yapılır.</p>
+      </div>
+      <div class="imp-priority"><span class="badge badge-red">Kritik</span></div>
+    </div>
+    <div class="imp-row">
+      <div class="imp-num">3</div>
+      <div class="imp-content">
+        <h4>IB Viewer PDF token'larını URL'den çıkar</h4>
+        <p>Short-lived imzalı PDF token endpoint'i ekle. Viewer her PDF açmak istediğinde kısa ömürlü token ister.</p>
+      </div>
+      <div class="imp-priority"><span class="badge badge-amber">Önemli</span></div>
+    </div>
+    <div class="imp-row">
+      <div class="imp-num">4</div>
+      <div class="imp-content">
+        <h4>Onaylama yetkisini belirli rollere kısıtla</h4>
+        <p>Sadece MUDUR, MUDUR_YARDIMCISI veya BAS_REHBERLIK onaylayabilsin. Diğerleri sadece "imzalı belge yükle" yapabilsin.</p>
+      </div>
+      <div class="imp-priority"><span class="badge badge-amber">Önemli</span></div>
+    </div>
+    <div class="imp-row">
+      <div class="imp-num">5</div>
+      <div class="imp-content">
+        <h4>Faaliyet doğrulama olaylarında Notification tetikle</h4>
+        <p>Mevcut Notification modeline hook et. ONAYLANDI → faaliyet ekleyen kişiye bildirim.</p>
+      </div>
+      <div class="imp-priority"><span class="badge badge-blue">İyileştirme</span></div>
+    </div>
+    <div class="imp-row">
+      <div class="imp-num">6</div>
+      <div class="imp-content">
+        <h4>ActivityType enum → opsiyonel yap, category/subtype'ı primary yap</h4>
+        <p>Legacy migration tamamlan, enum'u schema'dan kaldır. Filtreler sadece category üzerinden çalışsın.</p>
+      </div>
+      <div class="imp-priority"><span class="badge badge-blue">İyileştirme</span></div>
+    </div>
+    <div class="imp-row">
+      <div class="imp-num">7</div>
+      <div class="imp-content">
+        <h4>AcademicYear ile faaliyet ilişkisi</h4>
+        <p>Activity'e academicYearId ekle. Yıllık IB raporu tek sorgu ile hazırlanabilsin.</p>
+      </div>
+      <div class="imp-priority"><span class="badge badge-slate">Gelecek</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function showPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('page-' + id).classList.add('active');
+    event.currentTarget.classList.add('active');
+  }
+</script>
+</body>
+</html>

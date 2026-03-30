@@ -52,8 +52,7 @@ const allNavigation = [
   { name: "Bursluluk Başvuruları", href: "/basvurular", icon: ClipboardList, roles: ["admin", "principal", "student_affairs", "head_counselor"] },
   { name: "Gezi Yönetimi", href: "/gezi", icon: MapPin, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
   { name: "Kulüp Yönetimi", href: "/clubs", icon: Users, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
-  { name: "IB Faaliyet Yönetimi", href: "/activities", icon: Award, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
-  { name: "Faaliyet Ekle", href: "/faaliyet-ekle", icon: Plus, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
+  { name: "Faaliyet Yönetimi", href: "/faaliyet-yonetimi", icon: Award, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
   { name: "Sınav Yönetimi", href: "/rehberlik/sinavlar", icon: FileText, roles: ["counselor", "head_counselor"] },
   { name: "Öğrenci Görüşleri", href: "/rehberlik/gorusler", icon: MessageSquare, roles: ["counselor", "head_counselor"] },
   { name: "Öğrenci Dashboard", href: "/rehberlik/ogrenci-dashboard", icon: LayoutDashboard, roles: ["counselor", "head_counselor"] },
@@ -129,8 +128,8 @@ export function Sidebar() {
       if (currentRole === "teacher" && hasGeziAccess !== true) return false
     }
     
-    // IB Faaliyet Yönetimi ve Faaliyet Ekle - tüm yetkili roller görebilir (teacher bu sidebar'da değil)
-    if (item.href === "/activities" || item.href.startsWith("/activities") || item.href === "/faaliyet-ekle") {
+    // Faaliyet Yönetimi - tüm yetkili roller görebilir (teacher bu sidebar'da değil)
+    if (item.href === "/faaliyet-yonetimi" || item.href.startsWith("/faaliyet-yonetimi")) {
       return true
     }
     

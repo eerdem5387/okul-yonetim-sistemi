@@ -40,15 +40,16 @@ model Student {
   updatedAt        DateTime @default(now())
 
   // Relations
-  clubSelections      ClubSelection[]
-  newRegistrations    NewRegistration[]
-  renewals            Renewal[]
-  uniformContracts    UniformContract[]
-  mealContracts       MealContract[]
-  serviceContracts    ServiceContract[]
-  bookContracts       BookContract[]
-  activities          Activity[]
-  parentMeetings      ParentMeeting[]
+  clubSelections       ClubSelection[]
+  newRegistrations     NewRegistration[]
+  renewals             Renewal[]
+  uniformContracts     UniformContract[]
+  mealContracts        MealContract[]
+  serviceContracts     ServiceContract[]
+  bookContracts        BookContract[]
+  activities           Activity[]
+  activityParticipants ActivityParticipant[]
+  parentMeetings       ParentMeeting[]
   classAssignments    ClassStudent[] // Sınıf atamaları (FAZ 2)
   parents             ParentStudent[] // Veli ilişkileri (FAZ 1 - Genişletme)
   homeworkAssignments HomeworkAssignment[] // Ödev atamaları (FAZ 2)
@@ -219,6 +220,94 @@ enum ContactStatus {
   ILETISIME_GECILMEDI
 }
 
+// ============================================
+// FAALİYET YÖNETİMİ — Yeni Modüller
+// ============================================
+
+enum ActivityMainType {
+  EGITIM         // Eğitim
+  GEZI           // Gezi
+  GORSEL_SANATLAR // Görsel Sanatlar
+  MUZIK          // Müzik
+  PROJE          // Proje
+  SPOR           // Spor
+  TURNUVA        // Turnuva
+}
+
+enum LanguageLevel {
+  A1
+  A2
+  B1
+  B2
+  C1
+  C2
+}
+
+model ActivityEvent {
+  id              String           @id @default(cuid())
+  mainType        ActivityMainType
+  subtype         String?          // ingilizce, ingilizce_fen, ingilizce_mat, ispanyolca, robotik, yapay_zeka, vb.
+  certificateType String           // hangi sertifika şablonu kullanılacak
+  title           String
+  description     String?
+  outcome         String?
+  startDate       DateTime
+  endDate         DateTime
+  location        String?
+  organizerName   String
+  durationHours   Int?
+  durationDays    Int?
+  durationMonths  Int?
+  durationYears   Int?
+  evidenceUrls    String[]         @default([])
+  metadata        Json?            // Kategori'ye özgü ek alanlar (örn: gezi türü, gezi programı)
+  teacherId       String
+  createdBy       String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  teacher      Staff                @relation("TeacherActivityEvents", fields: [teacherId], references: [id])
+  participants ActivityParticipant[]
+
+  @@index([mainType])
+  @@index([teacherId])
+  @@index([startDate])
+  @@index([createdAt])
+  @@map("activity_events")
+}
+
+model ActivityParticipant {
+  id                    String                     @id @default(cuid())
+  activityId            String
+  studentId             String
+  score                 Int?                       // 0-100
+  languageLevel         LanguageLevel?             // sadece dil eğitimlerinde
+  participationPhotoUrl String?
+  artworkDescription    String?                    // Görsel Sanatlar Etkinlik — eser açıklaması
+  tournamentPlacement   String?                    // Turnuva başarı belgesi — derece / sıralama metni (serbest)
+  extraDocumentUrl      String?                    // öğrenciye özel ek belge (PDF)
+  verificationStatus    ActivityVerificationStatus @default(IMZA_SURECINDE)
+  signedDocumentUrls    String[]                   @default([])
+  isVerified            Boolean                    @default(false)
+  verifiedBy            String?
+  verifiedAt            DateTime?
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
+
+  activity ActivityEvent @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  student  Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([activityId, studentId])
+  @@index([activityId])
+  @@index([studentId])
+  @@index([verificationStatus])
+  @@map("activity_participants")
+}
+
+// ============================================
+// IB Programı — Legacy (korunuyor)
+// ============================================
+
 // IB Programı - Öğrenci Faaliyet Kayıtları
 enum ActivityType {
   ETKINLIK // Etkinlik
@@ -369,14 +458,15 @@ model Staff {
   updatedAt          DateTime        @updatedAt
 
   // Relations
-  subjectAssignments SubjectAssignment[]
-  assignedClasses    Class[]              @relation("ClassCounselor") // Rehberlik uzmanı olarak atandığı sınıflar
-  teacherSchedules   Schedule[]           @relation("TeacherSchedules") // Öğretmen ders programı
-  homeworks          Homework[]           @relation("TeacherHomeworks") // Öğretmenin ödevleri (FAZ 2)
-  attendances        Attendance[]         @relation("TeacherAttendances") // Öğretmenin yoklamaları (FAZ 2)
-  createdExams       Exam[]               @relation("ExamCreator") // Oluşturduğu sınavlar (FAZ 3)
-  enteredExamResults ExamResult[]         @relation("ExamResultEntry") // Girdiği sınav sonuçları (FAZ 3)
-  studentComments    StudentComment[]     @relation("StaffComments") // Yazdığı öğrenci görüşleri (FAZ 4)
+  subjectAssignments    SubjectAssignment[]
+  assignedClasses       Class[]              @relation("ClassCounselor")
+  teacherSchedules      Schedule[]           @relation("TeacherSchedules")
+  homeworks             Homework[]           @relation("TeacherHomeworks")
+  attendances           Attendance[]         @relation("TeacherAttendances")
+  createdExams          Exam[]               @relation("ExamCreator")
+  enteredExamResults    ExamResult[]         @relation("ExamResultEntry")
+  studentComments       StudentComment[]     @relation("StaffComments")
+  teacherActivityEvents ActivityEvent[]      @relation("TeacherActivityEvents")
 
   @@index([tcNumber])
   @@index([department])
