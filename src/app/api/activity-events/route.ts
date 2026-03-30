@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { checkActivityAccess } from "@/lib/access-control"
-import { ActivityMainType, ActivityVerificationStatus, LanguageLevel } from "@prisma/client"
+import { ActivityMainType, ActivityVerificationStatus, LanguageLevel, Prisma } from "@prisma/client"
+
+const LANGUAGE_LEVEL_VALUES = new Set<string>(Object.values(LanguageLevel))
 
 export async function GET(request: NextRequest) {
   const { hasAccess } = await checkActivityAccess(request)
@@ -143,6 +145,33 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const studentIds = participants.map((p: { studentId: string }) => p.studentId)
+    if (new Set(studentIds).size !== studentIds.length) {
+      return NextResponse.json(
+        { error: "Aynı öğrenci listede birden fazla kez eklenemez" },
+        { status: 400 }
+      )
+    }
+
+    function parseParticipantScore(value: unknown): number | null {
+      if (value === null || value === undefined || value === "") return null
+      const n = parseInt(String(value), 10)
+      return Number.isFinite(n) ? n : null
+    }
+
+    function parseParticipantLanguageLevel(value: unknown): LanguageLevel | null {
+      if (value === null || value === undefined || value === "") return null
+      const s = String(value).trim()
+      if (!LANGUAGE_LEVEL_VALUES.has(s)) return null
+      return s as LanguageLevel
+    }
+
+    function parseOptionalInt(value: unknown): number | null {
+      if (value === null || value === undefined || value === "") return null
+      const n = parseInt(String(value), 10)
+      return Number.isFinite(n) ? n : null
+    }
+
     const event = await prisma.activityEvent.create({
       data: {
         mainType: mainType as ActivityMainType,
@@ -155,10 +184,10 @@ export async function POST(request: NextRequest) {
         endDate: new Date(endDate),
         location: location?.trim() || null,
         organizerName: organizerName.trim(),
-        durationHours: durationHours ? parseInt(durationHours) : null,
-        durationDays: durationDays ? parseInt(durationDays) : null,
-        durationMonths: durationMonths ? parseInt(durationMonths) : null,
-        durationYears: durationYears ? parseInt(durationYears) : null,
+        durationHours: parseOptionalInt(durationHours),
+        durationDays: parseOptionalInt(durationDays),
+        durationMonths: parseOptionalInt(durationMonths),
+        durationYears: parseOptionalInt(durationYears),
         evidenceUrls: Array.isArray(evidenceUrls) ? evidenceUrls : [],
         metadata: metadata ?? null,
         teacherId,
@@ -175,8 +204,8 @@ export async function POST(request: NextRequest) {
             projectRole?: string | null
           }) => ({
             studentId: p.studentId,
-            score: p.score != null ? parseInt(String(p.score)) : null,
-            languageLevel: p.languageLevel ? (p.languageLevel as LanguageLevel) : null,
+            score: parseParticipantScore(p.score),
+            languageLevel: parseParticipantLanguageLevel(p.languageLevel),
             participationPhotoUrl: p.participationPhotoUrl || null,
             extraDocumentUrl: p.extraDocumentUrl || null,
             artworkDescription: p.artworkDescription?.trim() || null,
@@ -198,6 +227,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(event, { status: 201 })
   } catch (error) {
     console.error("POST /api/activity-events error:", error)
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2002") {
+        return NextResponse.json(
+          { error: "Bu öğrenci bu faaliyette zaten kayıtlı veya listede mükerrer kayıt var." },
+          { status: 400 }
+        )
+      }
+      if (error.code === "P2003") {
+        return NextResponse.json(
+          { error: "Seçilen öğretmen veya öğrenci veritabanında bulunamadı." },
+          { status: 400 }
+        )
+      }
+    }
     return NextResponse.json({ error: "Faaliyet oluşturulurken hata oluştu" }, { status: 500 })
   }
 }

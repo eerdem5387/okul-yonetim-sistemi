@@ -5,6 +5,12 @@ import { Upload, X, Loader2, ImageIcon } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { LANGUAGE_LEVELS } from "@/lib/activity-types-config"
+import {
+  assertFileMaxSize,
+  CLIENT_MAX_PARTICIPATION_PHOTO_BYTES,
+  CLIENT_MAX_PDF_BYTES,
+  parseUploadResponse,
+} from "@/lib/upload-client"
 
 export interface ParticipantData {
   studentId: string
@@ -77,6 +83,11 @@ export function StudentRow({
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    const sizeErr = assertFileMaxSize(file, CLIENT_MAX_PARTICIPATION_PHOTO_BYTES, "Katılım fotoğrafı")
+    if (sizeErr) {
+      alert(sizeErr)
+      return
+    }
     setUploadingPhoto(true)
     try {
       const formData = new FormData()
@@ -86,9 +97,9 @@ export function StudentRow({
         headers: getHeaders(),
         body: formData,
       })
-      const json = await res.json()
-      if (res.ok && json.url) set("participationPhotoUrl", json.url)
-      else alert(json.error || "Fotoğraf yüklenemedi")
+      const parsed = await parseUploadResponse(res)
+      if (parsed.ok && parsed.url) set("participationPhotoUrl", parsed.url)
+      else alert(parsed.error || "Fotoğraf yüklenemedi")
     } finally {
       setUploadingPhoto(false)
       if (photoRef.current) photoRef.current.value = ""
@@ -98,6 +109,11 @@ export function StudentRow({
   async function handleDocUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    const sizeErr = assertFileMaxSize(file, CLIENT_MAX_PDF_BYTES, "Ek belge")
+    if (sizeErr) {
+      alert(sizeErr)
+      return
+    }
     setUploadingDoc(true)
     try {
       const formData = new FormData()
@@ -107,9 +123,9 @@ export function StudentRow({
         headers: getHeaders(),
         body: formData,
       })
-      const json = await res.json()
-      if (res.ok && json.url) set("extraDocumentUrl", json.url)
-      else alert(json.error || "Belge yüklenemedi")
+      const parsed = await parseUploadResponse(res)
+      if (parsed.ok && parsed.url) set("extraDocumentUrl", parsed.url)
+      else alert(parsed.error || "Belge yüklenemedi")
     } finally {
       setUploadingDoc(false)
       if (docRef.current) docRef.current.value = ""

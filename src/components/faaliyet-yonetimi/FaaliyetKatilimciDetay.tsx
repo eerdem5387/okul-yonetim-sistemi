@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { ActivityEventDetail } from "./FaaliyetDetay.shared"
+import { assertFileMaxSize, CLIENT_MAX_PDF_BYTES, parseUploadResponse } from "@/lib/upload-client"
 
 function getAuthHeaders(): HeadersInit {
   const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null
@@ -89,6 +90,8 @@ export function FaaliyetKatilimciDetay({ eventId, participantId }: FaaliyetKatil
   const handleUploadSigned = async (file: File) => {
     setActionPid(true)
     try {
+      const sizeErr = assertFileMaxSize(file, CLIENT_MAX_PDF_BYTES, "İmzalı belge")
+      if (sizeErr) throw new Error(sizeErr)
       const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null
       const headers: Record<string, string> = {}
       if (token) headers["Authorization"] = `Bearer ${token}`
@@ -99,8 +102,9 @@ export function FaaliyetKatilimciDetay({ eventId, participantId }: FaaliyetKatil
         headers,
         body: formData,
       })
-      const { url } = await uploadRes.json()
-      if (!url) throw new Error("Yükleme başarısız")
+      const parsed = await parseUploadResponse(uploadRes)
+      if (!parsed.ok || !parsed.url) throw new Error(parsed.error || "Yükleme başarısız")
+      const url = parsed.url
 
       const participant = event?.participants.find((x) => x.id === participantId)
       const existingUrls = participant?.signedDocumentUrls ?? []

@@ -2,14 +2,23 @@ import { NextRequest, NextResponse } from "next/server"
 import { put } from "@vercel/blob"
 import { checkActivityAccess } from "@/lib/access-control"
 
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"]
+const ALLOWED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/heic",
+  "image/heif",
+]
 const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"]
 const ALLOWED_DOC_TYPES = ["application/pdf"]
 
-const MAX_PHOTO_SIZE = 3 * 1024 * 1024      // 3 MB
-const MAX_VIDEO_SIZE = 10 * 1024 * 1024     // 10 MB
-const MAX_IMAGE_SIZE = 3 * 1024 * 1024      // 3 MB (kanıt görseli)
-const MAX_DOC_SIZE = 10 * 1024 * 1024       // 10 MB (ek belge PDF)
+const MAX_PHOTO_SIZE = 3 * 1024 * 1024 // 3 MB
+/** Vercel / proxy genelde ~4,5 MB gövde — daha büyük video 413 verir (JSON olmayan yanıt) */
+const MAX_VIDEO_SIZE = 4 * 1024 * 1024
+const MAX_IMAGE_SIZE = 3 * 1024 * 1024
+const MAX_DOC_SIZE = 4 * 1024 * 1024
 
 export async function POST(request: NextRequest) {
   const { hasAccess } = await checkActivityAccess(request)
@@ -34,7 +43,10 @@ export async function POST(request: NextRequest) {
 
     if (uploadType === "participation_photo") {
       if (!ALLOWED_IMAGE_TYPES.includes(mimeType)) {
-        return NextResponse.json({ error: "Sadece görsel dosyalar kabul edilir (JPEG, PNG, WEBP, GIF)" }, { status: 400 })
+        return NextResponse.json(
+          { error: "Sadece görsel dosyalar kabul edilir (JPEG, PNG, WEBP, GIF, HEIC)" },
+          { status: 400 }
+        )
       }
       if (fileSize > MAX_PHOTO_SIZE) {
         return NextResponse.json({ error: "Katılım fotoğrafı maksimum 3 MB olabilir" }, { status: 400 })
@@ -42,7 +54,7 @@ export async function POST(request: NextRequest) {
     } else if (uploadType === "evidence") {
       if (ALLOWED_VIDEO_TYPES.includes(mimeType)) {
         if (fileSize > MAX_VIDEO_SIZE) {
-          return NextResponse.json({ error: "Video kanıtı maksimum 10 MB olabilir" }, { status: 400 })
+          return NextResponse.json({ error: "Video kanıtı maksimum 4 MB olabilir (barındırma sınırı)" }, { status: 400 })
         }
       } else if (ALLOWED_IMAGE_TYPES.includes(mimeType)) {
         if (fileSize > MAX_IMAGE_SIZE) {
@@ -56,7 +68,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Sadece PDF dosyası yüklenebilir" }, { status: 400 })
       }
       if (fileSize > MAX_DOC_SIZE) {
-        return NextResponse.json({ error: "Ek belge maksimum 10 MB olabilir" }, { status: 400 })
+        return NextResponse.json({ error: "Ek belge maksimum 4 MB olabilir" }, { status: 400 })
       }
     } else if (uploadType === "signed_document") {
       const allowed = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_DOC_TYPES]
@@ -64,7 +76,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "İmzalı belge olarak PDF veya görsel yüklenebilir" }, { status: 400 })
       }
       if (fileSize > MAX_DOC_SIZE) {
-        return NextResponse.json({ error: "İmzalı belge maksimum 10 MB olabilir" }, { status: 400 })
+        return NextResponse.json({ error: "İmzalı belge maksimum 4 MB olabilir" }, { status: 400 })
       }
     }
 

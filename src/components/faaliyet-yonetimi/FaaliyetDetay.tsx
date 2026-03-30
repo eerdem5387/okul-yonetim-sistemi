@@ -28,6 +28,7 @@ import {
   getSubtypeConfig,
   type ActivityMainType,
 } from "@/lib/activity-types-config"
+import { assertFileMaxSize, CLIENT_MAX_PDF_BYTES, parseUploadResponse } from "@/lib/upload-client"
 import type { ActivityEventDetail } from "./FaaliyetDetay.shared"
 
 function getAuthHeaders(): HeadersInit {
@@ -101,6 +102,8 @@ export function FaaliyetDetay({ id }: { id: string }) {
   const handleUploadSigned = async (pid: string, file: File) => {
     setActionPid(pid)
     try {
+      const sizeErr = assertFileMaxSize(file, CLIENT_MAX_PDF_BYTES, "İmzalı belge")
+      if (sizeErr) throw new Error(sizeErr)
       const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null
       const headers: Record<string, string> = {}
       if (token) headers["Authorization"] = `Bearer ${token}`
@@ -111,8 +114,9 @@ export function FaaliyetDetay({ id }: { id: string }) {
         headers,
         body: formData,
       })
-      const { url } = await uploadRes.json()
-      if (!url) throw new Error("Yükleme başarısız")
+      const parsed = await parseUploadResponse(uploadRes)
+      if (!parsed.ok || !parsed.url) throw new Error(parsed.error || "Yükleme başarısız")
+      const url = parsed.url
 
       const participant = event?.participants.find((p) => p.id === pid)
       const existingUrls = participant?.signedDocumentUrls ?? []

@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { Upload, X, BookOpen, ChevronDown, ChevronUp, FileText } from "lucide-react"
+import { Upload, X, BookOpen, ChevronDown, ChevronUp, FileText, Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
@@ -16,6 +16,12 @@ import {
   PROJE_DOCUMENT_STATEMENT,
   PROJE_PROGRAMME_DURATION_WEEKS,
 } from "@/lib/mufredatlar/proje-icerik"
+import {
+  assertFileMaxSize,
+  CLIENT_MAX_EVIDENCE_IMAGE_BYTES,
+  CLIENT_MAX_EVIDENCE_VIDEO_BYTES,
+  parseUploadResponse,
+} from "@/lib/upload-client"
 
 export interface StepDetayData {
   title: string
@@ -117,7 +123,6 @@ export function StepDetay({
   const [uploading, setUploading] = useState(false)
   const [mufredatAcik, setMufredatAcik] = useState(false)
   const [projeDocAcik, setProjeDocAcik] = useState(false)
-  void uploading
 
   const principalForPreview =
     projectPreviewParticipants && projectPreviewParticipants.length > 0
@@ -157,16 +162,25 @@ export function StepDetay({
     try {
       const newUrls: string[] = []
       for (let i = 0; i < files.length; i++) {
+        const f = files[i]
+        const isVideo = f.type.startsWith("video/")
+        const maxB = isVideo ? CLIENT_MAX_EVIDENCE_VIDEO_BYTES : CLIENT_MAX_EVIDENCE_IMAGE_BYTES
+        const label = isVideo ? "Video kanıtı" : "Görsel kanıt"
+        const sizeErr = assertFileMaxSize(f, maxB, label)
+        if (sizeErr) {
+          alert(sizeErr)
+          continue
+        }
         const formData = new FormData()
-        formData.append("file", files[i])
+        formData.append("file", f)
         const res = await fetch("/api/activity-events/upload?type=evidence", {
           method: "POST",
           headers,
           body: formData,
         })
-        const json = await res.json()
-        if (res.ok && json.url) newUrls.push(json.url)
-        else alert(json.error || "Yükleme başarısız")
+        const parsed = await parseUploadResponse(res)
+        if (parsed.ok && parsed.url) newUrls.push(parsed.url)
+        else alert(parsed.error || "Yükleme başarısız")
       }
       set("evidenceUrls", [...data.evidenceUrls, ...newUrls])
     } finally {
@@ -805,22 +819,28 @@ export function StepDetay({
         <div className="sm:col-span-2">
           <Label className="text-sm font-medium">Kanıt (Görsel veya Video)</Label>
           <p className="text-xs text-gray-400 mt-0.5 mb-2">
-            Görsel maks 3 MB · Video maks 10 MB
+            Görsel en fazla 3 MB · video en fazla 4 MB (barındırma sınırı). iPhone HEIC desteklenir.
           </p>
           <div
-            className="flex items-center justify-center border-2 border-dashed border-gray-200 rounded-xl p-6 cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/50 transition-colors"
-            onClick={() => evidenceRef.current?.click()}
+            className={`flex items-center justify-center border-2 border-dashed border-gray-200 rounded-xl p-6 transition-colors ${
+              uploading ? "opacity-60 pointer-events-none" : "cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/50"
+            }`}
+            onClick={() => !uploading && evidenceRef.current?.click()}
           >
             <div className="flex flex-col items-center gap-2 text-gray-400">
-              <Upload className="h-7 w-7" />
-              <p className="text-sm">Kanıt dosyası yükle</p>
-              <p className="text-xs">Tıklayın veya sürükleyin</p>
+              {uploading ? (
+                <Loader2 className="h-7 w-7 animate-spin text-indigo-500" />
+              ) : (
+                <Upload className="h-7 w-7" />
+              )}
+              <p className="text-sm">{uploading ? "Yükleniyor…" : "Kanıt dosyası yükle"}</p>
+              {!uploading && <p className="text-xs">Tıklayın veya sürükleyin</p>}
             </div>
           </div>
           <input
             ref={evidenceRef}
             type="file"
-            accept="image/*,video/mp4,video/webm"
+            accept="image/*,video/mp4,video/webm,video/quicktime"
             multiple
             className="hidden"
             onChange={handleEvidenceUpload}
