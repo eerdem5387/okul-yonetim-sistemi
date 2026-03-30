@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Loader2 } from "lucide-react"
 import { CategoryStep } from "./CategoryStep"
 import { SubtypeStep } from "./SubtypeStep"
@@ -304,7 +305,24 @@ export function FaaliyetEklePage({ fallbackRedirect = "/", successRedirect }: Fa
 
       {/* Form alanı - yatayda geniş kullanım */}
       <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-4 sm:p-6">
-        <div className="w-full max-w-5xl">
+        <div className="w-full max-w-5xl space-y-6">
+          <Card className="border-indigo-200 bg-gradient-to-r from-indigo-50/80 to-white shadow-sm">
+            <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Sertifika modülü</p>
+                <p className="text-xs text-gray-600 mt-1 max-w-xl">
+                  Eğitim, gezi, spor, müzik vb. türlerde PDF sertifikası üretilen faaliyet için tür seçerek başlayın.
+                </p>
+              </div>
+              <Button
+                type="button"
+                className="shrink-0 bg-indigo-600 hover:bg-indigo-700"
+                onClick={() => router.push("/faaliyet-yonetimi/yeni")}
+              >
+                Sertifika faaliyeti oluştur
+              </Button>
+            </CardContent>
+          </Card>
           {state.step === 1 && <CategoryStep onSelect={setCategory} />}
           {state.step === 2 && state.category && (
             <SubtypeStep

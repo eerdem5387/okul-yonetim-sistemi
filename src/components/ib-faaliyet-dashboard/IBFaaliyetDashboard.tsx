@@ -79,6 +79,10 @@ function getAuthHeaders(): HeadersInit {
 }
 
 export interface IBFaaliyetDashboardProps {
+  /** Varsayılan: IB Faaliyet Yönetimi */
+  title?: string
+  /** Varsayılan: Öğrenci faaliyetlerini yönetin... */
+  subtitle?: string
   faaliyetEkleHref: string
   studentDetailHref: (studentId: string) => string
   /** Faaliyet düzenleme sayfası linki (id ile). Verilmezse /faaliyet-duzenle/[id] kullanılır. */
@@ -88,6 +92,8 @@ export interface IBFaaliyetDashboardProps {
 }
 
 export function IBFaaliyetDashboard({
+  title = "IB Faaliyet Yönetimi",
+  subtitle = "Öğrenci faaliyetlerini yönetin, doğrulayın ve IB programına hazırlayın",
   faaliyetEkleHref,
   studentDetailHref,
   faaliyetDuzenleHref = (id) => `/faaliyet-duzenle/${id}`,
@@ -299,10 +305,8 @@ export function IBFaaliyetDashboard({
       <div className="rounded-2xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-indigo-900 px-6 py-8 text-white shadow-xl">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">IB Faaliyet Yönetimi</h1>
-            <p className="mt-1 text-indigo-100">
-              Öğrenci faaliyetlerini yönetin, doğrulayın ve IB programına hazırlayın
-            </p>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{title}</h1>
+            <p className="mt-1 text-indigo-100">{subtitle}</p>
           </div>
           <div className="flex flex-wrap gap-3">
             {showViewerButton && onViewerClick && (

@@ -197,7 +197,7 @@ export function FaaliyetListesi() {
           <div className="flex flex-col items-center justify-center py-16 text-gray-400">
             <FileText className="h-12 w-12 mb-3 text-gray-200" />
             <p className="text-sm">Henüz faaliyet kaydı yok</p>
-            <p className="text-xs mt-1">Yukarıdaki kategori butonlarından faaliyet oluşturun</p>
+            <p className="text-xs mt-1">Faaliyet eklemek için Faaliyet Ekle veya sertifika modülü sayfasını kullanın</p>
           </div>
         ) : (
           <>
