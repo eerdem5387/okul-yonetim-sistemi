@@ -16,8 +16,10 @@ import {
   Pencil,
   Trash2,
   User,
+  Eye,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { PdfPreviewModal } from "@/components/ui/pdf-preview-modal"
 
 function getAuthHeaders(): HeadersInit {
   const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null
@@ -69,6 +71,7 @@ export function LegacyActivityKayitDetay({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
+  const [pdfPreview, setPdfPreview] = useState<{ path: string; title: string } | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async () => {
@@ -193,6 +196,12 @@ export function LegacyActivityKayitDetay({
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 pb-12">
+      <PdfPreviewModal
+        open={!!pdfPreview}
+        onClose={() => setPdfPreview(null)}
+        apiPath={pdfPreview?.path ?? null}
+        title={pdfPreview?.title ?? "PDF önizleme"}
+      />
       <Link href={hrefBack} className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-indigo-600">
         <ArrowLeft className="h-4 w-4" />
         {backLabel}
@@ -274,6 +283,19 @@ export function LegacyActivityKayitDetay({
         )}
 
         <div className="mt-8 flex flex-wrap gap-2 border-t border-gray-100 pt-6">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              setPdfPreview({
+                path: `/api/activities/${activityId}/pdf`,
+                title: `${data.title} — önizleme`,
+              })
+            }
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            PDF önizle
+          </Button>
           <Button
             variant="outline"
             size="sm"

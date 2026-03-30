@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   Card,
   CardContent,
@@ -100,6 +101,8 @@ export function StudentActivityDetail({
   backHref,
   backLabel,
 }: StudentActivityDetailProps) {
+  const router = useRouter()
+
   if (!student) {
     return (
       <div className="p-6 space-y-6">
@@ -205,7 +208,24 @@ export function StudentActivityDetail({
                 )
                 .map((activity) => (
                   <li key={activity.id}>
-                    <Card className="card-soft border border-gray-100">
+                    <Card
+                      role="link"
+                      tabIndex={0}
+                      className="card-soft border border-gray-100 cursor-pointer transition-shadow hover:shadow-md focus-visible:outline focus-visible:ring-2 focus-visible:ring-indigo-500"
+                      onClick={() =>
+                        router.push(
+                          `/activities/kayit/${activity.id}?from=student&studentId=${student.id}`
+                        )
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault()
+                          router.push(
+                            `/activities/kayit/${activity.id}?from=student&studentId=${student.id}`
+                          )
+                        }
+                      }}
+                    >
                       <CardContent className="p-5">
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                           <div className="flex-1 min-w-0 space-y-3">
@@ -261,18 +281,24 @@ export function StudentActivityDetail({
                                 <ImageIcon className="h-3.5 w-3.5" />
                                 Katılım fotoğrafı
                               </p>
-                              <a
-                                href={activity.participationPhotoUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="block rounded-lg border border-gray-200 overflow-hidden w-24 h-24 sm:w-28 sm:h-28"
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  window.open(
+                                    activity.participationPhotoUrl!,
+                                    "_blank",
+                                    "noopener,noreferrer"
+                                  )
+                                }}
+                                className="block rounded-lg border border-gray-200 overflow-hidden w-24 h-24 sm:w-28 sm:h-28 text-left"
                               >
                                 <img
                                   src={activity.participationPhotoUrl}
                                   alt="Katılım"
                                   className="w-full h-full object-cover"
                                 />
-                              </a>
+                              </button>
                             </div>
                           )}
                         </div>

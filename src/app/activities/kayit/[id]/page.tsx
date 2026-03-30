@@ -11,11 +11,22 @@ function LegacyActivityKayitInner() {
   const id = typeof params.id === "string" ? params.id : ""
   const fromGrup = searchParams.get("from") === "grup"
   const anchorId = searchParams.get("anchor") || ""
+  const fromStudent = searchParams.get("from") === "student"
+  const studentId = searchParams.get("studentId") || ""
 
   if (!id) return null
 
-  const backHref = fromGrup && anchorId ? `/activities/grup/${anchorId}` : undefined
-  const backLabel = fromGrup ? "Faaliyet grubuna dön" : "Öğrenciye dön"
+  const backHref =
+    fromGrup && anchorId
+      ? `/activities/grup/${anchorId}`
+      : fromStudent && studentId
+        ? `/activities/student/${studentId}`
+        : undefined
+  const backLabel = fromGrup
+    ? "Faaliyet grubuna dön"
+    : fromStudent
+      ? "Öğrenciye dön"
+      : "Öğrenciye dön"
 
   return <LegacyActivityKayitDetay activityId={id} backHref={backHref} backLabel={backLabel} />
 }

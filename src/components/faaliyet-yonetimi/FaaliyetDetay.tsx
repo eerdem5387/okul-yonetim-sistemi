@@ -19,8 +19,10 @@ import {
   Trash2,
   ExternalLink,
   ChevronRight,
+  Eye,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { PdfPreviewModal } from "@/components/ui/pdf-preview-modal"
 import {
   MAIN_TYPE_LABELS,
   getSubtypeConfig,
@@ -54,6 +56,7 @@ export function FaaliyetDetay({ id }: { id: string }) {
   const [error, setError] = useState<string | null>(null)
   const [actionPid, setActionPid] = useState<string | null>(null)
   const [pdfLoading, setPdfLoading] = useState(false)
+  const [pdfPreview, setPdfPreview] = useState<{ path: string; title: string } | null>(null)
   const signedDocRefs: Record<string, HTMLInputElement | null> = {}
 
   const fetchEvent = useCallback(async () => {
@@ -205,6 +208,12 @@ export function FaaliyetDetay({ id }: { id: string }) {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-12">
+      <PdfPreviewModal
+        open={!!pdfPreview}
+        onClose={() => setPdfPreview(null)}
+        apiPath={pdfPreview?.path ?? null}
+        title={pdfPreview?.title ?? "PDF önizleme"}
+      />
       {/* Breadcrumb & Actions */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <Link
@@ -220,12 +229,40 @@ export function FaaliyetDetay({ id }: { id: string }) {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() =>
+                  setPdfPreview({
+                    path: `/api/activity-events/${id}/pdf`,
+                    title: `${event.title} — katılım (önizleme)`,
+                  })
+                }
+                className="text-blue-600 border-blue-200 hover:bg-blue-50"
+              >
+                <Eye className="h-4 w-4" />
+                <span className="ml-2 hidden sm:inline">Katılım önizle</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => handleDownloadPdf("participation")}
                 disabled={pdfLoading}
                 className="text-blue-600 border-blue-200 hover:bg-blue-50"
               >
                 {pdfLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
                 <span className="ml-2 hidden sm:inline">PDF — Katılım</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setPdfPreview({
+                    path: `/api/activity-events/${id}/pdf?kind=achievement`,
+                    title: `${event.title} — başarı (önizleme)`,
+                  })
+                }
+                className="text-sky-600 border-sky-200 hover:bg-sky-50"
+              >
+                <Eye className="h-4 w-4" />
+                <span className="ml-2 hidden sm:inline">Başarı önizle</span>
               </Button>
               <Button
                 variant="outline"
@@ -239,16 +276,32 @@ export function FaaliyetDetay({ id }: { id: string }) {
               </Button>
             </>
           ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleDownloadPdf()}
-              disabled={pdfLoading}
-              className="text-blue-600 border-blue-200 hover:bg-blue-50"
-            >
-              {pdfLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
-              <span className="ml-2 hidden sm:inline">PDF İndir</span>
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setPdfPreview({
+                    path: `/api/activity-events/${id}/pdf`,
+                    title: `${event.title} — önizleme`,
+                  })
+                }
+                className="text-blue-600 border-blue-200 hover:bg-blue-50"
+              >
+                <Eye className="h-4 w-4" />
+                <span className="ml-2 hidden sm:inline">PDF önizle</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleDownloadPdf()}
+                disabled={pdfLoading}
+                className="text-blue-600 border-blue-200 hover:bg-blue-50"
+              >
+                {pdfLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+                <span className="ml-2 hidden sm:inline">PDF İndir</span>
+              </Button>
+            </>
           )}
           <Button
             variant="outline"
