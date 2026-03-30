@@ -351,8 +351,9 @@ export function FaaliyetForm({ mainType, subtypeId }: FaaliyetFormProps) {
       })
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || "Kayıt başarısız")
+        const data = await res.json().catch(() => ({} as { error?: string; detail?: string }))
+        const parts = [data.error, data.detail].filter(Boolean)
+        throw new Error(parts.length ? parts.join("\n") : "Kayıt başarısız")
       }
 
       const created = await res.json()

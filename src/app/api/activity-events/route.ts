@@ -3,7 +3,32 @@ import { prisma } from "@/lib/prisma"
 import { checkActivityAccess } from "@/lib/access-control"
 import { ActivityMainType, ActivityVerificationStatus, LanguageLevel, Prisma } from "@prisma/client"
 
-const LANGUAGE_LEVEL_VALUES = new Set<string>(Object.values(LanguageLevel))
+/** Prisma enum ile aynı; runtime'da Object.values tutarsızlığına karşı sabit liste */
+const LANGUAGE_LEVEL_VALUES = new Set<string>(["A1", "A2", "B1", "B2", "C1", "C2"])
+
+const ALLOWED_ACTIVITY_MAIN_TYPES = new Set<string>([
+  "EGITIM",
+  "GEZI",
+  "GORSEL_SANATLAR",
+  "MUZIK",
+  "PROJE",
+  "SPOR",
+  "TURNUVA",
+])
+
+function sanitizeMetadata(raw: unknown): Prisma.InputJsonValue | undefined {
+  if (raw === null || raw === undefined) return undefined
+  try {
+    return JSON.parse(JSON.stringify(raw)) as Prisma.InputJsonValue
+  } catch {
+    return undefined
+  }
+}
+
+function sanitizeEvidenceUrls(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return []
+  return raw.filter((u): u is string => typeof u === "string" && u.length > 0)
+}
 
 export async function GET(request: NextRequest) {
   const { hasAccess } = await checkActivityAccess(request)
@@ -135,6 +160,60 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "En az bir katılımcı eklenmelidir" }, { status: 400 })
     }
 
+    const mainTypeStr = String(mainType).trim()
+    if (!ALLOWED_ACTIVITY_MAIN_TYPES.has(mainTypeStr)) {
+      return NextResponse.json(
+        { error: "Geçersiz faaliyet ana türü", detail: mainTypeStr },
+        { status: 400 }
+      )
+    }
+
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return NextResponse.json(
+        { error: "Başlangıç veya bitiş tarihi geçersiz veya okunamıyor" },
+        { status: 400 }
+      )
+    }
+
+    const teacherRow = await prisma.staff.findUnique({
+      where: { id: String(teacherId) },
+      select: { id: true },
+    })
+    if (!teacherRow) {
+      return NextResponse.json(
+        { error: "Seçilen sorumlu öğretmen veritabanında yok veya silinmiş." },
+        { status: 400 }
+      )
+    }
+
+    const participantStudentIds = participants.map((p: { studentId: string }) => String(p.studentId || "").trim())
+    if (participantStudentIds.some((id) => !id)) {
+      return NextResponse.json({ error: "Katılımcı öğrenci kimliği eksik" }, { status: 400 })
+    }
+
+    const uniqueStudentIds = [...new Set(participantStudentIds)]
+    if (uniqueStudentIds.length !== participantStudentIds.length) {
+      return NextResponse.json(
+        { error: "Aynı öğrenci listede birden fazla kez eklenemez" },
+        { status: 400 }
+      )
+    }
+    const existingStudents = await prisma.student.findMany({
+      where: { id: { in: uniqueStudentIds } },
+      select: { id: true },
+    })
+    if (existingStudents.length !== uniqueStudentIds.length) {
+      return NextResponse.json(
+        {
+          error: "Bir veya daha fazla öğrenci veritabanında bulunamadı.",
+          detail: "Listeden kaldırılmış veya hatalı öğrenci seçimi olabilir.",
+        },
+        { status: 400 }
+      )
+    }
+
     const photoRequired = certificateType !== "PROJE_KATILIM"
     if (photoRequired) {
       const missingPhoto = participants.find(
@@ -143,14 +222,6 @@ export async function POST(request: NextRequest) {
       if (missingPhoto) {
         return NextResponse.json({ error: "Her katılımcı için katılım fotoğrafı zorunludur" }, { status: 400 })
       }
-    }
-
-    const studentIds = participants.map((p: { studentId: string }) => p.studentId)
-    if (new Set(studentIds).size !== studentIds.length) {
-      return NextResponse.json(
-        { error: "Aynı öğrenci listede birden fazla kez eklenemez" },
-        { status: 400 }
-      )
     }
 
     function parseParticipantScore(value: unknown): number | null {
@@ -172,26 +243,35 @@ export async function POST(request: NextRequest) {
       return Number.isFinite(n) ? n : null
     }
 
+    const evidenceList = sanitizeEvidenceUrls(evidenceUrls)
+    const metadataForDb: Prisma.NullableJsonNullValueInput | Prisma.InputJsonValue =
+      metadata == null
+        ? Prisma.DbNull
+        : (() => {
+            const s = sanitizeMetadata(metadata)
+            return s === undefined ? Prisma.DbNull : s
+          })()
+
     const event = await prisma.activityEvent.create({
       data: {
-        mainType: mainType as ActivityMainType,
-        subtype: subtype || null,
-        certificateType,
+        mainType: mainTypeStr as ActivityMainType,
+        subtype: subtype ? String(subtype).trim() || null : null,
+        certificateType: String(certificateType).trim(),
         title: title.trim(),
         description: description?.trim() || null,
         outcome: outcome?.trim() || null,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
+        startDate: start,
+        endDate: end,
         location: location?.trim() || null,
         organizerName: organizerName.trim(),
         durationHours: parseOptionalInt(durationHours),
         durationDays: parseOptionalInt(durationDays),
         durationMonths: parseOptionalInt(durationMonths),
         durationYears: parseOptionalInt(durationYears),
-        evidenceUrls: Array.isArray(evidenceUrls) ? evidenceUrls : [],
-        metadata: metadata ?? null,
-        teacherId,
-        createdBy: staffId || "unknown",
+        evidenceUrls: evidenceList,
+        metadata: metadataForDb,
+        teacherId: String(teacherId),
+        createdBy: staffId?.trim() || "unknown",
         participants: {
           create: participants.map((p: {
             studentId: string
@@ -227,6 +307,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(event, { status: 201 })
   } catch (error) {
     console.error("POST /api/activity-events error:", error)
+    if (error instanceof Prisma.PrismaClientValidationError) {
+      const msg = error.message.length > 600 ? `${error.message.slice(0, 600)}…` : error.message
+      return NextResponse.json(
+        {
+          error: "Kayıt verileri veritabanı şemasıyla uyuşmuyor (tür, tarih veya ilişkili kayıtları kontrol edin).",
+          detail: msg,
+        },
+        { status: 400 }
+      )
+    }
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === "P2002") {
         return NextResponse.json(
@@ -240,7 +330,23 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         )
       }
+      if (error.code === "P2021" || error.code === "P2022") {
+        return NextResponse.json(
+          {
+            error: "Veritabanı şeması güncel değil. Sunucuda `npx prisma migrate deploy` çalıştırılmalı.",
+            detail: error.code,
+          },
+          { status: 503 }
+        )
+      }
     }
-    return NextResponse.json({ error: "Faaliyet oluşturulurken hata oluştu" }, { status: 500 })
+    const message = error instanceof Error ? error.message : String(error)
+    return NextResponse.json(
+      {
+        error: "Faaliyet oluşturulurken hata oluştu",
+        detail: message.slice(0, 400),
+      },
+      { status: 500 }
+    )
   }
 }
