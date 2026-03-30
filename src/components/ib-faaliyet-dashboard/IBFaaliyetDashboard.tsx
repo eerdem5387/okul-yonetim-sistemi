@@ -12,7 +12,6 @@ import {
   Search,
   Calendar,
   CheckCircle,
-  XCircle,
   Award,
   BarChart3,
   Users,
@@ -26,10 +25,10 @@ import {
   Trophy,
   Medal,
   Pencil,
-  Upload,
-  FileCheck,
   FileDown,
+  Layers,
 } from "lucide-react"
+import { ACTIVITY_MAIN_TYPES, MAIN_TYPE_LABELS } from "@/lib/activity-types-config"
 
 export type ActivityVerificationStatus = "IMZA_SURECINDE" | "ONAY_BEKLIYOR" | "ONAYLANDI"
 
@@ -51,18 +50,18 @@ export interface IBDashboardStats {
   }>
 }
 
-export interface IBDashboardActivity {
+/** Birleşik liste satırı — GET /api/ib-dashboard/faaliyet-list */
+export interface IBDashboardUnifiedItem {
+  source: "event" | "legacy_group"
   id: string
-  studentId: string
-  type: string
   title: string
-  description: string | null
-  activityDate: string
-  isVerified: boolean
-  verificationStatus?: ActivityVerificationStatus
-  signedDocumentUrls?: string[]
-  category?: string | null
-  student: { id: string; firstName: string; lastName: string; grade: string }
+  sortDate: string
+  participantCount: number
+  verificationStatus: ActivityVerificationStatus
+  detailHref: string
+  teacherOrOrganizer: string | null
+  typeLabel: string
+  categoryLabel: string | null
 }
 
 const CATEGORY_META: Record<string, { label: string; icon: React.ElementType; color: string }> = {
@@ -96,12 +95,13 @@ export function IBFaaliyetDashboard({
   onViewerClick,
 }: IBFaaliyetDashboardProps) {
   const [stats, setStats] = useState<IBDashboardStats | null>(null)
-  const [activities, setActivities] = useState<IBDashboardActivity[]>([])
+  const [listItems, setListItems] = useState<IBDashboardUnifiedItem[]>([])
   const [students, setStudents] = useState<Array<{ id: string; firstName: string; lastName: string; grade: string }>>([])
   const [loading, setLoading] = useState(true)
   const [loadingList, setLoadingList] = useState(false)
   const [studentFilter, setStudentFilter] = useState("")
   const [typeFilter, setTypeFilter] = useState("")
+  const [mainTypeFilter, setMainTypeFilter] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("")
   const [search, setSearch] = useState("")
   const [startDate, setStartDate] = useState("")
@@ -109,11 +109,7 @@ export function IBFaaliyetDashboard({
   const [verifiedFilter, setVerifiedFilter] = useState("all")
   const [verificationStatusFilter, setVerificationStatusFilter] = useState("")
   const [page, setPage] = useState(1)
-  const [uploadModalActivityId, setUploadModalActivityId] = useState<string | null>(null)
-  const [uploadingSigned, setUploadingSigned] = useState(false)
-  const [downloadingPdfId, setDownloadingPdfId] = useState<string | null>(null)
-  const [downloadingBatchPdf, setDownloadingBatchPdf] = useState(false)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [downloadingPdfKey, setDownloadingPdfKey] = useState<string | null>(null)
   const [totalPages, setTotalPages] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
 
@@ -121,8 +117,11 @@ export function IBFaaliyetDashboard({
     try {
       const res = await fetch("/api/activities/stats", { headers: getAuthHeaders() })
       if (res.ok) setStats(await res.json())
+      else setStats(null)
     } catch {
       setStats(null)
+    } finally {
+      setLoading(false)
     }
   }, [])
 
@@ -132,25 +131,35 @@ export function IBFaaliyetDashboard({
       const params = new URLSearchParams({ page: String(page), limit: "20" })
       if (studentFilter) params.set("studentId", studentFilter)
       if (typeFilter) params.set("type", typeFilter)
+      if (mainTypeFilter) params.set("mainType", mainTypeFilter)
       if (categoryFilter) params.set("category", categoryFilter)
       if (search) params.set("search", search)
       if (startDate) params.set("startDate", startDate)
       if (endDate) params.set("endDate", endDate)
       if (verificationStatusFilter) params.set("verificationStatus", verificationStatusFilter)
-      else if (verifiedFilter !== "all") params.set("isVerified", verifiedFilter)
-      const res = await fetch(`/api/activities?${params}`, { headers: getAuthHeaders() })
+      const res = await fetch(`/api/ib-dashboard/faaliyet-list?${params}`, { headers: getAuthHeaders() })
       if (res.ok) {
         const data = await res.json()
-        setActivities(data.activities ?? [])
+        setListItems(data.items ?? [])
         setTotalPages(data.pagination?.totalPages ?? 1)
         setTotalCount(data.pagination?.total ?? 0)
       }
     } catch {
-      setActivities([])
+      setListItems([])
     } finally {
       setLoadingList(false)
     }
-  }, [page, studentFilter, typeFilter, categoryFilter, search, startDate, endDate, verifiedFilter, verificationStatusFilter])
+  }, [
+    page,
+    studentFilter,
+    typeFilter,
+    mainTypeFilter,
+    categoryFilter,
+    search,
+    startDate,
+    endDate,
+    verificationStatusFilter,
+  ])
 
   const fetchStudents = useCallback(async () => {
     try {
@@ -174,34 +183,24 @@ export function IBFaaliyetDashboard({
     fetchActivities()
   }, [fetchActivities])
 
-  const handleVerify = async (id: string, approved: boolean) => {
-    try {
-      const res = await fetch(`/api/activities/${id}`, {
-        method: "PUT",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          verificationStatus: approved ? "ONAYLANDI" : "ONAY_BEKLIYOR",
-          verifiedAt: approved ? new Date().toISOString() : undefined,
-        }),
-      })
-      if (res.ok) {
-        fetchStats()
-        fetchActivities()
-      } else {
-        const data = await res.json().catch(() => ({}))
-        alert(data.error || "Onay işlemi başarısız.")
-      }
-    } catch {
-      alert("Onay işlemi başarısız.")
-    }
+  function legacyAnchorFromRowId(rowId: string): string | null {
+    if (rowId.startsWith("legacy:")) return rowId.slice(7)
+    return null
   }
 
-  const handleDownloadPdf = async (activityId: string) => {
-    setDownloadingPdfId(activityId)
+  const handleDownloadPdf = async (item: IBDashboardUnifiedItem) => {
+    const key = item.id
+    setDownloadingPdfKey(key)
     try {
-      const res = await fetch(`/api/activities/${activityId}/pdf`, {
-        headers: getAuthHeaders(),
-      })
+      let urlPath: string
+      if (item.source === "event") {
+        urlPath = `/api/activity-events/${item.id}/pdf`
+      } else {
+        const anchor = legacyAnchorFromRowId(item.id)
+        if (!anchor) throw new Error("Geçersiz kayıt")
+        urlPath = `/api/activities/${anchor}/pdf`
+      }
+      const res = await fetch(urlPath, { headers: getAuthHeaders() })
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: res.statusText }))
         throw new Error(err.error || "PDF alınamadı")
@@ -210,7 +209,7 @@ export function IBFaaliyetDashboard({
       const url = URL.createObjectURL(blob)
       const disposition = res.headers.get("Content-Disposition")
       const match = disposition?.match(/filename="?([^";]+)"?/)
-      const fileName = match?.[1]?.trim() || `faaliyet-${activityId}.pdf`
+      const fileName = match?.[1]?.trim() || `faaliyet-${item.title.slice(0, 20)}.pdf`
       const a = document.createElement("a")
       a.href = url
       a.download = fileName
@@ -219,117 +218,47 @@ export function IBFaaliyetDashboard({
     } catch (e) {
       alert(e instanceof Error ? e.message : "PDF indirilemedi.")
     } finally {
-      setDownloadingPdfId(null)
+      setDownloadingPdfKey(null)
     }
   }
 
-  const handleDownloadBatchPdf = async () => {
-    const ids = Array.from(selectedIds)
-    if (ids.length === 0) return
-    setDownloadingBatchPdf(true)
-    try {
-      const res = await fetch("/api/activities/batch-pdf", {
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ activityIds: ids }),
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: res.statusText }))
-        throw new Error(err.error || "PDF alınamadı")
-      }
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const disposition = res.headers.get("Content-Disposition")
-      const match = disposition?.match(/filename="?([^";]+)"?/)
-      const fileName = match?.[1]?.trim() || `faaliyet-${ids.length}-ogrenci.pdf`
-      const a = document.createElement("a")
-      a.href = url
-      a.download = fileName
-      a.click()
-      URL.revokeObjectURL(url)
-      setSelectedIds(new Set())
-    } catch (e) {
-      alert(e instanceof Error ? e.message : "PDF indirilemedi.")
-    } finally {
-      setDownloadingBatchPdf(false)
-    }
-  }
-
-  const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
-  const toggleSelectAll = () => {
-    if (selectedIds.size >= activities.length) {
-      setSelectedIds(new Set())
-    } else {
-      setSelectedIds(new Set(activities.map((a) => a.id)))
-    }
-  }
-
-  const handleUploadSignedDocuments = async (activityId: string, files: FileList | null) => {
-    if (!files?.length) return
-    setUploadingSigned(true)
-    try {
-      const urls: string[] = []
-      for (let i = 0; i < files.length; i++) {
-        const formData = new FormData()
-        formData.append("file", files[i])
-        const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null
-        const res = await fetch("/api/activities/upload?type=signed_document", {
-          method: "POST",
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-          body: formData,
-        })
-        const data = await res.json().catch(() => ({}))
-        if (!res.ok) throw new Error(data.error || "Yükleme başarısız")
-        if (data.url) urls.push(data.url)
-      }
-      if (urls.length === 0) throw new Error("Yüklenen dosya URL'si alınamadı")
-      const putRes = await fetch(`/api/activities/${activityId}`, {
-        method: "PUT",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ verificationStatus: "ONAY_BEKLIYOR", signedDocumentUrls: urls }),
-      })
-      if (putRes.ok) {
-        setUploadModalActivityId(null)
-        fetchStats()
-        fetchActivities()
-      } else {
-        const err = await putRes.json().catch(() => ({}))
-        throw new Error(err.error || "Durum güncellenemedi")
-      }
-    } catch (e) {
-      alert(e instanceof Error ? e.message : "İmzalı belge yüklenirken hata oluştu.")
-    } finally {
-      setUploadingSigned(false)
-    }
-  }
-
-  const handleDelete = async (id: string, title?: string) => {
-    const message = title
-      ? `"${title}" faaliyetini silmek istediğinizden emin misiniz?`
-      : "Bu faaliyeti silmek istediğinizden emin misiniz?"
+  const handleDelete = async (item: IBDashboardUnifiedItem) => {
+    const message =
+      item.source === "event"
+        ? `"${item.title}" faaliyetini ve tüm katılımcı kayıtlarını silmek istediğinizden emin misiniz?`
+        : `"${item.title}" grubundaki tüm öğrenci kayıtlarını silmek istediğinizden emin misiniz?`
     if (!confirm(message)) return
     try {
-      const res = await fetch(`/api/activities/${id}`, { method: "DELETE", headers: getAuthHeaders() })
-      if (res.ok) {
-        fetchStats()
-        fetchActivities()
-      } else alert("Silme işlemi başarısız.")
-    } catch {
-      alert("Silme işlemi başarısız.")
+      if (item.source === "event") {
+        const res = await fetch(`/api/activity-events/${item.id}`, { method: "DELETE", headers: getAuthHeaders() })
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}))
+          throw new Error(j.error || "Silinemedi")
+        }
+      } else {
+        const anchor = legacyAnchorFromRowId(item.id)
+        if (!anchor) throw new Error("Geçersiz kayıt")
+        const res = await fetch("/api/activities/delete-group", {
+          method: "POST",
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ anchorId: anchor }),
+        })
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}))
+          throw new Error(j.error || "Silinemedi")
+        }
+      }
+      fetchStats()
+      fetchActivities()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Silme işlemi başarısız.")
     }
   }
 
   const resetFilters = () => {
     setStudentFilter("")
     setTypeFilter("")
+    setMainTypeFilter("")
     setCategoryFilter("")
     setSearch("")
     setStartDate("")
@@ -550,7 +479,9 @@ export function IBFaaliyetDashboard({
             <Search className="h-4 w-4" />
             Filtreleme
           </CardTitle>
-          <CardDescription>Listeyi öğrenci, tip, tarih ve duruma göre daraltın</CardDescription>
+          <CardDescription>
+            Liste faaliyet bazlıdır: sertifika modülü kayıtları ve aynı gün/aynı başlıklı klasik IB kayıtları tek satırda gruplanır. Detaydan katılımcılara inin.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
@@ -568,7 +499,7 @@ export function IBFaaliyetDashboard({
               </select>
             </div>
             <div>
-              <Label className="text-xs">Tip</Label>
+              <Label className="text-xs">Tip (klasik kayıt)</Label>
               <select
                 value={typeFilter}
                 onChange={(e) => { setTypeFilter(e.target.value); setPage(1) }}
@@ -577,6 +508,19 @@ export function IBFaaliyetDashboard({
                 <option value="">Tümü</option>
                 {Object.entries(typeLabels).map(([v, l]) => (
                   <option key={v} value={v}>{l}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label className="text-xs">Ana tür (sertifika)</Label>
+              <select
+                value={mainTypeFilter}
+                onChange={(e) => { setMainTypeFilter(e.target.value); setPage(1) }}
+                className="mt-1.5 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
+              >
+                <option value="">Tümü</option>
+                {ACTIVITY_MAIN_TYPES.map((mt) => (
+                  <option key={mt} value={mt}>{MAIN_TYPE_LABELS[mt]}</option>
                 ))}
               </select>
             </div>
@@ -643,30 +587,17 @@ export function IBFaaliyetDashboard({
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
           <div>
             <CardTitle className="text-lg font-semibold">Faaliyet Listesi</CardTitle>
-            <CardDescription>Toplam {totalCount} kayıt</CardDescription>
+            <CardDescription>
+              Toplam {totalCount} faaliyet / grup · Satıra tıklayarak veya &quot;Detay&quot; ile katılımcılara inin
+            </CardDescription>
           </div>
-          {selectedIds.size > 0 && (
-            <Button
-              size="sm"
-              onClick={handleDownloadBatchPdf}
-              disabled={downloadingBatchPdf}
-              className="text-blue-600 border-blue-200 bg-blue-50 hover:bg-blue-100"
-            >
-              {downloadingBatchPdf ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2 inline" />
-              ) : (
-                <FileDown className="h-4 w-4 mr-2 inline" />
-              )}
-              Seçilenlerin PDF&apos;ini indir ({selectedIds.size} öğrenci)
-            </Button>
-          )}
         </CardHeader>
         <CardContent>
           {loadingList ? (
             <div className="flex justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
             </div>
-          ) : activities.length === 0 ? (
+          ) : listItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-gray-500">
               <FileText className="h-12 w-12 mb-3 text-gray-300" />
               <p>Filtrelere uygun faaliyet yok</p>
@@ -677,65 +608,57 @@ export function IBFaaliyetDashboard({
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-200 text-left text-gray-500">
-                      <th className="pb-3 font-medium px-2 w-10">
-                        <input
-                          type="checkbox"
-                          checked={activities.length > 0 && selectedIds.size >= activities.length}
-                          onChange={toggleSelectAll}
-                          title="Tümünü seç / kaldır"
-                          className="rounded border-gray-300"
-                        />
-                      </th>
                       <th className="pb-3 font-medium px-2">Başlık</th>
-                      <th className="pb-3 font-medium px-2">Öğrenci</th>
-                      <th className="pb-3 font-medium px-2">Kategori</th>
+                      <th className="pb-3 font-medium px-2">Kaynak</th>
                       <th className="pb-3 font-medium px-2">Tür</th>
+                      <th className="pb-3 font-medium px-2">Öğretmen</th>
                       <th className="pb-3 font-medium px-2">Tarih</th>
+                      <th className="pb-3 font-medium px-2">Katılımcı</th>
                       <th className="pb-3 font-medium px-2">Durum</th>
                       <th className="pb-3 font-medium px-2 text-right">İşlem</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {activities.map((a) => (
-                      <tr key={a.id} className="border-b border-gray-100 hover:bg-gray-50/50">
-                        <td className="py-3 px-2 w-10">
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.has(a.id)}
-                            onChange={() => toggleSelect(a.id)}
-                            title="Bu öğrencinin PDF'ine dahil et"
-                            className="rounded border-gray-300"
-                          />
-                        </td>
-                        <td className="py-3 px-2 font-medium text-gray-900">{a.title}</td>
-                        <td className="py-3 px-2">
-                          <Link href={studentDetailHref(a.studentId)} className="text-indigo-600 hover:underline">
-                            {a.student.firstName} {a.student.lastName}
+                    {listItems.map((row) => (
+                      <tr key={row.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+                        <td className="py-3 px-2 font-medium text-gray-900 max-w-[220px]">
+                          <Link href={row.detailHref} className="hover:text-indigo-600 hover:underline line-clamp-2">
+                            {row.title}
                           </Link>
-                          {a.student.grade && <span className="text-gray-500 ml-1">({a.student.grade})</span>}
                         </td>
                         <td className="py-3 px-2">
-                          {a.category && CATEGORY_META[a.category] ? (
-                            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${CATEGORY_META[a.category].color}`}>
-                              {CATEGORY_META[a.category].label}
+                          {row.source === "event" ? (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-800">
+                              <Layers className="h-3 w-3" /> Sertifika
                             </span>
                           ) : (
-                            <span className="text-gray-400">—</span>
+                            <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-700">
+                              Klasik IB
+                            </span>
                           )}
                         </td>
-                        <td className="py-3 px-2 text-gray-600">{typeLabels[a.type] ?? a.type}</td>
                         <td className="py-3 px-2 text-gray-600">
+                          <span className="block">{row.typeLabel}</span>
+                          {row.categoryLabel && (
+                            <span className="text-xs text-gray-400">{row.categoryLabel}</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-2 text-gray-600 text-xs max-w-[120px] truncate">
+                          {row.teacherOrOrganizer ?? "—"}
+                        </td>
+                        <td className="py-3 px-2 text-gray-600 whitespace-nowrap">
                           <span className="flex items-center gap-1">
-                            <Calendar className="h-3.5 w-3.5" />
-                            {new Date(a.activityDate).toLocaleDateString("tr-TR")}
+                            <Calendar className="h-3.5 w-3.5 shrink-0" />
+                            {new Date(row.sortDate).toLocaleDateString("tr-TR")}
                           </span>
                         </td>
+                        <td className="py-3 px-2 text-gray-700 font-medium">{row.participantCount}</td>
                         <td className="py-3 px-2">
-                          {(a.verificationStatus ?? (a.isVerified ? "ONAYLANDI" : "IMZA_SURECINDE")) === "ONAYLANDI" ? (
+                          {row.verificationStatus === "ONAYLANDI" ? (
                             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
                               <CheckCircle className="h-3.5 w-3.5" /> Onaylandı
                             </span>
-                          ) : (a.verificationStatus ?? "") === "ONAY_BEKLIYOR" ? (
+                          ) : row.verificationStatus === "ONAY_BEKLIYOR" ? (
                             <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">
                               <Clock className="h-3.5 w-3.5" /> Onay bekliyor
                             </span>
@@ -747,48 +670,39 @@ export function IBFaaliyetDashboard({
                         </td>
                         <td className="py-3 px-2 text-right">
                           <div className="flex justify-end gap-1 flex-wrap">
+                            <Link href={row.detailHref}>
+                              <Button variant="ghost" size="sm" className="text-indigo-600 h-8 px-2" title="Detay ve katılımcılar">
+                                <ChevronRight className="h-4 w-4" />
+                              </Button>
+                            </Link>
                             <Button
                               variant="ghost"
                               size="sm"
                               className="text-blue-600 h-8 w-8 p-0"
-                              title="PDF İndir"
-                              onClick={() => handleDownloadPdf(a.id)}
-                              disabled={downloadingPdfId === a.id}
+                              title="PDF (tüm katılımcılar / birleşik)"
+                              onClick={() => handleDownloadPdf(row)}
+                              disabled={downloadingPdfKey === row.id}
                             >
-                              {downloadingPdfId === a.id ? (
+                              {downloadingPdfKey === row.id ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
                                 <FileDown className="h-4 w-4" />
                               )}
                             </Button>
-                            <Link href={faaliyetDuzenleHref(a.id)}>
-                              <Button variant="ghost" size="sm" className="text-gray-600 h-8 w-8 p-0" title="Düzenle">
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            </Link>
-                            {(a.verificationStatus ?? (a.isVerified ? "ONAYLANDI" : "IMZA_SURECINDE")) === "IMZA_SURECINDE" && (
-                              <Button variant="ghost" size="sm" className="text-blue-600 h-8 w-8 p-0" onClick={() => setUploadModalActivityId(a.id)} title="İmzalı belge yükle">
-                                <Upload className="h-4 w-4" />
-                              </Button>
-                            )}
-                            {(a.verificationStatus ?? "") === "ONAY_BEKLIYOR" && (
-                              <>
-                                <Button variant="ghost" size="sm" className="text-emerald-600 h-8 w-8 p-0" onClick={() => handleVerify(a.id, true)} title="Onayla">
-                                  <CheckCircle className="h-4 w-4" />
+                            {row.source === "legacy_group" && legacyAnchorFromRowId(row.id) && (
+                              <Link href={faaliyetDuzenleHref(legacyAnchorFromRowId(row.id)!)}>
+                                <Button variant="ghost" size="sm" className="text-gray-600 h-8 w-8 p-0" title="Düzenle (ilk kayıt)">
+                                  <Pencil className="h-4 w-4" />
                                 </Button>
-                                {a.signedDocumentUrls?.length ? (
-                                  <a href={a.signedDocumentUrls[0]} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center h-8 w-8 text-gray-500 hover:text-gray-700" title="İmzalı belgeyi aç">
-                                    <FileCheck className="h-4 w-4" />
-                                  </a>
-                                ) : null}
-                              </>
+                              </Link>
                             )}
-                            {(a.verificationStatus ?? (a.isVerified ? "ONAYLANDI" : "")) === "ONAYLANDI" && (
-                              <Button variant="ghost" size="sm" className="text-amber-600 h-8 w-8 p-0" onClick={() => handleVerify(a.id, false)} title="Onayı kaldır">
-                                <XCircle className="h-4 w-4" />
-                              </Button>
-                            )}
-                            <Button variant="ghost" size="sm" className="text-red-600 h-8 w-8 p-0" onClick={() => handleDelete(a.id, a.title)} title="Sil">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600 h-8 w-8 p-0"
+                              onClick={() => handleDelete(row)}
+                              title="Sil"
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
@@ -811,50 +725,6 @@ export function IBFaaliyetDashboard({
           )}
         </CardContent>
       </Card>
-
-      {/* İmzalı belge yükleme modalı */}
-      {uploadModalActivityId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => !uploadingSigned && setUploadModalActivityId(null)}>
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-gray-900">İmzalı belge yükle</h3>
-            <p className="text-sm text-gray-500">
-              Taranmış veya fotoğraflanan imzalı belgeleri (PDF veya resim) yükleyin. Yükleme sonrası faaliyet &quot;Onay bekliyor&quot; durumuna geçer.
-            </p>
-            <input
-              type="file"
-              accept=".pdf,image/jpeg,image/jpg,image/png,image/gif,image/webp"
-              multiple
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700"
-              id="signed-doc-upload"
-              disabled={uploadingSigned}
-            />
-            <div className="flex gap-2 justify-end pt-2">
-              <Button variant="outline" onClick={() => setUploadModalActivityId(null)} disabled={uploadingSigned}>
-                İptal
-              </Button>
-              <Button
-                onClick={() => {
-                  const input = document.getElementById("signed-doc-upload") as HTMLInputElement
-                  handleUploadSignedDocuments(uploadModalActivityId, input?.files)
-                }}
-                disabled={uploadingSigned}
-              >
-                {uploadingSigned ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Yükleniyor…
-                  </>
-                ) : (
-                  <>
-                    <Upload className="h-4 w-4 mr-2" />
-                    Yükle
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

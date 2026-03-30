@@ -82,6 +82,8 @@ export function PdfOnizlemeModal({
     return () => {
       if (objectUrl) URL.revokeObjectURL(objectUrl)
     }
+    // certDataKey = JSON.stringify(activeData) — derin değişiklikleri yakalar
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeType, certDataKey])
 
   const handleDownload = () => {

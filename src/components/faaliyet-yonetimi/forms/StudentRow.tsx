@@ -17,6 +17,8 @@ export interface ParticipantData {
   artworkDescription: string
   /** Turnuva başarı belgesi — derece metni (serbest) */
   tournamentPlacement: string
+  /** Proje içerik belgesi — katılımcının rolü */
+  projectRole: string
 }
 
 interface StudentRowProps {
@@ -29,6 +31,9 @@ interface StudentRowProps {
   optionalExtraDocument?: boolean
   requiresArtworkDescription?: boolean
   showTournamentPlacement?: boolean
+  showParticipantProjectRole?: boolean
+  /** false iken katılım fotoğrafı alanı gösterilmez (örn. Proje) */
+  requiresParticipationPhoto?: boolean
   /** requiresArtworkDescription iken yükleme alanı etiketi */
   participationPhotoFieldLabel?: string
   /** requiresExtraDocument iken PDF alanı etiketi */
@@ -46,6 +51,8 @@ export function StudentRow({
   optionalExtraDocument,
   requiresArtworkDescription,
   showTournamentPlacement,
+  showParticipantProjectRole,
+  requiresParticipationPhoto = true,
   participationPhotoFieldLabel,
   extraDocumentFieldLabel,
   onChange,
@@ -133,46 +140,48 @@ export function StudentRow({
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {/* Katılım Fotoğrafı / Eser görseli */}
-        <div>
-          <p className="text-xs font-medium text-gray-600 mb-1.5">
-            {requiresArtworkDescription
-              ? participationPhotoFieldLabel ?? "Eser Görseli"
-              : "Katılım Fotoğrafı"}{" "}
-            <span className="text-red-500">*</span>
-            <span className="text-gray-400 font-normal"> (maks 3 MB)</span>
-          </p>
-          {participant.participationPhotoUrl ? (
-            <div className="relative group">
-              <img
-                src={participant.participationPhotoUrl}
-                alt="Katılım"
-                className="h-24 w-full rounded-lg object-cover border border-gray-200"
-              />
+        {requiresParticipationPhoto && (
+          <div>
+            <p className="text-xs font-medium text-gray-600 mb-1.5">
+              {requiresArtworkDescription
+                ? participationPhotoFieldLabel ?? "Eser Görseli"
+                : "Katılım Fotoğrafı"}{" "}
+              <span className="text-red-500">*</span>
+              <span className="text-gray-400 font-normal"> (maks 3 MB)</span>
+            </p>
+            {participant.participationPhotoUrl ? (
+              <div className="relative group">
+                <img
+                  src={participant.participationPhotoUrl}
+                  alt="Katılım"
+                  className="h-24 w-full rounded-lg object-cover border border-gray-200"
+                />
+                <button
+                  onClick={() => set("participationPhotoUrl", "")}
+                  className="absolute top-1 right-1 rounded-full bg-red-500 text-white p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ) : (
               <button
-                onClick={() => set("participationPhotoUrl", "")}
-                className="absolute top-1 right-1 rounded-full bg-red-500 text-white p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={() => photoRef.current?.click()}
+                disabled={uploadingPhoto}
+                className="flex h-24 w-full flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-gray-200 text-gray-400 hover:border-indigo-300 hover:text-indigo-500 transition-colors"
               >
-                <X className="h-3 w-3" />
+                {uploadingPhoto ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <>
+                    <ImageIcon className="h-5 w-5" />
+                    <span className="text-xs">Fotoğraf yükle</span>
+                  </>
+                )}
               </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => photoRef.current?.click()}
-              disabled={uploadingPhoto}
-              className="flex h-24 w-full flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-gray-200 text-gray-400 hover:border-indigo-300 hover:text-indigo-500 transition-colors"
-            >
-              {uploadingPhoto ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <>
-                  <ImageIcon className="h-5 w-5" />
-                  <span className="text-xs">Fotoğraf yükle</span>
-                </>
-              )}
-            </button>
-          )}
-          <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
-        </div>
+            )}
+            <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+          </div>
+        )}
 
         {/* Puan */}
         {requiresScore && (
@@ -223,6 +232,21 @@ export function StudentRow({
               placeholder="Describe the artwork (medium, theme, technique...)"
               rows={3}
               className="resize-y min-h-[72px]"
+            />
+          </div>
+        )}
+
+        {/* Proje — katılımcı rolü */}
+        {showParticipantProjectRole && (
+          <div className="sm:col-span-2 lg:col-span-4">
+            <p className="text-xs font-medium text-gray-600 mb-1.5">
+              Participant&apos;s Role <span className="text-red-500">*</span>
+            </p>
+            <Input
+              value={participant.projectRole}
+              onChange={(e) => set("projectRole", e.target.value)}
+              placeholder="örn: Research lead, Presentation designer, Data analyst"
+              className="h-10"
             />
           </div>
         )}

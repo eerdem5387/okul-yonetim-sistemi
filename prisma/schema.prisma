@@ -285,6 +285,7 @@ model ActivityParticipant {
   participationPhotoUrl String?
   artworkDescription    String?                    // Görsel Sanatlar Etkinlik — eser açıklaması
   tournamentPlacement   String?                    // Turnuva başarı belgesi — derece / sıralama metni (serbest)
+  projectRole           String?                    // Proje içerik belgesi — katılımcının rolü
   extraDocumentUrl      String?                    // öğrenciye özel ek belge (PDF)
   verificationStatus    ActivityVerificationStatus @default(IMZA_SURECINDE)
   signedDocumentUrls    String[]                   @default([])

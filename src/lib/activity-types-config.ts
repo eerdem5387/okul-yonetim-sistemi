@@ -66,6 +66,7 @@ export const CERTIFICATE_TYPES = [
   "VOLEYBOL_EGITIM",
   "TURNUVA_KATILIM",
   "TURNUVA_BASARI",
+  "PROJE_KATILIM",
 ] as const
 
 export type CertificateType = (typeof CERTIFICATE_TYPES)[number]
@@ -87,6 +88,7 @@ export const CERTIFICATE_TYPE_LABELS: Record<CertificateType, string> = {
   VOLEYBOL_EGITIM: "Voleybol Eğitimi Katılım Sertifikası",
   TURNUVA_KATILIM: "LEVENT COLLEGE IB PROGRAMME CERTIFICATE OF TOURNAMENT PARTICIPATION",
   TURNUVA_BASARI: "LEVENT COLLEGE IB PROGRAMME CERTIFICATE OF TOURNAMENT ACHIEVEMENT",
+  PROJE_KATILIM: "LEVENT COLLEGE IB PROGRAMME CERTIFICATE OF PROJECT PARTICIPATION",
 }
 
 // --- Form Alan Gereksinimleri ---
@@ -135,6 +137,20 @@ export interface SubtypeConfig {
   mufredat?: MufredatHafta[]
   /** Müfredat başlığı (opsiyonel, varsayılan: "Müfredat Önizlemesi") */
   mufredatBaslik?: string
+  /** Proje: pdf/proje-icerik-belgesi.docx ile uyumlu belge önizlemesi */
+  projectDocumentPreview?: boolean
+  /** Proje: Project Purpose alanı */
+  showProjectPurpose?: boolean
+  /** Proje: sertifikadaki başarı düzeyi metni (dinamik paragraf) */
+  showProjectAchievementLevel?: boolean
+  /** Proje: Sonuç / Kazanım zorunlu (Expected Outcomes) */
+  requireProjectOutcome?: boolean
+  outcomeFieldLabel?: string
+  outcomePlaceholder?: string
+  /** Proje: katılımcı satırında rol alanı */
+  showParticipantProjectRole?: boolean
+  /** Katılım fotoğrafı zorunlu (varsayılan: true) */
+  requiresParticipationPhoto?: boolean
 }
 
 // --- Eğitim Alt Türleri ---
@@ -365,6 +381,34 @@ export const SPOR_SUBTYPES: SubtypeConfig[] = [
   },
 ]
 
+// --- Proje Alt Türleri ---
+export const PROJE_SUBTYPES: SubtypeConfig[] = [
+  {
+    id: "klavye",
+    label: "Klavye ile girilecek",
+    certificateType: "PROJE_KATILIM",
+    requiresScore: false,
+    requiresLanguageLevel: false,
+    requiresTeacher: true,
+    requiresExtraDocument: false,
+    requiresParticipationPhoto: false,
+    projectDocumentPreview: true,
+    showProjectPurpose: true,
+    showProjectAchievementLevel: true,
+    requireProjectOutcome: true,
+    showVicePrincipal: true,
+    showParticipantProjectRole: true,
+    activityTitleLabel: "Project Title",
+    activityTitlePlaceholder: "örn: Sustainable Campus Waste Reduction — IB Group 4 Project",
+    descriptionFieldLabel: "Project Description",
+    descriptionPlaceholder:
+      "Summarize the project scope, main activities, and deliverables (English or Turkish).",
+    outcomeFieldLabel: "Expected Outcomes",
+    outcomePlaceholder:
+      "What learners are expected to achieve; link to IB criteria or project goals if applicable.",
+  },
+]
+
 // --- Turnuva Alt Türleri ---
 export const TURNUVA_SUBTYPES: SubtypeConfig[] = [
   {
@@ -396,7 +440,7 @@ export const SUBTYPES_BY_MAIN_TYPE: Record<ActivityMainType, SubtypeConfig[]> = 
   GEZI: GEZI_SUBTYPES,
   GORSEL_SANATLAR: GORSEL_SANATLAR_SUBTYPES,
   MUZIK: MUZIK_SUBTYPES,
-  PROJE: [],
+  PROJE: PROJE_SUBTYPES,
   SPOR: SPOR_SUBTYPES,
   TURNUVA: TURNUVA_SUBTYPES,
 }

@@ -18,6 +18,7 @@ import {
   Loader2,
   Trash2,
   ExternalLink,
+  ChevronRight,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -25,53 +26,7 @@ import {
   getSubtypeConfig,
   type ActivityMainType,
 } from "@/lib/activity-types-config"
-
-interface Student {
-  id: string
-  firstName: string
-  lastName: string
-  grade: string
-  tcNumber: string
-}
-
-interface ParticipantRow {
-  id: string
-  studentId: string
-  student: Student
-  score: number | null
-  languageLevel: string | null
-  participationPhotoUrl: string | null
-  extraDocumentUrl: string | null
-  tournamentPlacement?: string | null
-  verificationStatus: string
-  signedDocumentUrls: string[]
-  isVerified: boolean
-  verifiedBy: string | null
-  verifiedAt: string | null
-}
-
-interface ActivityEventDetail {
-  id: string
-  mainType: string
-  subtype: string | null
-  certificateType: string
-  title: string
-  description: string | null
-  outcome: string | null
-  startDate: string
-  endDate: string
-  location: string | null
-  organizerName: string
-  durationHours: number | null
-  durationDays: number | null
-  durationMonths: number | null
-  durationYears: number | null
-  evidenceUrls: string[]
-  metadata?: unknown | null
-  teacher: { id: string; firstName: string; lastName: string }
-  createdAt: string
-  participants: ParticipantRow[]
-}
+import type { ActivityEventDetail } from "./FaaliyetDetay.shared"
 
 function getAuthHeaders(): HeadersInit {
   const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null
@@ -474,6 +429,11 @@ export function FaaliyetDetay({ id }: { id: string }) {
                             Derece: {p.tournamentPlacement}
                           </span>
                         )}
+                        {p.projectRole?.trim() && (
+                          <span className="rounded-full bg-amber-100 text-amber-900 text-xs px-2 py-0.5">
+                            Rol: {p.projectRole}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -493,7 +453,14 @@ export function FaaliyetDetay({ id }: { id: string }) {
                       </p>
                     )}
 
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap justify-end">
+                      <Link
+                        href={`/faaliyet-yonetimi/${id}/katilimci/${p.id}`}
+                        className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 px-2 py-1 rounded-lg border border-indigo-200 hover:bg-indigo-50"
+                      >
+                        Katılımcı detayı
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </Link>
                       {p.verificationStatus === "IMZA_SURECINDE" && (
                         <div>
                           <input

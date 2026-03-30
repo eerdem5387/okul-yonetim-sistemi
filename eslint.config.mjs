@@ -26,6 +26,8 @@ const eslintConfig = [
       "@typescript-eslint/no-unused-vars": "warn", // Unused vars warning
       "react/no-unescaped-entities": "warn", // Escaped entities warning
       "react-hooks/exhaustive-deps": "warn", // useEffect deps warning
+      // Dinamik / kullanıcı URL'li görsellerde next/image domain yapılandırması gerekir
+      "@next/next/no-img-element": "warn",
     },
   },
 ];

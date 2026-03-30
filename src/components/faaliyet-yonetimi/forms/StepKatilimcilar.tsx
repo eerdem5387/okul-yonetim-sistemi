@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useMemo } from "react"
 import { Search, Users, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -41,7 +41,10 @@ export function StepKatilimcilar({
     return fullName.includes(q) || s.grade.toLowerCase().includes(q) || s.tcNumber.includes(q)
   })
 
-  const selectedIds = new Set(participants.map((p) => p.studentId))
+  const selectedIds = useMemo(
+    () => new Set(participants.map((p) => p.studentId)),
+    [participants]
+  )
 
   const addStudent = useCallback(
     (student: StudentOption) => {
@@ -58,6 +61,7 @@ export function StepKatilimcilar({
           extraDocumentUrl: "",
           artworkDescription: "",
           tournamentPlacement: "",
+          projectRole: "",
         },
       ])
     },
@@ -83,11 +87,14 @@ export function StepKatilimcilar({
   const isValid = () => {
     if (participants.length === 0) return false
     return participants.every((p) => {
-      if (!p.participationPhotoUrl?.trim()) return false
+      if (subtypeConfig.requiresParticipationPhoto !== false && !p.participationPhotoUrl?.trim()) {
+        return false
+      }
       if (subtypeConfig.requiresScore && (!p.score || isNaN(Number(p.score)))) return false
       if (subtypeConfig.requiresLanguageLevel && !p.languageLevel) return false
       if (subtypeConfig.requiresArtworkDescription && !p.artworkDescription?.trim()) return false
       if (subtypeConfig.requiresExtraDocument && !p.extraDocumentUrl?.trim()) return false
+      if (subtypeConfig.showParticipantProjectRole && !p.projectRole?.trim()) return false
       return true
     })
   }
@@ -175,6 +182,8 @@ export function StepKatilimcilar({
               optionalExtraDocument={subtypeConfig.optionalExtraDocument}
               requiresArtworkDescription={subtypeConfig.requiresArtworkDescription}
               showTournamentPlacement={subtypeConfig.showTournamentPlacement}
+              showParticipantProjectRole={subtypeConfig.showParticipantProjectRole}
+              requiresParticipationPhoto={subtypeConfig.requiresParticipationPhoto !== false}
               participationPhotoFieldLabel={subtypeConfig.participationPhotoFieldLabel}
               extraDocumentFieldLabel={subtypeConfig.extraDocumentFieldLabel}
               onChange={(updated) => updateParticipant(i, updated)}

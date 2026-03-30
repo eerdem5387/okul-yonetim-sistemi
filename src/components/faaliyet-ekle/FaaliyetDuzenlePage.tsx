@@ -159,7 +159,7 @@ export function FaaliyetDuzenlePage({
     }
     load()
     return () => { cancelled = true }
-  }, [activityId])
+  }, [activityId, teachers])
 
   const setCategory = useCallback((category: CategoryId) => {
     setState((prev) => ({

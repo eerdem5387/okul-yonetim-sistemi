@@ -42,6 +42,10 @@ import {
   buildTurnuvaBasariCertificateHTML,
   type TurnuvaBasariCertData,
 } from "@/lib/certificates/turnuva-basari"
+import {
+  buildProjeKatilimCertificateHTML,
+  type ProjeKatilimCertData,
+} from "@/lib/certificates/proje-katilim"
 
 export async function GET(
   request: NextRequest,
@@ -383,6 +387,27 @@ export async function GET(
         })),
       }
       html = buildVoleybolEgitimCertificateHTML(certData)
+    } else if (event.certificateType === "PROJE_KATILIM") {
+      const meta = (event.metadata as Record<string, unknown> | null) ?? {}
+      const achievementLevel =
+        typeof meta.projectAchievementLevel === "string" && meta.projectAchievementLevel.trim()
+          ? meta.projectAchievementLevel.trim()
+          : "—"
+      const certData: ProjeKatilimCertData = {
+        projectDescription: event.description || event.title,
+        startDate: event.startDate.toISOString(),
+        endDate: event.endDate.toISOString(),
+        teacherName: `${event.teacher.firstName} ${event.teacher.lastName}`,
+        achievementLevel,
+        createdAt: event.createdAt.toISOString(),
+        participants: event.participants.map((p) => ({
+          firstName: p.student.firstName,
+          lastName: p.student.lastName,
+          tcNumber: p.student.tcNumber,
+          grade: p.student.grade,
+        })),
+      }
+      html = buildProjeKatilimCertificateHTML(certData)
     } else {
       return NextResponse.json({ error: "Bu sertifika tipi için PDF şablonu henüz tanımlı değil" }, { status: 400 })
     }

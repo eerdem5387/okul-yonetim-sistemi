@@ -1,12 +1,21 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { Upload, X, Loader2, BookOpen, ChevronDown, ChevronUp } from "lucide-react"
+import { Upload, X, BookOpen, ChevronDown, ChevronUp, FileText } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { DURATION_OPTIONS, type MufredatHafta, type FormVariant } from "@/lib/activity-types-config"
+import {
+  DURATION_OPTIONS,
+  getPrincipalByGrade,
+  type MufredatHafta,
+  type FormVariant,
+} from "@/lib/activity-types-config"
+import {
+  PROJE_DOCUMENT_STATEMENT,
+  PROJE_PROGRAMME_DURATION_WEEKS,
+} from "@/lib/mufredatlar/proje-icerik"
 
 export interface StepDetayData {
   title: string
@@ -31,6 +40,10 @@ export interface StepDetayData {
   vicePrincipalName: string
   /** Turnuva: toplam yarışmacı sayısı (başarı belgesi metni) */
   tournamentTotalParticipants: string
+  /** Proje içerik belgesi — Project Purpose */
+  projectPurpose: string
+  /** Proje sertifikası — başarı düzeyi ifadesi (örn. Excellent, Proficient) */
+  projectAchievementLevel: string
 }
 
 interface Teacher {
@@ -57,6 +70,14 @@ interface StepDetayProps {
   activityTitlePlaceholder?: string
   descriptionFieldLabel?: string
   descriptionPlaceholder?: string
+  projectDocumentPreview?: boolean
+  showProjectPurpose?: boolean
+  showProjectAchievementLevel?: boolean
+  requireProjectOutcome?: boolean
+  outcomeFieldLabel?: string
+  outcomePlaceholder?: string
+  /** Proje belgesi önizlemesi — 2. adımdan gelen katılımcılar */
+  projectPreviewParticipants?: { name: string; tcNumber: string; projectRole: string; grade: string }[]
   onNext: () => void
 }
 
@@ -78,6 +99,13 @@ export function StepDetay({
   activityTitlePlaceholder,
   descriptionFieldLabel,
   descriptionPlaceholder,
+  projectDocumentPreview,
+  showProjectPurpose,
+  showProjectAchievementLevel,
+  requireProjectOutcome,
+  outcomeFieldLabel,
+  outcomePlaceholder,
+  projectPreviewParticipants,
   onNext,
 }: StepDetayProps) {
   const isGezi = formVariant === "gezi"
@@ -88,7 +116,31 @@ export function StepDetay({
   const evidenceRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [mufredatAcik, setMufredatAcik] = useState(false)
+  const [projeDocAcik, setProjeDocAcik] = useState(false)
   void uploading
+
+  const principalForPreview =
+    projectPreviewParticipants && projectPreviewParticipants.length > 0
+      ? getPrincipalByGrade(projectPreviewParticipants[0].grade)
+      : "—"
+
+  const selectedTeacher = teachers.find((t) => t.id === data.teacherId)
+  const teacherPreviewName = selectedTeacher
+    ? `${selectedTeacher.firstName} ${selectedTeacher.lastName}`
+    : "—"
+
+  function formatPreviewDate(d: string): string {
+    if (!d?.trim()) return "—"
+    try {
+      return new Date(d).toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    } catch {
+      return d
+    }
+  }
 
   function set(field: keyof StepDetayData, value: string | string[]) {
     onChange({ ...data, [field]: value })
@@ -140,7 +192,14 @@ export function StepDetay({
     (!showTournamentTotalParticipants ||
       (data.tournamentTotalParticipants.trim() !== "" &&
         !isNaN(parseInt(data.tournamentTotalParticipants, 10)) &&
-        parseInt(data.tournamentTotalParticipants, 10) > 0))
+        parseInt(data.tournamentTotalParticipants, 10) > 0)) &&
+    (!showProjectPurpose || data.projectPurpose.trim()) &&
+    (!showProjectAchievementLevel || data.projectAchievementLevel.trim()) &&
+    (!requireProjectOutcome || data.outcome.trim()) &&
+    (!showNumberOfArtworks ||
+      (data.numberOfArtworks.trim() !== "" &&
+        !isNaN(parseInt(data.numberOfArtworks, 10)) &&
+        parseInt(data.numberOfArtworks, 10) > 0))
 
   return (
     <div className="space-y-6">
@@ -206,6 +265,168 @@ export function StepDetay({
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {projectDocumentPreview && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50/70 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setProjeDocAcik((v) => !v)}
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-amber-100/60 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-amber-800" />
+              <span className="text-sm font-semibold text-amber-950">
+                Proje İçerik Belgesi Önizlemesi
+              </span>
+              <span className="rounded-full bg-amber-200/80 text-amber-900 text-xs px-2 py-0.5 font-medium">
+                docx ile uyumlu
+              </span>
+            </div>
+            {projeDocAcik ? (
+              <ChevronUp className="h-4 w-4 text-amber-700" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-amber-700" />
+            )}
+          </button>
+
+          {projeDocAcik && (
+            <div className="border-t border-amber-200 bg-white px-4 py-4 text-xs text-slate-800 max-h-[520px] overflow-y-auto space-y-4 leading-relaxed">
+              <div className="text-center space-y-1">
+                <div className="font-bold tracking-wide text-amber-950 uppercase text-[11px]">
+                  Levent College IB Programme
+                </div>
+                <div className="font-semibold text-amber-900">Project Document</div>
+              </div>
+
+              <dl className="grid gap-2 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <dt className="font-semibold text-slate-500 uppercase text-[10px] tracking-wide">
+                    Programme Name
+                  </dt>
+                  <dd>IB Diploma Programme / Career-related Programme</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-slate-500 uppercase text-[10px] tracking-wide">
+                    Programme Duration
+                  </dt>
+                  <dd>{PROJE_PROGRAMME_DURATION_WEEKS} weeks</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-slate-500 uppercase text-[10px] tracking-wide">
+                    Project Period
+                  </dt>
+                  <dd>
+                    {formatPreviewDate(data.startDate)} — {formatPreviewDate(data.endDate)}
+                  </dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="font-semibold text-slate-500 uppercase text-[10px] tracking-wide">
+                    Project Title
+                  </dt>
+                  <dd className="font-medium">{data.title.trim() || "—"}</dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="font-semibold text-slate-500 uppercase text-[10px] tracking-wide">
+                    Requested By / Organizing Body
+                  </dt>
+                  <dd>{data.organizerName.trim() || "—"}</dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="font-semibold text-slate-500 uppercase text-[10px] tracking-wide">
+                    Project Leader (Teacher)
+                  </dt>
+                  <dd>{teacherPreviewName}</dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="font-semibold text-slate-500 uppercase text-[10px] tracking-wide">
+                    Principal
+                  </dt>
+                  <dd>{principalForPreview}</dd>
+                </div>
+                {showVicePrincipal && (
+                  <div className="sm:col-span-2">
+                    <dt className="font-semibold text-slate-500 uppercase text-[10px] tracking-wide">
+                      Vice Principal
+                    </dt>
+                    <dd>{data.vicePrincipalName.trim() || "—"}</dd>
+                  </div>
+                )}
+                <div className="sm:col-span-2">
+                  <dt className="font-semibold text-slate-500 uppercase text-[10px] tracking-wide">
+                    Project Purpose
+                  </dt>
+                  <dd className="whitespace-pre-wrap">{data.projectPurpose.trim() || "—"}</dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="font-semibold text-slate-500 uppercase text-[10px] tracking-wide">
+                    Project Description
+                  </dt>
+                  <dd className="whitespace-pre-wrap">{data.description.trim() || "—"}</dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="font-semibold text-slate-500 uppercase text-[10px] tracking-wide">
+                    {outcomeFieldLabel ?? "Expected Outcomes"}
+                  </dt>
+                  <dd className="whitespace-pre-wrap">{data.outcome.trim() || "—"}</dd>
+                </div>
+              </dl>
+
+              <div>
+                <p className="font-semibold text-slate-500 uppercase text-[10px] tracking-wide mb-2">
+                  Participants
+                </p>
+                {projectPreviewParticipants && projectPreviewParticipants.length > 0 ? (
+                  <div className="overflow-x-auto rounded-lg border border-amber-100">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-amber-50 text-[10px] uppercase text-amber-950">
+                          <th className="px-2 py-2 font-semibold">Name &amp; Surname</th>
+                          <th className="px-2 py-2 font-semibold">TR ID</th>
+                          <th className="px-2 py-2 font-semibold">Role</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {projectPreviewParticipants.map((row, i) => (
+                          <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-amber-50/30"}>
+                            <td className="px-2 py-2 border-t border-amber-100">{row.name || "—"}</td>
+                            <td className="px-2 py-2 border-t border-amber-100 font-mono text-[11px]">
+                              {row.tcNumber || "—"}
+                            </td>
+                            <td className="px-2 py-2 border-t border-amber-100">
+                              {row.projectRole?.trim() || "—"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-slate-400 italic py-2">
+                    Katılımcılar 2. adımda eklendikten sonra tablo burada güncellenir. Geri dönüp
+                    kontrol edebilirsiniz.
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-lg bg-amber-50/80 border border-amber-100 p-3 text-[11px] text-slate-700">
+                <p className="font-semibold text-amber-900 mb-1">Project Document Statement</p>
+                <p>{PROJE_DOCUMENT_STATEMENT}</p>
+              </div>
+
+              <div className="flex flex-wrap gap-8 pt-2 border-t border-dashed border-amber-200 text-[10px] text-slate-500">
+                <div>
+                  <div className="h-px w-32 bg-slate-300 mb-1" />
+                  Principal signature
+                </div>
+                <div>
+                  <div className="h-px w-32 bg-slate-300 mb-1" />
+                  Vice Principal signature
+                </div>
               </div>
             </div>
           )}
@@ -440,6 +661,22 @@ export function StepDetay({
           />
         </div>
 
+        {showProjectPurpose && (
+          <div className="sm:col-span-2">
+            <Label htmlFor="projectPurpose" className="text-sm font-medium">
+              Project Purpose <span className="text-red-500">*</span>
+            </Label>
+            <Textarea
+              id="projectPurpose"
+              value={data.projectPurpose}
+              onChange={(e) => set("projectPurpose", e.target.value)}
+              placeholder="Why this project; alignment with IB aims and learner profile…"
+              rows={3}
+              className="mt-1.5"
+            />
+          </div>
+        )}
+
         {/* Gezi Programı */}
         {showGeziProgrami && (
           <div className="sm:col-span-2">
@@ -454,22 +691,64 @@ export function StepDetay({
           </div>
         )}
 
-        {/* Sonuç / Kazanım */}
+        {/* Sonuç / Kazanım — proje: Expected Outcomes */}
         <div className="sm:col-span-2">
-          <Label className="text-sm font-medium">
-            {isGezi ? "Amaç / Kazanım" : "Sonuç / Kazanım"}
+          <Label htmlFor="outcome" className="text-sm font-medium">
+            {outcomeFieldLabel
+              ? outcomeFieldLabel
+              : isGezi
+                ? "Amaç / Kazanım"
+                : "Sonuç / Kazanım"}
+            {requireProjectOutcome && <span className="text-red-500"> *</span>}
           </Label>
-          <Input
-            value={data.outcome}
-            onChange={(e) => set("outcome", e.target.value)}
-            placeholder={
-              isGezi
-                ? "Bu geziden öğrencilerin ne kazanması bekleniyor?"
-                : "Bu eğitimden beklenen sonuç veya kazanım..."
-            }
-            className="mt-1.5"
-          />
+          {requireProjectOutcome ? (
+            <Textarea
+              id="outcome"
+              value={data.outcome}
+              onChange={(e) => set("outcome", e.target.value)}
+              placeholder={
+                outcomePlaceholder ??
+                (isGezi
+                  ? "Bu geziden öğrencilerin ne kazanması bekleniyor?"
+                  : "Bu eğitimden beklenen sonuç veya kazanım...")
+              }
+              rows={4}
+              className="mt-1.5"
+            />
+          ) : (
+            <Input
+              id="outcome"
+              value={data.outcome}
+              onChange={(e) => set("outcome", e.target.value)}
+              placeholder={
+                outcomePlaceholder ??
+                (isGezi
+                  ? "Bu geziden öğrencilerin ne kazanması bekleniyor?"
+                  : "Bu eğitimden beklenen sonuç veya kazanım...")
+              }
+              className="mt-1.5"
+            />
+          )}
         </div>
+
+        {showProjectAchievementLevel && (
+          <div className="sm:col-span-2">
+            <Label htmlFor="projectAchievementLevel" className="text-sm font-medium">
+              Achievement level (sertifika metninde kullanılır){" "}
+              <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="projectAchievementLevel"
+              value={data.projectAchievementLevel}
+              onChange={(e) => set("projectAchievementLevel", e.target.value)}
+              placeholder="örn: Excellent, Proficient, Standard Achieved"
+              className="mt-1.5 max-w-md"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              İngilizce kısa ifade; sertifikadaki “rated as ___” cümlesine yazılır.
+            </p>
+          </div>
+        )}
 
         {/* Eser Sayısı (Görsel Sanatlar) */}
         {showNumberOfArtworks && (

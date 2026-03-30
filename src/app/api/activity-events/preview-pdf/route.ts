@@ -20,6 +20,7 @@ import {
   buildTurnuvaBasariCertificateHTML,
   type TurnuvaBasariCertData,
 } from "@/lib/certificates/turnuva-basari"
+import { buildProjeKatilimCertificateHTML } from "@/lib/certificates/proje-katilim"
 
 export async function POST(request: NextRequest) {
   const { hasAccess } = await checkActivityAccess(request)
@@ -67,6 +68,8 @@ export async function POST(request: NextRequest) {
       html = buildVoleybolEgitimCertificateHTML(certData)
     } else if (certificateType === "TURNUVA_KATILIM") {
       html = buildTurnuvaKatilimCertificateHTML(certData)
+    } else if (certificateType === "PROJE_KATILIM") {
+      html = buildProjeKatilimCertificateHTML(certData)
     } else if (certificateType === "TURNUVA_BASARI") {
       const d = certData as TurnuvaBasariCertData
       if (!d.participants?.length) {

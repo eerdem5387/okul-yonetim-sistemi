@@ -28,6 +28,7 @@ export async function PUT(
       extraDocumentUrl,
       artworkDescription,
       tournamentPlacement,
+      projectRole,
       verificationStatus: newStatus,
       signedDocumentUrls,
       verifiedBy,
@@ -52,6 +53,9 @@ export async function PUT(
     }
     if (tournamentPlacement !== undefined) {
       updateData.tournamentPlacement = tournamentPlacement?.trim() || null
+    }
+    if (projectRole !== undefined) {
+      updateData.projectRole = projectRole?.trim() || null
     }
 
     if (newStatus !== undefined) {

@@ -59,6 +59,8 @@ const INITIAL_DETAY: StepDetayData = {
   numberOfArtworks: "",
   vicePrincipalName: "",
   tournamentTotalParticipants: "",
+  projectPurpose: "",
+  projectAchievementLevel: "",
 }
 
 const STEPS = [
@@ -124,6 +126,23 @@ export function FaaliyetForm({ mainType, subtypeId }: FaaliyetFormProps) {
       teacherName,
       organizerName: detay.organizerName,
       createdAt: new Date().toISOString(),
+    }
+
+    if (subtypeConfig!.certificateType === "PROJE_KATILIM") {
+      return {
+        projectDescription: detay.description?.trim() || detay.title,
+        startDate: detay.startDate,
+        endDate: detay.endDate,
+        teacherName,
+        achievementLevel: detay.projectAchievementLevel,
+        createdAt: new Date().toISOString(),
+        participants: participants.map((p) => ({
+          firstName: p.studentName.split(" ")[0] ?? "",
+          lastName: p.studentName.split(" ").slice(1).join(" ") ?? "",
+          tcNumber: students.find((s) => s.id === p.studentId)?.tcNumber ?? "",
+          grade: p.studentGrade,
+        })),
+      }
     }
 
     if (subtypeConfig!.certificateType === "TURNUVA_KATILIM") {
@@ -288,32 +307,40 @@ export function FaaliyetForm({ mainType, subtypeId }: FaaliyetFormProps) {
         durationYears: detay.durationYears || null,
         evidenceUrls: detay.evidenceUrls,
         teacherId: detay.teacherId,
-        metadata: subtypeConfig!.formVariant === "gezi"
-          ? {
-              geziTuru: detay.geziTuru || null,
-              geziProgrami: detay.geziProgrami || null,
-              ulasimTuru: detay.ulasimTuru || null,
-            }
-          : subtypeConfig!.showNumberOfArtworks
-          ? {
-              numberOfArtworks: detay.numberOfArtworks ? parseInt(detay.numberOfArtworks) : null,
-              vicePrincipalName: detay.vicePrincipalName || null,
-            }
-          : subtypeConfig!.showTournamentTotalParticipants
-          ? {
-              tournamentTotalParticipants: detay.tournamentTotalParticipants
-                ? parseInt(detay.tournamentTotalParticipants, 10)
-                : null,
-            }
-          : null,
+        metadata: (() => {
+          const m: Record<string, unknown> = {}
+          if (subtypeConfig!.formVariant === "gezi") {
+            m.geziTuru = detay.geziTuru || null
+            m.geziProgrami = detay.geziProgrami || null
+            m.ulasimTuru = detay.ulasimTuru || null
+          }
+          if (subtypeConfig!.showNumberOfArtworks) {
+            m.numberOfArtworks = detay.numberOfArtworks ? parseInt(detay.numberOfArtworks, 10) : null
+            m.vicePrincipalName = detay.vicePrincipalName || null
+          }
+          if (subtypeConfig!.showTournamentTotalParticipants) {
+            m.tournamentTotalParticipants = detay.tournamentTotalParticipants
+              ? parseInt(detay.tournamentTotalParticipants, 10)
+              : null
+          }
+          if (subtypeConfig!.showProjectPurpose) {
+            m.projectPurpose = detay.projectPurpose?.trim() || null
+            m.projectAchievementLevel = detay.projectAchievementLevel?.trim() || null
+          }
+          if (subtypeConfig!.showVicePrincipal && !subtypeConfig!.showNumberOfArtworks) {
+            m.vicePrincipalName = detay.vicePrincipalName?.trim() || null
+          }
+          return Object.keys(m).length > 0 ? m : null
+        })(),
         participants: participants.map((p) => ({
           studentId: p.studentId,
           score: p.score ? parseInt(p.score) : null,
           languageLevel: p.languageLevel || null,
-          participationPhotoUrl: p.participationPhotoUrl,
+          participationPhotoUrl: p.participationPhotoUrl || null,
           extraDocumentUrl: p.extraDocumentUrl || null,
           artworkDescription: p.artworkDescription?.trim() || null,
           tournamentPlacement: p.tournamentPlacement?.trim() || null,
+          projectRole: p.projectRole?.trim() || null,
         })),
       }
 
@@ -407,6 +434,18 @@ export function FaaliyetForm({ mainType, subtypeId }: FaaliyetFormProps) {
             activityTitlePlaceholder={subtypeConfig.activityTitlePlaceholder}
             descriptionFieldLabel={subtypeConfig.descriptionFieldLabel}
             descriptionPlaceholder={subtypeConfig.descriptionPlaceholder}
+            projectDocumentPreview={subtypeConfig.projectDocumentPreview}
+            showProjectPurpose={subtypeConfig.showProjectPurpose}
+            showProjectAchievementLevel={subtypeConfig.showProjectAchievementLevel}
+            requireProjectOutcome={subtypeConfig.requireProjectOutcome}
+            outcomeFieldLabel={subtypeConfig.outcomeFieldLabel}
+            outcomePlaceholder={subtypeConfig.outcomePlaceholder}
+            projectPreviewParticipants={participants.map((p) => ({
+              name: p.studentName,
+              tcNumber: students.find((s) => s.id === p.studentId)?.tcNumber ?? "",
+              projectRole: p.projectRole ?? "",
+              grade: p.studentGrade,
+            }))}
             onNext={() => setStep(2)}
           />
         )}

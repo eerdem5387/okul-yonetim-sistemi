@@ -133,10 +133,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "En az bir katılımcı eklenmelidir" }, { status: 400 })
     }
 
-    // Her katılımcının fotoğrafı zorunlu
-    const missingPhoto = participants.find((p: { studentId: string; participationPhotoUrl?: string }) => !p.participationPhotoUrl?.trim())
-    if (missingPhoto) {
-      return NextResponse.json({ error: "Her katılımcı için katılım fotoğrafı zorunludur" }, { status: 400 })
+    const photoRequired = certificateType !== "PROJE_KATILIM"
+    if (photoRequired) {
+      const missingPhoto = participants.find(
+        (p: { studentId: string; participationPhotoUrl?: string }) => !p.participationPhotoUrl?.trim()
+      )
+      if (missingPhoto) {
+        return NextResponse.json({ error: "Her katılımcı için katılım fotoğrafı zorunludur" }, { status: 400 })
+      }
     }
 
     const event = await prisma.activityEvent.create({
@@ -168,6 +172,7 @@ export async function POST(request: NextRequest) {
             extraDocumentUrl?: string
             artworkDescription?: string | null
             tournamentPlacement?: string | null
+            projectRole?: string | null
           }) => ({
             studentId: p.studentId,
             score: p.score != null ? parseInt(String(p.score)) : null,
@@ -176,6 +181,7 @@ export async function POST(request: NextRequest) {
             extraDocumentUrl: p.extraDocumentUrl || null,
             artworkDescription: p.artworkDescription?.trim() || null,
             tournamentPlacement: p.tournamentPlacement?.trim() || null,
+            projectRole: p.projectRole?.trim() || null,
           })),
         },
       },
