@@ -1,6 +1,6 @@
 /**
- * LEVENT COLLEGE IB PROGRAMME — PIANO ANNUAL CURRICULUM PROGRAM
- * Müzik Eğitimi katılım belgesi (dinamik metin yok)
+ * LEVENT COLLEGE IB PROGRAMME — MUSIC ANNUAL CURRICULUM PROGRAM
+ * Music education participation certificate
  */
 
 function escapeHtml(s: string): string {
@@ -60,10 +60,10 @@ function participantPage(data: MuzikEgitimCertData, participant: MuzikEgitimPart
 
     <div class="cert-header">
       <div class="cert-school-logo">
-        <img src="/logo.png" alt="Levent Kolej" class="logo-img" onerror="this.style.display='none'" />
+        <img src="/logo.png" alt="Levent College" class="logo-img" onerror="this.style.display='none'" />
       </div>
       <div class="cert-school-info">
-        <div class="cert-school-name">LEVENT KOLEJİ</div>
+        <div class="cert-school-name">LEVENT COLLEGE</div>
         <div class="cert-school-subtitle">IB Programme · Music Education</div>
       </div>
     </div>
@@ -72,7 +72,7 @@ function participantPage(data: MuzikEgitimCertData, participant: MuzikEgitimPart
 
     <div class="cert-programme-title">
       <div class="cert-programme-line">LEVENT COLLEGE IB PROGRAMME</div>
-      <div class="cert-programme-line cert-programme-accent">PIANO ANNUAL CURRICULUM PROGRAM</div>
+      <div class="cert-programme-line cert-programme-accent">MUSIC ANNUAL CURRICULUM PROGRAM</div>
     </div>
 
     <div class="cert-body">
@@ -147,7 +147,7 @@ export function buildMuzikEgitimCertificateHTML(data: MuzikEgitimCertData): stri
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Piano Annual Curriculum Program — Certificate</title>
+  <title>Music Annual Curriculum Program — Certificate</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap');
 

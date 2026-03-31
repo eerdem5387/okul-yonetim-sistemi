@@ -56,7 +56,7 @@ function page(data: TurnuvaKatilimCertData, p: TurnuvaKatilimParticipant, idx: n
         <img src="/logo.png" alt="" class="logo-img" onerror="this.style.display='none'" />
       </div>
       <div class="cert-school-info">
-        <div class="cert-school-name">LEVENT KOLEJİ</div>
+        <div class="cert-school-name">LEVENT COLLEGE</div>
         <div class="cert-doc-title">LEVENT COLLEGE IB PROGRAMME</div>
         <div class="cert-doc-subtitle">CERTIFICATE OF TOURNAMENT PARTICIPATION</div>
       </div>

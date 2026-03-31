@@ -78,10 +78,10 @@ function participantPage(
 
     <div class="cert-header">
       <div class="cert-school-logo">
-        <img src="/logo.png" alt="Levent Kolej" class="logo-img" onerror="this.style.display='none'" />
+        <img src="/logo.png" alt="Levent College" class="logo-img" onerror="this.style.display='none'" />
       </div>
       <div class="cert-school-info">
-        <div class="cert-school-name">LEVENT KOLEJİ</div>
+        <div class="cert-school-name">LEVENT COLLEGE</div>
         <div class="cert-school-subtitle">IB Programme · Volleyball</div>
       </div>
     </div>

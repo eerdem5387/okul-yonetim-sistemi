@@ -65,10 +65,10 @@ function participantPage(data: GeziCertData, participant: GeziCertParticipant): 
 
     <div class="cert-header">
       <div class="cert-school-logo">
-        <img src="/logo.png" alt="Levent Kolej" class="logo-img" onerror="this.style.display='none'" />
+        <img src="/logo.png" alt="Levent College" class="logo-img" onerror="this.style.display='none'" />
       </div>
       <div class="cert-school-info">
-        <div class="cert-school-name">LEVENT KOLEJİ</div>
+        <div class="cert-school-name">LEVENT COLLEGE</div>
         <div class="cert-school-subtitle">IB Programme · Educational Visit</div>
       </div>
     </div>
@@ -113,7 +113,7 @@ function participantPage(data: GeziCertData, participant: GeziCertParticipant): 
 
       <p class="cert-statement">
         The above-named participant has successfully attended and completed the educational
-        field trip programme organized by Levent Koleji IB Programme.
+        field trip programme organized by Levent College IB Programme.
       </p>
     </div>
 
