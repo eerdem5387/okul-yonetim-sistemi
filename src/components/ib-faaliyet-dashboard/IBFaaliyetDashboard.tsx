@@ -52,7 +52,7 @@ export interface IBDashboardStats {
 
 /** Birleşik liste satırı — GET /api/ib-dashboard/faaliyet-list */
 export interface IBDashboardUnifiedItem {
-  source: "event" | "legacy_group"
+  source: "event"
   id: string
   title: string
   sortDate: string
@@ -122,7 +122,7 @@ export function IBFaaliyetDashboard({
 
   const fetchStats = useCallback(async () => {
     try {
-      const res = await fetch("/api/activities/stats", { headers: getAuthHeaders() })
+      const res = await fetch("/api/activity-events/stats", { headers: getAuthHeaders() })
       if (res.ok) setStats(await res.json())
       else setStats(null)
     } catch {
@@ -190,23 +190,11 @@ export function IBFaaliyetDashboard({
     fetchActivities()
   }, [fetchActivities])
 
-  function legacyAnchorFromRowId(rowId: string): string | null {
-    if (rowId.startsWith("legacy:")) return rowId.slice(7)
-    return null
-  }
-
   const handleDownloadPdf = async (item: IBDashboardUnifiedItem) => {
     const key = item.id
     setDownloadingPdfKey(key)
     try {
-      let urlPath: string
-      if (item.source === "event") {
-        urlPath = `/api/activity-events/${item.id}/pdf`
-      } else {
-        const anchor = legacyAnchorFromRowId(item.id)
-        if (!anchor) throw new Error("Geçersiz kayıt")
-        urlPath = `/api/activities/${anchor}/pdf`
-      }
+      const urlPath = `/api/activity-events/${item.id}/pdf`
       const res = await fetch(urlPath, { headers: getAuthHeaders() })
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: res.statusText }))
@@ -230,31 +218,14 @@ export function IBFaaliyetDashboard({
   }
 
   const handleDelete = async (item: IBDashboardUnifiedItem) => {
-    const message =
-      item.source === "event"
-        ? `"${item.title}" faaliyetini ve tüm katılımcı kayıtlarını silmek istediğinizden emin misiniz?`
-        : `"${item.title}" grubundaki tüm öğrenci kayıtlarını silmek istediğinizden emin misiniz?`
+    const message = `"${item.title}" faaliyetini ve tüm katılımcı kayıtlarını silmek istediğinizden emin misiniz?`
     if (!confirm(message)) return
     try {
-      if (item.source === "event") {
-        const res = await fetch(`/api/activity-events/${item.id}`, { method: "DELETE", headers: getAuthHeaders() })
+      const res = await fetch(`/api/activity-events/${item.id}`, { method: "DELETE", headers: getAuthHeaders() })
         if (!res.ok) {
           const j = await res.json().catch(() => ({}))
           throw new Error(j.error || "Silinemedi")
         }
-      } else {
-        const anchor = legacyAnchorFromRowId(item.id)
-        if (!anchor) throw new Error("Geçersiz kayıt")
-        const res = await fetch("/api/activities/delete-group", {
-          method: "POST",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({ anchorId: anchor }),
-        })
-        if (!res.ok) {
-          const j = await res.json().catch(() => ({}))
-          throw new Error(j.error || "Silinemedi")
-        }
-      }
       fetchStats()
       fetchActivities()
     } catch (e) {
@@ -511,7 +482,7 @@ export function IBFaaliyetDashboard({
             Filtreleme
           </CardTitle>
           <CardDescription>
-            Liste faaliyet bazlıdır: sertifika modülü kayıtları ve aynı gün/aynı başlıklı klasik IB kayıtları tek satırda gruplanır. Detaydan katılımcılara inin.
+            Liste yalnızca yeni faaliyet yönetimi kayıtlarını gösterir. Detaydan katılımcılara inin.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -530,7 +501,7 @@ export function IBFaaliyetDashboard({
               </select>
             </div>
             <div>
-              <Label className="text-xs">Tip (klasik kayıt)</Label>
+              <Label className="text-xs">Tip</Label>
               <select
                 value={typeFilter}
                 onChange={(e) => { setTypeFilter(e.target.value); setPage(1) }}
@@ -658,15 +629,9 @@ export function IBFaaliyetDashboard({
                           </Link>
                         </td>
                         <td className="py-3 px-2">
-                          {row.source === "event" ? (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-800">
-                              <Layers className="h-3 w-3" /> Sertifika
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-700">
-                              Klasik IB
-                            </span>
-                          )}
+                          <span className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-800">
+                            <Layers className="h-3 w-3" /> Yeni Faaliyet
+                          </span>
                         </td>
                         <td className="py-3 px-2 text-gray-600">
                           <span className="block">{row.typeLabel}</span>
@@ -720,13 +685,11 @@ export function IBFaaliyetDashboard({
                                 <FileDown className="h-4 w-4" />
                               )}
                             </Button>
-                            {row.source === "legacy_group" && legacyAnchorFromRowId(row.id) && (
-                              <Link href={faaliyetDuzenleHref(legacyAnchorFromRowId(row.id)!)}>
-                                <Button variant="ghost" size="sm" className="text-gray-600 h-8 w-8 p-0" title="Düzenle (ilk kayıt)">
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                              </Link>
-                            )}
+                            <Link href={faaliyetDuzenleHref(row.id)}>
+                              <Button variant="ghost" size="sm" className="text-gray-600 h-8 w-8 p-0" title="Düzenle">
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </Link>
                             <Button
                               variant="ghost"
                               size="sm"

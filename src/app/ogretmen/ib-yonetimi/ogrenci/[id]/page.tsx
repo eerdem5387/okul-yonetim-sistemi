@@ -35,12 +35,12 @@ export default function IbOgrenciDetayPage() {
     if (!studentId) return
     setLoading(true)
     try {
-      const [studentRes, activitiesRes, statsRes] = await Promise.all([
+      const [studentRes, eventRes, statsRes] = await Promise.all([
         fetch(`/api/students/${studentId}`, { headers: getAuthHeaders() }),
-        fetch(`/api/activities?studentId=${studentId}&limit=500`, {
+        fetch(`/api/activity-events?studentId=${studentId}&limit=200`, {
           headers: getAuthHeaders(),
         }),
-        fetch("/api/activities/stats", { headers: getAuthHeaders() }),
+        fetch("/api/activity-events/stats", { headers: getAuthHeaders() }),
       ])
       if (studentRes.ok) {
         const data = await studentRes.json()
@@ -53,13 +53,64 @@ export default function IbOgrenciDetayPage() {
           tcNumber: s.tcNumber ?? "",
         })
       }
-      if (activitiesRes.ok) {
-        const data = await activitiesRes.json()
-        setActivities(data.activities ?? [])
+      if (eventRes.ok) {
+        const data = await eventRes.json()
+        const eventRows: StudentActivityDetailActivity[] = (data.events ?? []).flatMap((ev: {
+          id: string
+          title: string
+          description?: string | null
+          startDate: string
+          location?: string | null
+          organizerName: string
+          outcome?: string | null
+          participants: Array<{
+            id: string
+            studentId: string
+            score?: number | null
+            languageLevel?: string | null
+            participationPhotoUrl?: string | null
+            extraDocumentUrl?: string | null
+            projectRole?: string | null
+            tournamentPlacement?: string | null
+            artworkDescription?: string | null
+            signedDocumentUrls?: string[]
+            verificationStatus?: "IMZA_SURECINDE" | "ONAY_BEKLIYOR" | "ONAYLANDI"
+            isVerified?: boolean
+          }>
+        }) => {
+          const p = (ev.participants ?? []).find((x) => x.studentId === studentId)
+          if (!p) return []
+          return [{
+            id: `event:${ev.id}:${p.id}`,
+            source: "event",
+            detailHref: `/faaliyet-yonetimi/${ev.id}/katilimci/${p.id}`,
+            studentId,
+            type: "ETKINLIK",
+            title: ev.title,
+            description: ev.description ?? null,
+            activityDate: ev.startDate,
+            location: ev.location ?? null,
+            organizer: ev.organizerName ?? null,
+            outcome: ev.outcome ?? null,
+            isVerified: !!p.isVerified,
+            verificationStatus: p.verificationStatus ?? "IMZA_SURECINDE",
+            category: null,
+            subtype: null,
+            participationPhotoUrl: p.participationPhotoUrl ?? null,
+            extraDocumentUrl: p.extraDocumentUrl ?? null,
+            signedDocumentUrls: p.signedDocumentUrls ?? [],
+            score: p.score ?? null,
+            languageLevel: p.languageLevel ?? null,
+            projectRole: p.projectRole ?? null,
+            tournamentPlacement: p.tournamentPlacement ?? null,
+            artworkDescription: p.artworkDescription ?? null,
+          }]
+        })
+        setActivities(eventRows)
       }
       if (statsRes.ok) {
         const stats = await statsRes.json()
-        setTotalInSystem(stats.total ?? 0)
+        setTotalInSystem(stats.total ?? stats.totalEvents ?? 0)
       }
     } catch {
       setActivities([])

@@ -1,6 +1,6 @@
 import puppeteer from 'puppeteer-core'
 import chromium from '@sparticuz/chromium'
-import { existsSync } from 'fs'
+import { existsSync, readFileSync } from 'fs'
 import { join } from 'path'
 
 /** Yerel geliştirme için Chrome/Chromium yolu (macOS / Linux). Production'da @sparticuz/chromium kullanılır. */
@@ -52,6 +52,54 @@ function escapeHTML(text: string | null | undefined): string {
     .replace(/'/g, '&#39;')
 }
 
+let schoolLogoDataUriCache: string | null = null
+
+function getSchoolLogoDataUri(): string | null {
+  if (schoolLogoDataUriCache !== null) return schoolLogoDataUriCache
+  try {
+    const logoPath = join(process.cwd(), 'public', 'logo.png')
+    if (!existsSync(logoPath)) {
+      schoolLogoDataUriCache = ''
+      return null
+    }
+    const b64 = readFileSync(logoPath).toString('base64')
+    schoolLogoDataUriCache = `data:image/png;base64,${b64}`
+    return schoolLogoDataUriCache
+  } catch {
+    schoolLogoDataUriCache = ''
+    return null
+  }
+}
+
+function injectGlobalPdfLogo(html: string): string {
+  const logoUri = getSchoolLogoDataUri()
+  if (!logoUri) return html
+
+  const logoOverlay = `
+<style id="global-pdf-logo-style">
+.global-pdf-logo {
+  position: fixed;
+  top: 14px;
+  right: 18px;
+  width: 84px;
+  max-height: 84px;
+  object-fit: contain;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.95;
+}
+</style>
+<img class="global-pdf-logo" src="${logoUri}" alt="Levent Okulları logo" />
+`
+
+  // Şablonda body varsa logoyu global overlay olarak body başlangıcına ekle.
+  const bodyOpenRegex = /<body[^>]*>/i
+  if (bodyOpenRegex.test(html)) {
+    return html.replace(bodyOpenRegex, (m) => `${m}\n${logoOverlay}`)
+  }
+  return `${logoOverlay}\n${html}`
+}
+
 export async function generatePDF(
   html: string,
   options?: { format?: string; landscape?: boolean; margin?: Record<string, string> }
@@ -90,7 +138,8 @@ export async function generatePDF(
 
   const page = await browser.newPage()
 
-  const encodedHTML = encodeHTMLEntities(html)
+  const htmlWithLogo = injectGlobalPdfLogo(html)
+  const encodedHTML = encodeHTMLEntities(htmlWithLogo)
   await page.setContent(encodedHTML, { waitUntil: 'networkidle0' })
 
   const pdf = await page.pdf({

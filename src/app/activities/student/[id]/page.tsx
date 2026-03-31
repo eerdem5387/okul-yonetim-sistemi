@@ -35,15 +35,12 @@ export default function ActivityStudentDetailPage() {
     if (!studentId) return
     setLoading(true)
     try {
-      const [studentRes, activitiesRes, eventRes, statsRes] = await Promise.all([
+      const [studentRes, eventRes, statsRes] = await Promise.all([
         fetch(`/api/students/${studentId}`, { headers: getAuthHeaders() }),
-        fetch(`/api/activities?studentId=${studentId}&limit=500`, {
-          headers: getAuthHeaders(),
-        }),
         fetch(`/api/activity-events?studentId=${studentId}&limit=200`, {
           headers: getAuthHeaders(),
         }),
-        fetch("/api/activities/stats", { headers: getAuthHeaders() }),
+        fetch("/api/activity-events/stats", { headers: getAuthHeaders() }),
       ])
       if (studentRes.ok) {
         const data = await studentRes.json()
@@ -57,15 +54,6 @@ export default function ActivityStudentDetailPage() {
         })
       }
       const mergedActivities: StudentActivityDetailActivity[] = []
-      if (activitiesRes.ok) {
-        const data = await activitiesRes.json()
-        const legacyRows = (data.activities ?? []).map((a: StudentActivityDetailActivity) => ({
-          ...a,
-          source: "legacy" as const,
-          detailHref: `/activities/kayit/${a.id}?from=student&studentId=${studentId}`,
-        }))
-        mergedActivities.push(...legacyRows)
-      }
       if (eventRes.ok) {
         const data = await eventRes.json()
         const eventRows: StudentActivityDetailActivity[] = (data.events ?? []).flatMap((ev: {
@@ -124,7 +112,7 @@ export default function ActivityStudentDetailPage() {
       setActivities(mergedActivities)
       if (statsRes.ok) {
         const stats = await statsRes.json()
-        setTotalInSystem(stats.total ?? 0)
+        setTotalInSystem(stats.total ?? stats.totalEvents ?? 0)
       }
     } catch {
       setActivities([])
