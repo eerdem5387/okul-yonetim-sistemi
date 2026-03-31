@@ -4,13 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
+    "build": "prisma migrate deploy && next build --turbopack",
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
     "cleanup-duplicates": "tsx scripts/cleanup-duplicate-registrations.ts",
     "migrate-activities": "tsx scripts/migrate-activities-to-new-structure.ts",
-    "migrate-activities:dry": "tsx scripts/migrate-activities-to-new-structure.ts --dry-run"
+    "migrate-activities:dry": "tsx scripts/migrate-activities-to-new-structure.ts --dry-run",
+    "migrate:baseline-then-deploy": "bash scripts/prisma-baseline-then-deploy.sh",
+    "migrate:repair-drift": "bash scripts/prisma-repair-drift.sh"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
