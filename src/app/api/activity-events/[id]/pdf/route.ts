@@ -83,6 +83,14 @@ export async function GET(
     }
 
     const pdfKind = request.nextUrl.searchParams.get("kind")
+    const participantId = request.nextUrl.searchParams.get("participantId")
+    const selectedParticipants = participantId
+      ? event.participants.filter((p) => p.id === participantId)
+      : event.participants
+
+    if (participantId && selectedParticipants.length === 0) {
+      return NextResponse.json({ error: "Katılımcı bulunamadı" }, { status: 404 })
+    }
 
     let html = ""
 
@@ -96,7 +104,7 @@ export async function GET(
       const teacherName = `${event.teacher.firstName} ${event.teacher.lastName}`
 
       if (pdfKind === "achievement") {
-        const placed = event.participants.filter((p) => (p.tournamentPlacement ?? "").trim())
+        const placed = selectedParticipants.filter((p) => (p.tournamentPlacement ?? "").trim())
         if (totalParticipants < 1) {
           return NextResponse.json(
             { error: "Toplam yarışmacı sayısı kayıtta yok veya geçersiz" },
@@ -129,7 +137,7 @@ export async function GET(
           endDate: event.endDate.toISOString(),
           teacherName,
           createdAt: event.createdAt.toISOString(),
-          participants: event.participants.map((p) => ({
+          participants: selectedParticipants.map((p) => ({
             firstName: p.student.firstName,
             lastName: p.student.lastName,
             tcNumber: p.student.tcNumber,
@@ -147,7 +155,7 @@ export async function GET(
         teacherName: `${event.teacher.firstName} ${event.teacher.lastName}`,
         organizerName: event.organizerName,
         createdAt: event.createdAt.toISOString(),
-        participants: event.participants.map((p) => ({
+        participants: selectedParticipants.map((p) => ({
           firstName: p.student.firstName,
           lastName: p.student.lastName,
           tcNumber: p.student.tcNumber,
@@ -166,7 +174,7 @@ export async function GET(
         teacherName: `${event.teacher.firstName} ${event.teacher.lastName}`,
         organizerName: event.organizerName,
         createdAt: event.createdAt.toISOString(),
-        participants: event.participants.map((p) => ({
+        participants: selectedParticipants.map((p) => ({
           firstName: p.student.firstName,
           lastName: p.student.lastName,
           tcNumber: p.student.tcNumber,
@@ -184,7 +192,7 @@ export async function GET(
         teacherName: `${event.teacher.firstName} ${event.teacher.lastName}`,
         organizerName: event.organizerName,
         createdAt: event.createdAt.toISOString(),
-        participants: event.participants.map((p) => ({
+        participants: selectedParticipants.map((p) => ({
           firstName: p.student.firstName,
           lastName: p.student.lastName,
           tcNumber: p.student.tcNumber,
@@ -202,7 +210,7 @@ export async function GET(
         teacherName: `${event.teacher.firstName} ${event.teacher.lastName}`,
         organizerName: event.organizerName,
         createdAt: event.createdAt.toISOString(),
-        participants: event.participants.map((p) => ({
+        participants: selectedParticipants.map((p) => ({
           firstName: p.student.firstName,
           lastName: p.student.lastName,
           tcNumber: p.student.tcNumber,
@@ -220,7 +228,7 @@ export async function GET(
         teacherName: `${event.teacher.firstName} ${event.teacher.lastName}`,
         organizerName: event.organizerName,
         createdAt: event.createdAt.toISOString(),
-        participants: event.participants.map((p) => ({
+        participants: selectedParticipants.map((p) => ({
           firstName: p.student.firstName,
           lastName: p.student.lastName,
           tcNumber: p.student.tcNumber,
@@ -237,7 +245,7 @@ export async function GET(
         endDate: event.endDate.toISOString(),
         teacherName: `${event.teacher.firstName} ${event.teacher.lastName}`,
         createdAt: event.createdAt.toISOString(),
-        participants: event.participants.map((p) => ({
+        participants: selectedParticipants.map((p) => ({
           firstName: p.student.firstName,
           lastName: p.student.lastName,
           tcNumber: p.student.tcNumber,
@@ -257,7 +265,7 @@ export async function GET(
         createdAt: event.createdAt.toISOString(),
         numberOfArtworks: typeof meta.numberOfArtworks === "number" ? meta.numberOfArtworks : 0,
         vicePrincipalName: typeof meta.vicePrincipalName === "string" ? meta.vicePrincipalName : "",
-        participants: event.participants.map((p) => ({
+        participants: selectedParticipants.map((p) => ({
           firstName: p.student.firstName,
           lastName: p.student.lastName,
           tcNumber: p.student.tcNumber,
@@ -272,7 +280,7 @@ export async function GET(
         endDate: event.endDate.toISOString(),
         teacherName: `${event.teacher.firstName} ${event.teacher.lastName}`,
         createdAt: event.createdAt.toISOString(),
-        participants: event.participants.map((p) => ({
+        participants: selectedParticipants.map((p) => ({
           firstName: p.student.firstName,
           lastName: p.student.lastName,
           tcNumber: p.student.tcNumber,
@@ -290,7 +298,7 @@ export async function GET(
         teacherName: `${event.teacher.firstName} ${event.teacher.lastName}`,
         organizerName: event.organizerName,
         createdAt: event.createdAt.toISOString(),
-        participants: event.participants.map((p) => ({
+        participants: selectedParticipants.map((p) => ({
           firstName: p.student.firstName,
           lastName: p.student.lastName,
           tcNumber: p.student.tcNumber,
@@ -305,7 +313,7 @@ export async function GET(
         endDate: event.endDate.toISOString(),
         teacherName: `${event.teacher.firstName} ${event.teacher.lastName}`,
         createdAt: event.createdAt.toISOString(),
-        participants: event.participants.map((p) => ({
+        participants: selectedParticipants.map((p) => ({
           firstName: p.student.firstName,
           lastName: p.student.lastName,
           tcNumber: p.student.tcNumber,
@@ -324,7 +332,7 @@ export async function GET(
         teacherName: `${event.teacher.firstName} ${event.teacher.lastName}`,
         organizerName: event.organizerName,
         createdAt: event.createdAt.toISOString(),
-        participants: event.participants.map((p) => ({
+        participants: selectedParticipants.map((p) => ({
           firstName: p.student.firstName,
           lastName: p.student.lastName,
           tcNumber: p.student.tcNumber,
@@ -342,7 +350,7 @@ export async function GET(
         teacherName: `${event.teacher.firstName} ${event.teacher.lastName}`,
         organizerName: event.organizerName,
         createdAt: event.createdAt.toISOString(),
-        participants: event.participants.map((p) => ({
+        participants: selectedParticipants.map((p) => ({
           firstName: p.student.firstName,
           lastName: p.student.lastName,
           tcNumber: p.student.tcNumber,
@@ -360,7 +368,7 @@ export async function GET(
         teacherName: `${event.teacher.firstName} ${event.teacher.lastName}`,
         organizerName: event.organizerName,
         createdAt: event.createdAt.toISOString(),
-        participants: event.participants.map((p) => ({
+        participants: selectedParticipants.map((p) => ({
           firstName: p.student.firstName,
           lastName: p.student.lastName,
           tcNumber: p.student.tcNumber,
@@ -378,7 +386,7 @@ export async function GET(
         teacherName: `${event.teacher.firstName} ${event.teacher.lastName}`,
         organizerName: event.organizerName,
         createdAt: event.createdAt.toISOString(),
-        participants: event.participants.map((p) => ({
+        participants: selectedParticipants.map((p) => ({
           firstName: p.student.firstName,
           lastName: p.student.lastName,
           tcNumber: p.student.tcNumber,
@@ -400,7 +408,7 @@ export async function GET(
         teacherName: `${event.teacher.firstName} ${event.teacher.lastName}`,
         achievementLevel,
         createdAt: event.createdAt.toISOString(),
-        participants: event.participants.map((p) => ({
+        participants: selectedParticipants.map((p) => ({
           firstName: p.student.firstName,
           lastName: p.student.lastName,
           tcNumber: p.student.tcNumber,

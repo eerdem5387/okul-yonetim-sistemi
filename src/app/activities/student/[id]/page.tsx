@@ -35,9 +35,12 @@ export default function ActivityStudentDetailPage() {
     if (!studentId) return
     setLoading(true)
     try {
-      const [studentRes, activitiesRes, statsRes] = await Promise.all([
+      const [studentRes, activitiesRes, eventRes, statsRes] = await Promise.all([
         fetch(`/api/students/${studentId}`, { headers: getAuthHeaders() }),
         fetch(`/api/activities?studentId=${studentId}&limit=500`, {
+          headers: getAuthHeaders(),
+        }),
+        fetch(`/api/activity-events?studentId=${studentId}&limit=200`, {
           headers: getAuthHeaders(),
         }),
         fetch("/api/activities/stats", { headers: getAuthHeaders() }),
@@ -53,10 +56,72 @@ export default function ActivityStudentDetailPage() {
           tcNumber: s.tcNumber ?? "",
         })
       }
+      const mergedActivities: StudentActivityDetailActivity[] = []
       if (activitiesRes.ok) {
         const data = await activitiesRes.json()
-        setActivities(data.activities ?? [])
+        const legacyRows = (data.activities ?? []).map((a: StudentActivityDetailActivity) => ({
+          ...a,
+          source: "legacy" as const,
+          detailHref: `/activities/kayit/${a.id}?from=student&studentId=${studentId}`,
+        }))
+        mergedActivities.push(...legacyRows)
       }
+      if (eventRes.ok) {
+        const data = await eventRes.json()
+        const eventRows: StudentActivityDetailActivity[] = (data.events ?? []).flatMap((ev: {
+          id: string
+          title: string
+          description?: string | null
+          startDate: string
+          location?: string | null
+          organizerName: string
+          outcome?: string | null
+          participants: Array<{
+            id: string
+            studentId: string
+            score?: number | null
+            languageLevel?: string | null
+            participationPhotoUrl?: string | null
+            extraDocumentUrl?: string | null
+            projectRole?: string | null
+            tournamentPlacement?: string | null
+            artworkDescription?: string | null
+            signedDocumentUrls?: string[]
+            verificationStatus?: "IMZA_SURECINDE" | "ONAY_BEKLIYOR" | "ONAYLANDI"
+            isVerified?: boolean
+          }>
+        }) => {
+          const p = (ev.participants ?? []).find((x) => x.studentId === studentId)
+          if (!p) return []
+          return [{
+            id: `event:${ev.id}:${p.id}`,
+            source: "event",
+            detailHref: `/faaliyet-yonetimi/${ev.id}/katilimci/${p.id}`,
+            studentId,
+            type: "ETKINLIK",
+            title: ev.title,
+            description: ev.description ?? null,
+            activityDate: ev.startDate,
+            location: ev.location ?? null,
+            organizer: ev.organizerName ?? null,
+            outcome: ev.outcome ?? null,
+            isVerified: !!p.isVerified,
+            verificationStatus: p.verificationStatus ?? "IMZA_SURECINDE",
+            category: null,
+            subtype: null,
+            participationPhotoUrl: p.participationPhotoUrl ?? null,
+            extraDocumentUrl: p.extraDocumentUrl ?? null,
+            signedDocumentUrls: p.signedDocumentUrls ?? [],
+            score: p.score ?? null,
+            languageLevel: p.languageLevel ?? null,
+            projectRole: p.projectRole ?? null,
+            tournamentPlacement: p.tournamentPlacement ?? null,
+            artworkDescription: p.artworkDescription ?? null,
+          }]
+        })
+        mergedActivities.push(...eventRows)
+      }
+      setActivities(mergedActivities)
       if (statsRes.ok) {
         const stats = await statsRes.json()
         setTotalInSystem(stats.total ?? 0)

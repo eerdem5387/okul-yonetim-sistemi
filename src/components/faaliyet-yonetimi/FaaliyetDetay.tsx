@@ -20,6 +20,9 @@ import {
   ExternalLink,
   ChevronRight,
   Eye,
+  BookOpen,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PdfPreviewModal } from "@/components/ui/pdf-preview-modal"
@@ -27,6 +30,7 @@ import {
   MAIN_TYPE_LABELS,
   getSubtypeConfig,
   type ActivityMainType,
+  type MufredatHafta,
 } from "@/lib/activity-types-config"
 import { assertFileMaxSize, CLIENT_MAX_PDF_BYTES, parseUploadResponse } from "@/lib/upload-client"
 import type { ActivityEventDetail } from "./FaaliyetDetay.shared"
@@ -58,6 +62,7 @@ export function FaaliyetDetay({ id }: { id: string }) {
   const [actionPid, setActionPid] = useState<string | null>(null)
   const [pdfLoading, setPdfLoading] = useState(false)
   const [pdfPreview, setPdfPreview] = useState<{ path: string; title: string } | null>(null)
+  const [mufredatOpen, setMufredatOpen] = useState(false)
   const signedDocRefs: Record<string, HTMLInputElement | null> = {}
 
   const fetchEvent = useCallback(async () => {
@@ -97,6 +102,11 @@ export function FaaliyetDetay({ id }: { id: string }) {
     } finally {
       setActionPid(null)
     }
+  }
+
+  function normalizeWeekLabel(hafta: MufredatHafta["hafta"]): string {
+    if (typeof hafta === "number") return `${hafta}. Hafta`
+    return `${hafta}`
   }
 
   const handleUploadSigned = async (pid: string, file: File) => {
@@ -419,6 +429,66 @@ export function FaaliyetDetay({ id }: { id: string }) {
             </div>
           </div>
         )}
+        {(() => {
+          const subtypeConfig = getSubtypeConfig(event.mainType as ActivityMainType, event.subtype ?? "")
+          const mufredat = subtypeConfig?.mufredat
+          if (!mufredat?.length) return null
+          return (
+            <div className="rounded-2xl bg-white border border-indigo-200 overflow-hidden sm:col-span-2">
+              <button
+                type="button"
+                onClick={() => setMufredatOpen((v) => !v)}
+                className="w-full flex items-center justify-between px-5 py-4 hover:bg-indigo-50 transition-colors"
+              >
+                <div className="flex items-center gap-2 text-left">
+                  <BookOpen className="h-4 w-4 text-indigo-600" />
+                  <span className="text-sm font-semibold text-indigo-700">Müfredat Önizlemesi</span>
+                  <span className="rounded-full bg-indigo-100 text-indigo-700 text-xs px-2 py-0.5 font-medium">
+                    {mufredat.length} Hafta
+                  </span>
+                </div>
+                {mufredatOpen ? (
+                  <ChevronUp className="h-4 w-4 text-indigo-500" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-indigo-500" />
+                )}
+              </button>
+              {mufredatOpen && (
+                <div className="border-t border-indigo-100">
+                  {subtypeConfig?.mufredatBaslik && (
+                    <div className="px-5 py-2 bg-indigo-700 text-white text-xs font-semibold tracking-wide text-center">
+                      {subtypeConfig.mufredatBaslik}
+                    </div>
+                  )}
+                  <div className="overflow-x-auto max-h-[420px] overflow-y-auto">
+                    <table className="w-full text-xs">
+                      <thead className="sticky top-0 bg-indigo-50 z-10">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-semibold text-indigo-700 w-20">Hafta</th>
+                          <th className="px-3 py-2 text-left font-semibold text-indigo-700 w-44">Konu</th>
+                          <th className="px-3 py-2 text-left font-semibold text-indigo-700 w-56">İçerik</th>
+                          <th className="px-3 py-2 text-left font-semibold text-indigo-700">Hedef</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {mufredat.map((row, idx) => (
+                          <tr key={`${row.hafta}-${idx}`} className={idx % 2 === 0 ? "bg-white" : "bg-indigo-50/40"}>
+                            <td className="px-3 py-2 font-semibold text-indigo-700 align-top whitespace-nowrap">
+                              {normalizeWeekLabel(row.hafta)}
+                            </td>
+                            <td className="px-3 py-2 text-gray-800 align-top font-medium">{row.konu}</td>
+                            <td className="px-3 py-2 text-gray-700 align-top">{row.icerik}</td>
+                            <td className="px-3 py-2 text-gray-600 align-top">{row.hedef}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })()}
       </div>
 
       {/* Katılımcılar */}
@@ -442,7 +512,10 @@ export function FaaliyetDetay({ id }: { id: string }) {
             {event.participants.map((p) => (
               <div key={p.id} className="p-5">
                 <div className="flex items-start justify-between gap-4 flex-wrap">
-                  <div className="flex items-start gap-4">
+                  <Link
+                    href={`/faaliyet-yonetimi/${id}/katilimci/${p.id}`}
+                    className="flex items-start gap-4 rounded-xl p-2 -m-2 hover:bg-indigo-50 transition-colors group"
+                  >
                     {/* Fotoğraf */}
                     {p.participationPhotoUrl ? (
                       <img
@@ -456,7 +529,7 @@ export function FaaliyetDetay({ id }: { id: string }) {
                       </div>
                     )}
                     <div>
-                      <p className="font-semibold text-gray-900">
+                      <p className="font-semibold text-gray-900 group-hover:text-indigo-700">
                         {p.student.firstName} {p.student.lastName}
                       </p>
                       <p className="text-xs text-gray-400 mt-0.5">{p.student.grade} · TC: {p.student.tcNumber}</p>
@@ -493,7 +566,7 @@ export function FaaliyetDetay({ id }: { id: string }) {
                         )}
                       </div>
                     </div>
-                  </div>
+                  </Link>
 
                   {/* Durum & Aksiyonlar */}
                   <div className="flex flex-col items-end gap-2 min-w-0">

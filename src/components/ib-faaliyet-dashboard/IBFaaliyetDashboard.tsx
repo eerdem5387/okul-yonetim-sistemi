@@ -114,6 +114,7 @@ export function IBFaaliyetDashboard({
   const [endDate, setEndDate] = useState("")
   const [verifiedFilter, setVerifiedFilter] = useState("all")
   const [verificationStatusFilter, setVerificationStatusFilter] = useState("")
+  const [topStudentSearch, setTopStudentSearch] = useState("")
   const [page, setPage] = useState(1)
   const [downloadingPdfKey, setDownloadingPdfKey] = useState<string | null>(null)
   const [totalPages, setTotalPages] = useState(1)
@@ -291,6 +292,16 @@ export function IBFaaliyetDashboard({
     DIGER: "Diğer",
   }
 
+  const filteredTopStudents = (stats?.topStudents ?? []).filter((s) => {
+    const q = topStudentSearch.trim().toLowerCase()
+    if (!q) return true
+    return (
+      s.fullName.toLowerCase().includes(q) ||
+      (s.grade ?? "").toLowerCase().includes(q) ||
+      s.tcNumber.includes(q)
+    )
+  })
+
   if (loading && !stats) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
@@ -438,9 +449,19 @@ export function IBFaaliyetDashboard({
             </div>
           </CardHeader>
           <CardContent>
-            {stats?.topStudents && stats.topStudents.length > 0 ? (
-              <ul className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
-                {stats.topStudents.map((s, i) => (
+            {(stats?.topStudents?.length ?? 0) > 0 ? (
+              <>
+                <div className="relative mb-3">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Öğrenci ara (ad, sınıf, TC)..."
+                    value={topStudentSearch}
+                    onChange={(e) => setTopStudentSearch(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <ul className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+                {filteredTopStudents.map((s, i) => (
                   <li key={s.studentId}>
                     <Link
                       href={studentDetailHref(s.studentId)}
@@ -464,7 +485,13 @@ export function IBFaaliyetDashboard({
                     </Link>
                   </li>
                 ))}
-              </ul>
+                {filteredTopStudents.length === 0 && (
+                  <li className="rounded-xl border border-dashed border-gray-200 px-4 py-6 text-center text-sm text-gray-500">
+                    Aramaya uygun öğrenci bulunamadı.
+                  </li>
+                )}
+                </ul>
+              </>
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-gray-500">
                 <Users className="h-12 w-12 mb-3 text-gray-300" />

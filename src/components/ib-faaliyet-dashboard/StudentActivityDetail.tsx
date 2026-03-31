@@ -18,6 +18,8 @@ import {
   CheckCircle,
   BookOpen,
   ImageIcon,
+  ExternalLink,
+  FileDown,
 } from "lucide-react"
 
 type ActivityType =
@@ -38,6 +40,8 @@ type ActivityType =
 
 export interface StudentActivityDetailActivity {
   id: string
+  source?: "legacy" | "event"
+  detailHref?: string
   studentId: string
   type: ActivityType
   title: string
@@ -54,6 +58,13 @@ export interface StudentActivityDetailActivity {
   category?: string | null
   subtype?: string | null
   participationPhotoUrl?: string | null
+  extraDocumentUrl?: string | null
+  signedDocumentUrls?: string[]
+  score?: number | null
+  languageLevel?: string | null
+  projectRole?: string | null
+  tournamentPlacement?: string | null
+  artworkDescription?: string | null
 }
 
 const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
@@ -212,17 +223,11 @@ export function StudentActivityDetail({
                       role="link"
                       tabIndex={0}
                       className="card-soft border border-gray-100 cursor-pointer transition-shadow hover:shadow-md focus-visible:outline focus-visible:ring-2 focus-visible:ring-indigo-500"
-                      onClick={() =>
-                        router.push(
-                          `/activities/kayit/${activity.id}?from=student&studentId=${student.id}`
-                        )
-                      }
+                      onClick={() => router.push(activity.detailHref || `/activities/kayit/${activity.id}?from=student&studentId=${student.id}`)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault()
-                          router.push(
-                            `/activities/kayit/${activity.id}?from=student&studentId=${student.id}`
-                          )
+                          router.push(activity.detailHref || `/activities/kayit/${activity.id}?from=student&studentId=${student.id}`)
                         }
                       }}
                     >
@@ -274,6 +279,52 @@ export function StudentActivityDetail({
                                 {activity.description}
                               </p>
                             )}
+                            <div className="flex flex-wrap gap-2">
+                              {activity.score != null && (
+                                <span className="rounded-full bg-indigo-100 text-indigo-700 text-xs px-2 py-0.5">
+                                  Puan: {activity.score}/100
+                                </span>
+                              )}
+                              {activity.languageLevel && (
+                                <span className="rounded-full bg-purple-100 text-purple-700 text-xs px-2 py-0.5">
+                                  Seviye: {activity.languageLevel}
+                                </span>
+                              )}
+                              {activity.projectRole?.trim() && (
+                                <span className="rounded-full bg-amber-100 text-amber-900 text-xs px-2 py-0.5">
+                                  Rol: {activity.projectRole}
+                                </span>
+                              )}
+                              {activity.tournamentPlacement?.trim() && (
+                                <span className="rounded-full bg-cyan-100 text-cyan-800 text-xs px-2 py-0.5">
+                                  Derece: {activity.tournamentPlacement}
+                                </span>
+                              )}
+                              {activity.extraDocumentUrl && (
+                                <a
+                                  href={activity.extraDocumentUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="rounded-full bg-gray-100 text-gray-700 text-xs px-2 py-0.5 inline-flex items-center gap-1 hover:bg-gray-200"
+                                >
+                                  <ExternalLink className="h-3 w-3" />
+                                  Ek Belge
+                                </a>
+                              )}
+                              {activity.signedDocumentUrls && activity.signedDocumentUrls.length > 0 && (
+                                <a
+                                  href={activity.signedDocumentUrls[0]}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="rounded-full bg-emerald-100 text-emerald-700 text-xs px-2 py-0.5 inline-flex items-center gap-1 hover:bg-emerald-200"
+                                >
+                                  <FileDown className="h-3 w-3" />
+                                  İmzalı Belge
+                                </a>
+                              )}
+                            </div>
                           </div>
                           {activity.participationPhotoUrl && (
                             <div className="shrink-0">

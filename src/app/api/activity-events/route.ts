@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
     const mainType = searchParams.get("mainType") || ""
     const subtype = searchParams.get("subtype") || ""
     const teacherId = searchParams.get("teacherId") || ""
+    const studentId = searchParams.get("studentId") || ""
     const search = searchParams.get("search") || ""
     const startDate = searchParams.get("startDate") || ""
     const endDate = searchParams.get("endDate") || ""
@@ -56,6 +57,13 @@ export async function GET(request: NextRequest) {
     }
     if (subtype) andConds.push({ subtype })
     if (teacherId) andConds.push({ teacherId })
+    if (studentId) {
+      andConds.push({
+        participants: {
+          some: { studentId },
+        },
+      })
+    }
     if (startDate) andConds.push({ startDate: { gte: new Date(startDate) } })
     if (endDate) andConds.push({ endDate: { lte: new Date(endDate) } })
     if (search) {

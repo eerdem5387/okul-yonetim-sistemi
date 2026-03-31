@@ -11,8 +11,11 @@ import {
   Upload,
   Loader2,
   ExternalLink,
+  Eye,
+  FileDown,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { PdfPreviewModal } from "@/components/ui/pdf-preview-modal"
 import type { ActivityEventDetail } from "./FaaliyetDetay.shared"
 import { assertFileMaxSize, CLIENT_MAX_PDF_BYTES, parseUploadResponse } from "@/lib/upload-client"
 
@@ -45,6 +48,8 @@ export function FaaliyetKatilimciDetay({ eventId, participantId }: FaaliyetKatil
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actionPid, setActionPid] = useState(false)
+  const [pdfLoading, setPdfLoading] = useState(false)
+  const [pdfPreviewPath, setPdfPreviewPath] = useState<string | null>(null)
   const signedRef = useRef<HTMLInputElement>(null)
 
   const fetchEvent = useCallback(async () => {
@@ -66,6 +71,29 @@ export function FaaliyetKatilimciDetay({ eventId, participantId }: FaaliyetKatil
   }, [fetchEvent])
 
   const p = event?.participants.find((x) => x.id === participantId)
+  const participantPdfPath = `/api/activity-events/${eventId}/pdf?participantId=${participantId}`
+
+  const handleDownloadPdf = async () => {
+    setPdfLoading(true)
+    try {
+      const res = await fetch(participantPdfPath, { headers: getAuthHeaders() })
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        throw new Error(d.error || "PDF alınamadı")
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `katilimci-sertifika-${participantId.slice(0, 8)}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "PDF indirilemedi")
+    } finally {
+      setPdfLoading(false)
+    }
+  }
 
   const handleVerify = async (approve: boolean) => {
     setActionPid(true)
@@ -151,6 +179,12 @@ export function FaaliyetKatilimciDetay({ eventId, participantId }: FaaliyetKatil
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 pb-12">
+      <PdfPreviewModal
+        open={!!pdfPreviewPath}
+        onClose={() => setPdfPreviewPath(null)}
+        apiPath={pdfPreviewPath}
+        title={`${p.student.firstName} ${p.student.lastName} — sertifika önizleme`}
+      />
       <div className="flex flex-col gap-2">
         <Link
           href="/faaliyet-yonetimi"
@@ -240,6 +274,28 @@ export function FaaliyetKatilimciDetay({ eventId, participantId }: FaaliyetKatil
             {p.verificationStatus === "IMZA_SURECINDE" && <FileText className="h-3.5 w-3.5" />}
             {STATUS_LABELS[p.verificationStatus]}
           </span>
+        </div>
+
+        <div className="mt-4 flex gap-2 flex-wrap">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setPdfPreviewPath(participantPdfPath)}
+            className="text-blue-600 border-blue-200 hover:bg-blue-50"
+          >
+            <Eye className="h-4 w-4" />
+            <span className="ml-2">PDF Önizle</span>
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={pdfLoading}
+            onClick={handleDownloadPdf}
+            className="text-blue-600 border-blue-200 hover:bg-blue-50"
+          >
+            {pdfLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+            <span className="ml-2">PDF İndir</span>
+          </Button>
         </div>
 
         {p.signedDocumentUrls?.length > 0 && (
