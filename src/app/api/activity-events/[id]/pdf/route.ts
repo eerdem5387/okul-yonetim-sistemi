@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { checkActivityAccess } from "@/lib/access-control"
 import { generatePDF } from "@/lib/pdf-generator"
+import { generateMufredatPageHTML } from "@/lib/pdf-generator"
+import { getSubtypeConfig, type ActivityMainType, type MufredatHafta } from "@/lib/activity-types-config"
 import { buildLanguageCertificateHTML, LanguageCertData } from "@/lib/certificates/dil-egitimi-katilim"
 import { buildFenCertificateHTML, FenCertData } from "@/lib/certificates/ingilizce-fen-sertifika"
 import { buildMatematikCertificateHTML, MatematikCertData } from "@/lib/certificates/ingilizce-matematik-sertifika"
@@ -46,6 +48,67 @@ import {
   buildProjeKatilimCertificateHTML,
   type ProjeKatilimCertData,
 } from "@/lib/certificates/proje-katilim"
+import { readFileSync } from "fs"
+import { join } from "path"
+
+function getLogoBase64(): string {
+  try {
+    const path = join(process.cwd(), "public", "logo.png")
+    return readFileSync(path).toString("base64")
+  } catch {
+    return ""
+  }
+}
+
+function buildMufredatPagesHtml(params: {
+  mainType: string
+  subtype: string | null
+  teacherName: string
+  participants: Array<{ firstName: string; lastName: string; tcNumber: string }>
+}): string {
+  const cfg = getSubtypeConfig(params.mainType as ActivityMainType, params.subtype ?? "")
+  const mufredat = cfg?.mufredat
+  if (!mufredat || mufredat.length === 0 || params.participants.length === 0) return ""
+
+  const logoBase64 = getLogoBase64()
+  const monthsMap = new Map<string, Array<{
+    week: string
+    subject: string
+    objective: string
+    practice: string
+    achievements: string
+  }>>()
+
+  for (const row of mufredat as MufredatHafta[]) {
+    const monthKey = (row.ay && row.ay.trim()) || "MÜFREDAT"
+    const arr = monthsMap.get(monthKey) ?? []
+    arr.push({
+      week: typeof row.hafta === "number" ? `${row.hafta}. Hafta` : String(row.hafta),
+      subject: row.konu ?? "",
+      objective: row.hedef ?? "",
+      practice: row.icerik ?? "",
+      achievements: row.hedef ?? "",
+    })
+    monthsMap.set(monthKey, arr)
+  }
+
+  const months = [...monthsMap.entries()].map(([label, rows]) => ({ label, rows }))
+  const programTitle = cfg?.mufredatBaslik ?? "LEVENT COLLEGE IB PROGRAMME — Curriculum"
+
+  return params.participants
+    .map((p) =>
+      generateMufredatPageHTML({
+        logoBase64,
+        programTitle,
+        participantName: `${p.firstName} ${p.lastName}`.trim(),
+        participantTrId: p.tcNumber ?? "",
+        instructorName: params.teacherName,
+        programmeDurationWeeks: "40 weeks",
+        months,
+      })
+    )
+    .join("")
+}
 
 export async function GET(
   request: NextRequest,
@@ -418,6 +481,23 @@ export async function GET(
       html = buildProjeKatilimCertificateHTML(certData)
     } else {
       return NextResponse.json({ error: "Bu sertifika tipi için PDF şablonu henüz tanımlı değil" }, { status: 400 })
+    }
+
+    const teacherName = `${event.teacher.firstName} ${event.teacher.lastName}`
+    const mufredatPagesHtml = buildMufredatPagesHtml({
+      mainType: event.mainType,
+      subtype: event.subtype,
+      teacherName,
+      participants: selectedParticipants.map((p) => ({
+        firstName: p.student.firstName,
+        lastName: p.student.lastName,
+        tcNumber: p.student.tcNumber,
+      })),
+    })
+    if (mufredatPagesHtml) {
+      html = html.includes("</body>")
+        ? html.replace("</body>", `${mufredatPagesHtml}</body>`)
+        : `${html}${mufredatPagesHtml}`
     }
 
     const pdfResult = await generatePDF(html, {
