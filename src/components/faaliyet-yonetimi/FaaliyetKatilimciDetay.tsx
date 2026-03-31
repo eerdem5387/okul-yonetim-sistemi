@@ -178,7 +178,7 @@ export function FaaliyetKatilimciDetay({ eventId, participantId }: FaaliyetKatil
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 pb-12">
+    <div className="max-w-5xl mx-auto space-y-6 pb-12">
       <PdfPreviewModal
         open={!!pdfPreviewPath}
         onClose={() => setPdfPreviewPath(null)}
@@ -203,8 +203,10 @@ export function FaaliyetKatilimciDetay({ eventId, participantId }: FaaliyetKatil
       </div>
 
       <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <p className="text-xs font-medium text-indigo-600 uppercase tracking-wide mb-2">Katılımcı detayı</p>
-        <div className="flex items-start gap-4">
+        <p className="text-xs font-medium text-indigo-600 uppercase tracking-wide mb-4">Katılımcı detayı</p>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div>
+            <div className="flex items-start gap-4">
           {p.participationPhotoUrl ? (
             <img
               src={p.participationPhotoUrl}
@@ -216,106 +218,110 @@ export function FaaliyetKatilimciDetay({ eventId, participantId }: FaaliyetKatil
               <User className="h-10 w-10 text-gray-300" />
             </div>
           )}
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">
-              {p.student.firstName} {p.student.lastName}
-            </h1>
-            <p className="text-sm text-gray-500 mt-1">
-              {p.student.grade} · TC: {p.student.tcNumber}
-            </p>
-          </div>
-        </div>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">
+                  {p.student.firstName} {p.student.lastName}
+                </h1>
+                <p className="text-sm text-gray-500 mt-1">
+                  {p.student.grade} · TC: {p.student.tcNumber}
+                </p>
+              </div>
+            </div>
 
-        <div className="mt-6 flex flex-wrap gap-2">
-          {p.score != null && (
-            <span className="rounded-full bg-indigo-100 text-indigo-700 text-xs px-2 py-0.5">Puan: {p.score}/100</span>
-          )}
-          {p.languageLevel && (
-            <span className="rounded-full bg-purple-100 text-purple-700 text-xs px-2 py-0.5">
-              Seviye: {p.languageLevel}
-            </span>
-          )}
-          {p.tournamentPlacement?.trim() && (
-            <span className="rounded-full bg-cyan-100 text-cyan-800 text-xs px-2 py-0.5">
-              Derece: {p.tournamentPlacement}
-            </span>
-          )}
-          {p.projectRole?.trim() && (
-            <span className="rounded-full bg-amber-100 text-amber-900 text-xs px-2 py-0.5">
-              Rol: {p.projectRole}
-            </span>
-          )}
-        </div>
+            <div className="mt-6 flex flex-wrap gap-2">
+              {p.score != null && (
+                <span className="rounded-full bg-indigo-100 text-indigo-700 text-xs px-2 py-0.5">Puan: {p.score}/100</span>
+              )}
+              {p.languageLevel && (
+                <span className="rounded-full bg-purple-100 text-purple-700 text-xs px-2 py-0.5">
+                  Seviye: {p.languageLevel}
+                </span>
+              )}
+              {p.tournamentPlacement?.trim() && (
+                <span className="rounded-full bg-cyan-100 text-cyan-800 text-xs px-2 py-0.5">
+                  Derece: {p.tournamentPlacement}
+                </span>
+              )}
+              {p.projectRole?.trim() && (
+                <span className="rounded-full bg-amber-100 text-amber-900 text-xs px-2 py-0.5">
+                  Rol: {p.projectRole}
+                </span>
+              )}
+            </div>
 
-        {p.extraDocumentUrl && (
-          <div className="mt-4">
-            <a
-              href={p.extraDocumentUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-blue-600 hover:underline inline-flex items-center gap-1"
-            >
-              <ExternalLink className="h-3.5 w-3.5" /> Ek belge
-            </a>
+            {p.extraDocumentUrl && (
+              <div className="mt-4">
+                <a
+                  href={p.extraDocumentUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-blue-600 hover:underline inline-flex items-center gap-1"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" /> Ek belge
+                </a>
+              </div>
+            )}
           </div>
-        )}
 
         {p.artworkDescription?.trim() && (
-          <div className="mt-4 text-sm text-gray-700 border-t border-gray-100 pt-4">
+          <div className="mt-4 text-sm text-gray-700 border-t border-gray-100 pt-4 lg:col-span-2">
             <p className="font-medium text-gray-800 mb-1">Eser / açıklama</p>
             <p className="whitespace-pre-wrap">{p.artworkDescription}</p>
           </div>
         )}
 
-        <div className="mt-6 flex items-center gap-2">
-          <span className={`rounded-full px-3 py-1 text-xs font-medium flex items-center gap-1 ${STATUS_COLORS[p.verificationStatus]}`}>
-            {p.verificationStatus === "ONAYLANDI" && <CheckCircle className="h-3.5 w-3.5" />}
-            {p.verificationStatus === "ONAY_BEKLIYOR" && <Clock className="h-3.5 w-3.5" />}
-            {p.verificationStatus === "IMZA_SURECINDE" && <FileText className="h-3.5 w-3.5" />}
-            {STATUS_LABELS[p.verificationStatus]}
-          </span>
-        </div>
+          <div className="rounded-xl border border-gray-100 p-4 bg-gray-50/50">
+            <div className="flex items-center gap-2">
+              <span className={`rounded-full px-3 py-1 text-xs font-medium flex items-center gap-1 ${STATUS_COLORS[p.verificationStatus]}`}>
+                {p.verificationStatus === "ONAYLANDI" && <CheckCircle className="h-3.5 w-3.5" />}
+                {p.verificationStatus === "ONAY_BEKLIYOR" && <Clock className="h-3.5 w-3.5" />}
+                {p.verificationStatus === "IMZA_SURECINDE" && <FileText className="h-3.5 w-3.5" />}
+                {STATUS_LABELS[p.verificationStatus]}
+              </span>
+            </div>
 
-        <div className="mt-4 flex gap-2 flex-wrap">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setPdfPreviewPath(participantPdfPath)}
-            className="text-blue-600 border-blue-200 hover:bg-blue-50"
-          >
-            <Eye className="h-4 w-4" />
-            <span className="ml-2">PDF Önizle</span>
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={pdfLoading}
-            onClick={handleDownloadPdf}
-            className="text-blue-600 border-blue-200 hover:bg-blue-50"
-          >
-            {pdfLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
-            <span className="ml-2">PDF İndir</span>
-          </Button>
-        </div>
-
-        {p.signedDocumentUrls?.length > 0 && (
-          <div className="mt-4 space-y-2">
-            <p className="text-sm font-medium text-gray-800">İmzalı belgeler</p>
-            {p.signedDocumentUrls.map((url, i) => (
-              <a
-                key={i}
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block text-sm text-blue-600 hover:underline"
+            <div className="mt-4 flex gap-2 flex-wrap">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setPdfPreviewPath(participantPdfPath)}
+                className="text-blue-600 border-blue-200 hover:bg-blue-50"
               >
-                Belge {i + 1}
-              </a>
-            ))}
-          </div>
-        )}
+                <Eye className="h-4 w-4" />
+                <span className="ml-2">PDF Önizle</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={pdfLoading}
+                onClick={handleDownloadPdf}
+                className="text-blue-600 border-blue-200 hover:bg-blue-50"
+              >
+                {pdfLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+                <span className="ml-2">PDF İndir</span>
+              </Button>
+            </div>
 
-        <div className="mt-8 flex flex-wrap gap-2 border-t border-gray-100 pt-6">
+            {p.signedDocumentUrls?.length > 0 && (
+              <div className="mt-4 space-y-2">
+                <p className="text-sm font-medium text-gray-800">İmzalı belgeler</p>
+                {p.signedDocumentUrls.map((url, i) => (
+                  <a
+                    key={i}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block text-sm text-blue-600 hover:underline"
+                  >
+                    Belge {i + 1}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-wrap gap-2 border-t border-gray-100 pt-6">
           {p.verificationStatus === "IMZA_SURECINDE" && (
             <>
               <input
