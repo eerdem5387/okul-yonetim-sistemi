@@ -31,6 +31,7 @@ export async function PUT(
       projectRole,
       verificationStatus: newStatus,
       signedDocumentUrls,
+      signedCurriculumUrls,
       verifiedBy,
     } = body
 
@@ -96,6 +97,12 @@ export async function PUT(
       }
 
       updateData.verificationStatus = newStatus
+    }
+
+    if (signedCurriculumUrls !== undefined) {
+      updateData.signedCurriculumUrls = Array.isArray(signedCurriculumUrls)
+        ? signedCurriculumUrls.filter((u: unknown) => typeof u === "string" && u.trim())
+        : []
     }
 
     const updated = await prisma.activityParticipant.update({

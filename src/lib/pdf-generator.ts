@@ -1348,20 +1348,21 @@ export function generateMufredatPageHTML(data: {
     </h1>
     <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 20px;">
       <tr>
-        <td style="border: 1px solid #000; padding: 8px; width: 22%; font-weight: bold;">Programme Name</td>
-        <td style="border: 1px solid #000; padding: 8px; width: 28%;">${escapeHTML(programmeName)}</td>
+        <td style="border: 1px solid #000; padding: 8px; width: 22%; font-weight: bold;">Participant Name &amp; Surname</td>
+        <td style="border: 1px solid #000; padding: 8px; width: 28%;">${escapeHTML(participantName)}</td>
         <td style="border: 1px solid #000; padding: 8px; width: 22%; font-weight: bold;">Instructor Name</td>
         <td style="border: 1px solid #000; padding: 8px; width: 28%;">${escapeHTML(instructorName)}</td>
       </tr>
       <tr>
-        <td style="border: 1px solid #000; padding: 8px; font-weight: bold;">Programme Duration (week)</td>
-        <td style="border: 1px solid #000; padding: 8px;">${escapeHTML(programmeDurationWeeks)}</td>
-        <td style="border: 1px solid #000; padding: 8px; font-weight: bold;">Participant Name</td>
-        <td style="border: 1px solid #000; padding: 8px;">${escapeHTML(participantName)}</td>
+        <td style="border: 1px solid #000; padding: 8px; font-weight: bold;">Participant TR ID No</td>
+        <td style="border: 1px solid #000; padding: 8px;">${escapeHTML(participantTrId)}</td>
+        <td style="border: 1px solid #000; padding: 8px; font-weight: bold;">Programme Name</td>
+        <td style="border: 1px solid #000; padding: 8px;">${escapeHTML(programmeName)}</td>
       </tr>
       <tr>
-        <td colspan="2" style="border: 1px solid #000; padding: 8px; font-weight: bold;">Participant TR ID No .</td>
-        <td colspan="2" style="border: 1px solid #000; padding: 8px;">${escapeHTML(participantTrId)}</td>
+        <td style="border: 1px solid #000; padding: 8px; font-weight: bold;">Programme Duration (week)</td>
+        <td style="border: 1px solid #000; padding: 8px;">${escapeHTML(programmeDurationWeeks)}</td>
+        <td style="border: 1px solid #000; padding: 8px;" colspan="2"></td>
       </tr>
     </table>
     <table style="width: 100%; border-collapse: collapse; font-size: 10px;">

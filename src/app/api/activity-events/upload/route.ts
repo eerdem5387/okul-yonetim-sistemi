@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const { searchParams } = new URL(request.url)
-    // type: participation_photo | evidence | extra_doc
+    // type: participation_photo | evidence | extra_doc | signed_document | signed_curriculum
     const uploadType = searchParams.get("type") || "participation_photo"
 
     const formData = await request.formData()
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
       if (fileSize > MAX_DOC_SIZE) {
         return NextResponse.json({ error: "Ek belge maksimum 4 MB olabilir" }, { status: 400 })
       }
-    } else if (uploadType === "signed_document") {
+    } else if (uploadType === "signed_document" || uploadType === "signed_curriculum") {
       const allowed = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_DOC_TYPES]
       if (!allowed.includes(mimeType)) {
         return NextResponse.json({ error: "İmzalı belge olarak PDF veya görsel yüklenebilir" }, { status: 400 })

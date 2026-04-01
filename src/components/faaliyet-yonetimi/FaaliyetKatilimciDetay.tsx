@@ -51,6 +51,7 @@ export function FaaliyetKatilimciDetay({ eventId, participantId }: FaaliyetKatil
   const [pdfLoading, setPdfLoading] = useState(false)
   const [pdfPreviewPath, setPdfPreviewPath] = useState<string | null>(null)
   const signedRef = useRef<HTMLInputElement>(null)
+  const signedCurriculumRef = useRef<HTMLInputElement>(null)
 
   const fetchEvent = useCallback(async () => {
     setLoading(true)
@@ -72,6 +73,7 @@ export function FaaliyetKatilimciDetay({ eventId, participantId }: FaaliyetKatil
 
   const p = event?.participants.find((x) => x.id === participantId)
   const participantPdfPath = `/api/activity-events/${eventId}/pdf?participantId=${participantId}`
+  const participantMufredatPdfPath = `/api/activity-events/${eventId}/mufredat-pdf?participantId=${participantId}`
 
   const handleDownloadPdf = async () => {
     setPdfLoading(true)
@@ -155,6 +157,46 @@ export function FaaliyetKatilimciDetay({ eventId, participantId }: FaaliyetKatil
     } finally {
       setActionPid(false)
       if (signedRef.current) signedRef.current.value = ""
+    }
+  }
+
+  const handleUploadSignedCurriculum = async (file: File) => {
+    setActionPid(true)
+    try {
+      const sizeErr = assertFileMaxSize(file, CLIENT_MAX_PDF_BYTES, "İmzalı müfredat")
+      if (sizeErr) throw new Error(sizeErr)
+      const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null
+      const headers: Record<string, string> = {}
+      if (token) headers["Authorization"] = `Bearer ${token}`
+      const formData = new FormData()
+      formData.append("file", file)
+      const uploadRes = await fetch("/api/activity-events/upload?type=signed_curriculum", {
+        method: "POST",
+        headers,
+        body: formData,
+      })
+      const parsed = await parseUploadResponse(uploadRes)
+      if (!parsed.ok || !parsed.url) throw new Error(parsed.error || "Yükleme başarısız")
+
+      const currentParticipant = event?.participants.find((x) => x.id === participantId)
+      const existingUrls = currentParticipant?.signedCurriculumUrls ?? []
+      const updateRes = await fetch(`/api/activity-events/${eventId}/participants/${participantId}`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          signedCurriculumUrls: [...existingUrls, parsed.url],
+        }),
+      })
+      if (!updateRes.ok) {
+        const d = await updateRes.json().catch(() => ({}))
+        throw new Error(d.error || "Güncelleme başarısız")
+      }
+      await fetchEvent()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "İşlem başarısız")
+    } finally {
+      setActionPid(false)
+      if (signedCurriculumRef.current) signedCurriculumRef.current.value = ""
     }
   }
 
@@ -302,6 +344,48 @@ export function FaaliyetKatilimciDetay({ eventId, participantId }: FaaliyetKatil
               </Button>
             </div>
 
+            <div className="mt-4 flex gap-2 flex-wrap">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setPdfPreviewPath(participantMufredatPdfPath)}
+                className="text-violet-700 border-violet-200 hover:bg-violet-50"
+              >
+                <Eye className="h-4 w-4" />
+                <span className="ml-2">Müfredat Önizle</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={pdfLoading}
+                onClick={async () => {
+                  setPdfLoading(true)
+                  try {
+                    const res = await fetch(participantMufredatPdfPath, { headers: getAuthHeaders() })
+                    if (!res.ok) {
+                      const d = await res.json().catch(() => ({}))
+                      throw new Error(d.error || "Müfredat PDF alınamadı")
+                    }
+                    const blob = await res.blob()
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement("a")
+                    a.href = url
+                    a.download = `mufredat-${participantId.slice(0, 8)}.pdf`
+                    a.click()
+                    URL.revokeObjectURL(url)
+                  } catch (e) {
+                    alert(e instanceof Error ? e.message : "PDF indirilemedi")
+                  } finally {
+                    setPdfLoading(false)
+                  }
+                }}
+                className="text-violet-700 border-violet-200 hover:bg-violet-50"
+              >
+                {pdfLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+                <span className="ml-2">Müfredat İndir</span>
+              </Button>
+            </div>
+
             {p.signedDocumentUrls?.length > 0 && (
               <div className="mt-4 space-y-2">
                 <p className="text-sm font-medium text-gray-800">İmzalı belgeler</p>
@@ -314,6 +398,22 @@ export function FaaliyetKatilimciDetay({ eventId, participantId }: FaaliyetKatil
                     className="block text-sm text-blue-600 hover:underline"
                   >
                     Belge {i + 1}
+                  </a>
+                ))}
+              </div>
+            )}
+            {p.signedCurriculumUrls?.length > 0 && (
+              <div className="mt-4 space-y-2">
+                <p className="text-sm font-medium text-gray-800">İmzalı müfredat belgeleri</p>
+                {p.signedCurriculumUrls.map((url, i) => (
+                  <a
+                    key={i}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block text-sm text-violet-700 hover:underline"
+                  >
+                    Müfredat Belgesi {i + 1}
                   </a>
                 ))}
               </div>
@@ -345,6 +445,26 @@ export function FaaliyetKatilimciDetay({ eventId, participantId }: FaaliyetKatil
               </Button>
             </>
           )}
+          <input
+            ref={signedCurriculumRef}
+            type="file"
+            accept=".pdf,image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) handleUploadSignedCurriculum(file)
+            }}
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={actionPid}
+            onClick={() => signedCurriculumRef.current?.click()}
+            className="text-violet-700 border-violet-200 hover:bg-violet-50"
+          >
+            {actionPid ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            <span className="ml-2">İmzalı Müfredat Yükle</span>
+          </Button>
           {p.verificationStatus === "ONAY_BEKLIYOR" && (
             <Button size="sm" className="bg-emerald-600" disabled={actionPid} onClick={() => handleVerify(true)}>
               {actionPid ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}

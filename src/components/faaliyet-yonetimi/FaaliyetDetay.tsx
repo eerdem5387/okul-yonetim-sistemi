@@ -151,6 +151,47 @@ export function FaaliyetDetay({ id }: { id: string }) {
     }
   }
 
+  const handleUploadSignedCurriculum = async (pid: string, file: File) => {
+    setActionPid(pid)
+    try {
+      const sizeErr = assertFileMaxSize(file, CLIENT_MAX_PDF_BYTES, "İmzalı müfredat")
+      if (sizeErr) throw new Error(sizeErr)
+      const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null
+      const headers: Record<string, string> = {}
+      if (token) headers["Authorization"] = `Bearer ${token}`
+      const formData = new FormData()
+      formData.append("file", file)
+      const uploadRes = await fetch("/api/activity-events/upload?type=signed_curriculum", {
+        method: "POST",
+        headers,
+        body: formData,
+      })
+      const parsed = await parseUploadResponse(uploadRes)
+      if (!parsed.ok || !parsed.url) throw new Error(parsed.error || "Yükleme başarısız")
+      const url = parsed.url
+
+      const participant = event?.participants.find((p) => p.id === pid)
+      const existingUrls = participant?.signedCurriculumUrls ?? []
+
+      const updateRes = await fetch(`/api/activity-events/${id}/participants/${pid}`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          signedCurriculumUrls: [...existingUrls, url],
+        }),
+      })
+      if (!updateRes.ok) {
+        const d = await updateRes.json().catch(() => ({}))
+        throw new Error(d.error || "Güncelleme başarısız")
+      }
+      await fetchEvent()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "İşlem başarısız")
+    } finally {
+      setActionPid(null)
+    }
+  }
+
   const handleDeleteEvent = async () => {
     if (!confirm("Bu faaliyeti silmek istediğinizden emin misiniz?")) return
     try {
@@ -621,6 +662,84 @@ export function FaaliyetDetay({ id }: { id: string }) {
                           </Button>
                         </div>
                       )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setPdfPreview({
+                            path: `/api/activity-events/${id}/mufredat-pdf?participantId=${p.id}`,
+                            title: `${p.student.firstName} ${p.student.lastName} — müfredat önizleme`,
+                          })
+                        }
+                        className="text-violet-700 border-violet-200 hover:bg-violet-50"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        <span className="ml-1.5 text-xs">Müfredat Önizle</span>
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={async () => {
+                          setActionPid(p.id)
+                          try {
+                            const res = await fetch(
+                              `/api/activity-events/${id}/mufredat-pdf?participantId=${p.id}`,
+                              { headers: getAuthHeaders() }
+                            )
+                            if (!res.ok) {
+                              const j = await res.json().catch(() => ({}))
+                              throw new Error(j.error || "Müfredat PDF alınamadı")
+                            }
+                            const blob = await res.blob()
+                            const url = URL.createObjectURL(blob)
+                            const a = document.createElement("a")
+                            a.href = url
+                            a.download = `mufredat-${p.student.firstName}-${p.student.lastName}.pdf`
+                            a.click()
+                            URL.revokeObjectURL(url)
+                          } catch (e) {
+                            alert(e instanceof Error ? e.message : "Müfredat PDF indirilemedi")
+                          } finally {
+                            setActionPid(null)
+                          }
+                        }}
+                        disabled={actionPid === p.id}
+                        className="text-violet-700 border-violet-200 hover:bg-violet-50"
+                      >
+                        {actionPid === p.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <FileDown className="h-3.5 w-3.5" />
+                        )}
+                        <span className="ml-1.5 text-xs">Müfredat İndir</span>
+                      </Button>
+                      <div>
+                        <input
+                          id={`signed-curriculum-${p.id}`}
+                          type="file"
+                          accept=".pdf,image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) handleUploadSignedCurriculum(p.id, file)
+                            e.target.value = ""
+                          }}
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={actionPid === p.id}
+                          onClick={() => document.getElementById(`signed-curriculum-${p.id}`)?.click()}
+                          className="text-violet-700 border-violet-200 hover:bg-violet-50"
+                        >
+                          {actionPid === p.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Upload className="h-3.5 w-3.5" />
+                          )}
+                          <span className="ml-1.5 text-xs">İmzalı Müfredat Yükle</span>
+                        </Button>
+                      </div>
 
                       {p.verificationStatus === "ONAY_BEKLIYOR" && (
                         <Button
@@ -668,6 +787,21 @@ export function FaaliyetDetay({ id }: { id: string }) {
                             className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-0.5"
                           >
                             <FileText className="h-3 w-3" /> İmzalı {i + 1}
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                    {p.signedCurriculumUrls?.length > 0 && (
+                      <div className="flex flex-wrap gap-1 justify-end">
+                        {p.signedCurriculumUrls.map((url, i) => (
+                          <a
+                            key={i}
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-violet-700 hover:text-violet-800 flex items-center gap-0.5"
+                          >
+                            <BookOpen className="h-3 w-3" /> Müfredat {i + 1}
                           </a>
                         ))}
                       </div>

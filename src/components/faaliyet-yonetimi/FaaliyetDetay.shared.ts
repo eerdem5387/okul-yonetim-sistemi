@@ -19,6 +19,7 @@ export interface ParticipantRow {
   projectRole?: string | null
   verificationStatus: string
   signedDocumentUrls: string[]
+  signedCurriculumUrls: string[]
   isVerified: boolean
   verifiedBy: string | null
   verifiedAt: string | null
