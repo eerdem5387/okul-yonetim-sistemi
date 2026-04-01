@@ -19,6 +19,7 @@ export default function RehberlikActivitiesPage() {
         <div className="p-6">
           <IBFaaliyetDashboard
             faaliyetEkleHref="/faaliyet-ekle"
+            faaliyetDuzenleHref={(activityId) => `/faaliyet-yonetimi/${activityId}`}
             studentDetailHref={(id) => `/activities/student/${id}`}
             showViewerButton={true}
             onViewerClick={() => setShowViewerModal(true)}

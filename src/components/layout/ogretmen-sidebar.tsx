@@ -148,7 +148,12 @@ export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
         {navigation.map((item) => {
-          const isActive = pathname === item.href || (item.href !== "/ogretmen" && pathname?.startsWith(item.href))
+          const isActive =
+            item.href === "/ogretmen/ib-yonetimi"
+              ? pathname === item.href ||
+                pathname?.startsWith("/ogretmen/ib-yonetimi") ||
+                pathname?.startsWith("/faaliyet-yonetimi")
+              : pathname === item.href || (item.href !== "/ogretmen" && pathname?.startsWith(item.href))
           return (
             <Link
               key={item.name}

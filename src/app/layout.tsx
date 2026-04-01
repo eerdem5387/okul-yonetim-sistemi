@@ -139,6 +139,11 @@ export default function RootLayout({
       return
     }
 
+    // Öğretmen — yeni faaliyet modülü (/faaliyet-yonetimi/*) sihirbaz ve detay (layout aşağıda OgretmenSidebar ile)
+    if (pathname?.startsWith("/faaliyet-yonetimi") && normalizedRole === "teacher") {
+      return
+    }
+
     // Rehberlik sayfaları için kontrol
     if (pathname?.startsWith("/rehberlik")) {
       if (normalizedRole !== "counselor" && normalizedRole !== "head_counselor") {
@@ -421,6 +426,28 @@ export default function RootLayout({
         <head>
           <title>Öğretmen Paneli - Okul Yönetim Sistemi</title>
           <meta name="description" content="Öğretmen yıllık plan takip paneli" />
+          <link rel="icon" href="/logo.png?v=2" type="image/png" />
+          <link rel="apple-touch-icon" href="/logo.png?v=2" />
+        </head>
+        <body className={inter.className}>
+          <div className="flex h-screen bg-gray-50 lg:flex-row">
+            <OgretmenSidebar />
+            <div className="flex-1 overflow-y-auto w-full lg:w-auto">
+              {children}
+            </div>
+          </div>
+        </body>
+      </html>
+    )
+  }
+
+  // Öğretmen — IB faaliyet sihirbazı/detayı /faaliyet-yonetimi altında; aynı öğretmen kabuğu
+  if (authRole === "teacher" && pathname?.startsWith("/faaliyet-yonetimi")) {
+    return (
+      <html lang="tr">
+        <head>
+          <title>Faaliyet Yönetimi - Öğretmen Paneli</title>
+          <meta name="description" content="IB faaliyet oluşturma ve takip" />
           <link rel="icon" href="/logo.png?v=2" type="image/png" />
           <link rel="apple-touch-icon" href="/logo.png?v=2" />
         </head>
