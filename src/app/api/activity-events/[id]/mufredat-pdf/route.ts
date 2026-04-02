@@ -50,10 +50,11 @@ function buildMufredatHtml(params: {
   const programTitle = cfg?.mufredatBaslik ?? "LEVENT COLLEGE IB PROGRAMME — Curriculum"
 
   return params.participants
-    .map((p) =>
+    .map((p, idx) =>
       generateMufredatPageHTML({
         logoBase64,
         programTitle,
+        showLogo: idx === 0,
         participantName: `${p.firstName} ${p.lastName}`.trim(),
         participantTrId: p.tcNumber,
         instructorName: params.teacherName,
@@ -118,6 +119,9 @@ export async function GET(
     const pdfResult = await generatePDF(html, {
       format: "A4",
       margin: { top: "10mm", right: "10mm", bottom: "10mm", left: "10mm" },
+      // Müfredat PDF’inde sağ üstte sabitlenen global logo overlay'i her sayfada tekrar basıyor.
+      // Sadece müfredat şablonunun ilk sayfasındaki ortalı logoyu göstermek istiyoruz.
+      disableGlobalLogo: true,
     })
     const pdfBuffer = Buffer.from(pdfResult)
     const filename = participantId

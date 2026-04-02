@@ -102,7 +102,16 @@ function injectGlobalPdfLogo(html: string): string {
 
 export async function generatePDF(
   html: string,
-  options?: { format?: string; landscape?: boolean; margin?: Record<string, string> }
+  options?: {
+    format?: string
+    landscape?: boolean
+    margin?: Record<string, string>
+    /**
+     * Müfredat PDF gibi şablonlarda sağ üstte her sayfaya basılan global overlay logoyu
+     * kapatmak için kullanılır.
+     */
+    disableGlobalLogo?: boolean
+  }
 ) {
   const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
   let browser: Awaited<ReturnType<typeof puppeteer.launch>>
@@ -138,7 +147,7 @@ export async function generatePDF(
 
   const page = await browser.newPage()
 
-  const htmlWithLogo = injectGlobalPdfLogo(html)
+  const htmlWithLogo = options?.disableGlobalLogo ? html : injectGlobalPdfLogo(html)
   const encodedHTML = encodeHTMLEntities(htmlWithLogo)
   await page.setContent(encodedHTML, { waitUntil: 'networkidle0' })
 
@@ -1280,6 +1289,8 @@ export function generateCertificateHTML(data: {
 /** Müfredat sayfası HTML (logo, program bilgisi tablosu, aylık haftalık tablolar – ekran görüntüsü şablonu) */
 export function generateMufredatPageHTML(data: {
   logoBase64: string
+  /** İlk sayfada logo göster; diğer sayfalarda kapat. */
+  showLogo?: boolean
   programTitle: string
   programmeName?: string
   instructorName?: string
@@ -1299,6 +1310,7 @@ export function generateMufredatPageHTML(data: {
 }): string {
   const {
     logoBase64,
+    showLogo = true,
     programTitle,
     programmeName = "LEVENT COLLEGE IB",
     instructorName = "",
@@ -1340,9 +1352,13 @@ export function generateMufredatPageHTML(data: {
 
   return `
   <div style="page-break-after: always;">
-    <div style="text-align: center; margin-bottom: 16px;">
+    ${
+      showLogo
+        ? `<div style="text-align: center; margin-bottom: 16px;">
       <img src="data:image/png;base64,${logoBase64}" alt="Logo" style="max-height: 80px; width: auto;" />
-    </div>
+    </div>`
+        : ""
+    }
     <h1 style="text-align: center; font-size: 16px; font-weight: bold; text-transform: uppercase; margin-bottom: 16px;">
       ${escapeHTML(programTitle)}
     </h1>
