@@ -614,7 +614,7 @@ export function IBFaaliyetDashboard({
                       <th className="pb-3 font-medium px-2">Kaynak</th>
                       <th className="pb-3 font-medium px-2">Tür</th>
                       <th className="pb-3 font-medium px-2">Öğretmen</th>
-                      <th className="pb-3 font-medium px-2">Tarih</th>
+                      <th className="pb-3 font-medium px-2">Oluşturulma</th>
                       <th className="pb-3 font-medium px-2">Katılımcı</th>
                       <th className="pb-3 font-medium px-2">Durum</th>
                       <th className="pb-3 font-medium px-2 text-right">İşlem</th>

@@ -85,7 +85,8 @@ export async function GET(request: NextRequest) {
         source: "event",
         id: e.id,
         title: e.title,
-        sortDate: e.startDate.toISOString(),
+        // Liste sıralaması için "oluşturulma tarihi" (createdAt) kullanılmalı.
+        sortDate: e.createdAt.toISOString(),
         participantCount: e.participants.length,
         verificationStatus: aggregateStatuses(st),
         detailHref: `/faaliyet-yonetimi/${e.id}`,
