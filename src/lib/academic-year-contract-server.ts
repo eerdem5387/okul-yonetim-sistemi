@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma"
 import {
   contractYearLabelFromAcademicYear,
   getRenewalTargetYearFromList,
+  getRenewalYearSetupIssue,
+  renewalSetupErrorMessage,
   resolveActiveAndNextAcademicYear,
   type AcademicYearListItem,
 } from "@/lib/academic-year-ui"
@@ -63,12 +65,15 @@ export async function validateNewRegistrationAcademicYear(contractData: Record<s
 export async function validateRenewalAcademicYear(contractData: Record<string, unknown>): Promise<{
   ok: true
 } | { ok: false; error: string }> {
-  const target = await getRenewalTargetYear()
+  const rows = await listAcademicYearsForContract()
+  const target = getRenewalTargetYearFromList(rows)
   if (!target) {
+    const issue = getRenewalYearSetupIssue(rows)
     return {
       ok: false,
-      error:
-        "Kayıt yenileme için aktif akademik yıl ve ardından gelen bir sonraki yıl tanımlı olmalıdır. Lütfen akademik yılları kontrol edin.",
+      error: issue
+        ? renewalSetupErrorMessage(issue, rows)
+        : "Akademik yıl ayarları kayıt yenileme için uygun değil.",
     }
   }
   const label = (contractData.academicYear as string | undefined)?.trim()

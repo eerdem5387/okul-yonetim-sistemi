@@ -6,8 +6,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Download, Users, Clock, TrendingUp, GraduationCap, List, Search, ExternalLink } from "lucide-react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { getRenewalTargetYearFromList, type AcademicYearListItem } from "@/lib/academic-year-ui"
+import {
+  getRenewalTargetYearFromList,
+  getRenewalYearSetupIssue,
+  renewalSetupErrorMessage,
+  type AcademicYearListItem,
+} from "@/lib/academic-year-ui"
 
 interface Student {
   id: string
@@ -54,6 +60,7 @@ export default function RenewalPage() {
     name: string
     label: string
   } | null>(null)
+  const [renewalSetupMessage, setRenewalSetupMessage] = useState<string | null>(null)
   const [renewalYearLoading, setRenewalYearLoading] = useState(true)
   
   // İstatistikler
@@ -335,10 +342,22 @@ export default function RenewalPage() {
         if (!res.ok) throw new Error("academic-years")
         const data = (await res.json()) as AcademicYearListItem[]
         if (cancelled) return
-        const t = getRenewalTargetYearFromList(Array.isArray(data) ? data : [])
+        const rows = Array.isArray(data) ? data : []
+        const t = getRenewalTargetYearFromList(rows)
         setRenewalTarget(t)
+        if (t) {
+          setRenewalSetupMessage(null)
+        } else {
+          const issue = getRenewalYearSetupIssue(rows)
+          setRenewalSetupMessage(
+            issue ? renewalSetupErrorMessage(issue, rows) : "Akademik yıl ayarları kayıt yenileme için uygun değil."
+          )
+        }
       } catch {
-        if (!cancelled) setRenewalTarget(null)
+        if (!cancelled) {
+          setRenewalTarget(null)
+          setRenewalSetupMessage("Akademik yıllar yüklenemedi. Sayfayı yenileyin veya Ayarlar → Akademik Yıllar bölümünü kontrol edin.")
+        }
       } finally {
         if (!cancelled) setRenewalYearLoading(false)
       }
@@ -474,7 +493,7 @@ export default function RenewalPage() {
 
     if (!renewalTarget) {
       alert(
-        "⚠️ Kayıt yenileme için aktif akademik yıl ve ardından gelen bir sonraki yıl sistemde tanımlı olmalıdır.\n\nNeredeyiz üzerinden akademik yılları kontrol edin."
+        `⚠️ ${renewalSetupMessage ?? "Kayıt yenileme için akademik yıl ayarları eksik veya uyumsuz."}\n\nAna menüden Ayarlar → Akademik Yıllar sekmesine gidin.`
       )
       return
     }
@@ -1044,10 +1063,18 @@ export default function RenewalPage() {
                             </p>
                           </div>
                         ) : (
-                          <p className="text-sm text-amber-700">
-                            Aktif akademik yıl ve onu takip eden bir sonraki yıl tanımlı değil. Akademik yılları
-                            oluşturup bir yılı aktif yapın.
-                          </p>
+                          <div className="rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-950 space-y-3">
+                            <p className="leading-relaxed">
+                              {renewalSetupMessage ??
+                                "Kayıt yenileme için hedef akademik yıl belirlenemedi. Ayarlar’dan akademik yılları kontrol edin."}
+                            </p>
+                            <Link
+                              href="/yonetim/ayarlar"
+                              className="inline-flex h-9 items-center justify-center rounded-md border border-amber-300 bg-background px-3 text-sm font-medium shadow-sm hover:bg-amber-100/60"
+                            >
+                              Ayarlar — Akademik yıllar
+                            </Link>
+                          </div>
                         )}
                       </div>
                       <Button
