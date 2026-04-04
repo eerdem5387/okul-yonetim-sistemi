@@ -1060,7 +1060,7 @@ export default function StudentsPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="grade" className="text-xs sm:text-sm">Sınıfı *</Label>
+                  <Label htmlFor="grade" className="text-xs sm:text-sm">Sınıfı * "Öğrencinin Aktif Olarak Eğitim Gördüğü Sınıf"</Label>
                   <select
                     id="grade"
                     value={formData.grade}
