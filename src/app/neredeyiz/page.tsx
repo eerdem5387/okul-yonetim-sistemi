@@ -11,7 +11,6 @@ import {
   AlertTriangle,
   Target,
   Plus,
-  BookOpen,
   UserPlus,
   AlertCircle,
   ArrowRight,
@@ -249,7 +248,7 @@ export default function NeredeyizPage() {
 
       {/* Kısayol Butonları */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
-        <Link href="/neredeyiz/yonetim">
+        <Link href="/yonetim/ayarlar">
           <Card className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02] border-2 hover:border-blue-500">
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center gap-3 sm:gap-4">
@@ -261,7 +260,7 @@ export default function NeredeyizPage() {
                     Ders Oluştur
                   </h3>
                   <p className="text-xs sm:text-sm text-gray-600">
-                    Yeni ders ekle
+                    Ayarlar üzerinden yeni ders ekle
                   </p>
                 </div>
                 <ArrowRight className="h-5 w-5 text-gray-400 flex-shrink-0" />
@@ -270,7 +269,7 @@ export default function NeredeyizPage() {
           </Card>
         </Link>
 
-        <Link href="/neredeyiz/yonetim">
+        <Link href="/yonetim/ayarlar">
           <Card className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02] border-2 hover:border-purple-500">
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center gap-3 sm:gap-4">
@@ -282,7 +281,7 @@ export default function NeredeyizPage() {
                     Öğretmen Ata
                   </h3>
                   <p className="text-xs sm:text-sm text-gray-600">
-                    Derse öğretmen atama
+                    Ayarlar üzerinden derse öğretmen atama
                   </p>
                 </div>
                 <ArrowRight className="h-5 w-5 text-gray-400 flex-shrink-0" />
@@ -354,26 +353,6 @@ export default function NeredeyizPage() {
           </Card>
         </Link>
 
-        <Link href="/neredeyiz/yonetim">
-          <Card className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02] border-2 hover:border-gray-500">
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex items-center gap-3 sm:gap-4">
-                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-gray-500 to-gray-600 flex items-center justify-center flex-shrink-0">
-                  <BookOpen className="h-6 w-6 text-white" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-1">
-                    Yönetim Paneli
-                  </h3>
-                  <p className="text-xs sm:text-sm text-gray-600">
-                    Tüm yönetim işlemleri
-                  </p>
-                </div>
-                <ArrowRight className="h-5 w-5 text-gray-400 flex-shrink-0" />
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
       </div>
 
       {/* Genel İstatistikler */}
@@ -666,7 +645,7 @@ export default function NeredeyizPage() {
               Henüz akademik yıl tanımlanmamış
             </p>
             <p className="text-gray-400 text-xs sm:text-sm">
-              Yönetim sayfasından yeni akademik yıl ekleyebilirsiniz.
+              Ana paneldeki Ayarlar sayfasından yeni akademik yıl ekleyebilirsiniz.
             </p>
           </CardContent>
         </Card>

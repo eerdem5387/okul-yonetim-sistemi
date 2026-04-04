@@ -26,6 +26,7 @@ import {
   Handshake,
   School,
   GraduationCap,
+  Settings,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 const allNavigation = [
@@ -44,6 +45,12 @@ const allNavigation = [
   { name: "Öğrenci Dashboard", href: "/ogrenci-dashboard", icon: LayoutDashboard, roles: ["admin", "principal", "student_affairs"] },
   // 7. Personel Yönetimi
   { name: "Personel Yönetimi", href: "/personel", icon: Briefcase, roles: ["admin", "principal", "student_affairs"] },
+  {
+    name: "Ayarlar",
+    href: "/yonetim/ayarlar",
+    icon: Settings,
+    roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"],
+  },
   // Neredeyiz
   { name: "Neredeyiz?", href: "/neredeyiz", icon: Target, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
   { name: "Sınıf Yönetimi", href: "/sinif-yonetimi", icon: School, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },

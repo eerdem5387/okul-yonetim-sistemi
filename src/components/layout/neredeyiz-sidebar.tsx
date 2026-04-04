@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
   LayoutDashboard,
-  Settings,
   TrendingUp,
   AlertTriangle,
   BarChart3,
@@ -24,12 +23,6 @@ const navigation = [
     href: "/neredeyiz",
     icon: LayoutDashboard,
     description: "Genel bakış ve istatistikler",
-  },
-  {
-    name: "Yönetim",
-    href: "/neredeyiz/yonetim",
-    icon: Settings,
-    description: "Akademik yıl ve ders yönetimi",
   },
   {
     name: "İlerleme Takibi",

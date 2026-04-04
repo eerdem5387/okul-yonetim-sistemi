@@ -417,9 +417,9 @@ export default function DersDetayPage() {
         <Card>
           <CardContent className="py-8 sm:py-12 text-center">
             <p className="text-gray-500">Ders bulunamadı</p>
-            <Link href="/neredeyiz/yonetim">
+            <Link href="/yonetim/ayarlar">
               <Button variant="outline" className="mt-4">
-                Yönetim Sayfasına Dön
+                Ayarlara dön
               </Button>
             </Link>
           </CardContent>

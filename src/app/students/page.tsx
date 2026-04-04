@@ -56,7 +56,7 @@ interface Student {
   registrationStatusText?: string
 }
 
-type RegistrationListFilter = "" | "renewed" | "new_registration"
+type RegistrationBrowseKind = "renewed" | "new_registration" | "pre_enrollment"
 
 interface OverviewClassRow {
   id: string
@@ -95,7 +95,6 @@ export default function StudentsPage() {
   const [userRole, setUserRole] = useState<string | null>(null)
   const [overview, setOverview] = useState<StudentsOverview | null>(null)
   const [overviewLoading, setOverviewLoading] = useState(true)
-  const [registrationListFilter, setRegistrationListFilter] = useState<RegistrationListFilter>("")
   const [gradeSectionsOpen, setGradeSectionsOpen] = useState<Record<number, boolean>>({})
   const [classModal, setClassModal] = useState<{ id: string; name: string } | null>(null)
   const [classModalStudents, setClassModalStudents] = useState<Student[]>([])
@@ -113,11 +112,17 @@ export default function StudentsPage() {
   const [notRenewedModalTotalPages, setNotRenewedModalTotalPages] = useState(1)
   const [notRenewedModalTotal, setNotRenewedModalTotal] = useState(0)
 
-  const [preEnrollmentModalOpen, setPreEnrollmentModalOpen] = useState(false)
-  const [preEnrollmentStudents, setPreEnrollmentStudents] = useState<
-    Array<{ id: string; firstName: string; lastName: string; grade: string; tcNumber: string }>
-  >([])
-  const [preEnrollmentLoading, setPreEnrollmentLoading] = useState(false)
+  const [regBrowseModal, setRegBrowseModal] = useState<RegistrationBrowseKind | null>(null)
+  const [regBrowsePage, setRegBrowsePage] = useState(1)
+  const [regBrowseSearchInput, setRegBrowseSearchInput] = useState("")
+  const [regBrowseSearchDebounced, setRegBrowseSearchDebounced] = useState("")
+  const [regBrowseGrade, setRegBrowseGrade] = useState("")
+  const [regBrowseGradeBand, setRegBrowseGradeBand] = useState<"" | "ortaokul" | "lise">("")
+  const [regBrowseStudents, setRegBrowseStudents] = useState<Student[]>([])
+  const [regBrowseLoading, setRegBrowseLoading] = useState(false)
+  const [regBrowseTotalPages, setRegBrowseTotalPages] = useState(1)
+  const [regBrowseTotal, setRegBrowseTotal] = useState(0)
+  const prevRegBrowseSearchRef = useRef<string | null>(null)
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -225,9 +230,6 @@ export default function StudentsPage() {
       if (grade.trim()) {
         params.append("grade", grade.trim())
       }
-      if (registrationListFilter) {
-        params.append("registrationFilter", registrationListFilter)
-      }
 
       const response = await fetch(`/api/students?${params.toString()}`)
       if (!response.ok) {
@@ -251,7 +253,7 @@ export default function StudentsPage() {
       setTotalPages(1)
       setTotalStudents(0)
     }
-  }, [registrationListFilter])
+  }, [])
 
   useEffect(() => {
     fetchOverview()
@@ -261,7 +263,7 @@ export default function StudentsPage() {
   useEffect(() => {
     setCurrentPage(1)
     fetchStudents(1, searchTerm, selectedGrade)
-  }, [searchTerm, selectedGrade, registrationListFilter, fetchStudents])
+  }, [searchTerm, selectedGrade, fetchStudents])
 
   // Sayfa değiştiğinde
   useEffect(() => {
@@ -419,9 +421,15 @@ export default function StudentsPage() {
     }
   }
 
-  const toggleRegistrationFilter = (key: Exclude<RegistrationListFilter, "">) => {
-    setRegistrationListFilter((prev) => (prev === key ? "" : key))
-  }
+  const openRegistrationBrowseModal = useCallback((kind: RegistrationBrowseKind) => {
+    setRegBrowseModal(kind)
+    setRegBrowsePage(1)
+    setRegBrowseGrade("")
+    setRegBrowseGradeBand("")
+    setRegBrowseSearchInput("")
+    setRegBrowseSearchDebounced("")
+    prevRegBrowseSearchRef.current = null
+  }, [])
 
   const openNotRenewedModal = useCallback(() => {
     setNotRenewedModalOpen(true)
@@ -509,36 +517,115 @@ export default function StudentsPage() {
   ])
 
   useEffect(() => {
-    if (!preEnrollmentModalOpen) return
+    if (!regBrowseModal) return
+    const t = setTimeout(() => {
+      setRegBrowseSearchDebounced(regBrowseSearchInput.trim())
+    }, 350)
+    return () => clearTimeout(t)
+  }, [regBrowseSearchInput, regBrowseModal])
+
+  useEffect(() => {
+    if (!regBrowseModal) return
+    if (prevRegBrowseSearchRef.current === null) {
+      prevRegBrowseSearchRef.current = regBrowseSearchDebounced
+      return
+    }
+    if (prevRegBrowseSearchRef.current !== regBrowseSearchDebounced) {
+      prevRegBrowseSearchRef.current = regBrowseSearchDebounced
+      setRegBrowsePage(1)
+    }
+  }, [regBrowseSearchDebounced, regBrowseModal])
+
+  useEffect(() => {
+    if (!regBrowseModal) return
     let cancelled = false
     ;(async () => {
-      setPreEnrollmentLoading(true)
+      setRegBrowseLoading(true)
       try {
-        const res = await fetch("/api/students/pre-enrollment")
-        if (res.ok) {
-          const data = (await res.json()) as {
-            students?: Array<{
-              id: string
-              firstName: string
-              lastName: string
-              grade: string
-              tcNumber: string
-            }>
+        if (regBrowseModal === "pre_enrollment") {
+          const params = new URLSearchParams({
+            page: String(regBrowsePage),
+            limit: "30",
+          })
+          if (regBrowseSearchDebounced) params.set("search", regBrowseSearchDebounced)
+          if (regBrowseGrade.trim()) {
+            params.set("grade", regBrowseGrade.trim())
+          } else if (regBrowseGradeBand) {
+            params.set("gradeBand", regBrowseGradeBand)
           }
-          if (!cancelled) setPreEnrollmentStudents(data.students ?? [])
-        } else if (!cancelled) {
-          setPreEnrollmentStudents([])
+          const res = await fetch(`/api/students/pre-enrollment?${params}`)
+          if (!cancelled) {
+            if (res.ok) {
+              const data = await res.json()
+              setRegBrowseStudents(data.students ?? [])
+              const p = data.pagination
+              if (p) {
+                setRegBrowseTotalPages(Math.max(1, p.totalPages ?? 1))
+                setRegBrowseTotal(p.total ?? 0)
+              } else {
+                setRegBrowseTotalPages(1)
+                setRegBrowseTotal(Array.isArray(data.students) ? data.students.length : 0)
+              }
+            } else {
+              setRegBrowseStudents([])
+              setRegBrowseTotalPages(1)
+              setRegBrowseTotal(0)
+            }
+          }
+        } else {
+          const params = new URLSearchParams({
+            page: String(regBrowsePage),
+            limit: "30",
+            registrationMeta: "1",
+            registrationFilter: regBrowseModal === "renewed" ? "renewed" : "new_registration",
+          })
+          if (regBrowseSearchDebounced) params.set("search", regBrowseSearchDebounced)
+          if (regBrowseGrade.trim()) {
+            params.set("grade", regBrowseGrade.trim())
+          } else if (regBrowseGradeBand) {
+            params.set("gradeBand", regBrowseGradeBand)
+          }
+          const res = await fetch(`/api/students?${params}`)
+          if (!cancelled) {
+            if (res.ok) {
+              const data = await res.json()
+              setRegBrowseStudents(data.students ?? [])
+              const p = data.pagination
+              if (p) {
+                setRegBrowseTotalPages(Math.max(1, p.totalPages ?? 1))
+                setRegBrowseTotal(p.total ?? 0)
+              } else {
+                setRegBrowseTotalPages(1)
+                setRegBrowseTotal(Array.isArray(data.students) ? data.students.length : 0)
+              }
+            } else {
+              setRegBrowseStudents([])
+              setRegBrowseTotalPages(1)
+              setRegBrowseTotal(0)
+            }
+          }
         }
-      } catch {
-        if (!cancelled) setPreEnrollmentStudents([])
+      } catch (e) {
+        console.error(e)
+        if (!cancelled) {
+          setRegBrowseStudents([])
+          setRegBrowseTotalPages(1)
+          setRegBrowseTotal(0)
+        }
       } finally {
-        if (!cancelled) setPreEnrollmentLoading(false)
+        if (!cancelled) setRegBrowseLoading(false)
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [preEnrollmentModalOpen])
+  }, [
+    regBrowseModal,
+    regBrowsePage,
+    regBrowseSearchDebounced,
+    regBrowseGrade,
+    regBrowseGradeBand,
+  ])
 
   const registrationStatusClass = (text: string | undefined) => {
     if (!text) return "bg-gray-100 text-gray-600"
@@ -623,10 +710,10 @@ export default function StudentsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
               <button
                 type="button"
-                onClick={() => toggleRegistrationFilter("renewed")}
+                onClick={() => openRegistrationBrowseModal("renewed")}
                 className={cn(
                   "rounded-xl border p-3 sm:p-4 text-left transition-all hover:shadow-md",
-                  registrationListFilter === "renewed"
+                  regBrowseModal === "renewed"
                     ? "border-sky-400 bg-sky-50 ring-2 ring-sky-300"
                     : "border-gray-200 bg-white"
                 )}
@@ -638,14 +725,16 @@ export default function StudentsPage() {
                 <p className="mt-1 text-xl font-bold text-gray-900">
                   {overview.registrationCounts.renewed}
                 </p>
-                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Listeyi görmek için tıklayın</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
+                  Filtreli listeyi açmak için tıklayın
+                </p>
               </button>
               <button
                 type="button"
-                onClick={() => toggleRegistrationFilter("new_registration")}
+                onClick={() => openRegistrationBrowseModal("new_registration")}
                 className={cn(
                   "rounded-xl border p-3 sm:p-4 text-left transition-all hover:shadow-md",
-                  registrationListFilter === "new_registration"
+                  regBrowseModal === "new_registration"
                     ? "border-emerald-400 bg-emerald-50 ring-2 ring-emerald-300"
                     : "border-gray-200 bg-white"
                 )}
@@ -657,7 +746,9 @@ export default function StudentsPage() {
                 <p className="mt-1 text-xl font-bold text-gray-900">
                   {overview.registrationCounts.newRegistration}
                 </p>
-                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Hedef yıla yeni kayıt</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
+                  Aktif yıla kayıt; filtreli liste için tıklayın
+                </p>
               </button>
               <button
                 type="button"
@@ -682,10 +773,10 @@ export default function StudentsPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setPreEnrollmentModalOpen(true)}
+                onClick={() => openRegistrationBrowseModal("pre_enrollment")}
                 className={cn(
                   "rounded-xl border p-3 sm:p-4 text-left transition-all hover:shadow-md",
-                  preEnrollmentModalOpen
+                  regBrowseModal === "pre_enrollment"
                     ? "border-violet-400 bg-violet-50 ring-2 ring-violet-300"
                     : "border-gray-200 bg-white"
                 )}
@@ -703,19 +794,10 @@ export default function StudentsPage() {
                     : "Gelecek yıl için ön kayıt"}
                 </p>
                 <p className="text-[10px] sm:text-xs text-violet-700/90 mt-0.5">
-                  Listeyi görmek için tıklayın
+                  Filtreli listeyi açmak için tıklayın
                 </p>
               </button>
             </div>
-
-            {registrationListFilter && (
-              <div className="flex items-center justify-between rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-2 text-sm">
-                <span className="text-gray-700">Kayıt filtresi etkin.</span>
-                <Button type="button" variant="outline" size="sm" onClick={() => setRegistrationListFilter("")}>
-                  Filtreyi kaldır
-                </Button>
-              </div>
-            )}
 
             <Card className="border-gray-200 shadow-sm">
               <CardHeader className="py-3 sm:py-4">
@@ -1323,46 +1405,220 @@ export default function StudentsPage() {
       </Card>
 
       <Dialog
-        open={preEnrollmentModalOpen}
+        open={!!regBrowseModal}
         onOpenChange={(open) => {
-          setPreEnrollmentModalOpen(open)
+          if (!open) {
+            setRegBrowseModal(null)
+            prevRegBrowseSearchRef.current = null
+          }
         }}
       >
-        <DialogContent className="max-h-[min(85vh,560px)] w-[calc(100vw-1.5rem)] max-w-md flex flex-col gap-0 overflow-hidden p-4 sm:p-6">
-          <DialogHeader className="shrink-0 space-y-1 pr-6 text-left">
-            <DialogTitle>Ön kayıtlı öğrenciler</DialogTitle>
+        <DialogContent className="flex max-h-[min(90vh,720px)] w-[calc(100vw-1.5rem)] max-w-2xl flex-col gap-0 overflow-hidden p-4 sm:p-6">
+          <DialogHeader className="shrink-0 space-y-1 pr-8 text-left">
+            <DialogTitle>
+              {regBrowseModal === "renewed" && "Kayıt yenileyenler"}
+              {regBrowseModal === "new_registration" && "Yeni kayıt (aktif akademik yıl)"}
+              {regBrowseModal === "pre_enrollment" && "Ön kayıtlı öğrenciler"}
+            </DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
-              {overview?.preEnrollmentTargetYear
-                ? `Aktif yıldan sonra başlayan akademik yıla (ör. ${overview.preEnrollmentTargetYear.label}) ait yeni kayıt sözleşmesi olan öğrenciler; geçmiş kayıtlar da yıl metni veya academicYearId üzerinden değerlendirilir.`
-                : "Aktif yıldan sonra başlayan akademik yıla yeni kaydı olan, bu yıl toplamına dahil edilmeyen öğrenciler (geçmiş sözleşmeler dahil)."}
+              {regBrowseModal === "renewed" &&
+                (overview?.renewalTargetYear?.label
+                  ? `Hedef yıla (${overview.renewalTargetYear.label}) kayıt yenilemesi olan öğrenciler. Arama, kademe ve sınıf filtreleri uygulanır.`
+                  : "Kayıt yenilemesi tanımlı hedef yıla göre eşleşen öğrenciler.")}
+              {regBrowseModal === "new_registration" &&
+                "Aktif akademik yıla yeni kayıt sözleşmesi olan öğrenciler (yıl ortası geçişler). Arama, kademe ve sınıf filtreleri uygulanır."}
+              {regBrowseModal === "pre_enrollment" &&
+                (overview?.preEnrollmentTargetYear
+                  ? `Aktif yıldan sonra başlayan yıla (ör. ${overview.preEnrollmentTargetYear.label}) yeni kaydı olan öğrenciler; bu yıl toplam sayıma dahil değillerdir.`
+                  : "Gelecek akademik yıla ön kayıtlı öğrenciler.")}
             </DialogDescription>
           </DialogHeader>
-          <div className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1">
-            {preEnrollmentLoading ? (
-              <p className="text-sm text-gray-500 py-6">Yükleniyor…</p>
-            ) : preEnrollmentStudents.length === 0 ? (
-              <p className="text-sm text-gray-500 py-6">
-                Ön kayıtlı öğrenci yok veya sıradaki akademik yıl tanımlı değil.
+
+          <div className="mt-3 shrink-0 space-y-3 border-b border-gray-100 pb-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-3">
+              <div className="flex-1 space-y-1">
+                <Label className="text-xs text-gray-600">Kademe</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={regBrowseGradeBand === "" && !regBrowseGrade ? "default" : "outline"}
+                    className="h-8 text-xs"
+                    onClick={() => {
+                      setRegBrowseGradeBand("")
+                      setRegBrowseGrade("")
+                      setRegBrowsePage(1)
+                    }}
+                  >
+                    Tümü
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={regBrowseGradeBand === "ortaokul" ? "default" : "outline"}
+                    className="h-8 text-xs"
+                    onClick={() => {
+                      setRegBrowseGradeBand("ortaokul")
+                      setRegBrowseGrade("")
+                      setRegBrowsePage(1)
+                    }}
+                  >
+                    Ortaokul (5–8)
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={regBrowseGradeBand === "lise" ? "default" : "outline"}
+                    className="h-8 text-xs"
+                    onClick={() => {
+                      setRegBrowseGradeBand("lise")
+                      setRegBrowseGrade("")
+                      setRegBrowsePage(1)
+                    }}
+                  >
+                    Lise (9–12)
+                  </Button>
+                </div>
+              </div>
+              <div className="w-full min-w-0 sm:w-48 space-y-1">
+                <Label htmlFor="reg-browse-grade" className="text-xs text-gray-600">
+                  Sınıf düzeyi
+                </Label>
+                <select
+                  id="reg-browse-grade"
+                  value={regBrowseGrade}
+                  onChange={(e) => {
+                    setRegBrowseGrade(e.target.value)
+                    setRegBrowseGradeBand("")
+                    setRegBrowsePage(1)
+                  }}
+                  className="h-9 w-full rounded-md border border-gray-300 bg-white px-2 text-xs focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                >
+                  <option value="">Tüm sınıflar (kademe filtresine göre)</option>
+                  {gradeOptions.map((g) => (
+                    <option key={g} value={g}>
+                      {g}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="reg-browse-search" className="text-xs text-gray-600">
+                Ara (ad, soyad, TC, sınıf)
+              </Label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+                <Input
+                  id="reg-browse-search"
+                  value={regBrowseSearchInput}
+                  onChange={(e) => setRegBrowseSearchInput(e.target.value)}
+                  placeholder="Yazdıktan kısa süre sonra liste güncellenir…"
+                  className="h-9 pl-8 text-xs"
+                />
+              </div>
+            </div>
+            <p className="text-[11px] text-gray-500">
+              {regBrowseLoading
+                ? "Yükleniyor…"
+                : `Bu görünümde ${regBrowseTotal} öğrenci${regBrowseTotalPages > 1 ? ` (sayfa ${regBrowsePage}/${regBrowseTotalPages})` : ""}.`}
+            </p>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto py-3">
+            {regBrowseLoading && regBrowseStudents.length === 0 ? (
+              <p className="text-sm text-gray-500 py-6 text-center">Yükleniyor…</p>
+            ) : regBrowseStudents.length === 0 ? (
+              <p className="text-sm text-gray-500 py-6 text-center">
+                {regBrowseModal === "renewed" && "Kriterlere uygun kayıt yenilemesi olan öğrenci yok."}
+                {regBrowseModal === "new_registration" &&
+                  "Kriterlere uygun aktif yıl yeni kaydı olan öğrenci yok."}
+                {regBrowseModal === "pre_enrollment" &&
+                  "Kriterlere uygun ön kayıtlı öğrenci yok veya tanımlı yıl yok."}
               </p>
             ) : (
-              <ul className="space-y-2">
-                {preEnrollmentStudents.map((s) => (
-                  <li
-                    key={s.id}
-                    className="flex flex-col gap-0.5 rounded-lg border border-violet-100 bg-violet-50/40 px-3 py-2 text-sm"
-                  >
-                    <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <span className="font-medium text-gray-900">
-                        {s.firstName} {s.lastName}
-                      </span>
-                      <span className="text-xs text-gray-600">{formatGrade(s.grade)}</span>
-                    </div>
-                    <span className="text-[11px] text-gray-500 tabular-nums">TC: {s.tcNumber}</span>
+              <ul className="space-y-2 pr-1">
+                {regBrowseStudents.map((s) => (
+                  <li key={s.id}>
+                    <button
+                      type="button"
+                      className={cn(
+                        "flex w-full flex-col gap-1 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors",
+                        regBrowseModal === "renewed" &&
+                          "border-sky-100/80 bg-sky-50/40 hover:bg-sky-50/90",
+                        regBrowseModal === "new_registration" &&
+                          "border-emerald-100/80 bg-emerald-50/40 hover:bg-emerald-50/90",
+                        regBrowseModal === "pre_enrollment" &&
+                          "border-violet-100/80 bg-violet-50/40 hover:bg-violet-50/90"
+                      )}
+                      onClick={() => {
+                        setRegBrowseModal(null)
+                        handleEdit(s)
+                      }}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-medium text-gray-900">
+                          {s.firstName} {s.lastName}
+                        </span>
+                        <span className="text-xs font-medium text-gray-600">
+                          {formatGrade(s.grade)}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                        <span>TC: {s.tcNumber || "—"}</span>
+                        {regBrowseModal === "pre_enrollment" ? (
+                          <span className="font-medium px-2 py-0.5 rounded-md bg-violet-100 text-violet-900">
+                            Ön kayıt
+                          </span>
+                        ) : (
+                          <span
+                            className={cn(
+                              "font-medium px-2 py-0.5 rounded-md",
+                              registrationStatusClass(s.registrationStatusText)
+                            )}
+                          >
+                            {s.registrationStatusText ?? "—"}
+                          </span>
+                        )}
+                      </div>
+                    </button>
                   </li>
                 ))}
               </ul>
             )}
           </div>
+
+          {regBrowseTotalPages > 1 && (
+            <div className="flex shrink-0 items-center justify-between gap-2 border-t border-gray-100 pt-3">
+              <span className="text-xs text-gray-500">
+                Sayfa {regBrowsePage} / {regBrowseTotalPages}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs"
+                  disabled={regBrowsePage <= 1 || regBrowseLoading}
+                  onClick={() => setRegBrowsePage((p) => Math.max(1, p - 1))}
+                >
+                  Önceki
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs"
+                  disabled={regBrowsePage >= regBrowseTotalPages || regBrowseLoading}
+                  onClick={() =>
+                    setRegBrowsePage((p) => Math.min(regBrowseTotalPages, p + 1))
+                  }
+                >
+                  Sonraki
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
