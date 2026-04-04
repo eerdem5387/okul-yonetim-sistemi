@@ -132,8 +132,10 @@ export default function HomePage() {
       setLoading(true)
 
       const insightsRes = await fetch("/api/dashboard/insights")
+      let insightsPayload: DashboardInsights | null = null
       if (insightsRes.ok) {
-        setInsights(await insightsRes.json())
+        insightsPayload = await insightsRes.json()
+        setInsights(insightsPayload)
       } else {
         setInsights(null)
       }
@@ -227,7 +229,9 @@ export default function HomePage() {
       const totalStaff = staffData.pagination?.total ?? 0
 
       setStats({
-        totalStudents: Array.isArray(students) ? students.length : 0,
+        totalStudents:
+          insightsPayload?.counts?.students ??
+          (Array.isArray(students) ? students.length : 0),
         totalNewRegistrations: newRegList.length,
         totalRenewals: renewalList.length,
         totalStaff,

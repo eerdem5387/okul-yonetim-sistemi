@@ -6,6 +6,13 @@ import {
   type AcademicYearListItem,
 } from "@/lib/academic-year-ui"
 
+function singleYearMatchTargets(
+  year: AcademicYearListItem | null
+): Array<{ id: string | null; label: string }> {
+  if (!year) return []
+  return [{ id: year.id, label: contractYearLabelFromAcademicYear(year) }]
+}
+
 export type YearRowDb = {
   id: string
   name: string
@@ -188,6 +195,13 @@ export async function getRenewalTargetContext(client: PrismaClient): Promise<{
   target: RenewalTargetInfo | null
   renewedStudentIds: Set<string>
   newRegistrationStudentIds: Set<string>
+  /** Aktif akademik yıla sözleşmesi eşleşen yeni kayıtlar (bu yıl okula başlayan / bu yıl için kayıt). */
+  newRegistrationActiveYearStudentIds: Set<string>
+  /**
+   * Yalnızca bir sonraki akademik yıl için yeni kaydı olan, aktif yıla ait yeni kaydı olmayan öğrenciler.
+   * Henüz bu yıl eğitime başlamamış kabul edilir; mevcut öğrenci sayılarına dahil edilmez.
+   */
+  futureYearOnlyNewRegistrationStudentIds: Set<string>
 }> {
   const yearRows = await client.academicYear.findMany({
     orderBy: { startDate: "desc" },
@@ -204,6 +218,10 @@ export async function getRenewalTargetContext(client: PrismaClient): Promise<{
     : []
 
   const newRegTargets = buildNewRegistrationMatchTargets(yearRows, newRegs)
+  const list = toListItems(yearRows)
+  const { active, next } = resolveActiveAndNextAcademicYear(list)
+  const activeYearTargets = singleYearMatchTargets(active)
+  const nextYearTargets = singleYearMatchTargets(next)
 
   const renewedStudentIds = new Set<string>()
   for (const r of renewals) {
@@ -219,10 +237,32 @@ export async function getRenewalTargetContext(client: PrismaClient): Promise<{
     }
   }
 
+  const newRegistrationActiveYearStudentIds = new Set<string>()
+  const hasNextYearNewRegByStudent = new Set<string>()
+  for (const r of newRegs) {
+    if (activeYearTargets.length && contractMatchesAcademicYearTargets(r.contractData, activeYearTargets)) {
+      newRegistrationActiveYearStudentIds.add(r.studentId)
+    }
+    if (nextYearTargets.length && contractMatchesAcademicYearTargets(r.contractData, nextYearTargets)) {
+      hasNextYearNewRegByStudent.add(r.studentId)
+    }
+  }
+
+  const futureYearOnlyNewRegistrationStudentIds = new Set<string>()
+  if (activeYearTargets.length && nextYearTargets.length) {
+    for (const sid of hasNextYearNewRegByStudent) {
+      if (!newRegistrationActiveYearStudentIds.has(sid)) {
+        futureYearOnlyNewRegistrationStudentIds.add(sid)
+      }
+    }
+  }
+
   return {
     target: renewalTarget,
     renewedStudentIds,
     newRegistrationStudentIds,
+    newRegistrationActiveYearStudentIds,
+    futureYearOnlyNewRegistrationStudentIds,
   }
 }
 

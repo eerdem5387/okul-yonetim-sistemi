@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getRenewalTargetContext } from "@/lib/student-registration-meta"
+import { contractYearLabelFromAcademicYear, resolveActiveAndNextAcademicYear } from "@/lib/academic-year-ui"
 import { gradeLevelLabel, parseStudentGradeLevel } from "@/lib/student-grade-level"
 
 export const dynamic = "force-dynamic"
@@ -29,8 +30,13 @@ export async function GET() {
       }) ??
       null
 
-    const { target, renewedStudentIds, newRegistrationStudentIds } =
-      await getRenewalTargetContext(prisma)
+    const {
+      target,
+      renewedStudentIds,
+      newRegistrationStudentIds,
+      newRegistrationActiveYearStudentIds,
+      futureYearOnlyNewRegistrationStudentIds,
+    } = await getRenewalTargetContext(prisma)
 
     const baseStudentWhere = {
       NOT: { grade: { equals: "Mezun", mode: "insensitive" as const } },
@@ -43,13 +49,18 @@ export async function GET() {
 
     const effectiveStudents = allStudents.filter((s) => !isMezunGrade(s.grade))
 
+    /** Bu yıl okulda sayılan öğrenciler (gelecek yıl için ön kayıt olanlar hariç). */
+    const enrolledStudents = effectiveStudents.filter(
+      (s) => !futureYearOnlyNewRegistrationStudentIds.has(s.id)
+    )
+
     const byGrade: Record<string, number> = {}
     for (let g = 5; g <= 12; g++) {
       byGrade[gradeLevelLabel(g)] = 0
     }
     let ortaokul = 0
     let lise = 0
-    for (const s of effectiveStudents) {
+    for (const s of enrolledStudents) {
       const level = parseStudentGradeLevel(s.grade)
       if (level == null) continue
       const label = gradeLevelLabel(level)
@@ -60,21 +71,21 @@ export async function GET() {
       if (level >= 9 && level <= 12) lise += 1
     }
 
-    const totalStudents = effectiveStudents.length
+    const totalStudents = enrolledStudents.length
 
-    const newRegInScope = effectiveStudents.filter((s) =>
-      newRegistrationStudentIds.has(s.id)
+    const newRegInScope = enrolledStudents.filter((s) =>
+      newRegistrationActiveYearStudentIds.has(s.id)
     ).length
-    const renewedOnlyInScope = effectiveStudents.filter(
+    const renewedOnlyInScope = enrolledStudents.filter(
       (s) => renewedStudentIds.has(s.id) && !newRegistrationStudentIds.has(s.id)
     ).length
     const covered = new Set<string>()
-    for (const s of effectiveStudents) {
+    for (const s of enrolledStudents) {
       if (renewedStudentIds.has(s.id) || newRegistrationStudentIds.has(s.id)) {
         covered.add(s.id)
       }
     }
-    const notRenewedCount = effectiveStudents.filter((s) => !covered.has(s.id)).length
+    const notRenewedCount = enrolledStudents.filter((s) => !covered.has(s.id)).length
 
     type ClassRow = { id: string; name: string; grade: number; studentCount: number }
     const byGradeMap: Record<number, ClassRow[]> = {}
@@ -110,11 +121,30 @@ export async function GET() {
       classes: byGradeMap[grade],
     }))
 
+    const ayList = yearRows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      startDate: r.startDate.toISOString(),
+      endDate: r.endDate.toISOString(),
+      isActive: r.isActive,
+    }))
+    const { next: nextAcademicYear } = resolveActiveAndNextAcademicYear(ayList)
+    const preEnrollmentTargetYear = nextAcademicYear
+      ? {
+          id: nextAcademicYear.id,
+          name: nextAcademicYear.name,
+          label: contractYearLabelFromAcademicYear(nextAcademicYear),
+        }
+      : null
+    const preEnrollmentCount = futureYearOnlyNewRegistrationStudentIds.size
+
     return NextResponse.json({
       activeAcademicYear: activeYear
         ? { id: activeYear.id, name: activeYear.name }
         : null,
       renewalTargetYear: target,
+      preEnrollmentCount,
+      preEnrollmentTargetYear,
       totalStudents,
       ortaokulCount: ortaokul,
       liseCount: lise,

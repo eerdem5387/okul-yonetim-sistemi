@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import {
   buildNewRegistrationMatchTargets,
   contractMatchesAcademicYearTargets,
+  getRenewalTargetContext,
   resolveRenewalYearTargetForStats,
 } from "@/lib/student-registration-meta"
 
@@ -16,6 +17,19 @@ export async function GET() {
     const yearRows = await prisma.academicYear.findMany({
       orderBy: { startDate: "desc" },
     })
+
+    const regCtx = await getRenewalTargetContext(prisma)
+    const futureOnlyIds = [...regCtx.futureYearOnlyNewRegistrationStudentIds]
+
+    const enrollmentWhere =
+      futureOnlyIds.length > 0
+        ? {
+            AND: [
+              { NOT: { grade: { equals: "Mezun", mode: "insensitive" as const } } },
+              { NOT: { id: { in: futureOnlyIds } } },
+            ],
+          }
+        : { NOT: { grade: { equals: "Mezun", mode: "insensitive" as const } } }
 
     const activeYear = yearRows.find((y) => y.isActive) ?? null
     const now = Date.now()
@@ -48,7 +62,10 @@ export async function GET() {
           select: { id: true, firstName: true, lastName: true },
           orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
         })
-        const unassigned = allStudents.filter((s) => !assignedSet.has(s.id))
+        const unassigned = allStudents.filter(
+          (s) =>
+            !assignedSet.has(s.id) && !regCtx.futureYearOnlyNewRegistrationStudentIds.has(s.id)
+        )
         studentsWithoutClassCount = unassigned.length
         studentsWithoutClassInActiveYear = unassigned.slice(0, 12).map((s) => ({
           id: s.id,
@@ -56,9 +73,10 @@ export async function GET() {
           lastName: s.lastName,
         }))
       } else {
-        const totalStudents = await prisma.student.count()
-        studentsWithoutClassCount = totalStudents
+        const totalEnrolled = await prisma.student.count({ where: enrollmentWhere })
+        studentsWithoutClassCount = totalEnrolled
         const sample = await prisma.student.findMany({
+          where: enrollmentWhere,
           take: 12,
           orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
           select: { id: true, firstName: true, lastName: true },
@@ -120,7 +138,7 @@ export async function GET() {
     }
 
     const [totalStudents, newRegCount, renewalCount, classCount] = await Promise.all([
-      prisma.student.count(),
+      prisma.student.count({ where: enrollmentWhere }),
       prisma.newRegistration.count(),
       prisma.renewal.count(),
       prisma.class.count(),

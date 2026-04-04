@@ -46,28 +46,34 @@ export async function GET(request: NextRequest) {
             whereConditions.push({ NOT: { grade: { equals: "Mezun", mode: 'insensitive' as const } } })
         }
 
-        let regCtx: Awaited<ReturnType<typeof getRenewalTargetContext>> | null = null
-        if (registrationFilter === 'renewed' || registrationFilter === 'new_registration' || registrationFilter === 'not_renewed' || registrationMeta) {
-            regCtx = await getRenewalTargetContext(prisma)
-        }
+        const regCtx = await getRenewalTargetContext(prisma)
 
         const noMatchId = "__students_filter_no_match__"
 
-        if (registrationFilter === 'renewed' && regCtx) {
+        if (registrationFilter === 'renewed') {
             const ids = [...regCtx.renewedStudentIds].filter(
-                (id) => !regCtx!.newRegistrationStudentIds.has(id)
+                (id) => !regCtx.newRegistrationStudentIds.has(id)
             )
             whereConditions.push({ id: { in: ids.length > 0 ? ids : [noMatchId] } })
-        } else if (registrationFilter === 'new_registration' && regCtx) {
+        } else if (registrationFilter === 'new_registration') {
             const ids = [...regCtx.newRegistrationStudentIds]
             whereConditions.push({ id: { in: ids.length > 0 ? ids : [noMatchId] } })
-        } else if (registrationFilter === 'not_renewed' && regCtx) {
+        } else if (registrationFilter === 'not_renewed') {
             const excluded = [...new Set([...regCtx.renewedStudentIds, ...regCtx.newRegistrationStudentIds])]
             if (excluded.length > 0) {
                 whereConditions.push({ NOT: { id: { in: excluded } } })
             }
+        } else if (
+            !registrationFilter &&
+            !search.trim() &&
+            !grade &&
+            !gradeBand &&
+            regCtx.futureYearOnlyNewRegistrationStudentIds.size > 0
+        ) {
+            const ex = [...regCtx.futureYearOnlyNewRegistrationStudentIds]
+            whereConditions.push({ NOT: { id: { in: ex } } })
         }
-        
+
         const where = whereConditions.length > 0 ? { AND: whereConditions } : {}
 
         // Toplam kayıt sayısı (arama varsa filtrelenmiş, yoksa tümü)
@@ -84,14 +90,14 @@ export async function GET(request: NextRequest) {
         })
 
         let studentsOut: Array<Record<string, unknown>> = students as unknown as Array<Record<string, unknown>>
-        if (registrationMeta && regCtx) {
+        if (registrationMeta) {
             studentsOut = students.map((s) => ({
                 ...s,
                 registrationStatusText: registrationStatusText(
-                    regCtx!.target,
+                    regCtx.target,
                     s.id,
-                    regCtx!.renewedStudentIds,
-                    regCtx!.newRegistrationStudentIds
+                    regCtx.renewedStudentIds,
+                    regCtx.newRegistrationStudentIds
                 ),
             }))
         }

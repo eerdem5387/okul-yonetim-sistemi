@@ -30,6 +30,7 @@ import {
   FileCheck,
   UserPlus,
   AlertCircle,
+  CalendarClock,
 } from "lucide-react"
 
 interface Student {
@@ -67,6 +68,8 @@ interface OverviewClassRow {
 interface StudentsOverview {
   activeAcademicYear: { id: string; name: string } | null
   renewalTargetYear: { id: string | null; name: string; label: string } | null
+  preEnrollmentCount: number
+  preEnrollmentTargetYear: { id: string; name: string; label: string } | null
   totalStudents: number
   ortaokulCount: number
   liseCount: number
@@ -109,6 +112,13 @@ export default function StudentsPage() {
   const [notRenewedModalPage, setNotRenewedModalPage] = useState(1)
   const [notRenewedModalTotalPages, setNotRenewedModalTotalPages] = useState(1)
   const [notRenewedModalTotal, setNotRenewedModalTotal] = useState(0)
+
+  const [preEnrollmentModalOpen, setPreEnrollmentModalOpen] = useState(false)
+  const [preEnrollmentStudents, setPreEnrollmentStudents] = useState<
+    Array<{ id: string; firstName: string; lastName: string; grade: string; tcNumber: string }>
+  >([])
+  const [preEnrollmentLoading, setPreEnrollmentLoading] = useState(false)
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -498,6 +508,38 @@ export default function StudentsPage() {
     notRenewedGradeBand,
   ])
 
+  useEffect(() => {
+    if (!preEnrollmentModalOpen) return
+    let cancelled = false
+    ;(async () => {
+      setPreEnrollmentLoading(true)
+      try {
+        const res = await fetch("/api/students/pre-enrollment")
+        if (res.ok) {
+          const data = (await res.json()) as {
+            students?: Array<{
+              id: string
+              firstName: string
+              lastName: string
+              grade: string
+              tcNumber: string
+            }>
+          }
+          if (!cancelled) setPreEnrollmentStudents(data.students ?? [])
+        } else if (!cancelled) {
+          setPreEnrollmentStudents([])
+        }
+      } catch {
+        if (!cancelled) setPreEnrollmentStudents([])
+      } finally {
+        if (!cancelled) setPreEnrollmentLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [preEnrollmentModalOpen])
+
   const registrationStatusClass = (text: string | undefined) => {
     if (!text) return "bg-gray-100 text-gray-600"
     if (text === "Yeni Kayıt") return "bg-emerald-100 text-emerald-800"
@@ -543,7 +585,7 @@ export default function StudentsPage() {
                   Toplam öğrenci
                 </div>
                 <p className="mt-1 text-2xl font-bold text-gray-900">{overview.totalStudents}</p>
-                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Mezunlar hariç</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Yeni Kayıtlar Hariç</p>
               </div>
               <div className="rounded-xl border border-gray-200 bg-white p-3 sm:p-4 shadow-sm">
                 <div className="flex items-center gap-2 text-gray-500 text-xs font-medium uppercase tracking-wide">
@@ -576,7 +618,7 @@ export default function StudentsPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
               <button
                 type="button"
                 onClick={() => toggleRegistrationFilter("renewed")}
@@ -634,6 +676,32 @@ export default function StudentsPage() {
                 </p>
                 <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
                   Listeyi ayrı pencerede görmek için tıklayın
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreEnrollmentModalOpen(true)}
+                className={cn(
+                  "rounded-xl border p-3 sm:p-4 text-left transition-all hover:shadow-md",
+                  preEnrollmentModalOpen
+                    ? "border-violet-400 bg-violet-50 ring-2 ring-violet-300"
+                    : "border-gray-200 bg-white"
+                )}
+              >
+                <div className="flex items-center gap-2 text-violet-900 text-xs font-semibold">
+                  <CalendarClock className="h-4 w-4" />
+                  Ön kayıt
+                </div>
+                <p className="mt-1 text-xl font-bold text-gray-900">
+                  {overview.preEnrollmentCount ?? 0}
+                </p>
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
+                  {overview.preEnrollmentTargetYear
+                    ? `${overview.preEnrollmentTargetYear.label} için yeni kayıt`
+                    : "Gelecek yıl için ön kayıt"}
+                </p>
+                <p className="text-[10px] sm:text-xs text-violet-700/90 mt-0.5">
+                  Listeyi görmek için tıklayın
                 </p>
               </button>
             </div>
@@ -1251,6 +1319,50 @@ export default function StudentsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog
+        open={preEnrollmentModalOpen}
+        onOpenChange={(open) => {
+          setPreEnrollmentModalOpen(open)
+        }}
+      >
+        <DialogContent className="max-h-[min(85vh,560px)] w-[calc(100vw-1.5rem)] max-w-md flex flex-col gap-0 overflow-hidden p-4 sm:p-6">
+          <DialogHeader className="shrink-0 space-y-1 pr-6 text-left">
+            <DialogTitle>Ön kayıtlı öğrenciler</DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
+              {overview?.preEnrollmentTargetYear
+                ? `Yalnızca ${overview.preEnrollmentTargetYear.name} (${overview.preEnrollmentTargetYear.label}) için yeni kayıt sözleşmesi olan öğrenciler. Henüz bu yılın toplam öğrenci sayısına dahil değillerdir.`
+                : "Aktif yılı izleyen akademik yıl için yeni kaydı olan, bu yıl sayıma dahil edilmeyen öğrenciler."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1">
+            {preEnrollmentLoading ? (
+              <p className="text-sm text-gray-500 py-6">Yükleniyor…</p>
+            ) : preEnrollmentStudents.length === 0 ? (
+              <p className="text-sm text-gray-500 py-6">
+                Ön kayıtlı öğrenci yok veya sıradaki akademik yıl tanımlı değil.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {preEnrollmentStudents.map((s) => (
+                  <li
+                    key={s.id}
+                    className="flex flex-col gap-0.5 rounded-lg border border-violet-100 bg-violet-50/40 px-3 py-2 text-sm"
+                  >
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <span className="font-medium text-gray-900">
+                        {s.firstName} {s.lastName}
+                      </span>
+                      <span className="text-xs text-gray-600">{formatGrade(s.grade)}</span>
+                    </div>
+                    <span className="text-[11px] text-gray-500 tabular-nums">TC: {s.tcNumber}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={!!classModal}
