@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { getRenewalTargetContext, registrationStatusText } from "@/lib/student-registration-meta"
 
 export async function GET(request: NextRequest) {
     try {
@@ -8,7 +9,9 @@ export async function GET(request: NextRequest) {
         const limit = parseInt(searchParams.get('limit') || '10')
         const search = searchParams.get('search') || ''
         const grade = searchParams.get('grade') || ''
-        
+        const registrationFilter = searchParams.get('registrationFilter') || ''
+        const registrationMeta = searchParams.get('registrationMeta') === '1' || searchParams.get('registrationMeta') === 'true'
+
         const skip = (page - 1) * limit
 
         // Arama ve sınıf filtresi
@@ -33,6 +36,28 @@ export async function GET(request: NextRequest) {
             // Varsayılan olarak mezunları hariç tut (sadece "Mezun" filtresi seçildiğinde görünsünler)
             whereConditions.push({ NOT: { grade: { equals: "Mezun", mode: 'insensitive' as const } } })
         }
+
+        let regCtx: Awaited<ReturnType<typeof getRenewalTargetContext>> | null = null
+        if (registrationFilter === 'renewed' || registrationFilter === 'new_registration' || registrationFilter === 'not_renewed' || registrationMeta) {
+            regCtx = await getRenewalTargetContext(prisma)
+        }
+
+        const noMatchId = "__students_filter_no_match__"
+
+        if (registrationFilter === 'renewed' && regCtx) {
+            const ids = [...regCtx.renewedStudentIds].filter(
+                (id) => !regCtx!.newRegistrationStudentIds.has(id)
+            )
+            whereConditions.push({ id: { in: ids.length > 0 ? ids : [noMatchId] } })
+        } else if (registrationFilter === 'new_registration' && regCtx) {
+            const ids = [...regCtx.newRegistrationStudentIds]
+            whereConditions.push({ id: { in: ids.length > 0 ? ids : [noMatchId] } })
+        } else if (registrationFilter === 'not_renewed' && regCtx) {
+            const excluded = [...new Set([...regCtx.renewedStudentIds, ...regCtx.newRegistrationStudentIds])]
+            if (excluded.length > 0) {
+                whereConditions.push({ NOT: { id: { in: excluded } } })
+            }
+        }
         
         const where = whereConditions.length > 0 ? { AND: whereConditions } : {}
 
@@ -49,8 +74,21 @@ export async function GET(request: NextRequest) {
             take: limit
         })
 
+        let studentsOut: Array<Record<string, unknown>> = students as unknown as Array<Record<string, unknown>>
+        if (registrationMeta && regCtx) {
+            studentsOut = students.map((s) => ({
+                ...s,
+                registrationStatusText: registrationStatusText(
+                    regCtx!.target,
+                    s.id,
+                    regCtx!.renewedStudentIds,
+                    regCtx!.newRegistrationStudentIds
+                ),
+            }))
+        }
+
         return NextResponse.json({
-            students,
+            students: studentsOut,
             pagination: {
                 page,
                 limit,

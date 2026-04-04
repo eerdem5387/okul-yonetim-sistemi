@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ArrowLeft, Save, ExternalLink } from "lucide-react"
 import Link from "next/link"
+import { getRenewalTargetYearFromList, type AcademicYearListItem } from "@/lib/academic-year-ui"
 
 interface ContractData {
   // Öğrenci ve Sözleşme Bilgileri
@@ -40,6 +41,7 @@ interface ContractData {
   
   // Ödeme Planı ve Muacceliyet
   academicYear: string
+  academicYearId: string
   paymentPlan: string
   paymentDueDate: string
   
@@ -159,6 +161,12 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
   const [contractId, setContractId] = useState<string>("")
   const [studentId, setStudentId] = useState<string>("")
   const [studentAddress, setStudentAddress] = useState<string>("") // Öğrenci adresi için state
+  const [renewalTarget, setRenewalTarget] = useState<{
+    id: string
+    name: string
+    label: string
+  } | null>(null)
+  const [renewalYearLoading, setRenewalYearLoading] = useState(true)
 
   // URL'den ID'yi al
   useEffect(() => {
@@ -190,6 +198,28 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      setRenewalYearLoading(true)
+      try {
+        const res = await fetch("/api/neredeyiz/academic-years")
+        if (!res.ok) throw new Error("academic-years")
+        const data = (await res.json()) as AcademicYearListItem[]
+        if (cancelled) return
+        const t = getRenewalTargetYearFromList(Array.isArray(data) ? data : [])
+        setRenewalTarget(t)
+      } catch {
+        if (!cancelled) setRenewalTarget(null)
+      } finally {
+        if (!cancelled) setRenewalYearLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const formatDate = (date: string | Date | null | undefined) => {
     if (!date) return ""
@@ -279,7 +309,21 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
       setStudentAddress(studentData.address || "")
       
       const contractData = data.contractData || {}
-      
+      const rawYearLabel = String((contractData as Record<string, unknown>).academicYear ?? "").trim()
+      let academicYearIdVal = String((contractData as Record<string, unknown>).academicYearId ?? "").trim()
+      try {
+        const yRes = await fetch("/api/neredeyiz/academic-years")
+        if (yRes.ok) {
+          const list = (await yRes.json()) as AcademicYearListItem[]
+          const t = getRenewalTargetYearFromList(Array.isArray(list) ? list : [])
+          if (t && rawYearLabel === t.label) {
+            academicYearIdVal = t.id
+          }
+        }
+      } catch {
+        /* yine de yükle */
+      }
+
       // Ana sözleşme verilerini güncelle
       const updatedContractData: ContractData = {
         studentName: contractData.studentName || `${studentData.firstName || ""} ${studentData.lastName || ""}`.trim(),
@@ -303,6 +347,7 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
         studentStudyHallFee: contractData.studentStudyHallFee || "",
         studentTotal: contractData.studentTotal || "",
         academicYear: contractData.academicYear || "",
+        academicYearId: academicYearIdVal,
         paymentPlan: contractData.paymentPlan || "",
         paymentDueDate: contractData.paymentDueDate || "",
         parentSignature: contractData.parentSignature || "",
@@ -345,7 +390,7 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
 
   const handleSave = async () => {
     if (!contract || !studentId) return
-    
+
     setSaving(true)
     try {
       // Öğrenci bilgilerini güncelle (ad, TC, doğum tarihi, adres).
@@ -404,7 +449,8 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
       })
 
       if (!response.ok) {
-        alert("Sözleşme güncellenirken bir hata oluştu.")
+        const errBody = await response.json().catch(() => ({}))
+        alert(errBody.error || "Sözleşme güncellenirken bir hata oluştu.")
         return
       }
 
@@ -646,25 +692,53 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
 
               {/* Ödeme Bilgileri */}
               <div className="space-y-4">
-                <div className="flex justify-between items-center gap-4">
-                  <div className="flex items-center gap-2 flex-1">
-                    <h3 className="text-lg font-semibold">ÖDEME BİLGİLERİ (</h3>
-                    <select
-                      value={contract.academicYear}
-                      onChange={(e) => setContract({ ...contract, academicYear: e.target.value })}
-                      className="w-40 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                    >
-                      <option value="">Seçiniz</option>
-                      {Array.from({ length: 10 }, (_, i) => {
-                        const year = 2025 + i
-                        return (
-                          <option key={year} value={`${year}-${year + 1}`}>
-                            {year}-{year + 1}
-                          </option>
-                        )
-                      })}
-                    </select>
-                    <h3 className="text-lg font-semibold">Öğretim Yılı İçin)</h3>
+                <div className="flex justify-between items-center gap-4 flex-wrap">
+                  <div className="flex flex-col gap-2 flex-1 min-w-[240px]">
+                    <h3 className="text-lg font-semibold">ÖDEME BİLGİLERİ — Kayıt yenileme öğretim yılı</h3>
+                    <p className="text-xs text-gray-600">
+                      Yeni kayıt yenileme yalnızca aktif yılı takip eden bir sonraki akademik yıl için yapılır. Bu
+                      kaydı güncel hedef yıla çekmek için düğmeyi kullanın; mevcut yılı koruyarak sadece ücret
+                      alanlarını düzenleyebilirsiniz.
+                    </p>
+                    {renewalYearLoading ? (
+                      <p className="text-sm text-gray-500">Akademik yıllar yükleniyor…</p>
+                    ) : renewalTarget ? (
+                      <div className="space-y-2 rounded-xl border border-gray-200 bg-gray-50/80 p-3 text-sm">
+                        <p>
+                          <span className="font-medium">Güncel yenileme hedefi:</span> {renewalTarget.name}{" "}
+                          <span className="text-indigo-700">({renewalTarget.label})</span>
+                        </p>
+                        <p className="text-gray-600">
+                          Bu kayıttaki öğretim yılı:{" "}
+                          <span className="font-medium text-gray-900">
+                            {contract.academicYear || "—"}
+                          </span>
+                        </p>
+                        {contract.academicYear !== renewalTarget.label ||
+                        contract.academicYearId !== renewalTarget.id ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="w-full sm:w-auto"
+                            onClick={() =>
+                              setContract({
+                                ...contract,
+                                academicYear: renewalTarget.label,
+                                academicYearId: renewalTarget.id,
+                              })
+                            }
+                          >
+                            Güncel yenileme yılına güncelle
+                          </Button>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-amber-700">
+                        Yenileme hedef yılı tanımlı değil (aktif + sıradaki akademik yıl gerekir). Kayıttaki mevcut
+                        yıl korunur.
+                      </p>
+                    )}
                   </div>
                   <Button
                     type="button"

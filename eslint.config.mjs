@@ -18,6 +18,8 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "next-env.d.ts",
+      // Eski Node yardımcıları (require); Next derlemesine dahil değil
+      "scripts/**",
     ],
   },
   {

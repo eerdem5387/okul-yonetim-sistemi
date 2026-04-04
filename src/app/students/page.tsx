@@ -5,7 +5,32 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Save, Plus, Edit, Trash2, Search, X, ArrowUp } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { cn } from "@/lib/utils"
+import { gradeLevelLabel } from "@/lib/student-grade-level"
+import {
+  Save,
+  Plus,
+  Edit,
+  Trash2,
+  Search,
+  X,
+  ArrowUp,
+  ChevronDown,
+  ChevronRight,
+  GraduationCap,
+  School,
+  Users,
+  FileCheck,
+  UserPlus,
+  AlertCircle,
+} from "lucide-react"
 
 interface Student {
   id: string
@@ -27,6 +52,31 @@ interface Student {
   fatherOccupation: string
   announcedTuitionFee?: string | null
   studentTuitionFee?: string | null
+  registrationStatusText?: string
+}
+
+type RegistrationListFilter = "" | "renewed" | "new_registration" | "not_renewed"
+
+interface OverviewClassRow {
+  id: string
+  name: string
+  grade: number
+  studentCount: number
+}
+
+interface StudentsOverview {
+  activeAcademicYear: { id: string; name: string } | null
+  renewalTargetYear: { id: string; name: string; label: string } | null
+  totalStudents: number
+  ortaokulCount: number
+  liseCount: number
+  byGradeCounts: Record<string, number>
+  byGradeClasses: Array<{ grade: number; classes: OverviewClassRow[] }>
+  registrationCounts: {
+    renewed: number
+    newRegistration: number
+    notRenewed: number
+  }
 }
 
 export default function StudentsPage() {
@@ -40,6 +90,13 @@ export default function StudentsPage() {
   const [editingStudent, setEditingStudent] = useState<Student | null>(null)
   const [confirmPromote, setConfirmPromote] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
+  const [overview, setOverview] = useState<StudentsOverview | null>(null)
+  const [overviewLoading, setOverviewLoading] = useState(true)
+  const [registrationListFilter, setRegistrationListFilter] = useState<RegistrationListFilter>("")
+  const [gradeSectionsOpen, setGradeSectionsOpen] = useState<Record<number, boolean>>({})
+  const [classModal, setClassModal] = useState<{ id: string; name: string } | null>(null)
+  const [classModalStudents, setClassModalStudents] = useState<Student[]>([])
+  const [classModalLoading, setClassModalLoading] = useState(false)
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -116,11 +173,29 @@ export default function StudentsPage() {
     return value
   }
 
+  const fetchOverview = useCallback(async () => {
+    try {
+      setOverviewLoading(true)
+      const res = await fetch("/api/students/overview")
+      if (res.ok) {
+        setOverview(await res.json())
+      } else {
+        setOverview(null)
+      }
+    } catch (e) {
+      console.error(e)
+      setOverview(null)
+    } finally {
+      setOverviewLoading(false)
+    }
+  }, [])
+
   const fetchStudents = useCallback(async (page: number = 1, search: string = "", grade: string = "") => {
     try {
       const params = new URLSearchParams({
         page: page.toString(),
-        limit: "10"
+        limit: "10",
+        registrationMeta: "1",
       })
       if (search.trim()) {
         params.append("search", search.trim())
@@ -128,7 +203,10 @@ export default function StudentsPage() {
       if (grade.trim()) {
         params.append("grade", grade.trim())
       }
-      
+      if (registrationListFilter) {
+        params.append("registrationFilter", registrationListFilter)
+      }
+
       const response = await fetch(`/api/students?${params.toString()}`)
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -151,18 +229,17 @@ export default function StudentsPage() {
       setTotalPages(1)
       setTotalStudents(0)
     }
-  }, [])
+  }, [registrationListFilter])
 
-  // İlk yükleme
   useEffect(() => {
-    fetchStudents(1, "", selectedGrade)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    fetchOverview()
+  }, [fetchOverview])
 
-  // Arama veya sınıf filtresi değiştiğinde ilk sayfaya dön
+  // Arama, sınıf veya kayıt filtresi değiştiğinde ilk sayfaya dön
   useEffect(() => {
     setCurrentPage(1)
     fetchStudents(1, searchTerm, selectedGrade)
-  }, [searchTerm, selectedGrade, fetchStudents])
+  }, [searchTerm, selectedGrade, registrationListFilter, fetchStudents])
 
   // Sayfa değiştiğinde
   useEffect(() => {
@@ -170,6 +247,23 @@ export default function StudentsPage() {
       fetchStudents(currentPage, searchTerm, selectedGrade)
     }
   }, [currentPage, fetchStudents, searchTerm, selectedGrade])
+
+  const openClassModal = async (classId: string, className: string) => {
+    setClassModal({ id: classId, name: className })
+    setClassModalLoading(true)
+    setClassModalStudents([])
+    try {
+      const res = await fetch(`/api/classes/${classId}/students?registrationMeta=1`)
+      if (res.ok) {
+        const data = await res.json()
+        setClassModalStudents(data.students || [])
+      }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setClassModalLoading(false)
+    }
+  }
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -189,6 +283,7 @@ export default function StudentsPage() {
 
       if (response.ok) {
         fetchStudents()
+        fetchOverview()
         setShowForm(false)
         setEditingStudent(null)
         setFormData({
@@ -268,6 +363,7 @@ export default function StudentsPage() {
 
         if (response.ok) {
           fetchStudents(currentPage, searchTerm, selectedGrade)
+          fetchOverview()
           alert("Öğrenci başarıyla silindi!")
         } else {
           alert("Öğrenci silinirken hata oluştu!")
@@ -288,6 +384,7 @@ export default function StudentsPage() {
         const data = await response.json()
         alert(data.message || "Öğrenciler başarıyla yükseltildi!")
         fetchStudents(currentPage, searchTerm, selectedGrade)
+        fetchOverview()
       } else {
         const errorData = await response.json()
         alert(errorData.error || "Öğrenciler yükseltilirken hata oluştu!")
@@ -298,6 +395,18 @@ export default function StudentsPage() {
     } finally {
       setConfirmPromote(false)
     }
+  }
+
+  const toggleRegistrationFilter = (key: Exclude<RegistrationListFilter, "">) => {
+    setRegistrationListFilter((prev) => (prev === key ? "" : key))
+  }
+
+  const registrationStatusClass = (text: string | undefined) => {
+    if (!text) return "bg-gray-100 text-gray-600"
+    if (text === "Yeni Kayıt") return "bg-emerald-100 text-emerald-800"
+    if (text.includes("kaydı yenilendi")) return "bg-sky-100 text-sky-900"
+    if (text === "Kaydı yenilenmedi") return "bg-amber-100 text-amber-900"
+    return "bg-gray-100 text-gray-600"
   }
 
   return (
@@ -322,6 +431,191 @@ export default function StudentsPage() {
             </span>
           </div>
         </div>
+      </div>
+
+      {/* Özet panelleri (yeni kayıt toplam öğrenciyi artırır; kayıt yenileme aynı öğrenciyi sayar) */}
+      <div className="mb-4 sm:mb-6 space-y-4">
+        {overviewLoading ? (
+          <p className="text-sm text-gray-500">Özet yükleniyor…</p>
+        ) : overview ? (
+          <>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+              <div className="rounded-xl border border-gray-200 bg-white p-3 sm:p-4 shadow-sm">
+                <div className="flex items-center gap-2 text-gray-500 text-xs font-medium uppercase tracking-wide">
+                  <Users className="h-4 w-4" />
+                  Toplam öğrenci
+                </div>
+                <p className="mt-1 text-2xl font-bold text-gray-900">{overview.totalStudents}</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Mezunlar hariç</p>
+              </div>
+              <div className="rounded-xl border border-gray-200 bg-white p-3 sm:p-4 shadow-sm">
+                <div className="flex items-center gap-2 text-gray-500 text-xs font-medium uppercase tracking-wide">
+                  <School className="h-4 w-4" />
+                  Ortaokul
+                </div>
+                <p className="mt-1 text-2xl font-bold text-gray-900">{overview.ortaokulCount}</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">5–8. sınıf</p>
+              </div>
+              <div className="rounded-xl border border-gray-200 bg-white p-3 sm:p-4 shadow-sm">
+                <div className="flex items-center gap-2 text-gray-500 text-xs font-medium uppercase tracking-wide">
+                  <GraduationCap className="h-4 w-4" />
+                  Lise
+                </div>
+                <p className="mt-1 text-2xl font-bold text-gray-900">{overview.liseCount}</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">9–12. sınıf</p>
+              </div>
+              <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-3 sm:p-4 shadow-sm col-span-2 lg:col-span-1">
+                <p className="text-xs font-medium text-indigo-900">Kayıt dönemi</p>
+                <p className="text-sm font-semibold text-indigo-950 mt-0.5">
+                  {overview.renewalTargetYear
+                    ? `${overview.renewalTargetYear.name} (${overview.renewalTargetYear.label})`
+                    : "Tanımlı değil"}
+                </p>
+                {overview.activeAcademicYear && (
+                  <p className="text-[10px] text-indigo-800/80 mt-1">
+                    Sınıf şubeleri: {overview.activeAcademicYear.name}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+              <button
+                type="button"
+                onClick={() => toggleRegistrationFilter("renewed")}
+                className={cn(
+                  "rounded-xl border p-3 sm:p-4 text-left transition-all hover:shadow-md",
+                  registrationListFilter === "renewed"
+                    ? "border-sky-400 bg-sky-50 ring-2 ring-sky-300"
+                    : "border-gray-200 bg-white"
+                )}
+              >
+                <div className="flex items-center gap-2 text-sky-800 text-xs font-semibold">
+                  <FileCheck className="h-4 w-4" />
+                  Kayıt yenileyen
+                </div>
+                <p className="mt-1 text-xl font-bold text-gray-900">
+                  {overview.registrationCounts.renewed}
+                </p>
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Listeyi görmek için tıklayın</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => toggleRegistrationFilter("new_registration")}
+                className={cn(
+                  "rounded-xl border p-3 sm:p-4 text-left transition-all hover:shadow-md",
+                  registrationListFilter === "new_registration"
+                    ? "border-emerald-400 bg-emerald-50 ring-2 ring-emerald-300"
+                    : "border-gray-200 bg-white"
+                )}
+              >
+                <div className="flex items-center gap-2 text-emerald-800 text-xs font-semibold">
+                  <UserPlus className="h-4 w-4" />
+                  Yeni kayıt
+                </div>
+                <p className="mt-1 text-xl font-bold text-gray-900">
+                  {overview.registrationCounts.newRegistration}
+                </p>
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Hedef yıla yeni kayıt</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => toggleRegistrationFilter("not_renewed")}
+                className={cn(
+                  "rounded-xl border p-3 sm:p-4 text-left transition-all hover:shadow-md",
+                  registrationListFilter === "not_renewed"
+                    ? "border-amber-400 bg-amber-50 ring-2 ring-amber-300"
+                    : "border-gray-200 bg-white"
+                )}
+              >
+                <div className="flex items-center gap-2 text-amber-900 text-xs font-semibold">
+                  <AlertCircle className="h-4 w-4" />
+                  Kayıt yenilemeyen
+                </div>
+                <p className="mt-1 text-xl font-bold text-gray-900">
+                  {overview.registrationCounts.notRenewed}
+                </p>
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Yenileme veya yeni kayıt yok</p>
+              </button>
+            </div>
+
+            {registrationListFilter && (
+              <div className="flex items-center justify-between rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-2 text-sm">
+                <span className="text-gray-700">Kayıt filtresi etkin.</span>
+                <Button type="button" variant="outline" size="sm" onClick={() => setRegistrationListFilter("")}>
+                  Filtreyi kaldır
+                </Button>
+              </div>
+            )}
+
+            <Card className="border-gray-200 shadow-sm">
+              <CardHeader className="py-3 sm:py-4">
+                <CardTitle className="text-base">Sınıf düzeyi ve şubeler</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
+                  {overview.activeAcademicYear
+                    ? `Aktif akademik yıldaki şubeler ve öğrenci sayıları. Şubeye tıklayarak listeyi açın.`
+                    : "Aktif akademik yıl yok; şube listesi boş. Sınıf yönetiminden yıl ve sınıf oluşturun."}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2 pb-4">
+                {overview.byGradeClasses.map(({ grade, classes: cls }) => {
+                  const label = gradeLevelLabel(grade)
+                  const count = overview.byGradeCounts[label] ?? 0
+                  const open = gradeSectionsOpen[grade] ?? false
+                  return (
+                    <div key={grade} className="rounded-lg border border-gray-100 bg-gray-50/80">
+                      <button
+                        type="button"
+                        className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left"
+                        onClick={() =>
+                          setGradeSectionsOpen((s) => ({ ...s, [grade]: !open }))
+                        }
+                      >
+                        <span className="font-semibold text-gray-900 text-sm">
+                          {label}{" "}
+                          <span className="font-normal text-gray-500">— {count} öğrenci</span>
+                        </span>
+                        {open ? (
+                          <ChevronDown className="h-4 w-4 shrink-0 text-gray-500" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4 shrink-0 text-gray-500" />
+                        )}
+                      </button>
+                      {open && (
+                        <div className="border-t border-gray-100 px-3 pb-3 pt-2">
+                          {cls.length === 0 ? (
+                            <p className="text-xs text-gray-500">
+                              Bu düzeyde aktif yılda şube yok. Sınıf yönetiminden ekleyebilirsiniz.
+                            </p>
+                          ) : (
+                            <>
+                              <p className="text-[11px] text-gray-500 mb-2">
+                                {cls.length} şube (aktif akademik yıl)
+                              </p>
+                            <div className="flex flex-wrap gap-2">
+                              {cls.map((c) => (
+                                <button
+                                  key={c.id}
+                                  type="button"
+                                  onClick={() => openClassModal(c.id, c.name)}
+                                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-800 hover:border-indigo-300 hover:bg-indigo-50/50 transition-colors"
+                                >
+                                  <span>{c.name}</span>
+                                  <span className="text-gray-500">— {c.studentCount} öğrenci</span>
+                                </button>
+                              ))}
+                            </div>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </CardContent>
+            </Card>
+          </>
+        ) : null}
       </div>
 
       <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
@@ -776,6 +1070,9 @@ export default function StudentsPage() {
                   <th className="px-2 sm:px-3 lg:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">Öğrenci</th>
                   <th className="hidden lg:table-cell px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TC</th>
                   <th className="px-2 sm:px-3 lg:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">Sınıf</th>
+                  <th className="px-2 sm:px-3 lg:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[140px]">
+                    Kayıt
+                  </th>
                   <th className="hidden md:table-cell px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Adres</th>
                   <th className="hidden lg:table-cell px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Anne</th>
                   <th className="hidden md:table-cell px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Anne Tel</th>
@@ -800,6 +1097,19 @@ export default function StudentsPage() {
                     </td>
                     <td className="px-2 sm:px-3 lg:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                       {formatGrade(student.grade)}
+                    </td>
+                    <td
+                      className="px-2 sm:px-3 lg:px-6 py-2 sm:py-4 align-top"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <span
+                        className={cn(
+                          "inline-block max-w-[200px] text-[10px] sm:text-xs font-medium px-2 py-1 rounded-md leading-snug",
+                          registrationStatusClass(student.registrationStatusText)
+                        )}
+                      >
+                        {student.registrationStatusText ?? "—"}
+                      </span>
                     </td>
                     <td className="hidden md:table-cell px-6 py-2 sm:py-4 text-xs sm:text-sm text-gray-500 max-w-xs truncate">
                       {student.address}
@@ -842,6 +1152,49 @@ export default function StudentsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog
+        open={!!classModal}
+        onOpenChange={(open) => {
+          if (!open) setClassModal(null)
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{classModal?.name ?? "Sınıf"}</DialogTitle>
+            <DialogDescription>Aktif akademik yıla atanmış öğrenciler ve kayıt durumu</DialogDescription>
+          </DialogHeader>
+          {classModalLoading ? (
+            <p className="text-sm text-gray-500 py-4">Yükleniyor…</p>
+          ) : classModalStudents.length === 0 ? (
+            <p className="text-sm text-gray-500 py-4">Bu sınıfta öğrenci yok.</p>
+          ) : (
+            <ul className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+              {classModalStudents.map((s) => (
+                <li
+                  key={s.id}
+                  className="flex flex-col gap-1 rounded-lg border border-gray-100 bg-gray-50/50 px-3 py-2 text-sm"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-medium text-gray-900">
+                      {s.firstName} {s.lastName}
+                    </span>
+                    <span className="text-xs text-gray-500">{formatGrade(s.grade)}</span>
+                  </div>
+                  <span
+                    className={cn(
+                      "text-[10px] sm:text-xs font-medium px-2 py-1 rounded-md w-fit",
+                      registrationStatusClass(s.registrationStatusText)
+                    )}
+                  >
+                    {s.registrationStatusText ?? "—"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Pagination */}
       {totalPages > 1 && (

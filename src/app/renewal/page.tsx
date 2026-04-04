@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Download, Users, Clock, TrendingUp, GraduationCap, List, Search, ExternalLink } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { getRenewalTargetYearFromList, type AcademicYearListItem } from "@/lib/academic-year-ui"
 
 interface Student {
   id: string
@@ -48,6 +49,12 @@ export default function RenewalPage() {
   const [studentSearchTerm, setStudentSearchTerm] = useState("")
   const [hasExistingRenewal, setHasExistingRenewal] = useState(false)
   const [existingRenewalInfo, setExistingRenewalInfo] = useState<string>("")
+  const [renewalTarget, setRenewalTarget] = useState<{
+    id: string
+    name: string
+    label: string
+  } | null>(null)
+  const [renewalYearLoading, setRenewalYearLoading] = useState(true)
   
   // İstatistikler
   const [stats, setStats] = useState({
@@ -319,6 +326,33 @@ export default function RenewalPage() {
     }
   }, [])
 
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      setRenewalYearLoading(true)
+      try {
+        const res = await fetch("/api/neredeyiz/academic-years")
+        if (!res.ok) throw new Error("academic-years")
+        const data = (await res.json()) as AcademicYearListItem[]
+        if (cancelled) return
+        const t = getRenewalTargetYearFromList(Array.isArray(data) ? data : [])
+        setRenewalTarget(t)
+      } catch {
+        if (!cancelled) setRenewalTarget(null)
+      } finally {
+        if (!cancelled) setRenewalYearLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!renewalTarget) return
+    setMainContractData((prev) => ({ ...prev, academicYear: renewalTarget.label }))
+  }, [renewalTarget])
+
   // Registration date ve payment due date'i otomatik ayarla
   useEffect(() => {
     if (mainContractData.registrationDate && !mainContractData.paymentDueDate) {
@@ -438,6 +472,13 @@ export default function RenewalPage() {
       return
     }
 
+    if (!renewalTarget) {
+      alert(
+        "⚠️ Kayıt yenileme için aktif akademik yıl ve ardından gelen bir sonraki yıl sistemde tanımlı olmalıdır.\n\nNeredeyiz üzerinden akademik yılları kontrol edin."
+      )
+      return
+    }
+
     if (!mainContractData.schoolLicenseNo) {
       alert("⚠️ Okul ruhsat no seçmelisiniz!")
       return
@@ -465,6 +506,8 @@ export default function RenewalPage() {
             studentId: selectedStudent.id,
             contractData: {
               ...mainContractData,
+              academicYear: renewalTarget.label,
+              academicYearId: renewalTarget.id,
               studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
               studentTC: selectedStudent.tcNumber,
               studentClass: mainContractData.studentClass || selectedStudent.grade,
@@ -983,25 +1026,29 @@ export default function RenewalPage() {
 
                   {/* Ödeme Bilgileri */}
                   <div className="space-y-4">
-                    <div className="flex justify-between items-center gap-4">
-                      <div className="flex items-center gap-2 flex-1">
-                        <h3 className="text-lg font-semibold">ÖDEME BİLGİLERİ (</h3>
-                        <select
-                          value={mainContractData.academicYear}
-                          onChange={(e) => setMainContractData({ ...mainContractData, academicYear: e.target.value })}
-                          className="w-40 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                        >
-                          <option value="">Seçiniz</option>
-                          {Array.from({ length: 10 }, (_, i) => {
-                            const year = 2025 + i
-                            return (
-                              <option key={year} value={`${year}-${year + 1}`}>
-                                {year}-{year + 1}
-                              </option>
-                            )
-                          })}
-                        </select>
-                        <h3 className="text-lg font-semibold">Öğretim Yılı İçin)</h3>
+                    <div className="flex justify-between items-center gap-4 flex-wrap">
+                      <div className="flex flex-col gap-2 flex-1 min-w-[240px]">
+                        <h3 className="text-lg font-semibold">ÖDEME BİLGİLERİ — Öğretim yılı</h3>
+                        <p className="text-xs text-gray-600">
+                          Kayıt yenileme <strong>yalnızca bir sonraki akademik yıl</strong> için yapılır; başka yıllar
+                          seçilemez. Bu yıl sistemde aktif yılı takip eden sıradaki yıl olarak tanımlanır.
+                        </p>
+                        {renewalYearLoading ? (
+                          <p className="text-sm text-gray-500">Hedef akademik yıl yükleniyor…</p>
+                        ) : renewalTarget ? (
+                          <div className="rounded-xl border border-indigo-200 bg-indigo-50/80 px-4 py-3 text-sm">
+                            <p className="font-semibold text-indigo-900">Hedef yıl (sabit)</p>
+                            <p className="text-indigo-800 mt-1">
+                              {renewalTarget.name}{" "}
+                              <span className="text-indigo-600">({renewalTarget.label})</span>
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-amber-700">
+                            Aktif akademik yıl ve onu takip eden bir sonraki yıl tanımlı değil. Akademik yılları
+                            oluşturup bir yılı aktif yapın.
+                          </p>
+                        )}
                       </div>
                       <Button
                         type="button"

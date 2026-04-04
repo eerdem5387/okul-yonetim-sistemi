@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { updateRenewalContract } from "@/lib/contract-registration-update"
 
 export async function GET(
     request: NextRequest,
@@ -46,23 +47,16 @@ export async function PUT(
     try {
         const params = await context.params
         const body = await request.json()
-        const { contractData } = body
+        const incoming = (body.contractData || {}) as Record<string, unknown>
 
-        const renewal = await prisma.renewal.update({
-            where: { id: params.id },
-            data: { contractData },
-            include: {
-                student: {
-                    select: {
-                        firstName: true,
-                        lastName: true,
-                        tcNumber: true
-                    }
-                }
-            }
-        })
-
-        return NextResponse.json(renewal)
+        const result = await updateRenewalContract(params.id, incoming)
+        if (!result.ok) {
+            return NextResponse.json(
+                { error: result.error, ...(result.code ? { code: result.code } : {}) },
+                { status: result.status }
+            )
+        }
+        return NextResponse.json(result.renewal)
     } catch (error) {
         console.error("Error updating renewal:", error)
         return NextResponse.json({ error: "Failed to update renewal" }, { status: 500 })

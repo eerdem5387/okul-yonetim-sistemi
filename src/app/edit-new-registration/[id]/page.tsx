@@ -8,6 +8,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ArrowLeft, Save, ExternalLink } from "lucide-react"
 import Link from "next/link"
+import {
+  contractYearLabelFromAcademicYear,
+  resolveActiveAndNextAcademicYear,
+  type AcademicYearListItem,
+} from "@/lib/academic-year-ui"
 
 interface ContractData {
   // Öğrenci ve Sözleşme Bilgileri
@@ -40,6 +45,8 @@ interface ContractData {
   
   // Ödeme Planı ve Muacceliyet
   academicYear: string
+  /** API doğrulaması için */
+  academicYearId: string
   paymentPlan: string
   paymentDueDate: string
   
@@ -159,6 +166,11 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
   const [contractId, setContractId] = useState<string>("")
   const [studentId, setStudentId] = useState<string>("")
   const [studentAddress, setStudentAddress] = useState<string>("") // Öğrenci adresi için state
+  const [academicYearChoices, setAcademicYearChoices] = useState<{
+    active: AcademicYearListItem | null
+    next: AcademicYearListItem | null
+  }>({ active: null, next: null })
+  const [academicYearsLoading, setAcademicYearsLoading] = useState(true)
 
   // URL'den ID'yi al
   useEffect(() => {
@@ -190,6 +202,28 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      setAcademicYearsLoading(true)
+      try {
+        const res = await fetch("/api/neredeyiz/academic-years")
+        if (!res.ok) throw new Error("academic-years")
+        const data = (await res.json()) as AcademicYearListItem[]
+        if (cancelled) return
+        const { active, next } = resolveActiveAndNextAcademicYear(Array.isArray(data) ? data : [])
+        setAcademicYearChoices({ active, next })
+      } catch {
+        if (!cancelled) setAcademicYearChoices({ active: null, next: null })
+      } finally {
+        if (!cancelled) setAcademicYearsLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const formatDate = (date: string | Date | null | undefined) => {
     if (!date) return ""
@@ -279,7 +313,26 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
       setStudentAddress(studentData.address || "")
       
       const contractData = data.contractData || {}
-      
+      const rawYearLabel = String((contractData as Record<string, unknown>).academicYear ?? "").trim()
+      let academicYearIdVal = String((contractData as Record<string, unknown>).academicYearId ?? "").trim()
+      if (!academicYearIdVal && rawYearLabel) {
+        try {
+          const yRes = await fetch("/api/neredeyiz/academic-years")
+          if (yRes.ok) {
+            const list = (await yRes.json()) as AcademicYearListItem[]
+            const { active, next } = resolveActiveAndNextAcademicYear(Array.isArray(list) ? list : [])
+            for (const y of [active, next]) {
+              if (y && contractYearLabelFromAcademicYear(y) === rawYearLabel) {
+                academicYearIdVal = y.id
+                break
+              }
+            }
+          }
+        } catch {
+          /* mevcut kayıt yine yüklenecek */
+        }
+      }
+
       // Ana sözleşme verilerini güncelle
       const updatedContractData: ContractData = {
         studentName: contractData.studentName || `${studentData.firstName || ""} ${studentData.lastName || ""}`.trim(),
@@ -303,6 +356,7 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
         studentStudyHallFee: contractData.studentStudyHallFee || "",
         studentTotal: contractData.studentTotal || "",
         academicYear: contractData.academicYear || "",
+        academicYearId: academicYearIdVal,
         paymentPlan: contractData.paymentPlan || "",
         paymentDueDate: contractData.paymentDueDate || "",
         parentSignature: contractData.parentSignature || "",
@@ -345,7 +399,25 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
 
   const handleSave = async () => {
     if (!contract || !studentId) return
-    
+
+    if (!contract.academicYear?.trim()) {
+      alert("Öğretim yılı seçilmelidir.")
+      return
+    }
+    const activeLabel = academicYearChoices.active
+      ? contractYearLabelFromAcademicYear(academicYearChoices.active)
+      : ""
+    const nextLabel = academicYearChoices.next
+      ? contractYearLabelFromAcademicYear(academicYearChoices.next)
+      : ""
+    const matchesChoice =
+      (!!activeLabel && contract.academicYear === activeLabel) ||
+      (!!nextLabel && contract.academicYear === nextLabel)
+    if (matchesChoice && !contract.academicYearId?.trim()) {
+      alert("Aktif veya bir sonraki yılı seçmek için ilgili seçeneği işaretleyin.")
+      return
+    }
+
     setSaving(true)
     try {
       // Öğrenci bilgilerini güncelle (tüm alanlar)
@@ -403,7 +475,8 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
       })
 
       if (!response.ok) {
-        alert("Sözleşme güncellenirken bir hata oluştu.")
+        const errBody = await response.json().catch(() => ({}))
+        alert(errBody.error || "Sözleşme güncellenirken bir hata oluştu.")
         return
       }
 
@@ -645,25 +718,78 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
 
               {/* Ödeme Bilgileri */}
               <div className="space-y-4">
-                <div className="flex justify-between items-center gap-4">
-                  <div className="flex items-center gap-2 flex-1">
-                    <h3 className="text-lg font-semibold">ÖDEME BİLGİLERİ (</h3>
-                    <select
-                      value={contract.academicYear}
-                      onChange={(e) => setContract({ ...contract, academicYear: e.target.value })}
-                      className="w-40 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                    >
-                      <option value="">Seçiniz</option>
-                      {Array.from({ length: 10 }, (_, i) => {
-                        const year = 2025 + i
-                        return (
-                          <option key={year} value={`${year}-${year + 1}`}>
-                            {year}-{year + 1}
-                          </option>
-                        )
-                      })}
-                    </select>
-                    <h3 className="text-lg font-semibold">Öğretim Yılı İçin)</h3>
+                <div className="flex justify-between items-center gap-4 flex-wrap">
+                  <div className="flex flex-col gap-2 flex-1 min-w-[240px]">
+                    <h3 className="text-lg font-semibold">ÖDEME BİLGİLERİ — Öğretim yılı</h3>
+                    <p className="text-xs text-gray-600">
+                      Yeni kayıt yalnızca aktif akademik yıl veya tanımlıysa onu takip eden bir sonraki yıl için
+                      seçilebilir.
+                    </p>
+                    {academicYearsLoading ? (
+                      <p className="text-sm text-gray-500">Akademik yıllar yükleniyor…</p>
+                    ) : !academicYearChoices.active && !academicYearChoices.next ? (
+                      <p className="text-sm text-amber-700">
+                        Tanımlı akademik yıl bulunamadı. Mevcut kayıt metni korunur; yıl değişikliği için önce
+                        akademik yıl tanımlayın.
+                      </p>
+                    ) : (
+                      <div className="space-y-2 rounded-xl border border-gray-200 bg-gray-50/80 p-3">
+                        {academicYearChoices.active && (
+                          <label className="flex cursor-pointer items-start gap-2 text-sm">
+                            <input
+                              type="radio"
+                              name="editNewRegAcademicYear"
+                              className="mt-1"
+                              checked={
+                                contract.academicYear ===
+                                contractYearLabelFromAcademicYear(academicYearChoices.active)
+                              }
+                              onChange={() => {
+                                setContract({
+                                  ...contract,
+                                  academicYearId: academicYearChoices.active!.id,
+                                  academicYear: contractYearLabelFromAcademicYear(academicYearChoices.active!),
+                                })
+                              }}
+                            />
+                            <span>
+                              <span className="font-medium">Aktif akademik yıl</span>
+                              <span className="block text-gray-600">
+                                {academicYearChoices.active.name} (
+                                {contractYearLabelFromAcademicYear(academicYearChoices.active)})
+                              </span>
+                            </span>
+                          </label>
+                        )}
+                        {academicYearChoices.next && (
+                          <label className="flex cursor-pointer items-start gap-2 text-sm">
+                            <input
+                              type="radio"
+                              name="editNewRegAcademicYear"
+                              className="mt-1"
+                              checked={
+                                contract.academicYear ===
+                                contractYearLabelFromAcademicYear(academicYearChoices.next)
+                              }
+                              onChange={() => {
+                                setContract({
+                                  ...contract,
+                                  academicYearId: academicYearChoices.next!.id,
+                                  academicYear: contractYearLabelFromAcademicYear(academicYearChoices.next!),
+                                })
+                              }}
+                            />
+                            <span>
+                              <span className="font-medium">Bir sonraki akademik yıl</span>
+                              <span className="block text-gray-600">
+                                {academicYearChoices.next.name} (
+                                {contractYearLabelFromAcademicYear(academicYearChoices.next)})
+                              </span>
+                            </span>
+                          </label>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <Button
                     type="button"

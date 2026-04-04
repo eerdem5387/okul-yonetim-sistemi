@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
+import { getRenewalTargetYear, validateRenewalAcademicYear } from "@/lib/academic-year-contract-server"
+import { updateRenewalContract } from "@/lib/contract-registration-update"
 
 export async function GET(request: NextRequest) {
     try {
@@ -65,10 +68,33 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Student not found" }, { status: 404 })
         }
 
-        // Bu öğrenci için aynı akademik yılda zaten kayıt yenileme var mı kontrol et
-        const contractDataObj = contractData as Record<string, unknown>
-        const academicYear = contractDataObj?.academicYear as string | undefined
-        
+        const contractDataObj = (contractData || {}) as Record<string, unknown>
+
+        const renewalValidation = await validateRenewalAcademicYear(contractDataObj)
+        if (!renewalValidation.ok) {
+            return NextResponse.json({ error: renewalValidation.error }, { status: 400 })
+        }
+
+        const targetYear = await getRenewalTargetYear()
+        if (!targetYear) {
+            return NextResponse.json(
+                {
+                    error:
+                        "Kayıt yenileme için aktif ve bir sonraki akademik yıl tanımlı olmalıdır.",
+                },
+                { status: 400 }
+            )
+        }
+
+        const mergedContractData: Record<string, unknown> = {
+            ...contractDataObj,
+            academicYear: targetYear.label,
+            academicYearId: targetYear.id,
+        }
+
+        const academicYear = mergedContractData.academicYear as string | undefined
+        const academicYearId = mergedContractData.academicYearId as string | undefined
+
         if (academicYear) {
             const existingRenewals = await prisma.renewal.findMany({
                 where: { studentId },
@@ -77,7 +103,11 @@ export async function POST(request: NextRequest) {
             
             const hasExistingRenewal = existingRenewals.some(renewal => {
                 const existingContractData = renewal.contractData as Record<string, unknown>
-                return existingContractData.academicYear === academicYear
+                const sameLabel = existingContractData.academicYear === academicYear
+                const sameId =
+                    academicYearId &&
+                    existingContractData.academicYearId === academicYearId
+                return sameLabel || Boolean(sameId)
             })
             
             if (hasExistingRenewal) {
@@ -122,7 +152,7 @@ export async function POST(request: NextRequest) {
         const renewal = await prisma.renewal.create({
             data: {
                 studentId,
-                contractData: contractData || {}
+                contractData: mergedContractData as Prisma.InputJsonValue,
             },
             include: {
                 student: {
@@ -167,22 +197,18 @@ export async function PUT(request: NextRequest) {
     try {
         const body = await request.json()
         const { id, contractData } = body
+        if (!id || typeof id !== "string") {
+            return NextResponse.json({ error: "id is required" }, { status: 400 })
+        }
 
-        const renewal = await prisma.renewal.update({
-            where: { id },
-            data: { contractData },
-            include: {
-                student: {
-                    select: {
-                        firstName: true,
-                        lastName: true,
-                        tcNumber: true
-                    }
-                }
-            }
-        })
-
-        return NextResponse.json(renewal)
+        const result = await updateRenewalContract(id, (contractData || {}) as Record<string, unknown>)
+        if (!result.ok) {
+            return NextResponse.json(
+                { error: result.error, ...(result.code ? { code: result.code } : {}) },
+                { status: result.status }
+            )
+        }
+        return NextResponse.json(result.renewal)
     } catch (error) {
         console.error("Error updating renewal:", error)
         return NextResponse.json({ error: "Failed to update renewal" }, { status: 500 })
@@ -194,49 +220,14 @@ export async function DELETE(request: NextRequest) {
         const body = await request.json()
         const { contractIds } = body
 
-        const idsToDelete = Array.isArray(contractIds) ? contractIds : [contractIds]
-        
-        // Silinecek kayıtların studentId'lerini al
-        const renewalsToDelete = await prisma.renewal.findMany({
-            where: { id: { in: idsToDelete } },
-            select: { studentId: true }
-        })
-        
-        const studentIds = [...new Set(renewalsToDelete.map(r => r.studentId))]
-        
-        // Kayıtları sil
         if (Array.isArray(contractIds)) {
-            // Bulk delete
             await prisma.renewal.deleteMany({
                 where: { id: { in: contractIds } }
             })
         } else {
-            // Single delete
             await prisma.renewal.delete({
                 where: { id: contractIds }
             })
-        }
-        
-        // Her öğrenci için kontrol et: Eğer başka kayıt (new-registration veya renewal) yoksa öğrenciyi sil
-        for (const studentId of studentIds) {
-            const [remainingNewRegistrations, remainingRenewals] = await Promise.all([
-                prisma.newRegistration.findMany({
-                    where: { studentId },
-                    select: { id: true }
-                }),
-                prisma.renewal.findMany({
-                    where: { studentId },
-                    select: { id: true }
-                })
-            ])
-            
-            // Eğer bu öğrenciye ait hiç kayıt kalmadıysa öğrenciyi sil
-            if (remainingNewRegistrations.length === 0 && remainingRenewals.length === 0) {
-                await prisma.student.delete({
-                    where: { id: studentId }
-                })
-                console.log(`[Delete Renewal] Student ${studentId} deleted (no remaining registrations)`)
-            }
         }
 
         return NextResponse.json({ success: true })

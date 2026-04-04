@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
+import {
+  contractYearLabelFromAcademicYear,
+  resolveActiveAndNextAcademicYear,
+} from "@/lib/academic-year-ui"
+import { listAcademicYearsForContract, validateNewRegistrationAcademicYear } from "@/lib/academic-year-contract-server"
+import { updateNewRegistrationContract } from "@/lib/contract-registration-update"
 
 export async function GET(request: NextRequest) {
     try {
@@ -52,9 +59,24 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Student not found" }, { status: 404 })
         }
 
-        // Akademik yıl bazlı çift kayıt kontrolü
-        const contractDataObj = contractData as Record<string, unknown>
-        const academicYear = contractDataObj?.academicYear as string | undefined
+        const contractDataObj = (contractData || {}) as Record<string, unknown>
+
+        const regYearValidation = await validateNewRegistrationAcademicYear(contractDataObj)
+        if (!regYearValidation.ok) {
+            return NextResponse.json({ error: regYearValidation.error }, { status: 400 })
+        }
+
+        const rows = await listAcademicYearsForContract()
+        const { active, next } = resolveActiveAndNextAcademicYear(rows)
+        const yearId = contractDataObj.academicYearId as string
+        const yearRow = [active, next].find((y) => y && y.id === yearId)
+        const mergedContractData: Record<string, unknown> = {
+            ...contractDataObj,
+            academicYear: yearRow ? contractYearLabelFromAcademicYear(yearRow) : contractDataObj.academicYear,
+            academicYearId: yearId,
+        }
+
+        const academicYear = mergedContractData.academicYear as string | undefined
         
         if (academicYear) {
             // Bu öğrenci için aynı akademik yılda zaten kayıt var mı kontrol et
@@ -65,7 +87,10 @@ export async function POST(request: NextRequest) {
             
             const hasExistingRegistration = existingRegistrations.some(reg => {
                 const existingContractData = reg.contractData as Record<string, unknown>
-                return existingContractData.academicYear === academicYear
+                const sameLabel = existingContractData.academicYear === academicYear
+                const sameId =
+                    yearId && existingContractData.academicYearId === yearId
+                return sameLabel || Boolean(sameId)
             })
             
             if (hasExistingRegistration) {
@@ -110,7 +135,7 @@ export async function POST(request: NextRequest) {
         const registration = await prisma.newRegistration.create({
             data: {
                 studentId,
-                contractData: contractData || {}
+                contractData: mergedContractData as Prisma.InputJsonValue,
             },
             include: {
                 student: {
@@ -155,22 +180,18 @@ export async function PUT(request: NextRequest) {
     try {
         const body = await request.json()
         const { id, contractData } = body
+        if (!id || typeof id !== "string") {
+            return NextResponse.json({ error: "id is required" }, { status: 400 })
+        }
 
-        const registration = await prisma.newRegistration.update({
-            where: { id },
-            data: { contractData },
-            include: {
-                student: {
-                    select: {
-                        firstName: true,
-                        lastName: true,
-                        tcNumber: true
-                    }
-                }
-            }
-        })
-
-        return NextResponse.json(registration)
+        const result = await updateNewRegistrationContract(id, (contractData || {}) as Record<string, unknown>)
+        if (!result.ok) {
+            return NextResponse.json(
+                { error: result.error, ...(result.code ? { code: result.code } : {}) },
+                { status: result.status }
+            )
+        }
+        return NextResponse.json(result.registration)
     } catch (error) {
         console.error("Error updating new registration:", error)
         return NextResponse.json({ error: "Failed to update new registration" }, { status: 500 })
@@ -182,49 +203,15 @@ export async function DELETE(request: NextRequest) {
         const body = await request.json()
         const { contractIds } = body
 
-        const idsToDelete = Array.isArray(contractIds) ? contractIds : [contractIds]
-        
-        // Silinecek kayıtların studentId'lerini al
-        const registrationsToDelete = await prisma.newRegistration.findMany({
-            where: { id: { in: idsToDelete } },
-            select: { studentId: true }
-        })
-        
-        const studentIds = [...new Set(registrationsToDelete.map(r => r.studentId))]
-        
-        // Kayıtları sil
+        // Kayıtları sil (öğrenci kaydı silinmez; sözleşme kaldırılır)
         if (Array.isArray(contractIds)) {
-            // Bulk delete
             await prisma.newRegistration.deleteMany({
                 where: { id: { in: contractIds } }
             })
         } else {
-            // Single delete
             await prisma.newRegistration.delete({
                 where: { id: contractIds }
             })
-        }
-        
-        // Her öğrenci için kontrol et: Eğer başka kayıt (new-registration veya renewal) yoksa öğrenciyi sil
-        for (const studentId of studentIds) {
-            const [remainingNewRegistrations, remainingRenewals] = await Promise.all([
-                prisma.newRegistration.findMany({
-                    where: { studentId },
-                    select: { id: true }
-                }),
-                prisma.renewal.findMany({
-                    where: { studentId },
-                    select: { id: true }
-                })
-            ])
-            
-            // Eğer bu öğrenciye ait hiç kayıt kalmadıysa öğrenciyi sil
-            if (remainingNewRegistrations.length === 0 && remainingRenewals.length === 0) {
-                await prisma.student.delete({
-                    where: { id: studentId }
-                })
-                console.log(`[Delete New Registration] Student ${studentId} deleted (no remaining registrations)`)
-            }
         }
 
         return NextResponse.json({ success: true })

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
+import { getRenewalTargetContext, registrationStatusText } from "@/lib/student-registration-meta"
 
 /**
  * GET /api/classes/[id]/students
@@ -15,6 +16,9 @@ export async function GET(
   try {
     const params = await context.params
     const { id: classId } = params
+    const registrationMeta =
+      new URL(request.url).searchParams.get("registrationMeta") === "1" ||
+      new URL(request.url).searchParams.get("registrationMeta") === "true"
 
     // Sınıf kontrolü
     const classData = await prisma.class.findUnique({
@@ -52,8 +56,24 @@ export async function GET(
       },
     })
 
+    const regCtx = registrationMeta ? await getRenewalTargetContext(prisma) : null
+
+    const studentsPayload = classStudents.map((cs) => {
+      const base = cs.student as Record<string, unknown>
+      if (!regCtx) return base
+      return {
+        ...base,
+        registrationStatusText: registrationStatusText(
+          regCtx.target,
+          cs.student.id,
+          regCtx.renewedStudentIds,
+          regCtx.newRegistrationStudentIds
+        ),
+      }
+    })
+
     return NextResponse.json({
-      students: classStudents.map((cs) => cs.student),
+      students: studentsPayload,
       class: {
         id: classData.id,
         name: classData.name,

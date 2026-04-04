@@ -2,7 +2,24 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, FileText, UserPlus, TrendingUp, Calendar, Activity, ArrowRight, Sparkles, Target, Handshake, Briefcase } from "lucide-react"
+import {
+  Users,
+  FileText,
+  UserPlus,
+  TrendingUp,
+  Calendar,
+  Activity,
+  ArrowRight,
+  Sparkles,
+  Target,
+  Handshake,
+  Briefcase,
+  AlertCircle,
+  School,
+  LayoutGrid,
+  MessageSquare,
+  Award,
+} from "lucide-react"
 import Link from "next/link"
 
 interface DashboardStats {
@@ -50,6 +67,25 @@ interface RecentTeklifGorusmesi {
   kayitlar: Array<{ durum: "OLUMLU" | "OLUMSUZ" | "BELIRSIZ" }>
 }
 
+interface DashboardInsights {
+  activeAcademicYear: { id: string; name: string } | null
+  renewalTargetYear: { id: string; name: string; label: string } | null
+  counts: {
+    students: number
+    newRegistrations: number
+    renewals: number
+    classes: number
+  }
+  studentsWithoutClassInActiveYear: {
+    total: number
+    sample: Array<{ id: string; firstName: string; lastName: string }>
+  }
+  studentsWithoutRenewalForTargetYear: {
+    total: number
+    sample: Array<{ id: string; firstName: string; lastName: string; grade: string | null }>
+  }
+}
+
 /** Öğrenci için belirlenen ücret (studentTotal) alanını sayıya çevirir */
 function parseContractFee(val: unknown): number {
   if (val == null || val === "") return 0
@@ -84,6 +120,7 @@ export default function HomePage() {
   const [overallContractTotals, setOverallContractTotals] = useState<ContractTotals>({ newRegTotal: 0, renewalTotal: 0, total: 0 })
   const [selectedAcademicYear, setSelectedAcademicYear] = useState<string>("all")
   const [loading, setLoading] = useState(true)
+  const [insights, setInsights] = useState<DashboardInsights | null>(null)
 
   useEffect(() => {
     fetchDashboardData()
@@ -93,7 +130,14 @@ export default function HomePage() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true)
-      
+
+      const insightsRes = await fetch("/api/dashboard/insights")
+      if (insightsRes.ok) {
+        setInsights(await insightsRes.json())
+      } else {
+        setInsights(null)
+      }
+
       const studentsRes = await fetch("/api/students?limit=1000")
       const studentsData = studentsRes.ok ? await studentsRes.json() : {}
       const students = Array.isArray(studentsData) ? studentsData : (studentsData.students || [])
@@ -244,6 +288,185 @@ export default function HomePage() {
         </div>
         <p className="page-subtitle text-xs sm:text-sm">Okul yönetim sistemine hoş geldiniz</p>
       </div>
+
+      {/* Hızlı erişim + özet */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <Card className="border-0 shadow-md lg:col-span-2 bg-white/90">
+          <CardHeader className="pb-2 pt-4 px-4 sm:px-6">
+            <div className="flex items-center gap-2">
+              <LayoutGrid className="h-5 w-5 text-indigo-600" />
+              <CardTitle className="text-base sm:text-lg">Hızlı erişim</CardTitle>
+            </div>
+            <CardDescription className="text-xs sm:text-sm">
+              Sık kullanılan modüllere tek tıkla gidin
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="px-4 sm:px-6 pb-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+            {[
+              { href: "/new-registration", label: "Yeni Kayıt", icon: Calendar },
+              { href: "/renewal", label: "Kayıt Yenileme", icon: FileText },
+              { href: "/students", label: "Öğrenciler", icon: UserPlus },
+              { href: "/sinif-yonetimi", label: "Sınıf Yönetimi", icon: School },
+              { href: "/yonetim/parent-meetings", label: "Veli Görüşmeleri", icon: MessageSquare },
+              { href: "/faaliyet-yonetimi", label: "Faaliyet", icon: Award },
+              { href: "/clubs", label: "Kulüpler", icon: Target },
+              { href: "/personel", label: "Personel", icon: Briefcase },
+            ].map(({ href, label, icon: Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                className="flex items-center gap-2 rounded-xl border border-gray-100 bg-gradient-to-br from-slate-50 to-indigo-50/40 px-3 py-2.5 text-xs sm:text-sm font-medium text-gray-800 hover:border-indigo-200 hover:shadow-sm transition-all"
+              >
+                <Icon className="h-4 w-4 text-indigo-600 shrink-0" />
+                <span className="truncate">{label}</span>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-md bg-gradient-to-br from-slate-800 to-indigo-900 text-white">
+          <CardHeader className="pb-2 pt-4 px-4">
+            <CardTitle className="text-base text-white">Akademik yıl özeti</CardTitle>
+            <CardDescription className="text-indigo-200 text-xs">
+              Kayıt ve yenileme bağlamı
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 space-y-3 text-sm">
+            {insights?.activeAcademicYear ? (
+              <div>
+                <p className="text-indigo-300 text-xs uppercase tracking-wide">Aktif yıl</p>
+                <p className="font-semibold">{insights.activeAcademicYear.name}</p>
+              </div>
+            ) : (
+              <p className="text-indigo-200 text-xs">Aktif akademik yıl atanmamış.</p>
+            )}
+            {insights?.renewalTargetYear ? (
+              <div>
+                <p className="text-indigo-300 text-xs uppercase tracking-wide">Kayıt yenileme hedefi</p>
+                <p className="font-semibold">{insights.renewalTargetYear.name}</p>
+                <p className="text-indigo-200 text-xs">{insights.renewalTargetYear.label}</p>
+              </div>
+            ) : (
+              <p className="text-indigo-200 text-xs">Yenileme hedef yılı tanımlı değil (aktif + sıradaki yıl gerekir).</p>
+            )}
+            {insights?.counts && (
+              <div className="pt-2 border-t border-white/10 grid grid-cols-2 gap-2 text-xs">
+                <span className="text-indigo-200">Sınıf</span>
+                <span className="text-right font-mono">{insights.counts.classes}</span>
+                <span className="text-indigo-200">Öğrenci</span>
+                <span className="text-right font-mono">{insights.counts.students}</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Eksik işlemler: sınıf ataması */}
+      {insights &&
+        insights.studentsWithoutClassInActiveYear.total > 0 &&
+        insights.activeAcademicYear && (
+          <Card className="shadow-md border-l-4 border-l-amber-500 mb-4 sm:mb-6 bg-amber-50/60 border border-amber-100">
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-amber-700" />
+                <CardTitle className="text-base text-amber-950">
+                  Dikkat: Sınıf ataması eksik öğrenciler
+                </CardTitle>
+              </div>
+              <CardDescription className="text-amber-900/80 text-sm">
+                Aktif akademik yıl ({insights.activeAcademicYear.name}) için bu öğrenciler henüz bir sınıfa
+                eklenmemiş. Toplam{" "}
+                <strong>{insights.studentsWithoutClassInActiveYear.total}</strong> kayıt.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {insights.studentsWithoutClassInActiveYear.sample.map((s) => (
+                <Link
+                  key={s.id}
+                  href="/sinif-yonetimi"
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-xl border border-amber-200 bg-white px-4 py-3 text-sm hover:border-amber-400 hover:shadow-sm transition-all"
+                >
+                  <p className="text-gray-900">
+                    <span className="font-semibold">
+                      {s.firstName} {s.lastName}
+                    </span>{" "}
+                    isimli öğrencinin sınıf ataması yapılmamıştır.
+                  </p>
+                  <span className="shrink-0 inline-flex items-center justify-center rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white">
+                    Hemen atama yapmak için tıklayın
+                  </span>
+                </Link>
+              ))}
+              {insights.studentsWithoutClassInActiveYear.total >
+                insights.studentsWithoutClassInActiveYear.sample.length && (
+                <p className="text-xs text-amber-900 pt-1">
+                  ve{" "}
+                  {insights.studentsWithoutClassInActiveYear.total -
+                    insights.studentsWithoutClassInActiveYear.sample.length}{" "}
+                  öğrenci daha… Tümünü görmek için{" "}
+                  <Link href="/sinif-yonetimi" className="underline font-medium">
+                    Sınıf Yönetimi
+                  </Link>
+                  .
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+      {insights &&
+        insights.renewalTargetYear &&
+        insights.studentsWithoutRenewalForTargetYear.total > 0 && (
+          <Card className="shadow-md border-l-4 border-l-indigo-500 mb-4 sm:mb-6 bg-indigo-50/50 border border-indigo-100">
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-indigo-700" />
+                <CardTitle className="text-base text-indigo-950">
+                  Kayıt yenilemesi yapılmayan öğrenciler
+                </CardTitle>
+              </div>
+              <CardDescription className="text-indigo-900/80 text-sm">
+                {insights.renewalTargetYear.name} ({insights.renewalTargetYear.label}) için henüz kayıt yenileme
+                (veya bu yıla ait yeni kayıt) bulunmayan öğrenciler. Toplam{" "}
+                <strong>{insights.studentsWithoutRenewalForTargetYear.total}</strong> kayıt.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {insights.studentsWithoutRenewalForTargetYear.sample.map((s) => (
+                <Link
+                  key={s.id}
+                  href="/renewal"
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-xl border border-indigo-200 bg-white px-4 py-3 text-sm hover:border-indigo-400 hover:shadow-sm transition-all"
+                >
+                  <p className="text-gray-900">
+                    <span className="font-semibold">
+                      {s.firstName} {s.lastName}
+                    </span>
+                    {s.grade ? (
+                      <span className="text-gray-600"> — {s.grade}</span>
+                    ) : null}
+                  </p>
+                  <span className="shrink-0 inline-flex items-center justify-center rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white">
+                    Kayıt yenilemeye git
+                  </span>
+                </Link>
+              ))}
+              {insights.studentsWithoutRenewalForTargetYear.total >
+                insights.studentsWithoutRenewalForTargetYear.sample.length && (
+                <p className="text-xs text-indigo-900 pt-1">
+                  ve{" "}
+                  {insights.studentsWithoutRenewalForTargetYear.total -
+                    insights.studentsWithoutRenewalForTargetYear.sample.length}{" "}
+                  öğrenci daha… Tüm öğrenciler için{" "}
+                  <Link href="/renewal" className="underline font-medium">
+                    Kayıt Yenileme
+                  </Link>{" "}
+                  ekranını kullanın.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4 lg:gap-6 mb-4 sm:mb-6 lg:mb-8 animate-slide-in-right">
