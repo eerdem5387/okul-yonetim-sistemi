@@ -101,17 +101,31 @@ export async function GET() {
           name: true,
           grade: true,
           section: true,
-          _count: { select: { students: true } },
         },
         orderBy: [{ grade: "asc" }, { section: "asc" }],
       })
+      const k12 = classes.filter((c) => c.grade >= 5 && c.grade <= 12)
+      const classIds = k12.map((c) => c.id)
+      const assignments =
+        classIds.length === 0
+          ? []
+          : await prisma.classStudent.findMany({
+              where: { classId: { in: classIds } },
+              select: { classId: true, studentId: true },
+            })
+      const excludePre = futureYearOnlyNewRegistrationStudentIds
+      const countByClassId = new Map<string, number>()
+      for (const a of assignments) {
+        if (excludePre.has(a.studentId)) continue
+        countByClassId.set(a.classId, (countByClassId.get(a.classId) ?? 0) + 1)
+      }
       for (const c of classes) {
         if (c.grade < 5 || c.grade > 12) continue
         byGradeMap[c.grade].push({
           id: c.id,
           name: c.name,
           grade: c.grade,
-          studentCount: c._count.students,
+          studentCount: countByClassId.get(c.id) ?? 0,
         })
       }
     }

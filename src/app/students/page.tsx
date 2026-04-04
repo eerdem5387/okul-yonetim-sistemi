@@ -572,7 +572,7 @@ export default function StudentsPage() {
         </div>
       </div>
 
-      {/* Özet panelleri (yeni kayıt toplam öğrenciyi artırır; kayıt yenileme aynı öğrenciyi sayar) */}
+      {/* Özet panelleri: toplam = mezun + ön kayıt hariç; kayıt kutuları hedef yıla göre */}
       <div className="mb-4 sm:mb-6 space-y-4">
         {overviewLoading ? (
           <p className="text-sm text-gray-500">Özet yükleniyor…</p>
@@ -585,7 +585,9 @@ export default function StudentsPage() {
                   Toplam öğrenci
                 </div>
                 <p className="mt-1 text-2xl font-bold text-gray-900">{overview.totalStudents}</p>
-                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Yeni Kayıtlar Hariç</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
+                  Mezunlar ve gelecek yıl(lar) ön kayıtları hariç
+                </p>
               </div>
               <div className="rounded-xl border border-gray-200 bg-white p-3 sm:p-4 shadow-sm">
                 <div className="flex items-center gap-2 text-gray-500 text-xs font-medium uppercase tracking-wide">
@@ -720,7 +722,7 @@ export default function StudentsPage() {
                 <CardTitle className="text-base">Sınıf düzeyi ve şubeler</CardTitle>
                 <CardDescription className="text-xs sm:text-sm">
                   {overview.activeAcademicYear
-                    ? `Aktif akademik yıldaki şubeler ve öğrenci sayıları. Şubeye tıklayarak listeyi açın.`
+                    ? `Düzey satırındaki sayı, öğrenci kartındaki sınıfa göre (ön kayıtlı hariç). Şube rozetlerinde de yalnızca bu yıl sayılan öğrenciler sayılır; şubeye tıklayarak listeyi açın.`
                     : "Aktif akademik yıl yok; şube listesi boş. Sınıf yönetiminden yıl ve sınıf oluşturun."}
                 </CardDescription>
               </CardHeader>
@@ -1331,8 +1333,8 @@ export default function StudentsPage() {
             <DialogTitle>Ön kayıtlı öğrenciler</DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
               {overview?.preEnrollmentTargetYear
-                ? `Yalnızca ${overview.preEnrollmentTargetYear.name} (${overview.preEnrollmentTargetYear.label}) için yeni kayıt sözleşmesi olan öğrenciler. Henüz bu yılın toplam öğrenci sayısına dahil değillerdir.`
-                : "Aktif yılı izleyen akademik yıl için yeni kaydı olan, bu yıl sayıma dahil edilmeyen öğrenciler."}
+                ? `Aktif yıldan sonra başlayan akademik yıla (ör. ${overview.preEnrollmentTargetYear.label}) ait yeni kayıt sözleşmesi olan öğrenciler; geçmiş kayıtlar da yıl metni veya academicYearId üzerinden değerlendirilir.`
+                : "Aktif yıldan sonra başlayan akademik yıla yeni kaydı olan, bu yıl toplamına dahil edilmeyen öğrenciler (geçmiş sözleşmeler dahil)."}
             </DialogDescription>
           </DialogHeader>
           <div className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1">
@@ -1373,7 +1375,9 @@ export default function StudentsPage() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{classModal?.name ?? "Sınıf"}</DialogTitle>
-            <DialogDescription>Aktif akademik yıla atanmış öğrenciler ve kayıt durumu</DialogDescription>
+            <DialogDescription>
+              Bu yıl sayılan öğrenciler (gelecek yıl ön kayıtlı atamalar listede yok) ve kayıt durumu
+            </DialogDescription>
           </DialogHeader>
           {classModalLoading ? (
             <p className="text-sm text-gray-500 py-4">Yükleniyor…</p>

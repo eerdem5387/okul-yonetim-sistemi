@@ -1,6 +1,6 @@
 /** Sözleşme / istatistiklerde kullanılan "YYYY-YYYY" etiketi (mevcut new-registration uyumu). */
 export function contractYearLabelFromAcademicYear(y: { name: string; startDate: Date | string }): string {
-  const m = y.name.match(/(\d{4})\s*[-–]\s*(\d{4})/)
+  const m = y.name.match(/(\d{4})\s*[-–/]\s*(\d{4})/)
   if (m) return `${m[1]}-${m[2]}`
   const start = new Date(y.startDate)
   if (Number.isNaN(start.getTime())) return y.name.trim() || ""

@@ -21,11 +21,12 @@ export type YearRowDb = {
   isActive: boolean
 }
 
-/** Sözleşme metnindeki yıl ifadelerini kıyaslamak için (boşluk, tire varyantları). */
+/** Sözleşme metnindeki yıl ifadelerini kıyaslamak için (boşluk, tire, slash varyantları). */
 export function normalizeAcademicYearLabel(s: string): string {
   return s
     .trim()
     .replace(/\u2013/g, "-")
+    .replace(/\//g, "-")
     .replace(/\s*-\s*/g, "-")
     .replace(/\s+/g, "")
     .toLowerCase()
@@ -50,19 +51,92 @@ function toListItems(yearRows: YearRowDb[]): AcademicYearListItem[] {
   }))
 }
 
+/** "2025-2026 akademik yılı" gibi isimlerden normalize edilmiş yyyy-yyyy parçasını ayıklar. */
+function extractNormalizedYearSpan(s: string): string | null {
+  const n = normalizeAcademicYearLabel(s)
+  const m = n.match(/(\d{4}-\d{4})/)
+  return m ? m[1] : null
+}
+
 function mapRawLabelToYearRow(
   yearRows: YearRowDb[],
   rawLabel: string
 ): { id: string; name: string; label: string } | null {
   const want = normalizeAcademicYearLabel(rawLabel)
   if (!want) return null
+  const wantSpan = extractNormalizedYearSpan(rawLabel)
   for (const r of yearRows) {
     const lab = contractYearLabelFromAcademicYear(r)
     if (normalizeAcademicYearLabel(lab) === want) {
       return { id: r.id, name: r.name, label: lab }
     }
+    if (wantSpan && extractNormalizedYearSpan(r.name) === wantSpan) {
+      return { id: r.id, name: r.name, label: lab }
+    }
   }
   return null
+}
+
+/** Sözleşmedeki metin, veritabanı satırına bağlanamasa bile başlangıç yılı (ör. 2026-2027 → 2026). */
+function inferFirstAcademicStartYearFromLabel(raw: string): number | null {
+  const n = normalizeAcademicYearLabel(raw)
+  const m = n.match(/^(\d{4})-(\d{4})$/)
+  if (m) return parseInt(m[1], 10)
+  const m2 = n.match(/(\d{4})/)
+  return m2 ? parseInt(m2[1], 10) : null
+}
+
+function resolveNewRegContractToYearRow(
+  contractData: unknown,
+  yearRows: YearRowDb[]
+): YearRowDb | null {
+  const cd = contractData as Record<string, unknown>
+  const cId = String(cd.academicYearId ?? "").trim()
+  if (cId) {
+    const row = yearRows.find((y) => y.id === cId)
+    if (row) return row
+  }
+  const raw = String(cd.academicYear ?? "").trim()
+  if (!raw) return null
+  const mapped = mapRawLabelToYearRow(yearRows, raw)
+  if (mapped) {
+    return yearRows.find((y) => y.id === mapped.id) ?? null
+  }
+  return null
+}
+
+function isContractAcademicYearActive(
+  contractData: unknown,
+  yearRows: YearRowDb[],
+  active: AcademicYearListItem | null
+): boolean {
+  if (!active) return false
+  const row = resolveNewRegContractToYearRow(contractData, yearRows)
+  if (row && row.id === active.id) return true
+  return contractMatchesAcademicYearTargets(contractData, singleYearMatchTargets(active))
+}
+
+/**
+ * Sözleşme, aktif akademik yıldan sonra başlayan bir akademik yıla mı ait?
+ * (Sadece "bir sonraki" yıl değil; 2027-2028 vb. geçmiş ön kayıtlar da dahil.)
+ */
+function isContractAcademicYearStrictlyAfterActive(
+  contractData: unknown,
+  yearRows: YearRowDb[],
+  active: AcademicYearListItem | null
+): boolean {
+  if (!active) return false
+  const activeRowDb = yearRows.find((y) => y.id === active.id)
+  if (!activeRowDb) return false
+  const row = resolveNewRegContractToYearRow(contractData, yearRows)
+  if (row) {
+    return row.startDate.getTime() > activeRowDb.startDate.getTime()
+  }
+  const raw = String((contractData as Record<string, unknown>).academicYear ?? "").trim()
+  if (!raw) return false
+  const inferred = inferFirstAcademicStartYearFromLabel(raw)
+  if (inferred == null) return false
+  return inferred > activeRowDb.startDate.getFullYear()
 }
 
 function inferDominantContractYearLabel(
@@ -219,9 +293,7 @@ export async function getRenewalTargetContext(client: PrismaClient): Promise<{
 
   const newRegTargets = buildNewRegistrationMatchTargets(yearRows, newRegs)
   const list = toListItems(yearRows)
-  const { active, next } = resolveActiveAndNextAcademicYear(list)
-  const activeYearTargets = singleYearMatchTargets(active)
-  const nextYearTargets = singleYearMatchTargets(next)
+  const { active } = resolveActiveAndNextAcademicYear(list)
 
   const renewedStudentIds = new Set<string>()
   for (const r of renewals) {
@@ -238,19 +310,19 @@ export async function getRenewalTargetContext(client: PrismaClient): Promise<{
   }
 
   const newRegistrationActiveYearStudentIds = new Set<string>()
-  const hasNextYearNewRegByStudent = new Set<string>()
+  const hasStrictlyFutureNewRegByStudent = new Set<string>()
   for (const r of newRegs) {
-    if (activeYearTargets.length && contractMatchesAcademicYearTargets(r.contractData, activeYearTargets)) {
+    if (active && isContractAcademicYearActive(r.contractData, yearRows, active)) {
       newRegistrationActiveYearStudentIds.add(r.studentId)
     }
-    if (nextYearTargets.length && contractMatchesAcademicYearTargets(r.contractData, nextYearTargets)) {
-      hasNextYearNewRegByStudent.add(r.studentId)
+    if (active && isContractAcademicYearStrictlyAfterActive(r.contractData, yearRows, active)) {
+      hasStrictlyFutureNewRegByStudent.add(r.studentId)
     }
   }
 
   const futureYearOnlyNewRegistrationStudentIds = new Set<string>()
-  if (activeYearTargets.length && nextYearTargets.length) {
-    for (const sid of hasNextYearNewRegByStudent) {
+  if (active) {
+    for (const sid of hasStrictlyFutureNewRegByStudent) {
       if (!newRegistrationActiveYearStudentIds.has(sid)) {
         futureYearOnlyNewRegistrationStudentIds.add(sid)
       }
