@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { normalizeAcademicYearLabel } from "@/lib/student-registration-meta"
 
 export async function GET(request: NextRequest) {
   try {
@@ -47,11 +48,13 @@ export async function GET(request: NextRequest) {
     // Sadece geçerli student'ı olan kayıtları filtrele
     let registrations = allRegistrations.filter(r => r.student !== null)
     
-    // Akademik yıl filtresi ekle
+    // Akademik yıl filtresi (etiket biçimi farklarına toleranslı)
     if (academicYear) {
-      registrations = registrations.filter(reg => {
+      const want = normalizeAcademicYearLabel(academicYear)
+      registrations = registrations.filter((reg) => {
         const contractData = reg.contractData as Record<string, unknown>
-        return contractData.academicYear === academicYear
+        const raw = String(contractData.academicYear ?? "").trim()
+        return raw !== "" && normalizeAcademicYearLabel(raw) === want
       })
     }
     
@@ -177,30 +180,33 @@ export async function GET(request: NextRequest) {
     // Akademik yıl bazlı istatistikler (sadece kayıt yapılan yıllar)
     // Benzersiz öğrenci sayısını say (TC numarasına göre)
     const academicYearStats: Record<string, number> = {}
-    const academicYearStudentMap = new Map<string, Set<string>>() // year -> Set of TC numbers
-    
-    registrations.forEach(reg => {
+    const academicYearBuckets = new Map<
+      string,
+      { displayLabel: string; students: Set<string> }
+    >()
+
+    registrations.forEach((reg) => {
       if (!reg.student) return
       const contractData = reg.contractData as Record<string, unknown>
-      const year = contractData.academicYear as string | undefined
-      // Akademik yıl değeri varsa ve geçerli bir string ise kullan, yoksa "Belirtilmemiş" olarak işaretle
-      const yearKey = (year && typeof year === 'string' && year.trim() !== '') 
-        ? year.trim() 
-        : 'Belirtilmemiş'
-      
-      if (!academicYearStudentMap.has(yearKey)) {
-        academicYearStudentMap.set(yearKey, new Set())
+      const raw =
+        typeof contractData.academicYear === "string"
+          ? contractData.academicYear.trim()
+          : ""
+      const canon = raw ? normalizeAcademicYearLabel(raw) : "__none__"
+      if (!academicYearBuckets.has(canon)) {
+        academicYearBuckets.set(canon, {
+          displayLabel: raw || "Belirtilmemiş",
+          students: new Set(),
+        })
       }
-      // TC numarasını contractData'dan veya student'tan al
       const tcNumber = getTcNumber(reg)
       if (tcNumber) {
-        academicYearStudentMap.get(yearKey)!.add(tcNumber)
+        academicYearBuckets.get(canon)!.students.add(tcNumber)
       }
     })
-    
-    // Her akademik yıl için benzersiz öğrenci sayısını hesapla
-    academicYearStudentMap.forEach((studentSet, year) => {
-      academicYearStats[year] = studentSet.size
+
+    academicYearBuckets.forEach((b) => {
+      academicYearStats[b.displayLabel] = b.students.size
     })
     
     const responseData = {

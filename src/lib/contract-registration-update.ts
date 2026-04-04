@@ -10,6 +10,7 @@ import {
   validateNewRegistrationAcademicYear,
   validateRenewalAcademicYear,
 } from "@/lib/academic-year-contract-server"
+import { academicYearLabelsEquivalent } from "@/lib/student-registration-meta"
 
 type PutError = { status: number; error: string; code?: string }
 
@@ -32,7 +33,8 @@ export async function updateNewRegistrationContract(
   const oldId = String(oldRaw.academicYearId ?? "").trim()
   const newLabel = String(merged.academicYear ?? "").trim()
   const newId = String(merged.academicYearId ?? "").trim()
-  const yearUnchanged = newLabel === oldLabel && newId === oldId
+  const yearUnchanged =
+    academicYearLabelsEquivalent(oldLabel, newLabel) && newId === oldId
 
   let mergedContractData: Record<string, unknown>
 
@@ -41,7 +43,9 @@ export async function updateNewRegistrationContract(
     const rows = await listAcademicYearsForContract()
     const { active, next } = resolveActiveAndNextAcademicYear(rows)
     const yearRow = [active, next].find(
-      (y) => y && contractYearLabelFromAcademicYear(y) === newLabel
+      (y) =>
+        y &&
+        academicYearLabelsEquivalent(contractYearLabelFromAcademicYear(y), newLabel)
     )
     if (yearRow && (!newId || newId === yearRow.id)) {
       mergedContractData.academicYearId = yearRow.id
@@ -72,7 +76,7 @@ export async function updateNewRegistrationContract(
     })
     const hasDuplicate = otherRegs.some((reg) => {
       const cd = reg.contractData as Record<string, unknown>
-      const sameLabel = cd.academicYear === academicYear
+      const sameLabel = academicYearLabelsEquivalent(cd.academicYear, academicYear)
       const sameId = yearIdFinal && cd.academicYearId === yearIdFinal
       return sameLabel || Boolean(sameId)
     })
@@ -122,7 +126,8 @@ export async function updateRenewalContract(
   const oldId = String(oldRaw.academicYearId ?? "").trim()
   const newLabel = String(merged.academicYear ?? "").trim()
   const newId = String(merged.academicYearId ?? "").trim()
-  const yearUnchanged = newLabel === oldLabel && newId === oldId
+  const yearUnchanged =
+    academicYearLabelsEquivalent(oldLabel, newLabel) && newId === oldId
 
   let mergedContractData: Record<string, unknown>
 
@@ -157,7 +162,7 @@ export async function updateRenewalContract(
     })
     const hasDuplicate = otherRenewals.some((r) => {
       const cd = r.contractData as Record<string, unknown>
-      const sameLabel = cd.academicYear === academicYear
+      const sameLabel = academicYearLabelsEquivalent(cd.academicYear, academicYear)
       const sameId = academicYearId && cd.academicYearId === academicYearId
       return sameLabel || Boolean(sameId)
     })

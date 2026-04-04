@@ -69,7 +69,7 @@ interface RecentTeklifGorusmesi {
 
 interface DashboardInsights {
   activeAcademicYear: { id: string; name: string } | null
-  renewalTargetYear: { id: string; name: string; label: string } | null
+  renewalTargetYear: { id: string | null; name: string; label: string } | null
   counts: {
     students: number
     newRegistrations: number

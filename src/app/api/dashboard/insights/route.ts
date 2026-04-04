@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { getRenewalTargetYearFromList, type AcademicYearListItem } from "@/lib/academic-year-ui"
+import {
+  buildNewRegistrationMatchTargets,
+  contractMatchesAcademicYearTargets,
+  resolveRenewalYearTargetForStats,
+} from "@/lib/student-registration-meta"
 
 export const dynamic = "force-dynamic"
 
@@ -12,13 +16,6 @@ export async function GET() {
     const yearRows = await prisma.academicYear.findMany({
       orderBy: { startDate: "desc" },
     })
-    const list: AcademicYearListItem[] = yearRows.map((r) => ({
-      id: r.id,
-      name: r.name,
-      startDate: r.startDate.toISOString(),
-      endDate: r.endDate.toISOString(),
-      isActive: r.isActive,
-    }))
 
     const activeYear = yearRows.find((y) => y.isActive) ?? null
     const now = Date.now()
@@ -70,7 +67,24 @@ export async function GET() {
       }
     }
 
-    const renewalTarget = getRenewalTargetYearFromList(list)
+    const [allStudentsForRenewal, allRenewals, allNewRegs] = await Promise.all([
+      prisma.student.findMany({
+        select: { id: true, firstName: true, lastName: true, grade: true },
+        orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      }),
+      prisma.renewal.findMany({
+        select: { studentId: true, contractData: true },
+      }),
+      prisma.newRegistration.findMany({
+        select: { studentId: true, contractData: true },
+      }),
+    ])
+
+    const renewalTarget = resolveRenewalYearTargetForStats(yearRows, allRenewals)
+    const renewalMatchTargets = renewalTarget
+      ? [{ id: renewalTarget.id, label: renewalTarget.label }]
+      : []
+    const newRegTargets = buildNewRegistrationMatchTargets(yearRows, allNewRegs)
 
     let studentsWithoutRenewalCount = 0
     let studentsWithoutRenewalSample: Array<{
@@ -80,42 +94,21 @@ export async function GET() {
       grade: string | null
     }> = []
 
-    if (renewalTarget) {
-      const [allStudents, allRenewals, allNewRegs] = await Promise.all([
-        prisma.student.findMany({
-          select: { id: true, firstName: true, lastName: true, grade: true },
-          orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-        }),
-        prisma.renewal.findMany({
-          select: { studentId: true, contractData: true },
-        }),
-        prisma.newRegistration.findMany({
-          select: { studentId: true, contractData: true },
-        }),
-      ])
-
+    if (renewalMatchTargets.length > 0 || newRegTargets.length > 0) {
       const hasRenewalForTarget = (studentId: string) =>
         allRenewals.some((r) => {
           if (r.studentId !== studentId) return false
-          const cd = r.contractData as Record<string, unknown>
-          return (
-            cd.academicYearId === renewalTarget.id ||
-            String(cd.academicYear ?? "").trim() === renewalTarget.label
-          )
+          return contractMatchesAcademicYearTargets(r.contractData, renewalMatchTargets)
         })
 
-      const hasNewRegForTarget = (studentId: string) =>
+      const hasNewRegCoveringActiveWindow = (studentId: string) =>
         allNewRegs.some((r) => {
           if (r.studentId !== studentId) return false
-          const cd = r.contractData as Record<string, unknown>
-          return (
-            cd.academicYearId === renewalTarget.id ||
-            String(cd.academicYear ?? "").trim() === renewalTarget.label
-          )
+          return contractMatchesAcademicYearTargets(r.contractData, newRegTargets)
         })
 
-      const pending = allStudents.filter(
-        (s) => !hasRenewalForTarget(s.id) && !hasNewRegForTarget(s.id)
+      const pending = allStudentsForRenewal.filter(
+        (s) => !hasRenewalForTarget(s.id) && !hasNewRegCoveringActiveWindow(s.id)
       )
       studentsWithoutRenewalCount = pending.length
       studentsWithoutRenewalSample = pending.slice(0, 12).map((s) => ({
@@ -138,7 +131,11 @@ export async function GET() {
         ? { id: activeByDate.id, name: activeByDate.name }
         : null,
       renewalTargetYear: renewalTarget
-        ? { id: renewalTarget.id, name: renewalTarget.name, label: renewalTarget.label }
+        ? {
+            id: renewalTarget.id,
+            name: renewalTarget.name,
+            label: renewalTarget.label,
+          }
         : null,
       counts: {
         students: totalStudents,

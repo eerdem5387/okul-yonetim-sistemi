@@ -7,6 +7,7 @@ import {
 } from "@/lib/academic-year-ui"
 import { listAcademicYearsForContract, validateNewRegistrationAcademicYear } from "@/lib/academic-year-contract-server"
 import { updateNewRegistrationContract } from "@/lib/contract-registration-update"
+import { academicYearLabelsEquivalent } from "@/lib/student-registration-meta"
 
 export async function GET(request: NextRequest) {
     try {
@@ -85,9 +86,12 @@ export async function POST(request: NextRequest) {
                 select: { contractData: true, id: true, createdAt: true }
             })
             
-            const hasExistingRegistration = existingRegistrations.some(reg => {
+            const hasExistingRegistration = existingRegistrations.some((reg) => {
                 const existingContractData = reg.contractData as Record<string, unknown>
-                const sameLabel = existingContractData.academicYear === academicYear
+                const sameLabel = academicYearLabelsEquivalent(
+                    existingContractData.academicYear,
+                    academicYear
+                )
                 const sameId =
                     yearId && existingContractData.academicYearId === yearId
                 return sameLabel || Boolean(sameId)
@@ -117,9 +121,12 @@ export async function POST(request: NextRequest) {
 
         // Eğer son 5 dakika içinde kayıt varsa ve aynı akademik yıl ise, en son kaydı döndür
         if (recentRegistrations.length > 0 && academicYear) {
-            const matchingRegistration = recentRegistrations.find(reg => {
+            const matchingRegistration = recentRegistrations.find((reg) => {
                 const regContractData = reg.contractData as Record<string, unknown>
-                return regContractData.academicYear === academicYear
+                return academicYearLabelsEquivalent(
+                    regContractData.academicYear,
+                    academicYear
+                )
             })
             
             if (matchingRegistration) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { getRenewalTargetYear, validateRenewalAcademicYear } from "@/lib/academic-year-contract-server"
+import { academicYearLabelsEquivalent } from "@/lib/student-registration-meta"
 import { updateRenewalContract } from "@/lib/contract-registration-update"
 
 export async function GET(request: NextRequest) {
@@ -35,9 +36,12 @@ export async function GET(request: NextRequest) {
 
         // Eğer academicYear parametresi varsa, contractData içinde bu akademik yılı kontrol et
         if (academicYear && renewals.length > 0) {
-            const filteredRenewals = renewals.filter(renewal => {
+            const filteredRenewals = renewals.filter((renewal) => {
                 const contractData = renewal.contractData as Record<string, unknown>
-                return contractData.academicYear === academicYear
+                return academicYearLabelsEquivalent(
+                    contractData.academicYear,
+                    academicYear
+                )
             })
             return NextResponse.json(filteredRenewals)
         }
@@ -101,9 +105,12 @@ export async function POST(request: NextRequest) {
                 select: { contractData: true, id: true, createdAt: true }
             })
             
-            const hasExistingRenewal = existingRenewals.some(renewal => {
+            const hasExistingRenewal = existingRenewals.some((renewal) => {
                 const existingContractData = renewal.contractData as Record<string, unknown>
-                const sameLabel = existingContractData.academicYear === academicYear
+                const sameLabel = academicYearLabelsEquivalent(
+                    existingContractData.academicYear,
+                    academicYear
+                )
                 const sameId =
                     academicYearId &&
                     existingContractData.academicYearId === academicYearId
@@ -134,9 +141,12 @@ export async function POST(request: NextRequest) {
 
         // Eğer son 5 dakika içinde kayıt varsa ve aynı akademik yıl ise, en son kaydı döndür
         if (recentRenewals.length > 0 && academicYear) {
-            const matchingRenewal = recentRenewals.find(renewal => {
+            const matchingRenewal = recentRenewals.find((renewal) => {
                 const renewalContractData = renewal.contractData as Record<string, unknown>
-                return renewalContractData.academicYear === academicYear
+                return academicYearLabelsEquivalent(
+                    renewalContractData.academicYear,
+                    academicYear
+                )
             })
             
             if (matchingRenewal) {
