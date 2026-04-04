@@ -747,7 +747,7 @@ export default function StudentsPage() {
                   {overview.registrationCounts.newRegistration}
                 </p>
                 <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
-                  Aktif yıla kayıt; filtreli liste için tıklayın
+                  Yeni Kayıt Yaptırıp Eğitime Başlayan Öğrenciler
                 </p>
               </button>
               <button
