@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { isStaffEligibleAsClassCounselor } from "@/lib/staff-counseling"
 
 /**
  * PUT /api/classes/[id]/counselor
@@ -54,9 +55,9 @@ export async function PUT(
         )
       }
 
-      if (counselor.department !== "REHBERLIK") {
+      if (!isStaffEligibleAsClassCounselor(counselor.department)) {
         return NextResponse.json(
-          { error: "Sadece rehberlik departmanından personel atanabilir" },
+          { error: "Sadece rehberlik veya baş rehberlik departmanından personel atanabilir" },
           { status: 400 }
         )
       }

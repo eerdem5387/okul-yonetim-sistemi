@@ -15,6 +15,7 @@ import {
   Loader2,
   MessageSquare,
 } from "lucide-react"
+import { CLASS_COUNSELOR_DEPARTMENTS } from "@/lib/staff-counseling"
 
 interface Student {
   id: string
@@ -89,13 +90,17 @@ export default function YonetimParentMeetingsPage() {
 
   const fetchCounselors = useCallback(async () => {
     try {
-      const response = await fetch("/api/staff?department=REHBERLIK&limit=1000")
+      const response = await fetch(
+        `/api/staff?department=${CLASS_COUNSELOR_DEPARTMENTS.join(",")}&limit=1000`
+      )
       if (response.ok) {
         const data = await response.json()
         const staffArray = Array.isArray(data.staff) ? data.staff : (Array.isArray(data) ? data : [])
-        // Rehberlik uzmanlarının isimlerini çıkar
+        // Rehberlik ve baş rehberlik personelinin isimlerini çıkar
         const counselorNames: string[] = staffArray
-          .filter((s: { department: string }) => s.department === "REHBERLIK")
+          .filter((s: { department: string }) =>
+            (CLASS_COUNSELOR_DEPARTMENTS as readonly string[]).includes(s.department)
+          )
           .map((s: { firstName: string; lastName: string }) => `${s.firstName} ${s.lastName}`)
           .filter((name: string | undefined): name is string => Boolean(name))
         setCounselors([...new Set(counselorNames)].sort())

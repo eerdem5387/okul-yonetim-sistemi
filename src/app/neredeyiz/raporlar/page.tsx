@@ -23,6 +23,7 @@ import GanttChart from "@/components/neredeyiz/gantt-chart"
 import TimelineView from "@/components/neredeyiz/timeline-view"
 import CalendarView from "@/components/neredeyiz/calendar-view"
 import KanbanView from "@/components/neredeyiz/kanban-view"
+import { CLASS_COUNSELOR_DEPARTMENTS } from "@/lib/staff-counseling"
 
 interface AcademicYear {
   id: string
@@ -297,7 +298,9 @@ export default function RaporlarPage() {
           department: string
         }>
         const teachersList = data.filter((s) => s.department === "OGRETMEN")
-        const counselorsList = data.filter((s) => s.department === "REHBERLIK")
+        const counselorsList = data.filter((s) =>
+          (CLASS_COUNSELOR_DEPARTMENTS as readonly string[]).includes(s.department)
+        )
         setTeachers(teachersList)
         setCounselors(counselorsList)
       }

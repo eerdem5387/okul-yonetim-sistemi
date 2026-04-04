@@ -56,7 +56,9 @@ export default function CreateClassPage() {
 
   const fetchCounselors = async () => {
     try {
-      const response = await fetch("/api/staff?department=REHBERLIK");
+      const response = await fetch(
+        "/api/staff?department=REHBERLIK,BAS_REHBERLIK&limit=500&isActive=true"
+      );
       if (response.ok) {
         const data = await response.json();
         setCounselors(data.staff || []);

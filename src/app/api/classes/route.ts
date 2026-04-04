@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
+import { isStaffEligibleAsClassCounselor } from "@/lib/staff-counseling"
 
 /**
  * GET /api/classes
@@ -141,7 +142,7 @@ export async function POST(request: NextRequest) {
         where: { id: counselorId },
       })
 
-      if (!counselor || counselor.department !== "REHBERLIK") {
+      if (!counselor || !isStaffEligibleAsClassCounselor(counselor.department)) {
         return NextResponse.json(
           { error: "Geçersiz rehberlik uzmanı" },
           { status: 400 }

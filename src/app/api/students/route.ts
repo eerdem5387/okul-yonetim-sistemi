@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
         const limit = parseInt(searchParams.get('limit') || '10')
         const search = searchParams.get('search') || ''
         const grade = searchParams.get('grade') || ''
+        const gradeBand = searchParams.get('gradeBand') || ''
         const registrationFilter = searchParams.get('registrationFilter') || ''
         const registrationMeta = searchParams.get('registrationMeta') === '1' || searchParams.get('registrationMeta') === 'true'
 
@@ -29,9 +30,17 @@ export async function GET(request: NextRequest) {
             })
         }
         
-        // Sınıf filtresi
+        // Sınıf / kademe filtresi (gradeBand: ortaokul 5–8, lise 9–12; "5" ve "5. Sınıf" varyantları)
         if (grade) {
             whereConditions.push({ grade: { equals: grade, mode: 'insensitive' as const } })
+        } else if (gradeBand === "ortaokul" || gradeBand === "lise") {
+            const nums = gradeBand === "ortaokul" ? [5, 6, 7, 8] : [9, 10, 11, 12]
+            const orParts: Record<string, unknown>[] = []
+            for (const n of nums) {
+                orParts.push({ grade: { equals: `${n}. Sınıf`, mode: "insensitive" as const } })
+                orParts.push({ grade: { equals: String(n), mode: "insensitive" as const } })
+            }
+            whereConditions.push({ OR: orParts })
         } else {
             // Varsayılan olarak mezunları hariç tut (sadece "Mezun" filtresi seçildiğinde görünsünler)
             whereConditions.push({ NOT: { grade: { equals: "Mezun", mode: 'insensitive' as const } } })

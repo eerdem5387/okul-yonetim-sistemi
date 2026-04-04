@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -55,7 +55,7 @@ interface Student {
   registrationStatusText?: string
 }
 
-type RegistrationListFilter = "" | "renewed" | "new_registration" | "not_renewed"
+type RegistrationListFilter = "" | "renewed" | "new_registration"
 
 interface OverviewClassRow {
   id: string
@@ -97,6 +97,18 @@ export default function StudentsPage() {
   const [classModal, setClassModal] = useState<{ id: string; name: string } | null>(null)
   const [classModalStudents, setClassModalStudents] = useState<Student[]>([])
   const [classModalLoading, setClassModalLoading] = useState(false)
+
+  const [notRenewedModalOpen, setNotRenewedModalOpen] = useState(false)
+  const [notRenewedModalGrade, setNotRenewedModalGrade] = useState("")
+  const [notRenewedGradeBand, setNotRenewedGradeBand] = useState<"" | "ortaokul" | "lise">("")
+  const [notRenewedModalSearchInput, setNotRenewedModalSearchInput] = useState("")
+  const [notRenewedModalSearchDebounced, setNotRenewedModalSearchDebounced] = useState("")
+  const prevNotRenewedSearchRef = useRef<string | null>(null)
+  const [notRenewedModalStudents, setNotRenewedModalStudents] = useState<Student[]>([])
+  const [notRenewedModalLoading, setNotRenewedModalLoading] = useState(false)
+  const [notRenewedModalPage, setNotRenewedModalPage] = useState(1)
+  const [notRenewedModalTotalPages, setNotRenewedModalTotalPages] = useState(1)
+  const [notRenewedModalTotal, setNotRenewedModalTotal] = useState(0)
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -401,6 +413,91 @@ export default function StudentsPage() {
     setRegistrationListFilter((prev) => (prev === key ? "" : key))
   }
 
+  const openNotRenewedModal = useCallback(() => {
+    setNotRenewedModalOpen(true)
+    setNotRenewedModalPage(1)
+    setNotRenewedModalGrade("")
+    setNotRenewedGradeBand("")
+    setNotRenewedModalSearchInput("")
+    setNotRenewedModalSearchDebounced("")
+    prevNotRenewedSearchRef.current = null
+  }, [])
+
+  useEffect(() => {
+    if (!notRenewedModalOpen) return
+    const t = setTimeout(() => {
+      setNotRenewedModalSearchDebounced(notRenewedModalSearchInput.trim())
+    }, 350)
+    return () => clearTimeout(t)
+  }, [notRenewedModalSearchInput, notRenewedModalOpen])
+
+  useEffect(() => {
+    if (!notRenewedModalOpen) return
+    if (prevNotRenewedSearchRef.current === null) {
+      prevNotRenewedSearchRef.current = notRenewedModalSearchDebounced
+      return
+    }
+    if (prevNotRenewedSearchRef.current !== notRenewedModalSearchDebounced) {
+      prevNotRenewedSearchRef.current = notRenewedModalSearchDebounced
+      setNotRenewedModalPage(1)
+    }
+  }, [notRenewedModalSearchDebounced, notRenewedModalOpen])
+
+  useEffect(() => {
+    if (!notRenewedModalOpen) return
+    let cancelled = false
+    ;(async () => {
+      setNotRenewedModalLoading(true)
+      try {
+        const params = new URLSearchParams({
+          page: String(notRenewedModalPage),
+          limit: "30",
+          registrationMeta: "1",
+          registrationFilter: "not_renewed",
+        })
+        if (notRenewedModalSearchDebounced) {
+          params.set("search", notRenewedModalSearchDebounced)
+        }
+        if (notRenewedModalGrade.trim()) {
+          params.set("grade", notRenewedModalGrade.trim())
+        } else if (notRenewedGradeBand) {
+          params.set("gradeBand", notRenewedGradeBand)
+        }
+        const res = await fetch(`/api/students?${params}`)
+        if (!cancelled && res.ok) {
+          const data = await res.json()
+          setNotRenewedModalStudents(data.students ?? [])
+          const p = data.pagination
+          if (p) {
+            setNotRenewedModalTotalPages(Math.max(1, p.totalPages ?? 1))
+            setNotRenewedModalTotal(p.total ?? 0)
+          } else {
+            setNotRenewedModalTotalPages(1)
+            setNotRenewedModalTotal(Array.isArray(data.students) ? data.students.length : 0)
+          }
+        }
+      } catch (e) {
+        console.error(e)
+        if (!cancelled) {
+          setNotRenewedModalStudents([])
+          setNotRenewedModalTotalPages(1)
+          setNotRenewedModalTotal(0)
+        }
+      } finally {
+        if (!cancelled) setNotRenewedModalLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [
+    notRenewedModalOpen,
+    notRenewedModalPage,
+    notRenewedModalSearchDebounced,
+    notRenewedModalGrade,
+    notRenewedGradeBand,
+  ])
+
   const registrationStatusClass = (text: string | undefined) => {
     if (!text) return "bg-gray-100 text-gray-600"
     if (text === "Yeni Kayıt") return "bg-emerald-100 text-emerald-800"
@@ -520,10 +617,10 @@ export default function StudentsPage() {
               </button>
               <button
                 type="button"
-                onClick={() => toggleRegistrationFilter("not_renewed")}
+                onClick={openNotRenewedModal}
                 className={cn(
                   "rounded-xl border p-3 sm:p-4 text-left transition-all hover:shadow-md",
-                  registrationListFilter === "not_renewed"
+                  notRenewedModalOpen
                     ? "border-amber-400 bg-amber-50 ring-2 ring-amber-300"
                     : "border-gray-200 bg-white"
                 )}
@@ -535,7 +632,9 @@ export default function StudentsPage() {
                 <p className="mt-1 text-xl font-bold text-gray-900">
                   {overview.registrationCounts.notRenewed}
                 </p>
-                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Yenileme veya yeni kayıt yok</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
+                  Listeyi ayrı pencerede görmek için tıklayın
+                </p>
               </button>
             </div>
 
@@ -1192,6 +1291,195 @@ export default function StudentsPage() {
                 </li>
               ))}
             </ul>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={notRenewedModalOpen}
+        onOpenChange={(open) => {
+          setNotRenewedModalOpen(open)
+          if (!open) prevNotRenewedSearchRef.current = null
+        }}
+      >
+        <DialogContent className="flex max-h-[min(90vh,720px)] w-[calc(100vw-1.5rem)] max-w-2xl flex-col gap-0 overflow-hidden p-4 sm:p-6">
+          <DialogHeader className="shrink-0 space-y-1 pr-8 text-left">
+            <DialogTitle>Kayıt yenilemeyen öğrenciler</DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
+              {overview?.renewalTargetYear?.label
+                ? `Hedef yıl (${overview.renewalTargetYear.label}) için kayıt yenilemesi veya ilgili yeni kayıt kaydı olmayan öğrenciler. Mezunlar varsayılan olarak listede yoktur.`
+                : "Kayıt yenilemesi veya ilgili yeni kayıt kaydı olmayan öğrenciler. Mezunlar varsayılan olarak listede yoktur."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-3 shrink-0 space-y-3 border-b border-gray-100 pb-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-3">
+              <div className="flex-1 space-y-1">
+                <Label className="text-xs text-gray-600">Kademe</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={notRenewedGradeBand === "" && !notRenewedModalGrade ? "default" : "outline"}
+                    className="h-8 text-xs"
+                    onClick={() => {
+                      setNotRenewedGradeBand("")
+                      setNotRenewedModalGrade("")
+                      setNotRenewedModalPage(1)
+                    }}
+                  >
+                    Tümü
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={notRenewedGradeBand === "ortaokul" ? "default" : "outline"}
+                    className="h-8 text-xs"
+                    onClick={() => {
+                      setNotRenewedGradeBand("ortaokul")
+                      setNotRenewedModalGrade("")
+                      setNotRenewedModalPage(1)
+                    }}
+                  >
+                    Ortaokul (5–8)
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={notRenewedGradeBand === "lise" ? "default" : "outline"}
+                    className="h-8 text-xs"
+                    onClick={() => {
+                      setNotRenewedGradeBand("lise")
+                      setNotRenewedModalGrade("")
+                      setNotRenewedModalPage(1)
+                    }}
+                  >
+                    Lise (9–12)
+                  </Button>
+                </div>
+              </div>
+              <div className="w-full min-w-0 sm:w-48 space-y-1">
+                <Label htmlFor="not-renewed-grade" className="text-xs text-gray-600">
+                  Sınıf düzeyi
+                </Label>
+                <select
+                  id="not-renewed-grade"
+                  value={notRenewedModalGrade}
+                  onChange={(e) => {
+                    setNotRenewedModalGrade(e.target.value)
+                    setNotRenewedGradeBand("")
+                    setNotRenewedModalPage(1)
+                  }}
+                  className="h-9 w-full rounded-md border border-gray-300 bg-white px-2 text-xs focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                >
+                  <option value="">Tüm sınıflar (kademe filtresine göre)</option>
+                  {gradeOptions.map((g) => (
+                    <option key={g} value={g}>
+                      {g}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="not-renewed-search" className="text-xs text-gray-600">
+                Ara (ad, soyad, TC)
+              </Label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+                <Input
+                  id="not-renewed-search"
+                  value={notRenewedModalSearchInput}
+                  onChange={(e) => setNotRenewedModalSearchInput(e.target.value)}
+                  placeholder="Yazdıktan kısa süre sonra liste güncellenir…"
+                  className="h-9 pl-8 text-xs"
+                />
+              </div>
+            </div>
+            <p className="text-[11px] text-gray-500">
+              {notRenewedModalLoading
+                ? "Yükleniyor…"
+                : `Bu görünümde ${notRenewedModalTotal} öğrenci${notRenewedModalTotalPages > 1 ? ` (sayfa ${notRenewedModalPage}/${notRenewedModalTotalPages})` : ""}.`}
+            </p>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto py-3">
+            {notRenewedModalLoading && notRenewedModalStudents.length === 0 ? (
+              <p className="text-sm text-gray-500 py-6 text-center">Yükleniyor…</p>
+            ) : notRenewedModalStudents.length === 0 ? (
+              <p className="text-sm text-gray-500 py-6 text-center">
+                Kriterlere uygun kayıt yenilemeyen öğrenci yok.
+              </p>
+            ) : (
+              <ul className="space-y-2 pr-1">
+                {notRenewedModalStudents.map((s) => (
+                  <li key={s.id}>
+                    <button
+                      type="button"
+                      className="flex w-full flex-col gap-1 rounded-lg border border-amber-100/80 bg-amber-50/40 px-3 py-2.5 text-left text-sm transition-colors hover:bg-amber-50/90"
+                      onClick={() => {
+                        setNotRenewedModalOpen(false)
+                        handleEdit(s)
+                      }}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-medium text-gray-900">
+                          {s.firstName} {s.lastName}
+                        </span>
+                        <span className="text-xs font-medium text-gray-600">
+                          {formatGrade(s.grade)}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                        <span>TC: {s.tcNumber || "—"}</span>
+                        <span
+                          className={cn(
+                            "font-medium px-2 py-0.5 rounded-md",
+                            registrationStatusClass(s.registrationStatusText)
+                          )}
+                        >
+                          {s.registrationStatusText ?? "—"}
+                        </span>
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {notRenewedModalTotalPages > 1 && (
+            <div className="flex shrink-0 items-center justify-between gap-2 border-t border-gray-100 pt-3">
+              <span className="text-xs text-gray-500">
+                Sayfa {notRenewedModalPage} / {notRenewedModalTotalPages}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs"
+                  disabled={notRenewedModalPage <= 1 || notRenewedModalLoading}
+                  onClick={() => setNotRenewedModalPage((p) => Math.max(1, p - 1))}
+                >
+                  Önceki
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs"
+                  disabled={
+                    notRenewedModalPage >= notRenewedModalTotalPages || notRenewedModalLoading
+                  }
+                  onClick={() =>
+                    setNotRenewedModalPage((p) => Math.min(notRenewedModalTotalPages, p + 1))
+                  }
+                >
+                  Sonraki
+                </Button>
+              </div>
+            </div>
           )}
         </DialogContent>
       </Dialog>

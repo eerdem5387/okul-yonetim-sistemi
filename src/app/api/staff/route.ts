@@ -27,7 +27,15 @@ export async function GET(request: NextRequest) {
     }
 
     if (department && department !== "all") {
-      whereConditions.department = department as StaffDepartment
+      const parts = department
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+      if (parts.length > 1) {
+        whereConditions.department = { in: parts as StaffDepartment[] }
+      } else {
+        whereConditions.department = parts[0] as StaffDepartment
+      }
     }
 
     if (isActive !== null && isActive !== undefined && isActive !== "all") {

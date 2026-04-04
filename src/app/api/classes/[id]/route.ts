@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { isStaffEligibleAsClassCounselor } from "@/lib/staff-counseling"
 import { Prisma } from "@prisma/client"
 
 /**
@@ -130,7 +131,7 @@ export async function PUT(
         where: { id: counselorId },
       })
 
-      if (!counselor || counselor.department !== "REHBERLIK") {
+      if (!counselor || !isStaffEligibleAsClassCounselor(counselor.department)) {
         return NextResponse.json(
           { error: "Geçersiz rehberlik uzmanı" },
           { status: 400 }
