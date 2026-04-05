@@ -85,7 +85,7 @@ export interface IBFaaliyetDashboardProps {
   subtitle?: string
   faaliyetEkleHref: string
   studentDetailHref: (studentId: string) => string
-  /** Faaliyet düzenleme/detay linki (activity_events id). Verilmezse /faaliyet-yonetimi/[id] kullanılır. */
+  /** Faaliyet düzenleme sihirbazı (activity_events id). Verilmezse /faaliyet-yonetimi/duzenle/[id] kullanılır. */
   faaliyetDuzenleHref?: (activityId: string) => string
   showViewerButton?: boolean
   onViewerClick?: () => void
@@ -96,7 +96,7 @@ export function IBFaaliyetDashboard({
   subtitle = "Öğrenci faaliyetlerini yönetin, doğrulayın ve IB programına hazırlayın",
   faaliyetEkleHref,
   studentDetailHref,
-  faaliyetDuzenleHref = (id) => `/faaliyet-yonetimi/${id}`,
+  faaliyetDuzenleHref = (id) => `/faaliyet-yonetimi/duzenle/${id}`,
   showViewerButton = true,
   onViewerClick,
 }: IBFaaliyetDashboardProps) {

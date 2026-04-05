@@ -17,6 +17,8 @@ interface PdfOnizlemeModalProps {
   onClose: () => void
   onConfirm: () => void
   saving: boolean
+  /** Ana kaydet butonu metni (düzenleme modunda "Güncelle" vb.) */
+  confirmLabel?: string
 }
 
 function getAuthHeaders(): HeadersInit {
@@ -33,6 +35,7 @@ export function PdfOnizlemeModal({
   onClose,
   onConfirm,
   saving,
+  confirmLabel = "Onayla ve Kaydet",
 }: PdfOnizlemeModalProps) {
   const [tab, setTab] = useState<"participation" | "achievement">("participation")
   const [pdfUrl, setPdfUrl] = useState<string | null>(null)
@@ -205,7 +208,7 @@ export function PdfOnizlemeModal({
             ) : (
               <>
                 <Save className="h-4 w-4 mr-2" />
-                Onayla ve Kaydet
+                {confirmLabel}
               </>
             )}
           </Button>

@@ -208,7 +208,7 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
     ;(async () => {
       setAcademicYearsLoading(true)
       try {
-        const res = await fetch("/api/neredeyiz/academic-years")
+        const res = await fetch("/api/neredeyiz/academic-years?forContracts=1")
         if (!res.ok) throw new Error("academic-years")
         const data = (await res.json()) as AcademicYearListItem[]
         if (cancelled) return
@@ -317,7 +317,7 @@ export default function EditNewRegistrationPage({ params }: { params: Promise<{ 
       let academicYearIdVal = String((contractData as Record<string, unknown>).academicYearId ?? "").trim()
       if (!academicYearIdVal && rawYearLabel) {
         try {
-          const yRes = await fetch("/api/neredeyiz/academic-years")
+          const yRes = await fetch("/api/neredeyiz/academic-years?forContracts=1")
           if (yRes.ok) {
             const list = (await yRes.json()) as AcademicYearListItem[]
             const { active, next } = resolveActiveAndNextAcademicYear(Array.isArray(list) ? list : [])

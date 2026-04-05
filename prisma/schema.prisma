@@ -508,6 +508,14 @@ model AcademicYear {
   endDate     DateTime // Bitiş tarihi
   isActive    Boolean  @default(false) // Aktif akademik yıl
   weekendDays String[] @default([]) // Hafta tatili günleri: ["SATURDAY", "SUNDAY"]
+  term1Start  DateTime? // 1. dönem başlangıcı
+  term1End    DateTime? // 1. dönem bitişi
+  term2Start  DateTime? // 2. dönem başlangıcı
+  term2End    DateTime? // 2. dönem bitişi
+  /// Dolgu: kayıt yenileme hedefi; kullanıcı arayüzünde listelenmez (aktif yıl kaydına bağlı otomatik)
+  parentActiveYearId String?
+  parentActiveYear   AcademicYear?  @relation("AcademicYearRenewal", fields: [parentActiveYearId], references: [id], onDelete: Cascade)
+  renewalPlaceholders AcademicYear[] @relation("AcademicYearRenewal")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -519,6 +527,7 @@ model AcademicYear {
 
   @@index([isActive])
   @@index([startDate, endDate])
+  @@index([parentActiveYearId])
   @@map("academic_years")
 }
 

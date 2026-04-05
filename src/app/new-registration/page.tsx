@@ -317,7 +317,7 @@ export default function NewRegistrationPage() {
     ;(async () => {
       setAcademicYearsLoading(true)
       try {
-        const res = await fetch("/api/neredeyiz/academic-years")
+        const res = await fetch("/api/neredeyiz/academic-years?forContracts=1")
         if (!res.ok) throw new Error("academic-years")
         const data = (await res.json()) as AcademicYearListItem[]
         if (cancelled) return

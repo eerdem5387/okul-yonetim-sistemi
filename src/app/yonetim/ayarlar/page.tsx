@@ -1,6 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
+import {
+  describeCurrentTermPhase,
+  getCurrentAcademicTermPhase,
+  validateAcademicYearTermDates,
+} from "@/lib/academic-year-terms"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -22,6 +27,18 @@ import {
   PartyPopper,
 } from "lucide-react"
 
+const INITIAL_YEAR_FORM = {
+  name: "",
+  startDate: "",
+  endDate: "",
+  term1Start: "",
+  term1End: "",
+  term2Start: "",
+  term2End: "",
+  isActive: false,
+  weekendDays: [] as string[],
+}
+
 interface AcademicYear {
   id: string
   name: string
@@ -29,6 +46,11 @@ interface AcademicYear {
   endDate: string
   isActive: boolean
   weekendDays: string[]
+  term1Start?: string | null
+  term1End?: string | null
+  term2Start?: string | null
+  term2End?: string | null
+  parentActiveYearId?: string | null
 }
 
 interface Subject {
@@ -62,13 +84,48 @@ export default function YonetimPage() {
   const [selectedYearId, setSelectedYearId] = useState<string>("")
   const [submitting, setSubmitting] = useState(false)
 
-  const [yearFormData, setYearFormData] = useState({
-    name: "",
-    startDate: "",
-    endDate: "",
-    isActive: false,
-    weekendDays: [] as string[],
-  })
+  const [yearFormData, setYearFormData] = useState({ ...INITIAL_YEAR_FORM })
+
+  const [listNowMs, setListNowMs] = useState(() => Date.now())
+  useEffect(() => {
+    const id = window.setInterval(() => setListNowMs(Date.now()), 60_000)
+    return () => window.clearInterval(id)
+  }, [])
+
+  const termPhasePreview = useMemo(():
+    | { ok: true; text: string }
+    | { ok: false; error: string }
+    | null => {
+    const y = yearFormData
+    if (
+      !y.startDate ||
+      !y.endDate ||
+      !y.term1Start ||
+      !y.term1End ||
+      !y.term2Start ||
+      !y.term2End
+    ) {
+      return null
+    }
+    const v = validateAcademicYearTermDates({
+      yearStart: y.startDate,
+      yearEnd: y.endDate,
+      term1Start: y.term1Start,
+      term1End: y.term1End,
+      term2Start: y.term2Start,
+      term2End: y.term2End,
+    })
+    if (!v.ok) return { ok: false, error: v.error }
+    const phase = getCurrentAcademicTermPhase(Date.now(), {
+      startDate: `${y.startDate}T12:00:00`,
+      endDate: `${y.endDate}T12:00:00`,
+      term1Start: `${y.term1Start}T12:00:00`,
+      term1End: `${y.term1End}T12:00:00`,
+      term2Start: `${y.term2Start}T12:00:00`,
+      term2End: `${y.term2End}T12:00:00`,
+    })
+    return { ok: true, text: describeCurrentTermPhase(phase) }
+  }, [yearFormData])
 
   interface HolidayFormData {
     id?: string
@@ -183,12 +240,35 @@ export default function YonetimPage() {
       error("Başlangıç ve bitiş tarihi zorunludur!")
       return
     }
-    
+
     const start = new Date(yearFormData.startDate)
     const end = new Date(yearFormData.endDate)
-    
+
     if (start >= end) {
       error("Bitiş tarihi başlangıç tarihinden sonra olmalıdır!")
+      return
+    }
+
+    if (
+      !yearFormData.term1Start ||
+      !yearFormData.term1End ||
+      !yearFormData.term2Start ||
+      !yearFormData.term2End
+    ) {
+      error("1. ve 2. dönem başlangıç/bitiş tarihleri zorunludur!")
+      return
+    }
+
+    const termV = validateAcademicYearTermDates({
+      yearStart: yearFormData.startDate,
+      yearEnd: yearFormData.endDate,
+      term1Start: yearFormData.term1Start,
+      term1End: yearFormData.term1End,
+      term2Start: yearFormData.term2Start,
+      term2End: yearFormData.term2End,
+    })
+    if (!termV.ok) {
+      error(termV.error)
       return
     }
     
@@ -242,13 +322,7 @@ export default function YonetimPage() {
         await fetchAcademicYears()
         setShowYearForm(false)
         setEditingYear(null)
-        setYearFormData({
-          name: "",
-          startDate: "",
-          endDate: "",
-          isActive: false,
-          weekendDays: [],
-        })
+        setYearFormData({ ...INITIAL_YEAR_FORM })
         setHolidays([])
       } else {
         const errorData = await response.json()
@@ -306,6 +380,36 @@ export default function YonetimPage() {
       }
       if (!yearFormData.startDate || !yearFormData.endDate) {
         error("Önce akademik yıl tarihlerini girin!")
+        return
+      }
+
+      const yStart = new Date(yearFormData.startDate)
+      const yEnd = new Date(yearFormData.endDate)
+      if (yStart >= yEnd) {
+        error("Bitiş tarihi başlangıç tarihinden sonra olmalıdır!")
+        return
+      }
+
+      if (
+        !yearFormData.term1Start ||
+        !yearFormData.term1End ||
+        !yearFormData.term2Start ||
+        !yearFormData.term2End
+      ) {
+        error("Önce 1. ve 2. dönem tarihlerini girin!")
+        return
+      }
+
+      const termV0 = validateAcademicYearTermDates({
+        yearStart: yearFormData.startDate,
+        yearEnd: yearFormData.endDate,
+        term1Start: yearFormData.term1Start,
+        term1End: yearFormData.term1End,
+        term2Start: yearFormData.term2Start,
+        term2End: yearFormData.term2End,
+      })
+      if (!termV0.ok) {
+        error(termV0.error)
         return
       }
 
@@ -589,18 +693,12 @@ export default function YonetimPage() {
                 onClick={() => {
                   setShowYearForm(true)
                   setEditingYear(null)
-                  setYearFormData({
-                    name: "",
-                    startDate: "",
-                    endDate: "",
-                    isActive: false,
-                    weekendDays: [],
-                  })
+                  setYearFormData({ ...INITIAL_YEAR_FORM })
                 }}
                 className="text-xs sm:text-sm"
               >
                 <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                Yeni Akademik Yıl
+                Akademik yıl tanımla
               </Button>
             </div>
           </CardHeader>
@@ -637,6 +735,26 @@ export default function YonetimPage() {
                         {new Date(year.startDate).toLocaleDateString("tr-TR")} -{" "}
                         {new Date(year.endDate).toLocaleDateString("tr-TR")}
                       </div>
+                      {year.term1Start &&
+                        year.term1End &&
+                        year.term2Start &&
+                        year.term2End && (
+                          <div className="mt-1 flex flex-wrap items-center gap-2">
+                            <span className="text-[11px] sm:text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-800 font-medium">
+                              Bugün:{" "}
+                              {describeCurrentTermPhase(
+                                getCurrentAcademicTermPhase(listNowMs, {
+                                  startDate: year.startDate,
+                                  endDate: year.endDate,
+                                  term1Start: year.term1Start,
+                                  term1End: year.term1End,
+                                  term2Start: year.term2Start,
+                                  term2End: year.term2End,
+                                })
+                              )}
+                            </span>
+                          </div>
+                        )}
                     </div>
                     <div className="flex gap-2">
                       <Button
@@ -645,9 +763,14 @@ export default function YonetimPage() {
                         onClick={async () => {
                           setEditingYear(year)
                           setYearFormData({
+                            ...INITIAL_YEAR_FORM,
                             name: year.name,
-                            startDate: year.startDate.split("T")[0],
-                            endDate: year.endDate.split("T")[0],
+                            startDate: year.startDate.split("T")[0] ?? "",
+                            endDate: year.endDate.split("T")[0] ?? "",
+                            term1Start: year.term1Start?.split("T")[0] ?? "",
+                            term1End: year.term1End?.split("T")[0] ?? "",
+                            term2Start: year.term2Start?.split("T")[0] ?? "",
+                            term2End: year.term2End?.split("T")[0] ?? "",
                             isActive: year.isActive,
                             weekendDays: year.weekendDays || [],
                           })
@@ -869,7 +992,7 @@ export default function YonetimPage() {
             <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
               <div className="flex justify-between items-center gap-2">
                 <CardTitle className="text-base sm:text-lg lg:text-xl">
-                  {editingYear ? "Akademik Yıl Düzenle" : "Yeni Akademik Yıl Ekle"}
+                  {editingYear ? "Akademik Yıl Düzenle" : "Aktif öğretim yılı"}
                 </CardTitle>
                 <Button
                   variant="ghost"
@@ -877,13 +1000,7 @@ export default function YonetimPage() {
                   onClick={() => {
                     setShowYearForm(false)
                     setEditingYear(null)
-                    setYearFormData({
-                      name: "",
-                      startDate: "",
-                      endDate: "",
-                      isActive: false,
-                      weekendDays: [],
-                    })
+                    setYearFormData({ ...INITIAL_YEAR_FORM })
                     setHolidays([])
                   }}
                 >
@@ -892,6 +1009,11 @@ export default function YonetimPage() {
               </div>
             </CardHeader>
             <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
+              <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+                Yalnızca içinde bulunduğunuz öğretim yılını tanımlayın. Kayıt yenileme hedef etiketi, aktif yılın adı
+                veya başlangıç tarihinden türetilir (ayrı bir «sonraki yıl» satırı gerekmez). Dönem tarihleri
+                girildiğinde bugünün tarihine göre dönem özeti aşağıda gösterilir.
+              </p>
               <form onSubmit={handleYearSubmit} className="space-y-3 sm:space-y-4">
                 <div>
                   <Label htmlFor="yearName" className="text-xs sm:text-sm">
@@ -940,6 +1062,114 @@ export default function YonetimPage() {
                     />
                   </div>
                 </div>
+
+                <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-3 space-y-3">
+                  <p className="text-xs font-semibold text-blue-900">1. ve 2. dönem *</p>
+                  <p className="text-[11px] text-blue-900/80 leading-snug">
+                    1. dönem bitişi ile 2. dönem başlangıcı arasında yarıyıl için boşluk bırakın. Tüm dönem
+                    tarihleri öğretim yılı başlangıç/bitişi içinde kalmalıdır.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs sm:text-sm">1. dönem başlangıcı *</Label>
+                      <Input
+                        type="date"
+                        value={yearFormData.term1Start}
+                        onChange={(e) =>
+                          setYearFormData({ ...yearFormData, term1Start: e.target.value })
+                        }
+                        required
+                        className="h-9 sm:h-10 text-xs sm:text-sm mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs sm:text-sm">1. dönem bitişi *</Label>
+                      <Input
+                        type="date"
+                        value={yearFormData.term1End}
+                        onChange={(e) =>
+                          setYearFormData({ ...yearFormData, term1End: e.target.value })
+                        }
+                        required
+                        className="h-9 sm:h-10 text-xs sm:text-sm mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs sm:text-sm">2. dönem başlangıcı *</Label>
+                      <Input
+                        type="date"
+                        value={yearFormData.term2Start}
+                        onChange={(e) =>
+                          setYearFormData({ ...yearFormData, term2Start: e.target.value })
+                        }
+                        required
+                        className="h-9 sm:h-10 text-xs sm:text-sm mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs sm:text-sm">2. dönem bitişi *</Label>
+                      <Input
+                        type="date"
+                        value={yearFormData.term2End}
+                        onChange={(e) =>
+                          setYearFormData({ ...yearFormData, term2End: e.target.value })
+                        }
+                        required
+                        className="h-9 sm:h-10 text-xs sm:text-sm mt-1"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="text-xs w-fit"
+                      onClick={() => {
+                        if (
+                          yearFormData.term1Start &&
+                          yearFormData.term2End &&
+                          validateAcademicYearTermDates({
+                            yearStart: yearFormData.term1Start,
+                            yearEnd: yearFormData.term2End,
+                            term1Start: yearFormData.term1Start,
+                            term1End: yearFormData.term1End,
+                            term2Start: yearFormData.term2Start,
+                            term2End: yearFormData.term2End,
+                          }).ok
+                        ) {
+                          setYearFormData((prev) => ({
+                            ...prev,
+                            startDate: prev.term1Start,
+                            endDate: prev.term2End,
+                          }))
+                        } else {
+                          error("Önce geçerli dönem tarihlerini girin; yıl sınırları 1. dönem başı ve 2. dönem sonuna çekilemez.")
+                        }
+                      }}
+                    >
+                      Yıl sınırlarını dönemlere göre doldur
+                    </Button>
+                  </div>
+                  {termPhasePreview && (
+                    <div
+                      className={`text-xs rounded-md px-2 py-1.5 ${
+                        termPhasePreview.ok
+                          ? "bg-blue-100/80 text-blue-950"
+                          : "bg-amber-50 text-amber-950 border border-amber-200"
+                      }`}
+                    >
+                      {termPhasePreview.ok ? (
+                        <>
+                          Bugünün tarihine göre: <strong>{termPhasePreview.text}</strong>
+                        </>
+                      ) : (
+                        termPhasePreview.error
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex items-center gap-2 pt-2">
                   <input
                     type="checkbox"
@@ -1175,13 +1405,7 @@ export default function YonetimPage() {
                     onClick={() => {
                       setShowYearForm(false)
                       setEditingYear(null)
-                      setYearFormData({
-                        name: "",
-                        startDate: "",
-                        endDate: "",
-                        isActive: false,
-                        weekendDays: [],
-                      })
+                      setYearFormData({ ...INITIAL_YEAR_FORM })
                     }}
                     className="flex-1 sm:flex-initial text-xs sm:text-sm"
                   >

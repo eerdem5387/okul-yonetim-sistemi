@@ -22,6 +22,8 @@ interface StepKatilimcilarProps {
   onChange: (participants: ParticipantData[]) => void
   onBack: () => void
   onNext: () => void
+  /** Onay / imza sürecindeki faaliyetlerde katılımcı değişmez; sadece liste gösterilir */
+  readOnly?: boolean
 }
 
 export function StepKatilimcilar({
@@ -31,6 +33,7 @@ export function StepKatilimcilar({
   onChange,
   onBack,
   onNext,
+  readOnly = false,
 }: StepKatilimcilarProps) {
   const [searchQuery, setSearchQuery] = useState("")
 
@@ -86,6 +89,7 @@ export function StepKatilimcilar({
 
   const isValid = () => {
     if (participants.length === 0) return false
+    if (readOnly) return true
     return participants.every((p) => {
       if (subtypeConfig.requiresParticipationPhoto !== false && !p.participationPhotoUrl?.trim()) {
         return false
@@ -101,7 +105,14 @@ export function StepKatilimcilar({
 
   return (
     <div className="space-y-6">
+      {readOnly && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Bu faaliyette katılımcılar onay veya imza sürecinde. Katılımcı listesi ve öğrenci alanları
+          düzenlenemez; yalnızca 1. adımdaki faaliyet bilgilerini güncelleyebilirsiniz.
+        </div>
+      )}
       {/* Öğrenci Arama & Ekleme */}
+      {!readOnly && (
       <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
         <div className="flex items-center gap-2 mb-3">
           <Users className="h-4 w-4 text-indigo-500" />
@@ -163,33 +174,46 @@ export function StepKatilimcilar({
           )}
         </div>
       </div>
+      )}
 
       {/* Seçili Öğrenciler */}
       {participants.length > 0 ? (
         <div className="space-y-3">
           <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
             <span>Seçili Katılımcılar</span>
-            <span className="text-gray-400 text-xs font-normal">— her öğrenci için bilgileri doldurun</span>
+            {!readOnly && (
+              <span className="text-gray-400 text-xs font-normal">— her öğrenci için bilgileri doldurun</span>
+            )}
           </h3>
-          {participants.map((p, i) => (
-            <StudentRow
-              key={p.studentId}
-              participant={p}
-              index={i}
-              requiresScore={subtypeConfig.requiresScore}
-              requiresLanguageLevel={subtypeConfig.requiresLanguageLevel}
-              requiresExtraDocument={subtypeConfig.requiresExtraDocument}
-              optionalExtraDocument={subtypeConfig.optionalExtraDocument}
-              requiresArtworkDescription={subtypeConfig.requiresArtworkDescription}
-              showTournamentPlacement={subtypeConfig.showTournamentPlacement}
-              showParticipantProjectRole={subtypeConfig.showParticipantProjectRole}
-              requiresParticipationPhoto={subtypeConfig.requiresParticipationPhoto !== false}
-              participationPhotoFieldLabel={subtypeConfig.participationPhotoFieldLabel}
-              extraDocumentFieldLabel={subtypeConfig.extraDocumentFieldLabel}
-              onChange={(updated) => updateParticipant(i, updated)}
-              onRemove={() => removeStudent(p.studentId)}
-            />
-          ))}
+          {readOnly
+            ? participants.map((p) => (
+                <div
+                  key={p.studentId}
+                  className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800"
+                >
+                  <span className="font-medium">{p.studentName}</span>
+                  <span className="text-gray-500 ml-2">{p.studentGrade}</span>
+                </div>
+              ))
+            : participants.map((p, i) => (
+                <StudentRow
+                  key={p.studentId}
+                  participant={p}
+                  index={i}
+                  requiresScore={subtypeConfig.requiresScore}
+                  requiresLanguageLevel={subtypeConfig.requiresLanguageLevel}
+                  requiresExtraDocument={subtypeConfig.requiresExtraDocument}
+                  optionalExtraDocument={subtypeConfig.optionalExtraDocument}
+                  requiresArtworkDescription={subtypeConfig.requiresArtworkDescription}
+                  showTournamentPlacement={subtypeConfig.showTournamentPlacement}
+                  showParticipantProjectRole={subtypeConfig.showParticipantProjectRole}
+                  requiresParticipationPhoto={subtypeConfig.requiresParticipationPhoto !== false}
+                  participationPhotoFieldLabel={subtypeConfig.participationPhotoFieldLabel}
+                  extraDocumentFieldLabel={subtypeConfig.extraDocumentFieldLabel}
+                  onChange={(updated) => updateParticipant(i, updated)}
+                  onRemove={() => removeStudent(p.studentId)}
+                />
+              ))}
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center py-10 text-gray-400 border-2 border-dashed border-gray-200 rounded-xl">

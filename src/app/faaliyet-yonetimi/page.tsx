@@ -15,7 +15,7 @@ export default function FaaliyetYonetimiPage() {
         title="Faaliyet Yönetimi"
         subtitle="Öğrenci faaliyetlerini görüntüleyin; imza, onay ve doğrulama süreçlerini takip edin"
         faaliyetEkleHref="/faaliyet-ekle"
-        faaliyetDuzenleHref={(activityId) => `/faaliyet-yonetimi/${activityId}`}
+        faaliyetDuzenleHref={(activityId) => `/faaliyet-yonetimi/duzenle/${activityId}`}
         studentDetailHref={(id) =>
           isTeacher ? `/ogretmen/ib-yonetimi/ogrenci/${id}` : `/activities/student/${id}`
         }

@@ -8,43 +8,59 @@ export function contractYearLabelFromAcademicYear(y: { name: string; startDate: 
   return `${y0}-${y0 + 1}`
 }
 
+/** Bir sonraki sözleşme yılı etiketi (YYYY-YYYY); isimde çift yıl yoksa başlangıç yılından türetilir. */
+export function followingContractYearLabelFromRow(y: { name: string; startDate: Date | string }): string | null {
+  const m = y.name.match(/(\d{4})[-–/](\d{4})/)
+  if (m) {
+    const a = parseInt(m[1], 10)
+    const b = parseInt(m[2], 10)
+    if (Number.isNaN(a) || Number.isNaN(b)) return null
+    return `${a + 1}-${b + 1}`
+  }
+  const start = new Date(y.startDate)
+  if (Number.isNaN(start.getTime())) return null
+  const y0 = start.getFullYear()
+  return `${y0 + 1}-${y0 + 2}`
+}
+
 export type AcademicYearListItem = {
   id: string
   name: string
   startDate: string
   endDate: string
   isActive: boolean
+  parentActiveYearId?: string | null
+  term1Start?: string | null
+  term1End?: string | null
+  term2Start?: string | null
+  term2End?: string | null
 }
 
 /** Aktif yıl (bayrak) veya takvim aralığına göre "içinde olduğumuz" yıl; sonra startDate sırasıyla bir sonrakı. */
-/** Kayıt yenileme hedefi: aktif yılı takip eden tek bir sonraki yıl (sıra kontrollü). */
+/** Kayıt yenileme hedefi: aktif yıl satırının kimliği + bir sonraki sözleşme yılı etiketi. */
 export function getRenewalTargetYearFromList(
   rows: AcademicYearListItem[]
 ): { id: string; name: string; label: string } | null {
-  const { active, next } = resolveActiveAndNextAcademicYear(rows)
-  if (!active || !next) return null
-  const sorted = [...rows].sort(
-    (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
-  )
-  const ai = sorted.findIndex((y) => y.id === active.id)
-  if (ai < 0 || sorted[ai + 1]?.id !== next.id) return null
+  const { active } = resolveActiveAndNextAcademicYear(rows)
+  if (!active) return null
+  const label = followingContractYearLabelFromRow(active)
+  if (!label) return null
   return {
-    id: next.id,
-    name: next.name,
-    label: contractYearLabelFromAcademicYear(next),
+    id: active.id,
+    name: `${label} (kayıt yenileme hedefi)`,
+    label,
   }
 }
 
-/** Kayıt yenileme hedefi neden yok? (Aktif yıl varken çoğunlukla `no_following_year` — sonraki dönem satırı eksik.) */
-export type RenewalYearSetupIssue = "no_years" | "no_active" | "no_following_year"
+/** Kayıt yenileme hedefi neden yok? */
+export type RenewalYearSetupIssue = "no_years" | "no_active" | "renewal_label_unknown"
 
 export function getRenewalYearSetupIssue(years: AcademicYearListItem[]): RenewalYearSetupIssue | null {
   if (getRenewalTargetYearFromList(years)) return null
   if (!years.length) return "no_years"
-  const { active, next } = resolveActiveAndNextAcademicYear(years)
+  const { active } = resolveActiveAndNextAcademicYear(years)
   if (!active) return "no_active"
-  if (!next) return "no_following_year"
-  return "no_following_year"
+  return "renewal_label_unknown"
 }
 
 /** API / arayüz için açıklayıcı hata metni */
@@ -55,16 +71,14 @@ export function renewalSetupErrorMessage(
   const { active } = resolveActiveAndNextAcademicYear(years)
   switch (issue) {
     case "no_years":
-      return "Sistemde hiç akademik yıl kaydı yok. Ayarlar → Akademik Yıllar sekmesinden en az iki yıl ekleyin (aktif yıl + bir sonraki öğretim yılı)."
+      return "Sistemde hiç akademik yıl kaydı yok. Ayarlar → Akademik Yıllar sekmesinden öğretim yılını oluşturup aktif yapın."
     case "no_active":
       return "Aktif öğretim yılı seçilemedi. Ayarlar’dan bir akademik yılı «Aktif» olarak işaretleyin veya takvimde içinde bulunduğumuz tarih aralığına denk gelen bir yıl tanımlayın."
-    case "no_following_year": {
-      const activePart = active
-        ? ` Aktif kayıtlı yıl: «${active.name}».`
-        : ""
+    case "renewal_label_unknown": {
+      const activePart = active ? ` Aktif kayıtlı yıl: «${active.name}».` : ""
       return (
-        `${activePart} Kayıt yenileme yalnızca bir sonraki öğretim yılı için yapılır; bu yüzden listede aktif yıldan sonra başlayan ikinci bir akademik yıl da tanımlı olmalıdır (ör. 2026–2027). ` +
-        `Ayarlar → Akademik Yıllar’dan «Yeni Akademik Yıl» ile sıradaki dönemi ekleyin; yıllar başlangıç tarihine göre sıralı olmalıdır.`
+        `${activePart} Kayıt yenileme yılı etiketi çıkarılamadı. Yıl adında «2024-2025» biçiminde iki yıl içeren bir ifade kullanın ` +
+        `veya geçerli bir öğretim yılı başlangıç tarihi girin (etiket başlangıç yılından türetilir).`
       )
     }
     default:
@@ -80,9 +94,10 @@ export function resolveActiveAndNextAcademicYear(years: AcademicYearListItem[]):
   const sorted = [...years].sort(
     (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
   )
-  const byFlag = sorted.find((y) => y.isActive)
+  const primaries = sorted.filter((y) => !y.parentActiveYearId)
+  const byFlag = primaries.find((y) => y.isActive)
   const now = Date.now()
-  const byDateRange = sorted.find((y) => {
+  const byDateRange = primaries.find((y) => {
     const s = new Date(y.startDate).getTime()
     const e = new Date(y.endDate).getTime()
     return !Number.isNaN(s) && !Number.isNaN(e) && now >= s && now <= e

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import {
   contractYearLabelFromAcademicYear,
+  followingContractYearLabelFromRow,
   getRenewalTargetYearFromList,
   getRenewalYearSetupIssue,
   renewalSetupErrorMessage,
@@ -18,6 +19,11 @@ export async function listAcademicYearsForContract(): Promise<AcademicYearListIt
     startDate: r.startDate.toISOString(),
     endDate: r.endDate.toISOString(),
     isActive: r.isActive,
+    parentActiveYearId: r.parentActiveYearId,
+    term1Start: r.term1Start?.toISOString() ?? null,
+    term1End: r.term1End?.toISOString() ?? null,
+    term2Start: r.term2Start?.toISOString() ?? null,
+    term2End: r.term2End?.toISOString() ?? null,
   }))
 }
 
@@ -38,8 +44,14 @@ export async function validateNewRegistrationAcademicYear(contractData: Record<s
   const rows = await listAcademicYearsForContract()
   const { active, next } = resolveActiveAndNextAcademicYear(rows)
   const allowed: Array<{ id: string; label: string }> = []
-  if (active) allowed.push({ id: active.id, label: contractYearLabelFromAcademicYear(active) })
-  if (next) allowed.push({ id: next.id, label: contractYearLabelFromAcademicYear(next) })
+  if (active) {
+    allowed.push({ id: active.id, label: contractYearLabelFromAcademicYear(active) })
+    const follow = followingContractYearLabelFromRow(active)
+    if (follow) allowed.push({ id: active.id, label: follow })
+  }
+  if (next && !next.parentActiveYearId) {
+    allowed.push({ id: next.id, label: contractYearLabelFromAcademicYear(next) })
+  }
 
   const label = (contractData.academicYear as string | undefined)?.trim()
   const id = (contractData.academicYearId as string | undefined)?.trim()
@@ -56,7 +68,7 @@ export async function validateNewRegistrationAcademicYear(contractData: Record<s
     return {
       ok: false,
       error:
-        "Yeni kayıt yalnızca aktif akademik yıl veya bir sonraki akademik yıl için yapılabilir; etiket ve kimlik eşleşmelidir.",
+        "Yeni kayıt yalnızca izin verilen akademik yıl ve etiket kombinasyonlarından biri için yapılabilir (aktif yıl, aynı kayıt üzerinden türetilen bir sonraki etiket veya bir sonraki ana yıl); etiket ve kimlik eşleşmelidir.",
     }
   }
   return { ok: true }
@@ -81,13 +93,14 @@ export async function validateRenewalAcademicYear(contractData: Record<string, u
   if (!label || label !== target.label) {
     return {
       ok: false,
-      error: `Kayıt yenileme yalnızca bir sonraki akademik yıl için yapılabilir: ${target.label} (${target.name}).`,
+      error: `Kayıt yenileme yalnızca aktif yıldan türetilen hedef etiket ile yapılabilir: ${target.label} (${target.name}).`,
     }
   }
   if (!id || id !== target.id) {
     return {
       ok: false,
-      error: "Sözleşmedeki akademik yıl kimliği (academicYearId) hedef yıl ile eşleşmiyor.",
+      error:
+        "Sözleşmedeki akademik yıl kimliği (academicYearId), aktif akademik yıl kaydı ile eşleşmelidir.",
     }
   }
   return { ok: true }

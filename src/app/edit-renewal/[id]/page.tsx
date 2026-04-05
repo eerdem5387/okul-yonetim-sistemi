@@ -204,7 +204,7 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
     ;(async () => {
       setRenewalYearLoading(true)
       try {
-        const res = await fetch("/api/neredeyiz/academic-years")
+        const res = await fetch("/api/neredeyiz/academic-years?forContracts=1")
         if (!res.ok) throw new Error("academic-years")
         const data = (await res.json()) as AcademicYearListItem[]
         if (cancelled) return
@@ -312,7 +312,7 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
       const rawYearLabel = String((contractData as Record<string, unknown>).academicYear ?? "").trim()
       let academicYearIdVal = String((contractData as Record<string, unknown>).academicYearId ?? "").trim()
       try {
-        const yRes = await fetch("/api/neredeyiz/academic-years")
+          const yRes = await fetch("/api/neredeyiz/academic-years?forContracts=1")
         if (yRes.ok) {
           const list = (await yRes.json()) as AcademicYearListItem[]
           const t = getRenewalTargetYearFromList(Array.isArray(list) ? list : [])

@@ -44,7 +44,7 @@ export default function OgretmenIbYonetimiPage() {
     <div className="p-6">
       <IBFaaliyetDashboard
         faaliyetEkleHref="/ogretmen/ib-yonetimi/faaliyet-ekle"
-        faaliyetDuzenleHref={(activityId) => `/faaliyet-yonetimi/${activityId}`}
+        faaliyetDuzenleHref={(activityId) => `/faaliyet-yonetimi/duzenle/${activityId}`}
         studentDetailHref={(id) => `/ogretmen/ib-yonetimi/ogrenci/${id}`}
         showViewerButton={false}
       />

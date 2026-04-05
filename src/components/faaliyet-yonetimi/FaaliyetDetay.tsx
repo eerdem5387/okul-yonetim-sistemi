@@ -17,6 +17,7 @@ import {
   Upload,
   Loader2,
   Trash2,
+  Pencil,
   ExternalLink,
   ChevronRight,
   Eye,
@@ -358,6 +359,16 @@ export function FaaliyetDetay({ id }: { id: string }) {
               </Button>
             </>
           )}
+          <Link href={`/faaliyet-yonetimi/duzenle/${id}`}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+            >
+              <Pencil className="h-4 w-4" />
+              <span className="ml-2 hidden sm:inline">Düzenle</span>
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"

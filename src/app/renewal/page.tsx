@@ -338,7 +338,7 @@ export default function RenewalPage() {
     ;(async () => {
       setRenewalYearLoading(true)
       try {
-        const res = await fetch("/api/neredeyiz/academic-years")
+        const res = await fetch("/api/neredeyiz/academic-years?forContracts=1")
         if (!res.ok) throw new Error("academic-years")
         const data = (await res.json()) as AcademicYearListItem[]
         if (cancelled) return
@@ -1049,8 +1049,9 @@ export default function RenewalPage() {
                       <div className="flex flex-col gap-2 flex-1 min-w-[240px]">
                         <h3 className="text-lg font-semibold">ÖDEME BİLGİLERİ — Öğretim yılı</h3>
                         <p className="text-xs text-gray-600">
-                          Kayıt yenileme <strong>yalnızca bir sonraki akademik yıl</strong> için yapılır; başka yıllar
-                          seçilemez. Bu yıl sistemde aktif yılı takip eden sıradaki yıl olarak tanımlanır.
+                          Kayıt yenileme <strong>yalnızca aktif öğretim yılından türetilen hedef etiket</strong> ile
+                          yapılır; başka yıllar seçilemez. Sözleşmedeki akademik yıl kimliği aktif yıl kaydı ile aynıdır;
+                          etiket ise bu yılın adı veya başlangıç tarihinden hesaplanan bir sonraki sözleşme yılıdır.
                         </p>
                         {renewalYearLoading ? (
                           <p className="text-sm text-gray-500">Hedef akademik yıl yükleniyor…</p>

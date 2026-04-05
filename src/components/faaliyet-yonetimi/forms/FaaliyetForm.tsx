@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import { StepDetay, type StepDetayData } from "./StepDetay"
@@ -16,6 +16,8 @@ import {
 interface FaaliyetFormProps {
   mainType: ActivityMainType
   subtypeId: string
+  /** Doluysa mevcut activity_events kaydı düzenlenir (aynı sihirbaz akışı) */
+  editEventId?: string
 }
 
 interface StudentOption {
@@ -69,7 +71,12 @@ const STEPS = [
   { id: 3, label: "PDF Önizleme & Kaydet" },
 ]
 
-export function FaaliyetForm({ mainType, subtypeId }: FaaliyetFormProps) {
+function dateInputFromIso(iso: string): string {
+  if (!iso) return ""
+  return iso.split("T")[0] ?? ""
+}
+
+export function FaaliyetForm({ mainType, subtypeId, editEventId }: FaaliyetFormProps) {
   const router = useRouter()
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const [detay, setDetay] = useState<StepDetayData>(INITIAL_DETAY)
@@ -79,29 +86,110 @@ export function FaaliyetForm({ mainType, subtypeId }: FaaliyetFormProps) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [showPdfModal, setShowPdfModal] = useState(false)
+  const [participantsLocked, setParticipantsLocked] = useState(false)
+  const [editLoadError, setEditLoadError] = useState<string | null>(null)
 
   const subtypeConfig = getSubtypeConfig(mainType, subtypeId)
 
-  const loadData = useCallback(async () => {
-    setLoading(true)
-    try {
-      const [stRes, staffRes] = await Promise.all([
-        fetch("/api/students?limit=2000", { headers: getAuthHeaders() }),
-        fetch("/api/staff?limit=500", { headers: getAuthHeaders() }),
-      ])
-      const stData = await stRes.json()
-      const staffData = await staffRes.json()
-      setStudents(Array.isArray(stData) ? stData : stData?.students ?? [])
-      const staffList = Array.isArray(staffData) ? staffData : staffData?.staff ?? []
-      setTeachers(staffList.map((s: Teacher) => ({ id: s.id, firstName: s.firstName, lastName: s.lastName })))
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
   useEffect(() => {
-    loadData()
-  }, [loadData])
+    let cancelled = false
+    ;(async () => {
+      setLoading(true)
+      setEditLoadError(null)
+      try {
+        const [stRes, staffRes] = await Promise.all([
+          fetch("/api/students?limit=2000", { headers: getAuthHeaders() }),
+          fetch("/api/staff?limit=500", { headers: getAuthHeaders() }),
+        ])
+        const stData = await stRes.json()
+        const staffData = await staffRes.json()
+        if (cancelled) return
+        setStudents(Array.isArray(stData) ? stData : stData?.students ?? [])
+        const staffList = Array.isArray(staffData) ? staffData : staffData?.staff ?? []
+        setTeachers(staffList.map((s: Teacher) => ({ id: s.id, firstName: s.firstName, lastName: s.lastName })))
+
+        if (editEventId) {
+          const evRes = await fetch(`/api/activity-events/${editEventId}`, { headers: getAuthHeaders() })
+          if (!evRes.ok) {
+            const j = await evRes.json().catch(() => ({}))
+            throw new Error(j.error || "Faaliyet yüklenemedi")
+          }
+          const ev = await evRes.json()
+          if (cancelled) return
+          const locked = Array.isArray(ev.participants)
+            ? ev.participants.some(
+                (p: { verificationStatus: string }) => p.verificationStatus !== "IMZA_SURECINDE"
+              )
+            : false
+          setParticipantsLocked(locked)
+          const meta =
+            ev.metadata && typeof ev.metadata === "object" && !Array.isArray(ev.metadata)
+              ? (ev.metadata as Record<string, unknown>)
+              : {}
+          setDetay({
+            ...INITIAL_DETAY,
+            title: ev.title ?? "",
+            description: ev.description ?? "",
+            outcome: ev.outcome ?? "",
+            startDate: dateInputFromIso(ev.startDate),
+            endDate: dateInputFromIso(ev.endDate),
+            location: ev.location ?? "",
+            organizerName: ev.organizerName ?? "",
+            durationHours: ev.durationHours != null ? String(ev.durationHours) : "",
+            durationDays: ev.durationDays != null ? String(ev.durationDays) : "",
+            durationMonths: ev.durationMonths != null ? String(ev.durationMonths) : "",
+            durationYears: ev.durationYears != null ? String(ev.durationYears) : "",
+            evidenceUrls: Array.isArray(ev.evidenceUrls) ? ev.evidenceUrls : [],
+            teacherId: ev.teacher?.id ?? "",
+            geziTuru: String(meta.geziTuru ?? ""),
+            geziProgrami: String(meta.geziProgrami ?? ""),
+            ulasimTuru: String(meta.ulasimTuru ?? ""),
+            numberOfArtworks: meta.numberOfArtworks != null ? String(meta.numberOfArtworks) : "",
+            vicePrincipalName: String(meta.vicePrincipalName ?? ""),
+            tournamentTotalParticipants:
+              meta.tournamentTotalParticipants != null ? String(meta.tournamentTotalParticipants) : "",
+            projectPurpose: String(meta.projectPurpose ?? ""),
+            projectAchievementLevel: String(meta.projectAchievementLevel ?? ""),
+          })
+          setParticipants(
+            (ev.participants || []).map(
+              (p: {
+                studentId: string
+                student: { firstName: string; lastName: string; grade: string }
+                score: number | null
+                languageLevel: string | null
+                participationPhotoUrl: string | null
+                extraDocumentUrl: string | null
+                artworkDescription?: string | null
+                tournamentPlacement?: string | null
+                projectRole?: string | null
+              }) => ({
+                studentId: p.studentId,
+                studentName: `${p.student.firstName} ${p.student.lastName}`.trim(),
+                studentGrade: p.student.grade ?? "",
+                participationPhotoUrl: p.participationPhotoUrl ?? "",
+                score: p.score != null ? String(p.score) : "",
+                languageLevel: p.languageLevel ?? "",
+                extraDocumentUrl: p.extraDocumentUrl ?? "",
+                artworkDescription: p.artworkDescription ?? "",
+                tournamentPlacement: p.tournamentPlacement ?? "",
+                projectRole: p.projectRole ?? "",
+              })
+            )
+          )
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setEditLoadError(e instanceof Error ? e.message : "Yükleme hatası")
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [editEventId])
 
   if (!subtypeConfig) {
     return (
@@ -287,9 +375,82 @@ export function FaaliyetForm({ mainType, subtypeId }: FaaliyetFormProps) {
     }
   }
 
+  function buildMetadataPayload(): Record<string, unknown> | null {
+    const m: Record<string, unknown> = {}
+    if (subtypeConfig!.formVariant === "gezi") {
+      m.geziTuru = detay.geziTuru || null
+      m.geziProgrami = detay.geziProgrami || null
+      m.ulasimTuru = detay.ulasimTuru || null
+    }
+    if (subtypeConfig!.showNumberOfArtworks) {
+      m.numberOfArtworks = detay.numberOfArtworks ? parseInt(detay.numberOfArtworks, 10) : null
+      m.vicePrincipalName = detay.vicePrincipalName || null
+    }
+    if (subtypeConfig!.showTournamentTotalParticipants) {
+      m.tournamentTotalParticipants = detay.tournamentTotalParticipants
+        ? parseInt(detay.tournamentTotalParticipants, 10)
+        : null
+    }
+    if (subtypeConfig!.showProjectPurpose) {
+      m.projectPurpose = detay.projectPurpose?.trim() || null
+      m.projectAchievementLevel = detay.projectAchievementLevel?.trim() || null
+    }
+    if (subtypeConfig!.showVicePrincipal && !subtypeConfig!.showNumberOfArtworks) {
+      m.vicePrincipalName = detay.vicePrincipalName?.trim() || null
+    }
+    return Object.keys(m).length > 0 ? m : null
+  }
+
   async function handleSave() {
     setSaving(true)
     try {
+      const metadata = buildMetadataPayload()
+      const participantPayload = participants.map((p) => ({
+        studentId: p.studentId,
+        score: p.score ? parseInt(p.score, 10) : null,
+        languageLevel: p.languageLevel || null,
+        participationPhotoUrl: p.participationPhotoUrl || null,
+        extraDocumentUrl: p.extraDocumentUrl || null,
+        artworkDescription: p.artworkDescription?.trim() || null,
+        tournamentPlacement: p.tournamentPlacement?.trim() || null,
+        projectRole: p.projectRole?.trim() || null,
+      }))
+
+      if (editEventId) {
+        const base: Record<string, unknown> = {
+          title: detay.title,
+          description: detay.description,
+          outcome: detay.outcome,
+          startDate: detay.startDate,
+          endDate: detay.endDate,
+          location: detay.location,
+          organizerName: detay.organizerName,
+          durationHours: detay.durationHours || null,
+          durationDays: detay.durationDays || null,
+          durationMonths: detay.durationMonths || null,
+          durationYears: detay.durationYears || null,
+          evidenceUrls: detay.evidenceUrls,
+          teacherId: detay.teacherId,
+          metadata,
+        }
+        if (!participantsLocked) {
+          base.participants = participantPayload
+        }
+        const res = await fetch(`/api/activity-events/${editEventId}`, {
+          method: "PUT",
+          headers: getAuthHeaders(),
+          body: JSON.stringify(base),
+        })
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({} as { error?: string; detail?: string; code?: string }))
+          const parts = [data.error, data.detail].filter(Boolean)
+          throw new Error(parts.length ? parts.join("\n") : "Güncelleme başarısız")
+        }
+        setShowPdfModal(false)
+        router.push(`/faaliyet-yonetimi/${editEventId}`)
+        return
+      }
+
       const body = {
         mainType,
         subtype: subtypeId,
@@ -307,41 +468,8 @@ export function FaaliyetForm({ mainType, subtypeId }: FaaliyetFormProps) {
         durationYears: detay.durationYears || null,
         evidenceUrls: detay.evidenceUrls,
         teacherId: detay.teacherId,
-        metadata: (() => {
-          const m: Record<string, unknown> = {}
-          if (subtypeConfig!.formVariant === "gezi") {
-            m.geziTuru = detay.geziTuru || null
-            m.geziProgrami = detay.geziProgrami || null
-            m.ulasimTuru = detay.ulasimTuru || null
-          }
-          if (subtypeConfig!.showNumberOfArtworks) {
-            m.numberOfArtworks = detay.numberOfArtworks ? parseInt(detay.numberOfArtworks, 10) : null
-            m.vicePrincipalName = detay.vicePrincipalName || null
-          }
-          if (subtypeConfig!.showTournamentTotalParticipants) {
-            m.tournamentTotalParticipants = detay.tournamentTotalParticipants
-              ? parseInt(detay.tournamentTotalParticipants, 10)
-              : null
-          }
-          if (subtypeConfig!.showProjectPurpose) {
-            m.projectPurpose = detay.projectPurpose?.trim() || null
-            m.projectAchievementLevel = detay.projectAchievementLevel?.trim() || null
-          }
-          if (subtypeConfig!.showVicePrincipal && !subtypeConfig!.showNumberOfArtworks) {
-            m.vicePrincipalName = detay.vicePrincipalName?.trim() || null
-          }
-          return Object.keys(m).length > 0 ? m : null
-        })(),
-        participants: participants.map((p) => ({
-          studentId: p.studentId,
-          score: p.score ? parseInt(p.score) : null,
-          languageLevel: p.languageLevel || null,
-          participationPhotoUrl: p.participationPhotoUrl || null,
-          extraDocumentUrl: p.extraDocumentUrl || null,
-          artworkDescription: p.artworkDescription?.trim() || null,
-          tournamentPlacement: p.tournamentPlacement?.trim() || null,
-          projectRole: p.projectRole?.trim() || null,
-        })),
+        metadata,
+        participants: participantPayload,
       }
 
       const res = await fetch("/api/activity-events", {
@@ -374,6 +502,21 @@ export function FaaliyetForm({ mainType, subtypeId }: FaaliyetFormProps) {
     )
   }
 
+  if (editLoadError) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
+        <p className="text-red-600 text-center max-w-md">{editLoadError}</p>
+        <button
+          type="button"
+          className="mt-4 text-sm text-indigo-600 underline"
+          onClick={() => router.push("/faaliyet-yonetimi")}
+        >
+          Faaliyet yönetimine dön
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Form Header */}
@@ -387,12 +530,15 @@ export function FaaliyetForm({ mainType, subtypeId }: FaaliyetFormProps) {
             <span className="text-gray-700 font-medium">{subtypeConfig.label}</span>
           </div>
           <h1 className="text-xl font-bold text-gray-900">
-            Yeni Faaliyet Ekle — {subtypeConfig.label}
+            {editEventId ? "Faaliyet Düzenle" : "Yeni Faaliyet Ekle"} — {subtypeConfig.label}
           </h1>
 
           {/* Adım göstergesi */}
           <div className="flex items-center gap-0 mt-4">
-            {STEPS.map((s, i) => (
+            {STEPS.map((s, i) => {
+              const label =
+                s.id === 3 && editEventId ? "PDF Önizleme & Güncelle" : s.label
+              return (
               <div key={s.id} className="flex items-center">
                 <div
                   className={`flex items-center gap-2 ${step === s.id ? "text-indigo-600" : step > s.id ? "text-emerald-600" : "text-gray-400"}`}
@@ -403,13 +549,14 @@ export function FaaliyetForm({ mainType, subtypeId }: FaaliyetFormProps) {
                   >
                     {step > s.id ? "✓" : s.id}
                   </span>
-                  <span className="text-sm font-medium hidden sm:inline">{s.label}</span>
+                  <span className="text-sm font-medium hidden sm:inline">{label}</span>
                 </div>
                 {i < STEPS.length - 1 && (
                   <div className={`h-px w-8 mx-2 ${step > s.id ? "bg-emerald-300" : "bg-gray-200"}`} />
                 )}
               </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </div>
@@ -459,6 +606,7 @@ export function FaaliyetForm({ mainType, subtypeId }: FaaliyetFormProps) {
             onChange={setParticipants}
             onBack={() => setStep(1)}
             onNext={() => setShowPdfModal(true)}
+            readOnly={!!participantsLocked}
           />
         )}
       </div>
@@ -479,6 +627,7 @@ export function FaaliyetForm({ mainType, subtypeId }: FaaliyetFormProps) {
           onClose={() => setShowPdfModal(false)}
           onConfirm={handleSave}
           saving={saving}
+          confirmLabel={editEventId ? "Güncelle" : undefined}
         />
       )}
     </div>
