@@ -6,6 +6,7 @@ import {
   getRenewalTargetContext,
   resolveRenewalYearTargetForStats,
 } from "@/lib/student-registration-meta"
+import { k12GradeWhereClause, parseStudentGradeLevel } from "@/lib/student-grade-level"
 
 export const dynamic = "force-dynamic"
 
@@ -24,12 +25,9 @@ export async function GET() {
     const enrollmentWhere =
       futureOnlyIds.length > 0
         ? {
-            AND: [
-              { NOT: { grade: { equals: "Mezun", mode: "insensitive" as const } } },
-              { NOT: { id: { in: futureOnlyIds } } },
-            ],
+            AND: [k12GradeWhereClause(), { NOT: { id: { in: futureOnlyIds } } }],
           }
-        : { NOT: { grade: { equals: "Mezun", mode: "insensitive" as const } } }
+        : k12GradeWhereClause()
 
     const activeYear = yearRows.find((y) => y.isActive) ?? null
     const now = Date.now()
@@ -59,12 +57,14 @@ export async function GET() {
         })
         const assignedSet = new Set(assigned.map((a) => a.studentId))
         const allStudents = await prisma.student.findMany({
-          select: { id: true, firstName: true, lastName: true },
+          select: { id: true, firstName: true, lastName: true, grade: true },
           orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
         })
         const unassigned = allStudents.filter(
           (s) =>
-            !assignedSet.has(s.id) && !regCtx.futureYearOnlyNewRegistrationStudentIds.has(s.id)
+            parseStudentGradeLevel(s.grade) != null &&
+            !assignedSet.has(s.id) &&
+            !regCtx.futureYearOnlyNewRegistrationStudentIds.has(s.id)
         )
         studentsWithoutClassCount = unassigned.length
         studentsWithoutClassInActiveYear = unassigned.slice(0, 12).map((s) => ({

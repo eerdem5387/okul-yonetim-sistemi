@@ -2,18 +2,17 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getRenewalTargetContext } from "@/lib/student-registration-meta"
 import { contractYearLabelFromAcademicYear, resolveActiveAndNextAcademicYear } from "@/lib/academic-year-ui"
-import { gradeLevelLabel, parseStudentGradeLevel } from "@/lib/student-grade-level"
+import {
+  gradeLevelLabel,
+  k12GradeWhereClause,
+  parseStudentGradeLevel,
+} from "@/lib/student-grade-level"
 import {
   buildGradeFractionRows,
   enrolledCountsFromStudentRows,
 } from "@/lib/enrolled-grade-counts"
 
 export const dynamic = "force-dynamic"
-
-function isMezunGrade(grade: string): boolean {
-  const t = grade.trim().toLowerCase()
-  return t === "mezun" || t.includes("mezun")
-}
 
 /**
  * Öğrenci yönetimi sayfası: özet istatistikler, sınıf düzeyi / şube dağılımı (aktif akademik yıl).
@@ -42,19 +41,13 @@ export async function GET() {
       futureYearOnlyNewRegistrationStudentIds,
     } = await getRenewalTargetContext(prisma)
 
-    const baseStudentWhere = {
-      NOT: { grade: { equals: "Mezun", mode: "insensitive" as const } },
-    }
-
     const allStudents = await prisma.student.findMany({
-      where: baseStudentWhere,
+      where: k12GradeWhereClause(),
       select: { id: true, grade: true },
     })
 
-    const effectiveStudents = allStudents.filter((s) => !isMezunGrade(s.grade))
-
     /** Bu yıl okulda sayılan öğrenciler (gelecek yıl için ön kayıt olanlar hariç). */
-    const enrolledStudents = effectiveStudents.filter(
+    const enrolledStudents = allStudents.filter(
       (s) => !futureYearOnlyNewRegistrationStudentIds.has(s.id)
     )
 

@@ -394,8 +394,7 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
     setSaving(true)
     try {
       // Öğrenci bilgilerini güncelle (ad, TC, doğum tarihi, adres).
-      // Sınıf (grade) güncellenmez: sözleşmedeki studentClass gelecek eğitim yılına ait sınıfı ifade eder;
-      // öğrencinin mevcut sınıfı Öğrenci Yönetimi'nde ayrıca yönetilir.
+      // Kayıt yenileme hedef sınıfı (studentClass) sözleşmede kilitlidir; API tarafından değiştirilemez.
       const studentNameParts = contract.studentName?.split(" ") || []
       const firstName = studentNameParts[0] || ""
       const lastName = studentNameParts.slice(1).join(" ") || ""
@@ -568,24 +567,18 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
                     onChange={(e) => setContract({ ...contract, studentName: e.target.value })}
                   />
                 </div>
-                <div>
-                  <Label htmlFor="studentClass">Sınıfı</Label>
-                  <select
+                <div className="col-span-2 sm:col-span-1">
+                  <Label htmlFor="studentClass">Kayıt yenileme hedef sınıfı</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Sözleşme kaydındaki hedef sınıf; düzenlemede değiştirilemez.
+                  </p>
+                  <Input
                     id="studentClass"
-                    value={(() => {
-                      const g = (contract.studentClass || "").trim()
-                      const num = parseInt(g.replace(/\D/g, ""), 10)
-                      if (!isNaN(num) && num >= 5 && num <= 12) return `${num}. Sınıf`
-                      return g || ""
-                    })()}
-                    onChange={(e) => setContract({ ...contract, studentClass: e.target.value })}
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring mt-1"
-                  >
-                    <option value="">Seçiniz</option>
-                    {[5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
-                      <option key={n} value={`${n}. Sınıf`}>{n}. Sınıf</option>
-                    ))}
-                  </select>
+                    readOnly
+                    tabIndex={-1}
+                    value={contract.studentClass || "—"}
+                    className="mt-1.5 bg-muted/60 cursor-default"
+                  />
                 </div>
                 <div>
                   <Label htmlFor="studentTC">TC</Label>

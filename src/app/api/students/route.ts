@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getRenewalTargetContext, registrationStatusText } from "@/lib/student-registration-meta"
+import { k12GradeWhereClause } from "@/lib/student-grade-level"
 
 export async function GET(request: NextRequest) {
     try {
@@ -42,8 +43,7 @@ export async function GET(request: NextRequest) {
             }
             whereConditions.push({ OR: orParts })
         } else {
-            // Varsayılan olarak mezunları hariç tut (sadece "Mezun" filtresi seçildiğinde görünsünler)
-            whereConditions.push({ NOT: { grade: { equals: "Mezun", mode: 'insensitive' as const } } })
+            whereConditions.push(k12GradeWhereClause())
         }
 
         const regCtx = await getRenewalTargetContext(prisma)

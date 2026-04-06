@@ -121,6 +121,7 @@ export async function updateRenewalContract(
 
   const oldRaw = (existing.contractData || {}) as Record<string, unknown>
   const merged: Record<string, unknown> = { ...oldRaw, ...incoming }
+  merged.studentClass = oldRaw.studentClass
 
   const oldLabel = String(oldRaw.academicYear ?? "").trim()
   const oldId = String(oldRaw.academicYearId ?? "").trim()

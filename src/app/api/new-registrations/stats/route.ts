@@ -6,7 +6,11 @@ import {
   getRenewalTargetContext,
   normalizeAcademicYearLabel,
 } from "@/lib/student-registration-meta"
-import { gradeLevelLabel, parseStudentGradeLevel } from "@/lib/student-grade-level"
+import {
+  gradeLevelLabel,
+  k12GradeWhereClause,
+  parseStudentGradeLevel,
+} from "@/lib/student-grade-level"
 import {
   buildGradeFractionRows,
   enrolledCountsFromStudentRows,
@@ -154,9 +158,7 @@ export async function GET(request: NextRequest) {
     const newRegTargets = buildNewRegistrationMatchTargets(yearRows, newRegsForTargets)
 
     const allStudents = await prisma.student.findMany({
-      where: {
-        NOT: { grade: { equals: "Mezun", mode: "insensitive" as const } },
-      },
+      where: k12GradeWhereClause(),
       select: { id: true, grade: true },
     })
     const gradeTotals = enrolledCountsFromStudentRows(

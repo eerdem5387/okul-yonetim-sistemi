@@ -155,7 +155,7 @@ export default function StudentsPage() {
     studentTuitionFee: ""
   })
 
-  const gradeOptions = ["5. Sınıf", "6. Sınıf", "7. Sınıf", "8. Sınıf", "9. Sınıf", "10. Sınıf", "11. Sınıf", "12. Sınıf", "Mezun"]
+  const gradeOptions = ["5. Sınıf", "6. Sınıf", "7. Sınıf", "8. Sınıf", "9. Sınıf", "10. Sınıf", "11. Sınıf", "12. Sınıf"]
 
   // Kullanıcı rolünü kontrol et
   useEffect(() => {
@@ -669,7 +669,7 @@ export default function StudentsPage() {
         </div>
       </div>
 
-      {/* Özet panelleri: toplam = mezun + ön kayıt hariç; kayıt kutuları hedef yıla göre */}
+      {/* Özet panelleri: toplam = 5–12 öğrenci + ön kayıt hariç; kayıt kutuları hedef yıla göre */}
       <div className="mb-4 sm:mb-6 space-y-4">
         {overviewLoading ? (
           <p className="text-sm text-gray-500">Özet yükleniyor…</p>
@@ -683,7 +683,7 @@ export default function StudentsPage() {
                 </div>
                 <p className="mt-1 text-2xl font-bold text-gray-900">{overview.totalStudents}</p>
                 <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
-                  Mezunlar ve gelecek yıl(lar) ön kayıtları hariç
+                  Gelecek yıl(lar) ön kayıtları hariç (yalnızca 5–12. sınıf)
                 </p>
               </div>
               <div className="rounded-xl border border-gray-200 bg-white p-3 sm:p-4 shadow-sm">
@@ -1686,8 +1686,8 @@ export default function StudentsPage() {
             <DialogTitle>Kayıt yenilemeyen öğrenciler</DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
               {overview?.renewalTargetYear?.label
-                ? `Hedef yıl (${overview.renewalTargetYear.label}) için kayıt yenilemesi veya ilgili yeni kayıt kaydı olmayan öğrenciler. Mezunlar varsayılan olarak listede yoktur.`
-                : "Kayıt yenilemesi veya ilgili yeni kayıt kaydı olmayan öğrenciler. Mezunlar varsayılan olarak listede yoktur."}
+                ? `Hedef yıl (${overview.renewalTargetYear.label}) için kayıt yenilemesi veya ilgili yeni kayıt kaydı olmayan öğrenciler (5–12. sınıf).`
+                : "Kayıt yenilemesi veya ilgili yeni kayıt kaydı olmayan öğrenciler (5–12. sınıf)."}
             </DialogDescription>
           </DialogHeader>
 

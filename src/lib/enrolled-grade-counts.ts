@@ -1,13 +1,8 @@
 import { gradeLevelLabel, parseStudentGradeLevel } from "@/lib/student-grade-level"
 
-function isMezunGrade(grade: string): boolean {
-  const t = grade.trim().toLowerCase()
-  return t === "mezun" || t.includes("mezun")
-}
-
 /**
- * Öğrenci yönetimi özeti ile aynı: mezunlar ve yalnızca gelecek yıl ön kayıtlı olanlar hariç,
- * kalanların `student.grade` düzeyine göre sayımı (5–12).
+ * Öğrenci yönetimi özeti ile aynı: yalnızca 5–12. sınıf olarak tanınan kayıtlar;
+ * gelecek yıl yalnızca ön kayıtlı olanlar hariç, `student.grade` düzeyine göre sayım.
  */
 export function enrolledCountsFromStudentRows(
   students: { id: string; grade: string }[],
@@ -19,7 +14,6 @@ export function enrolledCountsFromStudentRows(
   }
 
   for (const s of students) {
-    if (isMezunGrade(s.grade)) continue
     if (futureYearOnlyNewRegistrationStudentIds.has(s.id)) continue
     const level = parseStudentGradeLevel(s.grade)
     if (level == null) continue

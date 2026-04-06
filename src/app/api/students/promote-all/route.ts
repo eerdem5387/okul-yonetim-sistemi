@@ -3,25 +3,18 @@ import { prisma } from "@/lib/prisma"
 
 export async function POST() {
     try {
-        // Tüm öğrencileri çek
         const students = await prisma.student.findMany()
 
-        // Sınıf yükseltme mapping
-        const gradeMap: { [key: string]: string } = {
-            "5. Sınıf": "6. Sınıf",
-            "6. Sınıf": "7. Sınıf",
-            "7. Sınıf": "8. Sınıf",
-            "8. Sınıf": "9. Sınıf",
-            "9. Sınıf": "10. Sınıf",
-            "10. Sınıf": "11. Sınıf",
-            "11. Sınıf": "12. Sınıf",
-            "12. Sınıf": "Mezun" // 12. sınıf mezun olur.
+        const gradeMap: Record<string, string> = {}
+        for (let n = 5; n < 12; n++) {
+            const next = `${n + 1}. Sınıf`
+            gradeMap[`${n}. Sınıf`] = next
+            gradeMap[String(n)] = next
         }
 
         let updatedCount = 0
         let skippedCount = 0
 
-        // Her öğrenciyi güncelle
         for (const student of students) {
             const newGrade = gradeMap[student.grade]
 
@@ -38,7 +31,7 @@ export async function POST() {
 
         return NextResponse.json({
             success: true,
-            message: `${updatedCount} öğrenci bir üst sınıfa yükseltildi. ${skippedCount} öğrenci güncellenmedi (Mezun veya geçersiz sınıf).`,
+            message: `${updatedCount} öğrenci bir üst sınıfa yükseltildi. ${skippedCount} öğrenci güncellenmedi (12. sınıf veya tanınmayan sınıf).`,
             updatedCount,
             skippedCount
         })
@@ -47,4 +40,3 @@ export async function POST() {
         return NextResponse.json({ error: "Failed to promote students" }, { status: 500 })
     }
 }
-

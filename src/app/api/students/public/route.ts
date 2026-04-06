@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { k12GradeWhereClause } from "@/lib/student-grade-level"
 
 /**
  * Public endpoint for fetching student by TC number (for gezi-basvuru-sistemi)
@@ -34,10 +35,7 @@ export async function GET(request: NextRequest) {
 
     const whereConditions: Array<Record<string, unknown>> = []
 
-    // Exclude graduated students
-    whereConditions.push({
-      NOT: { grade: { equals: "Mezun", mode: "insensitive" as const } },
-    })
+    whereConditions.push(k12GradeWhereClause())
 
     // TC Number filter (KVKK gereği sadece TC ile arama)
     if (tcNumber) {

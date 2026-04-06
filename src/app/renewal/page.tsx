@@ -14,6 +14,7 @@ import {
   renewalSetupErrorMessage,
   type AcademicYearListItem,
 } from "@/lib/academic-year-ui"
+import { renewalTargetClassLabel } from "@/lib/student-grade-level"
 
 interface Student {
   id: string
@@ -288,7 +289,7 @@ export default function RenewalPage() {
 
   const fetchStudents = useCallback(async () => {
     try {
-      // Kayıt yenileme ekranında tüm öğrencileri (mezunlar hariç) çekmek için
+      // Kayıt yenileme ekranında listelenen öğrenciler (API varsayılanı: 5–12. sınıf)
       // pagination'ı yüksek bir limit ile kullanıyoruz.
       const response = await fetch("/api/students?limit=1000")
       if (!response.ok) {
@@ -519,10 +520,16 @@ export default function RenewalPage() {
       return
     }
 
+    const renewalClass = renewalTargetClassLabel(selectedStudent.grade)
+    if (!renewalClass) {
+      alert(
+        "⚠️ Öğrencinin sınıfı kayıt yenileme için uygun değil (5–12. sınıf olmalıdır)."
+      )
+      return
+    }
+
     try {
-      // Önce sözleşmeleri kaydet (eğer kaydedilmemişse)
-      // Tüm sözleşmeleri ayrı ayrı kaydet
-      // Sözleşmedeki sınıf tamamen formdan gelir; öğrencinin sistemdeki sınıfı kullanılmaz ve sistemde değişiklik yapılmaz.
+      // Kayıt yenileme sınıfı sunucuda da doğrulanır; öğrenci kartı başarılı işlemde bir üst düzeye güncellenir.
       const contracts = [
         {
           type: "renewal",
@@ -534,7 +541,7 @@ export default function RenewalPage() {
               academicYearId: renewalTarget.id,
               studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
               studentTC: selectedStudent.tcNumber,
-              studentClass: mainContractData.studentClass || selectedStudent.grade,
+              studentClass: renewalClass,
               studentBirthDate: formatDate(selectedStudent.birthDate),
               contractStudentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
               contractParentName: ""
@@ -554,7 +561,7 @@ export default function RenewalPage() {
               uniformItems: otherContractData.uniformItems,
               paymentReceived: otherContractData.paymentReceived,
               paymentNotReceived: otherContractData.paymentNotReceived,
-              studentClass: mainContractData.studentClass || (selectedStudent ? (selectedStudent.grade?.includes("Sınıf") ? selectedStudent.grade : `${selectedStudent.grade}. Sınıf`) : "")
+              studentClass: renewalClass,
             }
           }
         },
@@ -580,7 +587,14 @@ export default function RenewalPage() {
       )
 
       const allSuccessful = responses.every(response => response.ok)
-      
+
+      if (allSuccessful) {
+        setSelectedStudent((s) =>
+          s ? { ...s, grade: renewalClass } : s
+        )
+        setMainContractData((prev) => ({ ...prev, studentClass: renewalClass }))
+      }
+
       if (!allSuccessful) {
         const errorResponses = responses.filter(r => !r.ok)
         const errorMessages = await Promise.all(
@@ -611,7 +625,7 @@ export default function RenewalPage() {
             "renewal",
             "uniform",
           ],
-          mainContractData: mainContractData,
+          mainContractData: { ...mainContractData, studentClass: renewalClass },
           otherContractData: otherContractData
         })
       })
@@ -659,11 +673,12 @@ export default function RenewalPage() {
     setExistingRenewalInfo("")
     
     const formattedBirthDate = formatDate(student.birthDate)
+    const nextClass = renewalTargetClassLabel(student.grade) ?? ""
     setMainContractData(prev => ({
       ...prev,
       studentName: `${student.firstName} ${student.lastName}`,
       studentTC: student.tcNumber,
-      studentClass: student.grade,
+      studentClass: nextClass,
       studentBirthDate: formattedBirthDate, // ISO formatında sakla (YYYY-MM-DD)
       contractStudentName: `${student.firstName} ${student.lastName}`,
       contractParentName: ""
@@ -674,11 +689,19 @@ export default function RenewalPage() {
       const response = await fetch(`/api/students/${student.id}?format=legacy`)
       if (response.ok) {
         const studentDetails: Student = await response.json()
-        if (studentDetails.announcedTuitionFee || studentDetails.studentTuitionFee) {
+        const refreshedClass = renewalTargetClassLabel(studentDetails.grade)
+        if (
+          studentDetails.announcedTuitionFee ||
+          studentDetails.studentTuitionFee ||
+          refreshedClass
+        ) {
           setMainContractData(prev => ({
             ...prev,
-            announcedTuitionFee: studentDetails.announcedTuitionFee || prev.announcedTuitionFee,
-            studentTuitionFee: studentDetails.studentTuitionFee || prev.studentTuitionFee
+            announcedTuitionFee:
+              studentDetails.announcedTuitionFee || prev.announcedTuitionFee,
+            studentTuitionFee:
+              studentDetails.studentTuitionFee || prev.studentTuitionFee,
+            ...(refreshedClass ? { studentClass: refreshedClass } : {}),
           }))
         }
       }
@@ -929,24 +952,23 @@ export default function RenewalPage() {
                         onChange={(e) => setMainContractData({ ...mainContractData, studentName: e.target.value })}
                       />
                     </div>
-                    <div>
-                      <Label htmlFor="studentClass">Sınıfı</Label>
-                      <select
+                    <div className="col-span-2 sm:col-span-1">
+                      <Label htmlFor="studentClass">Kayıt yenileme hedef sınıfı</Label>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Mevcut kayıtlı sınıf:{" "}
+                        <span className="font-medium text-foreground">
+                          {selectedStudent.grade?.trim() || "—"}
+                        </span>
+                        . Hedef, bir üst düzeydir (12. sınıfta hedef yine 12. sınıftır); kullanıcı
+                        değiştiremez.
+                      </p>
+                      <Input
                         id="studentClass"
-                        value={(() => {
-                          const g = (mainContractData.studentClass || "").trim()
-                          const num = parseInt(g.replace(/\D/g, ""), 10)
-                          if (!isNaN(num) && num >= 5 && num <= 12) return `${num}. Sınıf`
-                          return g || ""
-                        })()}
-                        onChange={(e) => setMainContractData({ ...mainContractData, studentClass: e.target.value })}
-                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring mt-1"
-                      >
-                        <option value="">Seçiniz</option>
-                        {[5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
-                          <option key={n} value={`${n}. Sınıf`}>{n}. Sınıf</option>
-                        ))}
-                      </select>
+                        readOnly
+                        tabIndex={-1}
+                        value={mainContractData.studentClass || "—"}
+                        className="mt-1.5 bg-muted/60 cursor-default"
+                      />
                     </div>
                     <div>
                       <Label htmlFor="studentTC">TC</Label>
@@ -1318,7 +1340,7 @@ export default function RenewalPage() {
                   {getPriceTableForGrade() && (
                     <div className="border rounded-lg p-4 bg-gray-50">
                       <h4 className="font-semibold mb-3 text-gray-700">
-                        {mainContractData.studentClass || (selectedStudent ? (selectedStudent.grade?.includes("Sınıf") ? selectedStudent.grade : `${selectedStudent.grade}. Sınıf`) : "")} - Kitap ve Forma Ücret Tablosu
+                        {mainContractData.studentClass || "—"} - Kitap ve Forma Ücret Tablosu
                       </h4>
                       <div className="overflow-x-auto">
                         <table className="w-full border-collapse">

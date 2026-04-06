@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { getRenewalTargetYear, validateRenewalAcademicYear } from "@/lib/academic-year-contract-server"
 import { academicYearLabelsEquivalent } from "@/lib/student-registration-meta"
 import { updateRenewalContract } from "@/lib/contract-registration-update"
+import { renewalTargetClassLabel } from "@/lib/student-grade-level"
 
 export async function GET(request: NextRequest) {
     try {
@@ -96,6 +97,18 @@ export async function POST(request: NextRequest) {
             academicYearId: targetYear.id,
         }
 
+        const renewalClassLabel = renewalTargetClassLabel(student.grade)
+        if (!renewalClassLabel) {
+            return NextResponse.json(
+                {
+                    error:
+                        "Öğrencinin sınıfı kayıt yenileme için uygun değil (5–12. sınıf olmalıdır).",
+                },
+                { status: 400 }
+            )
+        }
+        mergedContractData.studentClass = renewalClassLabel
+
         const academicYear = mergedContractData.academicYear as string | undefined
         const academicYearId = mergedContractData.academicYearId as string | undefined
 
@@ -158,39 +171,42 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // Sözleşmeyi oluştur
-        const renewal = await prisma.renewal.create({
-            data: {
-                studentId,
-                contractData: mergedContractData as Prisma.InputJsonValue,
-            },
-            include: {
-                student: {
-                    select: {
-                        firstName: true,
-                        lastName: true,
-                        tcNumber: true
-                    }
+        const renewal = await prisma.$transaction(async (tx) => {
+            const r = await tx.renewal.create({
+                data: {
+                    studentId,
+                    contractData: mergedContractData as Prisma.InputJsonValue,
+                },
+                include: {
+                    student: {
+                        select: {
+                            firstName: true,
+                            lastName: true,
+                            tcNumber: true,
+                        },
+                    },
+                },
+            })
+            await tx.student.update({
+                where: { id: studentId },
+                data: { grade: renewalClassLabel },
+            })
+            if (selectedClubs && Array.isArray(selectedClubs) && selectedClubs.length > 0) {
+                const clubSelections = selectedClubs
+                    .filter((clubId: string) => clubId && typeof clubId === "string")
+                    .map((clubId: string) => ({
+                        clubId,
+                        studentId,
+                    }))
+                if (clubSelections.length > 0) {
+                    await tx.clubSelection.createMany({
+                        data: clubSelections,
+                        skipDuplicates: true,
+                    })
                 }
             }
+            return r
         })
-
-        // Kulüp seçimlerini ekle
-        if (selectedClubs && Array.isArray(selectedClubs) && selectedClubs.length > 0) {
-            const clubSelections = selectedClubs
-                .filter((clubId: string) => clubId && typeof clubId === 'string')
-                .map((clubId: string) => ({
-                    clubId,
-                    studentId
-                }))
-
-            if (clubSelections.length > 0) {
-                await prisma.clubSelection.createMany({
-                    data: clubSelections,
-                    skipDuplicates: true
-                })
-            }
-        }
 
         return NextResponse.json(renewal)
     } catch (error) {
