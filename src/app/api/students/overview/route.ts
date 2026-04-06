@@ -3,6 +3,10 @@ import { prisma } from "@/lib/prisma"
 import { getRenewalTargetContext } from "@/lib/student-registration-meta"
 import { contractYearLabelFromAcademicYear, resolveActiveAndNextAcademicYear } from "@/lib/academic-year-ui"
 import { gradeLevelLabel, parseStudentGradeLevel } from "@/lib/student-grade-level"
+import {
+  buildGradeFractionRows,
+  enrolledCountsFromStudentRows,
+} from "@/lib/enrolled-grade-counts"
 
 export const dynamic = "force-dynamic"
 
@@ -54,24 +58,51 @@ export async function GET() {
       (s) => !futureYearOnlyNewRegistrationStudentIds.has(s.id)
     )
 
-    const byGrade: Record<string, number> = {}
-    for (let g = 5; g <= 12; g++) {
-      byGrade[gradeLevelLabel(g)] = 0
-    }
+    const byGrade = enrolledCountsFromStudentRows(
+      allStudents,
+      futureYearOnlyNewRegistrationStudentIds
+    )
     let ortaokul = 0
     let lise = 0
+    for (let g = 5; g <= 8; g++) {
+      ortaokul += byGrade[gradeLevelLabel(g)] ?? 0
+    }
+    for (let g = 9; g <= 12; g++) {
+      lise += byGrade[gradeLevelLabel(g)] ?? 0
+    }
+
+    const totalStudents = enrolledStudents.length
+
+    const renewalNumerators: Record<string, number> = {}
+    const newRegNumerators: Record<string, number> = {}
+    for (let g = 5; g <= 12; g++) {
+      const lab = gradeLevelLabel(g)
+      renewalNumerators[lab] = 0
+      newRegNumerators[lab] = 0
+    }
     for (const s of enrolledStudents) {
       const level = parseStudentGradeLevel(s.grade)
       if (level == null) continue
       const label = gradeLevelLabel(level)
-      if (byGrade[label] !== undefined) {
-        byGrade[label] += 1
+      if (
+        renewedStudentIds.has(s.id) &&
+        !newRegistrationStudentIds.has(s.id) &&
+        renewalNumerators[label] !== undefined
+      ) {
+        renewalNumerators[label] += 1
       }
-      if (level >= 5 && level <= 8) ortaokul += 1
-      if (level >= 9 && level <= 12) lise += 1
+      if (
+        newRegistrationActiveYearStudentIds.has(s.id) &&
+        newRegNumerators[label] !== undefined
+      ) {
+        newRegNumerators[label] += 1
+      }
     }
-
-    const totalStudents = enrolledStudents.length
+    const renewalFractionByGrade = buildGradeFractionRows(renewalNumerators, byGrade)
+    const newRegistrationFractionByGrade = buildGradeFractionRows(
+      newRegNumerators,
+      byGrade
+    )
 
     const newRegInScope = enrolledStudents.filter((s) =>
       newRegistrationActiveYearStudentIds.has(s.id)
@@ -169,6 +200,8 @@ export async function GET() {
         newRegistration: newRegInScope,
         notRenewed: notRenewedCount,
       },
+      renewalFractionByGrade,
+      newRegistrationFractionByGrade,
     })
   } catch (e) {
     console.error("GET /api/students/overview", e)

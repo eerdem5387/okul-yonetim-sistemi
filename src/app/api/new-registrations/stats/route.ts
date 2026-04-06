@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { normalizeAcademicYearLabel } from "@/lib/student-registration-meta"
+import {
+  buildNewRegistrationMatchTargets,
+  contractMatchesAcademicYearTargets,
+  getRenewalTargetContext,
+  normalizeAcademicYearLabel,
+} from "@/lib/student-registration-meta"
+import { gradeLevelLabel, parseStudentGradeLevel } from "@/lib/student-grade-level"
+import {
+  buildGradeFractionRows,
+  enrolledCountsFromStudentRows,
+} from "@/lib/enrolled-grade-counts"
 
 export async function GET(request: NextRequest) {
   try {
@@ -95,8 +105,7 @@ export async function GET(request: NextRequest) {
     const todayStudents = new Set<string>()
     const thisWeekStudents = new Set<string>()
     const thisMonthStudents = new Set<string>()
-    const sinifStudentMap = new Map<string, Set<string>>() // sinif -> Set of TC numbers
-    
+
     // Tarih aralıkları
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -133,45 +142,68 @@ export async function GET(request: NextRequest) {
       if (createdAtDateOnly >= thisMonth) {
         thisMonthStudents.add(tcNumber)
       }
-      
-      // Sınıf bazında benzersiz öğrenciler
-      const grade = r.student.grade || ''
-      // Grade formatını kontrol et (örn: "5. Sınıf" veya "5")
-      let sinif = ''
-      if (grade && typeof grade === 'string') {
-        if (grade.includes('Sınıf')) {
-          sinif = grade
-        } else {
-          // Sadece sayı varsa "5. Sınıf" formatına çevir
-          const gradeNum = parseInt(grade.replace(/\D/g, ''))
-          if (!isNaN(gradeNum) && gradeNum >= 5 && gradeNum <= 12) {
-            sinif = `${gradeNum}. Sınıf`
-          }
-        }
-      }
-      
-      if (sinif) {
-        if (!sinifStudentMap.has(sinif)) {
-          sinifStudentMap.set(sinif, new Set())
-        }
-        sinifStudentMap.get(sinif)!.add(tcNumber)
-      }
     })
-    
-    // Sınıf bazında sayım (benzersiz öğrenci sayısı)
-    const sinifStats: Record<string, number> = {}
-    // Önce tüm sınıfları 0 ile başlat (5-12. Sınıf)
-    for (let i = 5; i <= 12; i++) {
-      sinifStats[`${i}. Sınıf`] = 0
+
+    const renewalCtx = await getRenewalTargetContext(prisma)
+    const yearRows = await prisma.academicYear.findMany({
+      orderBy: { startDate: "desc" },
+    })
+    const newRegsForTargets = await prisma.newRegistration.findMany({
+      select: { contractData: true },
+    })
+    const newRegTargets = buildNewRegistrationMatchTargets(yearRows, newRegsForTargets)
+
+    const allStudents = await prisma.student.findMany({
+      where: {
+        NOT: { grade: { equals: "Mezun", mode: "insensitive" as const } },
+      },
+      select: { id: true, grade: true },
+    })
+    const gradeTotals = enrolledCountsFromStudentRows(
+      allStudents,
+      renewalCtx.futureYearOnlyNewRegistrationStudentIds
+    )
+
+    const newRegTcByGrade = new Map<string, Set<string>>()
+    for (let g = 5; g <= 12; g++) {
+      newRegTcByGrade.set(gradeLevelLabel(g), new Set())
     }
-    
-    // Her sınıf için benzersiz öğrenci sayısını hesapla
-    sinifStudentMap.forEach((studentSet, sinif) => {
-      if (sinifStats.hasOwnProperty(sinif)) {
-        sinifStats[sinif] = studentSet.size
+
+    for (const r of registrations) {
+      if (!r.student) continue
+      if (!contractMatchesAcademicYearTargets(r.contractData, newRegTargets)) {
+        continue
       }
-    })
-    
+      const tcNumber = getTcNumber(r)
+      if (!tcNumber) continue
+      const level = parseStudentGradeLevel(r.student.grade)
+      if (level == null) continue
+      const sinif = gradeLevelLabel(level)
+      newRegTcByGrade.get(sinif)?.add(tcNumber)
+    }
+
+    const newRegNumerators: Record<string, number> = {}
+    for (let g = 5; g <= 12; g++) {
+      const lab = gradeLevelLabel(g)
+      newRegNumerators[lab] = newRegTcByGrade.get(lab)?.size ?? 0
+    }
+    const newRegFractionRows = buildGradeFractionRows(newRegNumerators, gradeTotals)
+    const sinifBreakdown: Record<
+      string,
+      { newRegistrations: number; total: number; percent: number }
+    > = {}
+    const sinifStats: Record<string, number> = {}
+    for (let g = 5; g <= 12; g++) {
+      const lab = gradeLevelLabel(g)
+      const row = newRegFractionRows[lab]
+      sinifBreakdown[lab] = {
+        newRegistrations: row.numerator,
+        total: row.total,
+        percent: row.percent,
+      }
+      sinifStats[lab] = row.numerator
+    }
+
     const todayCount = todayStudents.size
     const thisWeekCount = thisWeekStudents.size
     const thisMonthCount = thisMonthStudents.size
@@ -215,6 +247,7 @@ export async function GET(request: NextRequest) {
       thisWeek: thisWeekCount,
       thisMonth: thisMonthCount,
       sinifStats,
+      sinifBreakdown,
       academicYearStats, // Akademik yıl bazlı istatistikler
     }
     

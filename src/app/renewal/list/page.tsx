@@ -8,6 +8,17 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Search, Filter, ArrowLeft, Eye, Download, Calendar, User, GraduationCap, Trash2, TrendingUp, Edit } from "lucide-react"
 
+const RENEWAL_LIST_SINIFLAR = [
+  "5. Sınıf",
+  "6. Sınıf",
+  "7. Sınıf",
+  "8. Sınıf",
+  "9. Sınıf",
+  "10. Sınıf",
+  "11. Sınıf",
+  "12. Sınıf",
+] as const
+
 interface Renewal {
   id: string
   studentId: string
@@ -53,6 +64,10 @@ export default function RenewalsListPage() {
   // İstatistikler
   const [stats, setStats] = useState({
     academicYearStats: {} as Record<string, number>,
+    sinifBreakdown: {} as Record<
+      string,
+      { renewed: number; total: number; percent: number }
+    >,
   })
 
   const gradeOptions = ["5. Sınıf", "6. Sınıf", "7. Sınıf", "8. Sınıf", "9. Sınıf", "10. Sınıf", "11. Sınıf", "12. Sınıf", "all"]
@@ -169,7 +184,8 @@ export default function RenewalsListPage() {
         const data = await response.json()
         if (data && typeof data === 'object') {
           setStats({
-            academicYearStats: data.academicYearStats || {}
+            academicYearStats: data.academicYearStats || {},
+            sinifBreakdown: data.sinifBreakdown || {},
           })
         }
       }
@@ -815,6 +831,41 @@ export default function RenewalsListPage() {
                   </div>
                 </div>
               )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mb-4 sm:mb-6 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <GraduationCap className="h-5 w-5 text-blue-600" />
+              Sınıf bazında kayıt yenileme
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-gray-500 mb-3">
+              Pay: hedef akademik yıla uygun yenileme (benzersiz TC), payda: o düzeydeki toplam öğrenci
+              (öğrenci yönetimi ile aynı sayım). Kaynak düzey: öğrencinin güncel sınıfı.
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 sm:gap-3">
+              {RENEWAL_LIST_SINIFLAR.map((sinif) => {
+                const b = stats.sinifBreakdown[sinif]
+                const renewed = b?.renewed ?? 0
+                const total = b?.total ?? 0
+                const pct = b?.percent ?? 0
+                return (
+                  <div
+                    key={sinif}
+                    className="p-2 sm:p-3 rounded-lg border-2 border-gray-200 bg-white"
+                  >
+                    <p className="text-xs text-gray-600 mb-1 truncate">{sinif}</p>
+                    <p className="text-base sm:text-lg font-bold text-gray-900 tabular-nums">
+                      {renewed}/{total}
+                    </p>
+                    <p className="text-[11px] sm:text-xs text-gray-500 tabular-nums">%{pct}</p>
+                  </div>
+                )
+              })}
             </div>
           </CardContent>
         </Card>

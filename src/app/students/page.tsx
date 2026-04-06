@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -80,9 +81,18 @@ interface StudentsOverview {
     newRegistration: number
     notRenewed: number
   }
+  renewalFractionByGrade: Record<
+    string,
+    { renewed: number; total: number; percent: number }
+  >
+  newRegistrationFractionByGrade: Record<
+    string,
+    { newRegistrations: number; total: number; percent: number }
+  >
 }
 
 export default function StudentsPage() {
+  const router = useRouter()
   const [students, setStudents] = useState<Student[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -710,13 +720,8 @@ export default function StudentsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
               <button
                 type="button"
-                onClick={() => openRegistrationBrowseModal("renewed")}
-                className={cn(
-                  "rounded-xl border p-3 sm:p-4 text-left transition-all hover:shadow-md",
-                  regBrowseModal === "renewed"
-                    ? "border-sky-400 bg-sky-50 ring-2 ring-sky-300"
-                    : "border-gray-200 bg-white"
-                )}
+                onClick={() => router.push("/renewal/list")}
+                className="rounded-xl border border-gray-200 bg-white p-3 sm:p-4 text-left transition-all hover:shadow-md"
               >
                 <div className="flex items-center gap-2 text-sky-800 text-xs font-semibold">
                   <FileCheck className="h-4 w-4" />
@@ -726,18 +731,13 @@ export default function StudentsPage() {
                   {overview.registrationCounts.renewed}
                 </p>
                 <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
-                  Filtreli listeyi açmak için tıklayın
+                  Kayıt yenileme listesine gitmek için tıklayın
                 </p>
               </button>
               <button
                 type="button"
-                onClick={() => openRegistrationBrowseModal("new_registration")}
-                className={cn(
-                  "rounded-xl border p-3 sm:p-4 text-left transition-all hover:shadow-md",
-                  regBrowseModal === "new_registration"
-                    ? "border-emerald-400 bg-emerald-50 ring-2 ring-emerald-300"
-                    : "border-gray-200 bg-white"
-                )}
+                onClick={() => router.push("/new-registrations/list")}
+                className="rounded-xl border border-gray-200 bg-white p-3 sm:p-4 text-left transition-all hover:shadow-md"
               >
                 <div className="flex items-center gap-2 text-emerald-800 text-xs font-semibold">
                   <UserPlus className="h-4 w-4" />
@@ -747,7 +747,7 @@ export default function StudentsPage() {
                   {overview.registrationCounts.newRegistration}
                 </p>
                 <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
-                  Yeni Kayıt Yaptırıp Eğitime Başlayan Öğrenciler
+                  Yeni kayıt listesine gitmek için tıklayın
                 </p>
               </button>
               <button
@@ -813,6 +813,7 @@ export default function StudentsPage() {
                   const label = gradeLevelLabel(grade)
                   const count = overview.byGradeCounts[label] ?? 0
                   const open = gradeSectionsOpen[grade] ?? false
+                  const rf = overview.renewalFractionByGrade?.[label]
                   return (
                     <div key={grade} className="rounded-lg border border-gray-100 bg-gray-50/80">
                       <button
@@ -825,6 +826,12 @@ export default function StudentsPage() {
                         <span className="font-semibold text-gray-900 text-sm">
                           {label}{" "}
                           <span className="font-normal text-gray-500">— {count} öğrenci</span>
+                          {rf != null ? (
+                            <span className="font-normal text-sky-800/90">
+                              {" "}
+                              · yenileme {rf.renewed}/{rf.total} %{rf.percent}
+                            </span>
+                          ) : null}
                         </span>
                         {open ? (
                           <ChevronDown className="h-4 w-4 shrink-0 text-gray-500" />

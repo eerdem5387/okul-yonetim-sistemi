@@ -44,6 +44,10 @@ export default function NewRegistrationPage() {
     thisWeek: 0,
     thisMonth: 0,
     sinifStats: {} as Record<string, number>,
+    sinifBreakdown: {} as Record<
+      string,
+      { newRegistrations: number; total: number; percent: number }
+    >,
     academicYearStats: {} as Record<string, number>,
   })
   
@@ -280,6 +284,7 @@ export default function NewRegistrationPage() {
             thisWeek: data.thisWeek || 0,
             thisMonth: data.thisMonth || 0,
             sinifStats: data.sinifStats || {},
+            sinifBreakdown: data.sinifBreakdown || {},
             academicYearStats: data.academicYearStats || {}
           })
         } else {
@@ -754,14 +759,20 @@ export default function NewRegistrationPage() {
           <CardContent>
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 sm:gap-3">
               {siniflar.map((sinif) => {
-                const count = stats.sinifStats[sinif] || 0
+                const b = stats.sinifBreakdown[sinif]
+                const n = b?.newRegistrations ?? stats.sinifStats[sinif] ?? 0
+                const total = b?.total ?? 0
+                const pct = b?.percent ?? 0
                 return (
                   <div
                     key={sinif}
                     className="p-2 sm:p-3 rounded-lg border-2 border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all"
                   >
                     <p className="text-xs text-gray-600 mb-1 truncate">{sinif}</p>
-                    <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">{count}</p>
+                    <p className="text-base sm:text-lg lg:text-xl font-bold text-gray-900 tabular-nums">
+                      {n}/{total}
+                    </p>
+                    <p className="text-[11px] sm:text-xs text-gray-500 tabular-nums">%{pct}</p>
                   </div>
                 )
               })}
