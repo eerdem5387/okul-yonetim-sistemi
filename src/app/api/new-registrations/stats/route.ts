@@ -150,7 +150,7 @@ export async function GET(request: NextRequest) {
 
     const renewalCtx = await getRenewalTargetContext(prisma)
     const yearRows = await prisma.academicYear.findMany({
-      orderBy: { startDate: "desc" },
+      orderBy: [{ startDate: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
     })
     const newRegsForTargets = await prisma.newRegistration.findMany({
       select: { contractData: true },

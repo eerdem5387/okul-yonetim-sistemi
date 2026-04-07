@@ -16,8 +16,8 @@ function singleYearMatchTargets(
 export type YearRowDb = {
   id: string
   name: string
-  startDate: Date
-  endDate: Date
+  startDate: Date | null
+  endDate: Date | null
   isActive: boolean
 }
 
@@ -45,8 +45,8 @@ function toListItems(yearRows: YearRowDb[]): AcademicYearListItem[] {
   return yearRows.map((r) => ({
     id: r.id,
     name: r.name,
-    startDate: r.startDate.toISOString(),
-    endDate: r.endDate.toISOString(),
+    startDate: r.startDate?.toISOString() ?? null,
+    endDate: r.endDate?.toISOString() ?? null,
     isActive: r.isActive,
   }))
 }
@@ -129,14 +129,17 @@ function isContractAcademicYearStrictlyAfterActive(
   const activeRowDb = yearRows.find((y) => y.id === active.id)
   if (!activeRowDb) return false
   const row = resolveNewRegContractToYearRow(contractData, yearRows)
-  if (row) {
+  if (row && row.startDate && activeRowDb.startDate) {
     return row.startDate.getTime() > activeRowDb.startDate.getTime()
   }
   const raw = String((contractData as Record<string, unknown>).academicYear ?? "").trim()
   if (!raw) return false
   const inferred = inferFirstAcademicStartYearFromLabel(raw)
   if (inferred == null) return false
-  return inferred > activeRowDb.startDate.getFullYear()
+  const activeY =
+    activeRowDb.startDate?.getFullYear() ?? inferFirstAcademicStartYearFromLabel(activeRowDb.name)
+  if (activeY == null) return false
+  return inferred > activeY
 }
 
 function inferDominantContractYearLabel(
@@ -278,7 +281,7 @@ export async function getRenewalTargetContext(client: PrismaClient): Promise<{
   futureYearOnlyNewRegistrationStudentIds: Set<string>
 }> {
   const yearRows = await client.academicYear.findMany({
-    orderBy: { startDate: "desc" },
+    orderBy: [{ startDate: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
   })
 
   const [renewals, newRegs] = await Promise.all([

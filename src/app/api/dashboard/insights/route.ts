@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic"
 export async function GET() {
   try {
     const yearRows = await prisma.academicYear.findMany({
-      orderBy: { startDate: "desc" },
+      orderBy: [{ startDate: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
     })
 
     const regCtx = await getRenewalTargetContext(prisma)
@@ -34,6 +34,7 @@ export async function GET() {
     const activeByDate =
       activeYear ??
       yearRows.find((y) => {
+        if (!y.startDate || !y.endDate) return false
         const s = y.startDate.getTime()
         const e = y.endDate.getTime()
         return now >= s && now <= e

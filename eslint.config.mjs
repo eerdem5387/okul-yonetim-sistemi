@@ -32,6 +32,16 @@ const eslintConfig = [
       "@next/next/no-img-element": "warn",
     },
   },
+  {
+    files: [
+      "src/components/faaliyet-ekle/**/*.tsx",
+      "src/components/faaliyet-yonetimi/**/*.tsx",
+      "src/components/ib-faaliyet-dashboard/**/*.tsx",
+    ],
+    rules: {
+      "@next/next/no-img-element": "off",
+    },
+  },
 ];
 
 export default eslintConfig;

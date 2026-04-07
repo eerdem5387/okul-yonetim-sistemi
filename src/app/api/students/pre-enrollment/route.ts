@@ -19,13 +19,13 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit
 
     const yearRows = await prisma.academicYear.findMany({
-      orderBy: { startDate: "desc" },
+      orderBy: [{ startDate: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
     })
     const ayList = yearRows.map((r) => ({
       id: r.id,
       name: r.name,
-      startDate: r.startDate.toISOString(),
-      endDate: r.endDate.toISOString(),
+      startDate: r.startDate?.toISOString() ?? null,
+      endDate: r.endDate?.toISOString() ?? null,
       isActive: r.isActive,
     }))
     const { next } = resolveActiveAndNextAcademicYear(ayList)

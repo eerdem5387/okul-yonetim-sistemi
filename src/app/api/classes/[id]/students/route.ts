@@ -136,45 +136,67 @@ export async function POST(
       )
     }
 
-    // Öğrencileri sınıfa ekle (toplu işlem)
-    const createOperations = studentIds.map((studentId) => ({
-      classId,
-      studentId,
-    }))
+    const uniqueIds = [
+      ...new Set(
+        studentIds.filter((sid: unknown): sid is string => typeof sid === "string" && sid.trim().length > 0)
+      ),
+    ]
 
-    // Duplicate kontrolü için upsert kullan
-    const results = await Promise.allSettled(
-      createOperations.map((data) =>
-        prisma.classStudent.create({
-          data,
-          include: {
-            student: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                grade: true,
-              },
-            },
-          },
-        })
+    if (uniqueIds.length === 0) {
+      return NextResponse.json({ error: "Geçerli öğrenci kimliği bulunamadı" }, { status: 400 })
+    }
+
+    const existing = await prisma.classStudent.findMany({
+      where: { classId, studentId: { in: uniqueIds } },
+      select: { studentId: true },
+    })
+    const alreadyIn = new Set(existing.map((e) => e.studentId))
+    const toAdd = uniqueIds.filter((sid) => !alreadyIn.has(sid))
+
+    if (toAdd.length === 0) {
+      return NextResponse.json({
+        success: true,
+        message: "Seçilen öğrencilerin tümü zaten bu sınıfta",
+        added: 0,
+        skippedAlreadyInClass: uniqueIds.length,
+        invalidOrMissing: 0,
+      })
+    }
+
+    const found = await prisma.student.findMany({
+      where: { id: { in: toAdd } },
+      select: { id: true },
+    })
+    const foundSet = new Set(found.map((s) => s.id))
+    const validToAdd = toAdd.filter((sid) => foundSet.has(sid))
+    const invalidOrMissing = toAdd.length - validToAdd.length
+
+    if (validToAdd.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Geçerli öğrenci kaydı bulunamadı",
+          added: 0,
+          skippedAlreadyInClass: alreadyIn.size,
+          invalidOrMissing,
+        },
+        { status: 400 }
       )
-    )
+    }
 
-    const successful = results.filter((r) => r.status === "fulfilled")
-    const failed = results.filter((r) => r.status === "rejected")
+    const { count } = await prisma.classStudent.createMany({
+      data: validToAdd.map((studentId) => ({ classId, studentId })),
+      skipDuplicates: true,
+    })
+
+    const skippedAlreadyInClass = uniqueIds.filter((sid) => alreadyIn.has(sid)).length
 
     return NextResponse.json({
       success: true,
-      message: `${successful.length} öğrenci başarıyla eklendi`,
-      added: successful.length,
-      failed: failed.length,
-      failedReasons: failed.map((r) => {
-        if (r.status === "rejected" && r.reason instanceof Error) {
-          return r.reason.message;
-        }
-        return "Bilinmeyen hata";
-      }),
+      message: `${count} öğrenci sınıfa eklendi`,
+      added: count,
+      skippedAlreadyInClass,
+      invalidOrMissing,
     })
   } catch (error) {
     console.error("Error adding students to class:", error)

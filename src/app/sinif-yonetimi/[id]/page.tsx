@@ -108,7 +108,7 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
   const [showAddScheduleModal, setShowAddScheduleModal] = useState(false);
   const [students, setStudents] = useState<Student[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [selectedStudent, setSelectedStudent] = useState("");
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [scheduleForm, setScheduleForm] = useState({
     subjectName: "",
     teacherId: "",
@@ -210,26 +210,42 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
     }
   };
 
-  const handleAddStudent = async () => {
-    if (!selectedStudent) return;
+  const handleAddStudents = async () => {
+    if (selectedStudentIds.length === 0) return;
     setActionLoading(true);
     try {
       const response = await fetch(`/api/classes/${id}/students`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ studentIds: [selectedStudent] }), // Array olarak gönder
+        body: JSON.stringify({ studentIds: selectedStudentIds }),
       });
+      const data = await response.json().catch(() => ({}));
       if (response.ok) {
+        const parts: string[] = [];
+        if (typeof data.added === "number" && data.added > 0) {
+          parts.push(`${data.added} öğrenci eklendi`);
+        }
+        if (typeof data.skippedAlreadyInClass === "number" && data.skippedAlreadyInClass > 0) {
+          parts.push(`${data.skippedAlreadyInClass} öğrenci zaten bu sınıftaydı`);
+        }
+        if (typeof data.invalidOrMissing === "number" && data.invalidOrMissing > 0) {
+          parts.push(`${data.invalidOrMissing} kayıt geçersiz veya bulunamadı`);
+        }
+        if (parts.length === 0 && data.message) {
+          parts.push(String(data.message));
+        }
+        if (parts.length > 0) {
+          alert(parts.join(". ") + ".");
+        }
         setShowAddStudentModal(false);
-        setSelectedStudent("");
+        setSelectedStudentIds([]);
         setStudentSearch("");
         fetchClassData(userRole, staffId);
       } else {
-        const data = await response.json();
         alert(data.error || "Öğrenci eklenirken bir hata oluştu.");
       }
     } catch (error) {
-      console.error("Error adding student:", error);
+      console.error("Error adding students:", error);
       alert("Öğrenci eklenirken bir hata oluştu.");
     } finally {
       setActionLoading(false);
@@ -414,6 +430,24 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
   // Bu sınıfta olmayan öğrenciler (liste API’den gelir; arama boşken limit=5000, doluyken sunucu araması)
   const assignedStudentIds = new Set(classData.students?.map((s) => s.student.id) || []);
   const availableStudents = students.filter((s) => !assignedStudentIds.has(s.id));
+
+  const visibleIds = availableStudents.map((s) => s.id);
+  const allVisibleSelected =
+    visibleIds.length > 0 && visibleIds.every((sid) => selectedStudentIds.includes(sid));
+
+  const toggleStudentSelection = (studentId: string) => {
+    setSelectedStudentIds((prev) =>
+      prev.includes(studentId) ? prev.filter((x) => x !== studentId) : [...prev, studentId]
+    );
+  };
+
+  const toggleAllVisibleStudents = () => {
+    if (allVisibleSelected) {
+      setSelectedStudentIds((prev) => prev.filter((sid) => !visibleIds.includes(sid)));
+    } else {
+      setSelectedStudentIds((prev) => [...new Set([...prev, ...visibleIds])]);
+    }
+  };
 
   return (
     <div className="container mx-auto p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
@@ -636,34 +670,43 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
         setShowAddStudentModal(open);
         if (!open) {
           setStudentSearch("");
-          setSelectedStudent("");
+          setSelectedStudentIds([]);
         }
       }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-xl max-h-[min(90vh,720px)] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Öğrenci Ekle</DialogTitle>
+            <DialogTitle>Sınıfa öğrenci ekle</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="student-search">Öğrenci Ara</Label>
+          <div className="space-y-3 py-2 flex flex-col min-h-0 flex-1">
+            <div className="space-y-2 shrink-0">
+              <Label htmlFor="student-search">Öğrenci ara</Label>
               <Input
                 id="student-search"
-                placeholder="İsim, soyisim veya TC ile ara..."
+                placeholder="İsim, soyisim veya TC ile ara…"
                 value={studentSearch}
                 onChange={(e) => setStudentSearch(e.target.value)}
                 autoFocus
               />
+              <p className="text-[11px] text-muted-foreground">
+                Listeden birden çok öğrenci işaretleyip tek seferde ekleyebilirsiniz. «Listelenenlerin tümünü seç»
+                yalnızca şu an ekrandaki (aranan) listeyi kapsar.
+              </p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="student-select">Öğrenci Seçin</Label>
-              <div className="max-h-64 overflow-y-auto border border-gray-300 rounded-lg">
+            <div className="space-y-2 min-h-0 flex flex-col flex-1">
+              <div className="flex items-center justify-between gap-2 text-sm">
+                <span className="text-muted-foreground font-medium">Eklenebilir öğrenciler</span>
+                <span className="text-xs tabular-nums text-blue-700 font-semibold">
+                  {selectedStudentIds.length} seçili
+                </span>
+              </div>
+              <div className="flex-1 min-h-[200px] max-h-[min(50vh,360px)] flex flex-col border border-gray-300 rounded-lg overflow-hidden bg-white">
                 {studentsPickerLoading ? (
-                  <div className="p-8 flex flex-col items-center justify-center text-gray-500 gap-2">
+                  <div className="p-8 flex flex-col items-center justify-center text-gray-500 gap-2 flex-1">
                     <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
                     <p className="text-sm">Öğrenciler yükleniyor…</p>
                   </div>
                 ) : availableStudents.length === 0 ? (
-                  <div className="p-8 text-center text-gray-500">
+                  <div className="p-8 text-center text-gray-500 flex-1 flex flex-col justify-center">
                     {studentSearch.trim() ? (
                       <>
                         <Users className="h-12 w-12 text-gray-300 mx-auto mb-2" />
@@ -677,42 +720,74 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
                     )}
                   </div>
                 ) : (
-                  <div className="divide-y">
-                    {availableStudents.map((student) => (
-                      <div
-                        key={student.id}
-                        className={`p-3 cursor-pointer hover:bg-blue-50 transition-colors ${
-                          selectedStudent === student.id ? "bg-blue-100 border-l-4 border-blue-600" : ""
-                        }`}
-                        onClick={() => setSelectedStudent(student.id)}
-                      >
-                        <p className="font-medium text-sm">
-                          {student.firstName} {student.lastName}
-                        </p>
-                        <p className="text-xs text-gray-500">TC: {student.tcNumber}</p>
-                        {student.grade && (
-                          <p className="text-xs text-gray-500">Sınıf: {student.grade}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                  <>
+                    <div className="flex items-center gap-2 px-3 py-2 border-b bg-gray-50 shrink-0">
+                      <input
+                        id="select-all-visible"
+                        type="checkbox"
+                        checked={allVisibleSelected}
+                        onChange={toggleAllVisibleStudents}
+                        className="h-4 w-4 rounded border-gray-300"
+                      />
+                      <label htmlFor="select-all-visible" className="text-xs font-medium cursor-pointer select-none">
+                        Listelenenlerin tümünü seç ({visibleIds.length})
+                      </label>
+                    </div>
+                    <div className="overflow-y-auto flex-1 divide-y divide-gray-100">
+                      {availableStudents.map((student) => {
+                        const checked = selectedStudentIds.includes(student.id);
+                        return (
+                          <label
+                            key={student.id}
+                            className={`flex items-start gap-3 p-3 cursor-pointer hover:bg-blue-50/80 transition-colors ${
+                              checked ? "bg-blue-50 border-l-4 border-l-blue-600" : "border-l-4 border-l-transparent"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleStudentSelection(student.id)}
+                              className="mt-0.5 h-4 w-4 rounded border-gray-300 shrink-0"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-sm text-gray-900">
+                                {student.firstName} {student.lastName}
+                              </p>
+                              <p className="text-xs text-gray-500">TC: {student.tcNumber}</p>
+                              {student.grade && (
+                                <p className="text-xs text-gray-500">Sınıf: {student.grade}</p>
+                              )}
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </>
                 )}
               </div>
             </div>
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-3 pt-2 shrink-0">
               <Button
                 variant="outline"
                 onClick={() => {
                   setShowAddStudentModal(false);
                   setStudentSearch("");
-                  setSelectedStudent("");
+                  setSelectedStudentIds([]);
                 }}
                 className="flex-1"
               >
                 İptal
               </Button>
-              <Button onClick={handleAddStudent} disabled={!selectedStudent || actionLoading} className="flex-1">
-                {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ekle"}
+              <Button
+                onClick={handleAddStudents}
+                disabled={selectedStudentIds.length === 0 || actionLoading}
+                className="flex-1"
+              >
+                {actionLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  `Seçilenleri ekle (${selectedStudentIds.length})`
+                )}
               </Button>
             </div>
           </div>

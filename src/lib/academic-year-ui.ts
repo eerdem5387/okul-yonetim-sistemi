@@ -1,15 +1,25 @@
 /** Sözleşme / istatistiklerde kullanılan "YYYY-YYYY" etiketi (mevcut new-registration uyumu). */
-export function contractYearLabelFromAcademicYear(y: { name: string; startDate: Date | string }): string {
+export function contractYearLabelFromAcademicYear(y: {
+  name: string
+  startDate?: Date | string | null
+}): string {
   const m = y.name.match(/(\d{4})\s*[-–/]\s*(\d{4})/)
   if (m) return `${m[1]}-${m[2]}`
-  const start = new Date(y.startDate)
-  if (Number.isNaN(start.getTime())) return y.name.trim() || ""
-  const y0 = start.getFullYear()
-  return `${y0}-${y0 + 1}`
+  if (y.startDate != null && y.startDate !== "") {
+    const start = new Date(y.startDate)
+    if (!Number.isNaN(start.getTime())) {
+      const y0 = start.getFullYear()
+      return `${y0}-${y0 + 1}`
+    }
+  }
+  return y.name.trim() || ""
 }
 
 /** Bir sonraki sözleşme yılı etiketi (YYYY-YYYY); isimde çift yıl yoksa başlangıç yılından türetilir. */
-export function followingContractYearLabelFromRow(y: { name: string; startDate: Date | string }): string | null {
+export function followingContractYearLabelFromRow(y: {
+  name: string
+  startDate?: Date | string | null
+}): string | null {
   const m = y.name.match(/(\d{4})[-–/](\d{4})/)
   if (m) {
     const a = parseInt(m[1], 10)
@@ -17,6 +27,7 @@ export function followingContractYearLabelFromRow(y: { name: string; startDate: 
     if (Number.isNaN(a) || Number.isNaN(b)) return null
     return `${a + 1}-${b + 1}`
   }
+  if (y.startDate == null || y.startDate === "") return null
   const start = new Date(y.startDate)
   if (Number.isNaN(start.getTime())) return null
   const y0 = start.getFullYear()
@@ -26,8 +37,8 @@ export function followingContractYearLabelFromRow(y: { name: string; startDate: 
 export type AcademicYearListItem = {
   id: string
   name: string
-  startDate: string
-  endDate: string
+  startDate: string | null
+  endDate: string | null
   isActive: boolean
   parentActiveYearId?: string | null
   term1Start?: string | null
@@ -91,13 +102,17 @@ export function resolveActiveAndNextAcademicYear(years: AcademicYearListItem[]):
   next: AcademicYearListItem | null
 } {
   if (!years.length) return { active: null, next: null }
-  const sorted = [...years].sort(
-    (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
-  )
+  const sorted = [...years].sort((a, b) => {
+    const ta = a.startDate ? new Date(a.startDate).getTime() : 0
+    const tb = b.startDate ? new Date(b.startDate).getTime() : 0
+    if (ta !== tb) return ta - tb
+    return a.name.localeCompare(b.name, "tr")
+  })
   const primaries = sorted.filter((y) => !y.parentActiveYearId)
   const byFlag = primaries.find((y) => y.isActive)
   const now = Date.now()
   const byDateRange = primaries.find((y) => {
+    if (!y.startDate || !y.endDate) return false
     const s = new Date(y.startDate).getTime()
     const e = new Date(y.endDate).getTime()
     return !Number.isNaN(s) && !Number.isNaN(e) && now >= s && now <= e

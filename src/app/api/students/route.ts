@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getRenewalTargetContext, registrationStatusText } from "@/lib/student-registration-meta"
-import { k12GradeWhereClause } from "@/lib/student-grade-level"
+import { graduatesWhereClause, k12GradeWhereClause } from "@/lib/student-grade-level"
 
 export async function GET(request: NextRequest) {
     try {
@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
         const gradeBand = searchParams.get('gradeBand') || ''
         const registrationFilter = searchParams.get('registrationFilter') || ''
         const registrationMeta = searchParams.get('registrationMeta') === '1' || searchParams.get('registrationMeta') === 'true'
+        const graduates = searchParams.get('graduates') === '1' || searchParams.get('graduates') === 'true'
 
         const skip = (page - 1) * limit
 
@@ -32,7 +33,9 @@ export async function GET(request: NextRequest) {
         }
         
         // Sınıf / kademe filtresi (gradeBand: ortaokul 5–8, lise 9–12; "5" ve "5. Sınıf" varyantları)
-        if (grade) {
+        if (graduates) {
+            whereConditions.push(graduatesWhereClause())
+        } else if (grade) {
             whereConditions.push({ grade: { equals: grade, mode: 'insensitive' as const } })
         } else if (gradeBand === "ortaokul" || gradeBand === "lise") {
             const nums = gradeBand === "ortaokul" ? [5, 6, 7, 8] : [9, 10, 11, 12]

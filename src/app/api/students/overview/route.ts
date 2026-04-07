@@ -20,12 +20,13 @@ export const dynamic = "force-dynamic"
 export async function GET() {
   try {
     const yearRows = await prisma.academicYear.findMany({
-      orderBy: { startDate: "desc" },
+      orderBy: [{ startDate: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
     })
 
     const activeYear =
       yearRows.find((y) => y.isActive) ??
       yearRows.find((y) => {
+        if (!y.startDate || !y.endDate) return false
         const now = Date.now()
         const s = y.startDate.getTime()
         const e = y.endDate.getTime()
@@ -162,8 +163,8 @@ export async function GET() {
     const ayList = yearRows.map((r) => ({
       id: r.id,
       name: r.name,
-      startDate: r.startDate.toISOString(),
-      endDate: r.endDate.toISOString(),
+      startDate: r.startDate?.toISOString() ?? null,
+      endDate: r.endDate?.toISOString() ?? null,
       isActive: r.isActive,
     }))
     const { next: nextAcademicYear } = resolveActiveAndNextAcademicYear(ayList)

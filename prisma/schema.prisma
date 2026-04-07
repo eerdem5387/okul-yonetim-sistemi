@@ -504,8 +504,8 @@ enum ProgressStatus {
 model AcademicYear {
   id          String   @id @default(cuid())
   name        String // Örn: "2024-2025 Eğitim Öğretim Yılı"
-  startDate   DateTime // Başlangıç tarihi
-  endDate     DateTime // Bitiş tarihi
+  startDate   DateTime? // Başlangıç (taslak yılda boş; aktif yapılırken zorunlu)
+  endDate     DateTime? // Bitiş (taslak yılda boş; aktif yapılırken zorunlu)
   isActive    Boolean  @default(false) // Aktif akademik yıl
   weekendDays String[] @default([]) // Hafta tatili günleri: ["SATURDAY", "SUNDAY"]
   term1Start  DateTime? // 1. dönem başlangıcı

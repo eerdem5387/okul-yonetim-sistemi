@@ -42,8 +42,8 @@ const INITIAL_YEAR_FORM = {
 interface AcademicYear {
   id: string
   name: string
-  startDate: string
-  endDate: string
+  startDate: string | null
+  endDate: string | null
   isActive: boolean
   weekendDays: string[]
   term1Start?: string | null
@@ -229,49 +229,91 @@ export default function YonetimPage() {
 
   const handleYearSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    // Client-side validasyon
+
     if (!yearFormData.name.trim()) {
       error("Akademik yıl adı zorunludur!")
       return
     }
-    
-    if (!yearFormData.startDate || !yearFormData.endDate) {
-      error("Başlangıç ve bitiş tarihi zorunludur!")
-      return
+
+    const wantActive = yearFormData.isActive
+    const anyCal =
+      !!(
+        yearFormData.startDate ||
+        yearFormData.endDate ||
+        yearFormData.term1Start ||
+        yearFormData.term1End ||
+        yearFormData.term2Start ||
+        yearFormData.term2End
+      )
+
+    if (wantActive) {
+      if (!yearFormData.startDate || !yearFormData.endDate) {
+        error("Aktif yıl için başlangıç ve bitiş tarihi zorunludur!")
+        return
+      }
+      if (
+        !yearFormData.term1Start ||
+        !yearFormData.term1End ||
+        !yearFormData.term2Start ||
+        !yearFormData.term2End
+      ) {
+        error("Aktif yıl için 1. ve 2. dönem tarihleri zorunludur!")
+        return
+      }
+      if (yearFormData.weekendDays.length < 1) {
+        error("Aktif yıl için en az bir hafta tatili günü seçin (Cumartesi veya Pazar).")
+        return
+      }
+    } else if (anyCal) {
+      if (
+        !yearFormData.startDate ||
+        !yearFormData.endDate ||
+        !yearFormData.term1Start ||
+        !yearFormData.term1End ||
+        !yearFormData.term2Start ||
+        !yearFormData.term2End
+      ) {
+        error("Takvimi kısmen doldurmayın: tüm tarih alanlarını girin veya hepsini boş bırakın.")
+        return
+      }
     }
 
-    const start = new Date(yearFormData.startDate)
-    const end = new Date(yearFormData.endDate)
-
-    if (start >= end) {
-      error("Bitiş tarihi başlangıç tarihinden sonra olmalıdır!")
-      return
+    if (anyCal || wantActive) {
+      if (!yearFormData.startDate || !yearFormData.endDate) {
+        error("Başlangıç ve bitiş tarihi zorunludur!")
+        return
+      }
+      const start = new Date(yearFormData.startDate)
+      const end = new Date(yearFormData.endDate)
+      if (start >= end) {
+        error("Bitiş tarihi başlangıç tarihinden sonra olmalıdır!")
+        return
+      }
+      const termV = validateAcademicYearTermDates({
+        yearStart: yearFormData.startDate,
+        yearEnd: yearFormData.endDate,
+        term1Start: yearFormData.term1Start,
+        term1End: yearFormData.term1End,
+        term2Start: yearFormData.term2Start,
+        term2End: yearFormData.term2End,
+      })
+      if (!termV.ok) {
+        error(termV.error)
+        return
+      }
     }
 
-    if (
-      !yearFormData.term1Start ||
-      !yearFormData.term1End ||
-      !yearFormData.term2Start ||
-      !yearFormData.term2End
-    ) {
-      error("1. ve 2. dönem başlangıç/bitiş tarihleri zorunludur!")
-      return
+    const anotherActiveExists = academicYears.some(
+      (y) => y.isActive && y.id !== editingYear?.id
+    )
+    if (wantActive && anotherActiveExists) {
+      const ok = window.confirm(
+        "Başka bir aktif öğretim yılı var. Bu kaydı aktif yaparsanız önceki aktif yıl kapatılır; " +
+          "tüm sınıf listeleri temizlenir ve öğrenciler bir üst sınıfa alınır (8. ve 12. sınıflar mezun olur). Devam edilsin mi?"
+      )
+      if (!ok) return
     }
 
-    const termV = validateAcademicYearTermDates({
-      yearStart: yearFormData.startDate,
-      yearEnd: yearFormData.endDate,
-      term1Start: yearFormData.term1Start,
-      term1End: yearFormData.term1End,
-      term2Start: yearFormData.term2Start,
-      term2End: yearFormData.term2End,
-    })
-    if (!termV.ok) {
-      error(termV.error)
-      return
-    }
-    
     setSubmitting(true)
 
     try {
@@ -280,13 +322,22 @@ export default function YonetimPage() {
         : "/api/neredeyiz/academic-years"
       const method = editingYear ? "PUT" : "POST"
 
+      const payload = {
+        name: yearFormData.name.trim(),
+        isActive: yearFormData.isActive,
+        startDate: yearFormData.startDate || null,
+        endDate: yearFormData.endDate || null,
+        term1Start: yearFormData.term1Start || null,
+        term1End: yearFormData.term1End || null,
+        term2Start: yearFormData.term2Start || null,
+        term2End: yearFormData.term2End || null,
+        weekendDays: yearFormData.weekendDays,
+      }
+
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...yearFormData,
-          name: yearFormData.name.trim(),
-        }),
+        body: JSON.stringify(payload),
       })
 
       if (response.ok) {
@@ -373,56 +424,91 @@ export default function YonetimPage() {
     
     // Eğer akademik yıl henüz kaydedilmemişse, önce kaydet
     if (!academicYearId) {
-      // Akademik yıl form validasyonu
       if (!yearFormData.name.trim()) {
         error("Önce akademik yıl adını girin!")
         return
       }
-      if (!yearFormData.startDate || !yearFormData.endDate) {
-        error("Önce akademik yıl tarihlerini girin!")
+      const anyCal =
+        !!(
+          yearFormData.startDate ||
+          yearFormData.endDate ||
+          yearFormData.term1Start ||
+          yearFormData.term1End ||
+          yearFormData.term2Start ||
+          yearFormData.term2End
+        )
+      if (yearFormData.isActive) {
+        if (!yearFormData.startDate || !yearFormData.endDate) {
+          error("Tatil eklemeden önce aktif yıl için başlangıç/bitiş tarihlerini girin!")
+          return
+        }
+        if (
+          !yearFormData.term1Start ||
+          !yearFormData.term1End ||
+          !yearFormData.term2Start ||
+          !yearFormData.term2End
+        ) {
+          error("Tatil eklemeden önce dönem tarihlerini girin!")
+          return
+        }
+        if (yearFormData.weekendDays.length < 1) {
+          error("Aktif yıl için en az bir hafta tatili günü seçin.")
+          return
+        }
+      } else if (anyCal) {
+        if (
+          !yearFormData.startDate ||
+          !yearFormData.endDate ||
+          !yearFormData.term1Start ||
+          !yearFormData.term1End ||
+          !yearFormData.term2Start ||
+          !yearFormData.term2End
+        ) {
+          error("Takvimi tam doldurun veya yalnızca yıl adıyla kaydedin; tatil için tam takvim gerekir.")
+          return
+        }
+      } else {
+        error("Önce akademik yılı kaydedin (yıl adı yeterli). Tatiller için takvimin de dolu olması gerekir.")
         return
       }
 
-      const yStart = new Date(yearFormData.startDate)
-      const yEnd = new Date(yearFormData.endDate)
-      if (yStart >= yEnd) {
-        error("Bitiş tarihi başlangıç tarihinden sonra olmalıdır!")
-        return
-      }
-
-      if (
-        !yearFormData.term1Start ||
-        !yearFormData.term1End ||
-        !yearFormData.term2Start ||
-        !yearFormData.term2End
-      ) {
-        error("Önce 1. ve 2. dönem tarihlerini girin!")
-        return
-      }
-
-      const termV0 = validateAcademicYearTermDates({
-        yearStart: yearFormData.startDate,
-        yearEnd: yearFormData.endDate,
-        term1Start: yearFormData.term1Start,
-        term1End: yearFormData.term1End,
-        term2Start: yearFormData.term2Start,
-        term2End: yearFormData.term2End,
-      })
-      if (!termV0.ok) {
-        error(termV0.error)
-        return
+      if (anyCal || yearFormData.isActive) {
+        const yStart = new Date(yearFormData.startDate!)
+        const yEnd = new Date(yearFormData.endDate!)
+        if (yStart >= yEnd) {
+          error("Bitiş tarihi başlangıç tarihinden sonra olmalıdır!")
+          return
+        }
+        const termV0 = validateAcademicYearTermDates({
+          yearStart: yearFormData.startDate!,
+          yearEnd: yearFormData.endDate!,
+          term1Start: yearFormData.term1Start!,
+          term1End: yearFormData.term1End!,
+          term2Start: yearFormData.term2Start!,
+          term2End: yearFormData.term2End!,
+        })
+        if (!termV0.ok) {
+          error(termV0.error)
+          return
+        }
       }
 
       setSavingHolidayId(`holiday-${index}`)
       
       try {
-        // Önce akademik yılı kaydet
         const yearResponse = await fetch("/api/neredeyiz/academic-years", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            ...yearFormData,
             name: yearFormData.name.trim(),
+            isActive: yearFormData.isActive,
+            startDate: yearFormData.startDate || null,
+            endDate: yearFormData.endDate || null,
+            term1Start: yearFormData.term1Start || null,
+            term1End: yearFormData.term1End || null,
+            term2Start: yearFormData.term2Start || null,
+            term2End: yearFormData.term2End || null,
+            weekendDays: yearFormData.weekendDays,
           }),
         })
 
@@ -732,10 +818,18 @@ export default function YonetimPage() {
                         )}
                       </div>
                       <div className="text-xs sm:text-sm text-gray-600">
-                        {new Date(year.startDate).toLocaleDateString("tr-TR")} -{" "}
-                        {new Date(year.endDate).toLocaleDateString("tr-TR")}
+                        {year.startDate && year.endDate ? (
+                          <>
+                            {new Date(year.startDate).toLocaleDateString("tr-TR")} -{" "}
+                            {new Date(year.endDate).toLocaleDateString("tr-TR")}
+                          </>
+                        ) : (
+                          <span className="text-amber-800/90">Takvim henüz tanımlanmadı (yalnızca ad)</span>
+                        )}
                       </div>
-                      {year.term1Start &&
+                      {year.startDate &&
+                        year.endDate &&
+                        year.term1Start &&
                         year.term1End &&
                         year.term2Start &&
                         year.term2End && (
@@ -765,8 +859,8 @@ export default function YonetimPage() {
                           setYearFormData({
                             ...INITIAL_YEAR_FORM,
                             name: year.name,
-                            startDate: year.startDate.split("T")[0] ?? "",
-                            endDate: year.endDate.split("T")[0] ?? "",
+                            startDate: year.startDate?.split("T")[0] ?? "",
+                            endDate: year.endDate?.split("T")[0] ?? "",
                             term1Start: year.term1Start?.split("T")[0] ?? "",
                             term1End: year.term1End?.split("T")[0] ?? "",
                             term2Start: year.term2Start?.split("T")[0] ?? "",
@@ -1010,9 +1104,11 @@ export default function YonetimPage() {
             </CardHeader>
             <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
               <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
-                Yalnızca içinde bulunduğunuz öğretim yılını tanımlayın. Kayıt yenileme hedef etiketi, aktif yılın adı
-                veya başlangıç tarihinden türetilir (ayrı bir «sonraki yıl» satırı gerekmez). Dönem tarihleri
-                girildiğinde bugünün tarihine göre dönem özeti aşağıda gösterilir.
+                Gelecek yılı henüz takvimi belli olmadan kaydetmek için yalnızca adı girip «Aktif» kutusunu işaretlemeyin.
+                Bu yılı aktif yıl yaptığınızda başlangıç/bitiş, dönemler ve en az bir hafta tatili günü zorunludur.
+                Başka bir aktif yıl varken yeni yılı aktif yaparsanız sınıf atamaları silinir, öğrenciler bir üst sınıfa
+                geçer; 8. ve 12. sınıflar mezun olur. Kayıt yenileme etiketi aktif yılın adı veya başlangıç tarihinden
+                türetilir.
               </p>
               <form onSubmit={handleYearSubmit} className="space-y-3 sm:space-y-4">
                 <div>
@@ -1033,7 +1129,7 @@ export default function YonetimPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <Label htmlFor="startDate" className="text-xs sm:text-sm">
-                      Başlangıç Tarihi *
+                      Başlangıç Tarihi{yearFormData.isActive ? " *" : ""}
                     </Label>
                     <Input
                       id="startDate"
@@ -1042,13 +1138,13 @@ export default function YonetimPage() {
                       onChange={(e) =>
                         setYearFormData({ ...yearFormData, startDate: e.target.value })
                       }
-                      required
+                      required={yearFormData.isActive}
                       className="h-9 sm:h-10 text-xs sm:text-sm"
                     />
                   </div>
                   <div>
                     <Label htmlFor="endDate" className="text-xs sm:text-sm">
-                      Bitiş Tarihi *
+                      Bitiş Tarihi{yearFormData.isActive ? " *" : ""}
                     </Label>
                     <Input
                       id="endDate"
@@ -1057,64 +1153,75 @@ export default function YonetimPage() {
                       onChange={(e) =>
                         setYearFormData({ ...yearFormData, endDate: e.target.value })
                       }
-                      required
+                      required={yearFormData.isActive}
                       className="h-9 sm:h-10 text-xs sm:text-sm"
                     />
                   </div>
                 </div>
 
                 <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-3 space-y-3">
-                  <p className="text-xs font-semibold text-blue-900">1. ve 2. dönem *</p>
+                  <p className="text-xs font-semibold text-blue-900">
+                    1. ve 2. dönem{yearFormData.isActive ? " *" : ""}
+                  </p>
                   <p className="text-[11px] text-blue-900/80 leading-snug">
                     1. dönem bitişi ile 2. dönem başlangıcı arasında yarıyıl için boşluk bırakın. Tüm dönem
                     tarihleri öğretim yılı başlangıç/bitişi içinde kalmalıdır.
+                    {!yearFormData.isActive ? " Taslak yılda boş bırakabilir veya tamamını doldurun (kısmen doldurmayın)." : ""}
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <Label className="text-xs sm:text-sm">1. dönem başlangıcı *</Label>
+                      <Label className="text-xs sm:text-sm">
+                        1. dönem başlangıcı{yearFormData.isActive ? " *" : ""}
+                      </Label>
                       <Input
                         type="date"
                         value={yearFormData.term1Start}
                         onChange={(e) =>
                           setYearFormData({ ...yearFormData, term1Start: e.target.value })
                         }
-                        required
+                        required={yearFormData.isActive}
                         className="h-9 sm:h-10 text-xs sm:text-sm mt-1"
                       />
                     </div>
                     <div>
-                      <Label className="text-xs sm:text-sm">1. dönem bitişi *</Label>
+                      <Label className="text-xs sm:text-sm">
+                        1. dönem bitişi{yearFormData.isActive ? " *" : ""}
+                      </Label>
                       <Input
                         type="date"
                         value={yearFormData.term1End}
                         onChange={(e) =>
                           setYearFormData({ ...yearFormData, term1End: e.target.value })
                         }
-                        required
+                        required={yearFormData.isActive}
                         className="h-9 sm:h-10 text-xs sm:text-sm mt-1"
                       />
                     </div>
                     <div>
-                      <Label className="text-xs sm:text-sm">2. dönem başlangıcı *</Label>
+                      <Label className="text-xs sm:text-sm">
+                        2. dönem başlangıcı{yearFormData.isActive ? " *" : ""}
+                      </Label>
                       <Input
                         type="date"
                         value={yearFormData.term2Start}
                         onChange={(e) =>
                           setYearFormData({ ...yearFormData, term2Start: e.target.value })
                         }
-                        required
+                        required={yearFormData.isActive}
                         className="h-9 sm:h-10 text-xs sm:text-sm mt-1"
                       />
                     </div>
                     <div>
-                      <Label className="text-xs sm:text-sm">2. dönem bitişi *</Label>
+                      <Label className="text-xs sm:text-sm">
+                        2. dönem bitişi{yearFormData.isActive ? " *" : ""}
+                      </Label>
                       <Input
                         type="date"
                         value={yearFormData.term2End}
                         onChange={(e) =>
                           setYearFormData({ ...yearFormData, term2End: e.target.value })
                         }
-                        required
+                        required={yearFormData.isActive}
                         className="h-9 sm:h-10 text-xs sm:text-sm mt-1"
                       />
                     </div>
@@ -1188,10 +1295,11 @@ export default function YonetimPage() {
                 {/* Hafta Tatili Ayarları */}
                 <div className="pt-4 border-t border-gray-200">
                   <Label className="text-sm sm:text-base font-semibold text-gray-900 mb-3 block">
-                    🗓️ Hafta Tatili Günleri
+                    🗓️ Hafta Tatili Günleri{yearFormData.isActive ? " *" : ""}
                   </Label>
                   <p className="text-xs text-gray-500 mb-3">
                     Okulunuzda hafta tatili olan günleri seçin. Bu günler planlamadan otomatik olarak çıkarılacaktır.
+                    {yearFormData.isActive ? " Aktif yıl için en az bir gün seçilmelidir." : ""}
                   </p>
                   <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                     <div className="flex items-center gap-2">
@@ -1247,6 +1355,10 @@ export default function YonetimPage() {
 
                 {/* Resmi Tatiller Bölümü */}
                 <div className="pt-4 border-t border-gray-200">
+                  <p className="text-[11px] text-gray-500 mb-2">
+                    Resmi tatiller için önce takvimin tamamlanmış olması gerekir (taslak yılda yalnızca ad kaydedip
+                    sonra düzenleyerek takvimi ekleyin).
+                  </p>
                   <div className="flex items-center justify-between mb-3">
                     <Label className="text-sm sm:text-base font-semibold text-gray-900">
                       Resmi Tatiller

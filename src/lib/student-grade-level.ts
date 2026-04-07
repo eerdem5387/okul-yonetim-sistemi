@@ -22,6 +22,16 @@ export function k12GradeWhereClause(): Record<string, unknown> {
   return { OR: orParts }
 }
 
+/** Mezun listesi (sınıf alanında «Mezun» veya içinde mezun geçen etiketler). */
+export function graduatesWhereClause(): Record<string, unknown> {
+  return {
+    OR: [
+      { grade: { equals: "Mezun", mode: "insensitive" as const } },
+      { grade: { contains: "mezun", mode: "insensitive" as const } },
+    ],
+  }
+}
+
 /**
  * Kayıt yenilemede sözleşmedeki hedef sınıf: mevcut düzeyin bir üstü.
  * 12. sınıfta üst düzey olmadığı için hedef yine 12. sınıftır.

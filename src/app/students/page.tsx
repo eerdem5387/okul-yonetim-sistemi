@@ -99,6 +99,7 @@ export default function StudentsPage() {
   const [totalStudents, setTotalStudents] = useState(0)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedGrade, setSelectedGrade] = useState("")
+  const [showGraduatesView, setShowGraduatesView] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [editingStudent, setEditingStudent] = useState<Student | null>(null)
   const [confirmPromote, setConfirmPromote] = useState(false)
@@ -155,7 +156,17 @@ export default function StudentsPage() {
     studentTuitionFee: ""
   })
 
-  const gradeOptions = ["5. Sınıf", "6. Sınıf", "7. Sınıf", "8. Sınıf", "9. Sınıf", "10. Sınıf", "11. Sınıf", "12. Sınıf"]
+  const gradeOptions = [
+    "5. Sınıf",
+    "6. Sınıf",
+    "7. Sınıf",
+    "8. Sınıf",
+    "9. Sınıf",
+    "10. Sınıf",
+    "11. Sınıf",
+    "12. Sınıf",
+    "Mezun",
+  ]
 
   // Kullanıcı rolünü kontrol et
   useEffect(() => {
@@ -227,7 +238,8 @@ export default function StudentsPage() {
     }
   }, [])
 
-  const fetchStudents = useCallback(async (page: number = 1, search: string = "", grade: string = "") => {
+  const fetchStudents = useCallback(
+    async (page: number = 1, search: string = "", grade: string = "", graduates: boolean = false) => {
     try {
       const params = new URLSearchParams({
         page: page.toString(),
@@ -237,7 +249,9 @@ export default function StudentsPage() {
       if (search.trim()) {
         params.append("search", search.trim())
       }
-      if (grade.trim()) {
+      if (graduates) {
+        params.set("graduates", "1")
+      } else if (grade.trim()) {
         params.append("grade", grade.trim())
       }
 
@@ -263,7 +277,9 @@ export default function StudentsPage() {
       setTotalPages(1)
       setTotalStudents(0)
     }
-  }, [])
+  },
+  []
+)
 
   useEffect(() => {
     fetchOverview()
@@ -272,15 +288,15 @@ export default function StudentsPage() {
   // Arama, sınıf veya kayıt filtresi değiştiğinde ilk sayfaya dön
   useEffect(() => {
     setCurrentPage(1)
-    fetchStudents(1, searchTerm, selectedGrade)
-  }, [searchTerm, selectedGrade, fetchStudents])
+    fetchStudents(1, searchTerm, selectedGrade, showGraduatesView)
+  }, [searchTerm, selectedGrade, showGraduatesView, fetchStudents])
 
   // Sayfa değiştiğinde
   useEffect(() => {
     if (currentPage > 0) {
-      fetchStudents(currentPage, searchTerm, selectedGrade)
+      fetchStudents(currentPage, searchTerm, selectedGrade, showGraduatesView)
     }
-  }, [currentPage, fetchStudents, searchTerm, selectedGrade])
+  }, [currentPage, fetchStudents, searchTerm, selectedGrade, showGraduatesView])
 
   const openClassModal = async (classId: string, className: string) => {
     setClassModal({ id: classId, name: className })
@@ -316,7 +332,7 @@ export default function StudentsPage() {
       })
 
       if (response.ok) {
-        fetchStudents()
+        fetchStudents(1, searchTerm, selectedGrade, showGraduatesView)
         fetchOverview()
         setShowForm(false)
         setEditingStudent(null)
@@ -342,7 +358,7 @@ export default function StudentsPage() {
         })
         alert(editingStudent ? "Öğrenci başarıyla güncellendi!" : "Öğrenci başarıyla eklendi!")
         // Listeyi yenile
-        fetchStudents(currentPage, searchTerm, selectedGrade)
+        fetchStudents(currentPage, searchTerm, selectedGrade, showGraduatesView)
       } else {
         alert(editingStudent ? "Öğrenci güncellenirken hata oluştu!" : "Öğrenci eklenirken hata oluştu!")
       }
@@ -396,7 +412,7 @@ export default function StudentsPage() {
         })
 
         if (response.ok) {
-          fetchStudents(currentPage, searchTerm, selectedGrade)
+          fetchStudents(currentPage, searchTerm, selectedGrade, showGraduatesView)
           fetchOverview()
           alert("Öğrenci başarıyla silindi!")
         } else {
@@ -417,7 +433,7 @@ export default function StudentsPage() {
       if (response.ok) {
         const data = await response.json()
         alert(data.message || "Öğrenciler başarıyla yükseltildi!")
-        fetchStudents(currentPage, searchTerm, selectedGrade)
+        fetchStudents(currentPage, searchTerm, selectedGrade, showGraduatesView)
         fetchOverview()
       } else {
         const errorData = await response.json()
@@ -891,7 +907,8 @@ export default function StudentsPage() {
             <select
               value={selectedGrade}
               onChange={(e) => setSelectedGrade(e.target.value)}
-              className="w-full sm:w-auto h-9 sm:h-10 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              disabled={showGraduatesView}
+              className="w-full sm:w-auto h-9 sm:h-10 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
             >
               <option value="">Tüm Sınıflar</option>
               {gradeOptions.map((grade) => (
@@ -903,24 +920,43 @@ export default function StudentsPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-        {confirmPromote ? (
-          <>
-            <Button type="button" variant="destructive" size="sm" onClick={handlePromoteAll} className="flex-1 sm:flex-initial text-xs sm:text-sm">
+        <Button
+          type="button"
+          variant={showGraduatesView ? "default" : "outline"}
+          size="sm"
+          onClick={() => {
+            setShowGraduatesView((v) => {
+              const next = !v
+              if (next) setSelectedGrade("")
+              else setConfirmPromote(false)
+              return next
+            })
+          }}
+          className="flex-1 sm:flex-initial text-xs sm:text-sm"
+        >
+          <GraduationCap className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+          <span className="hidden sm:inline">{showGraduatesView ? "Aktif öğrenciler" : "Mezunlar"}</span>
+          <span className="sm:hidden">{showGraduatesView ? "Liste" : "Mezun"}</span>
+        </Button>
+        {!showGraduatesView &&
+          (confirmPromote ? (
+            <>
+              <Button type="button" variant="destructive" size="sm" onClick={handlePromoteAll} className="flex-1 sm:flex-initial text-xs sm:text-sm">
+                <ArrowUp className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Eminim, Yükselt</span>
+                <span className="sm:hidden">Yükselt</span>
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => setConfirmPromote(false)} className="flex-1 sm:flex-initial text-xs sm:text-sm">
+                İptal
+              </Button>
+            </>
+          ) : (
+            <Button type="button" variant="outline" size="sm" onClick={() => setConfirmPromote(true)} className="flex-1 sm:flex-initial text-xs sm:text-sm">
               <ArrowUp className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">Eminim, Yükselt</span>
+              <span className="hidden sm:inline">Sınıf Yükselt</span>
               <span className="sm:hidden">Yükselt</span>
             </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => setConfirmPromote(false)} className="flex-1 sm:flex-initial text-xs sm:text-sm">
-              İptal
-            </Button>
-          </>
-        ) : (
-          <Button type="button" variant="outline" size="sm" onClick={() => setConfirmPromote(true)} className="flex-1 sm:flex-initial text-xs sm:text-sm">
-            <ArrowUp className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-            <span className="hidden sm:inline">Sınıf Yükselt</span>
-            <span className="sm:hidden">Yükselt</span>
-          </Button>
-        )}
+          ))}
         <Button type="button" variant="outline" size="sm" onClick={async () => {
           try {
             const res = await fetch('/api/students/export')
@@ -949,6 +985,13 @@ export default function StudentsPage() {
         </Button>
         </div>
       </div>
+
+      {showGraduatesView && (
+        <div className="mb-3 rounded-lg border border-violet-200 bg-violet-50/80 px-3 py-2 text-xs text-violet-950">
+          Mezun listesi: 8. ve 12. sınıf sonrası «Mezun» olarak işaretlenen öğrenciler. Ana listeye dönmek için
+          «Aktif öğrenciler»e tıklayın.
+        </div>
+      )}
 
       {/* Modal Overlay */}
       {showForm && (
@@ -1067,7 +1110,9 @@ export default function StudentsPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="grade" className="text-xs sm:text-sm">Sınıfı * "Öğrencinin Aktif Olarak Eğitim Gördüğü Sınıf"</Label>
+                  <Label htmlFor="grade" className="text-xs sm:text-sm">
+                    Sınıfı * &quot;Öğrencinin Aktif Olarak Eğitim Gördüğü Sınıf&quot;
+                  </Label>
                   <select
                     id="grade"
                     value={formData.grade}
