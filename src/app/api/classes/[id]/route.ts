@@ -217,14 +217,6 @@ export async function DELETE(
     // Sınıf kontrolü
     const existingClass = await prisma.class.findUnique({
       where: { id },
-      include: {
-        _count: {
-          select: {
-            students: true,
-            schedules: true,
-          },
-        },
-      },
     })
 
     if (!existingClass) {
@@ -234,21 +226,10 @@ export async function DELETE(
       )
     }
 
-    // Sınıfa ait öğrenciler ve dersler varsa uyarı ver
-    if (existingClass._count.students > 0 || existingClass._count.schedules > 0) {
-      return NextResponse.json(
-        {
-          error: "Bu sınıfa kayıtlı öğrenciler veya ders programı bulunmaktadır. Önce bunları silmeniz gerekmektedir.",
-          studentCount: existingClass._count.students,
-          scheduleCount: existingClass._count.schedules,
-        },
-        { status: 400 }
-      )
-    }
-
-    // Sınıfı sil (CASCADE ile ilişkili kayıtlar da silinir)
-    await prisma.class.delete({
-      where: { id },
+    // classId ile bağlı onay kayıtları (FK yok); sınıf silmeden temizlenmeli
+    await prisma.$transaction(async (tx) => {
+      await tx.scheduleApproval.deleteMany({ where: { classId: id } })
+      await tx.class.delete({ where: { id } })
     })
 
     return NextResponse.json({

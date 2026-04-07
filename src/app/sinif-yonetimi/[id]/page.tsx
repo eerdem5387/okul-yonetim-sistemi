@@ -120,6 +120,7 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
   const [actionLoading, setActionLoading] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [studentSearch, setStudentSearch] = useState("");
+  const [studentsPickerLoading, setStudentsPickerLoading] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null); // Kullanıcı rolü
   const [staffId, setStaffId] = useState<string | null>(null); // Rehberlik için
 
@@ -127,17 +128,50 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
     // Kullanıcı rol kontrolü
     if (typeof window !== "undefined") {
       const role = localStorage.getItem("auth_role");
-      const id = localStorage.getItem("staff_id");
+      const sid = localStorage.getItem("staff_id");
       setUserRole(role);
-      setStaffId(id);
+      setStaffId(sid);
       
-      // ✅ Rol ve ID hazır olduktan sonra verileri çek
-      fetchClassData(role, id);
-      fetchStudents();
+      fetchClassData(role, sid);
       fetchTeachers();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  /** Öğrenci ekle modalı: API sayfalaması (varsayılan limit=10) yüzünden tüm okul yerine arama/sunucu tarafı kullanılmalı */
+  useEffect(() => {
+    if (!showAddStudentModal) return;
+
+    const ac = new AbortController();
+    const q = studentSearch.trim();
+    const delayMs = q.length > 0 ? 320 : 0;
+
+    const timer = setTimeout(async () => {
+      setStudentsPickerLoading(true);
+      try {
+        const params = new URLSearchParams();
+        params.set("limit", q ? "500" : "5000");
+        if (q) params.set("search", q);
+        const res = await fetch(`/api/students?${params.toString()}`, {
+          signal: ac.signal,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setStudents(data.students || []);
+        }
+      } catch (e) {
+        if (e instanceof Error && e.name === "AbortError") return;
+        console.error("Error loading students for picker:", e);
+      } finally {
+        if (!ac.signal.aborted) setStudentsPickerLoading(false);
+      }
+    }, delayMs);
+
+    return () => {
+      clearTimeout(timer);
+      ac.abort();
+    };
+  }, [showAddStudentModal, studentSearch]);
 
   const fetchClassData = async (role: string | null, staffId: string | null) => {
     try {
@@ -161,18 +195,6 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
       console.error("Error fetching class:", error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchStudents = async () => {
-    try {
-      const response = await fetch("/api/students");
-      if (response.ok) {
-        const data = await response.json();
-        setStudents(data.students || []);
-      }
-    } catch (error) {
-      console.error("Error fetching students:", error);
     }
   };
 
@@ -209,6 +231,33 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
     } catch (error) {
       console.error("Error adding student:", error);
       alert("Öğrenci eklenirken bir hata oluştu.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteClass = async () => {
+    if (
+      !confirm(
+        "Bu sınıfı kalıcı olarak silmek istediğinize emin misiniz?\n\n" +
+          "Sınıftaki öğrenci atamaları, ders programı ve bu sınıfa bağlı ödev/yoklama kayıtları silinir. " +
+          "Öğrenci kartları silinmez."
+      )
+    ) {
+      return;
+    }
+    setActionLoading(true);
+    try {
+      const response = await fetch(`/api/classes/${id}`, { method: "DELETE" });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok) {
+        router.push("/sinif-yonetimi");
+        return;
+      }
+      alert(data.error || "Sınıf silinirken bir hata oluştu.");
+    } catch (error) {
+      console.error("Error deleting class:", error);
+      alert("Sınıf silinirken bir hata oluştu.");
     } finally {
       setActionLoading(false);
     }
@@ -362,20 +411,9 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  // Filter available students (not already in this class)
+  // Bu sınıfta olmayan öğrenciler (liste API’den gelir; arama boşken limit=5000, doluyken sunucu araması)
   const assignedStudentIds = new Set(classData.students?.map((s) => s.student.id) || []);
   const availableStudents = students.filter((s) => !assignedStudentIds.has(s.id));
-
-  // Filter students by search term
-  const filteredStudents = availableStudents.filter((student) => {
-    const searchLower = studentSearch.toLowerCase();
-    return (
-      student.firstName.toLowerCase().includes(searchLower) ||
-      student.lastName.toLowerCase().includes(searchLower) ||
-      student.tcNumber.includes(studentSearch) ||
-      `${student.firstName} ${student.lastName}`.toLowerCase().includes(searchLower)
-    );
-  });
 
   return (
     <div className="container mx-auto p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
@@ -384,13 +422,28 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
         Geri Dön
       </Button>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{classData.name}</h1>
           <p className="text-sm text-gray-600 mt-1">
             {classData.academicYear.name} | {classData.grade}. Sınıf
           </p>
         </div>
+        {(userRole === "admin" ||
+          userRole === "principal" ||
+          userRole === "student_affairs") && (
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            disabled={actionLoading}
+            onClick={handleDeleteClass}
+            className="shrink-0"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Sınıfı sil
+          </Button>
+        )}
       </div>
 
       {/* Stats */}
@@ -604,9 +657,14 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
             <div className="space-y-2">
               <Label htmlFor="student-select">Öğrenci Seçin</Label>
               <div className="max-h-64 overflow-y-auto border border-gray-300 rounded-lg">
-                {filteredStudents.length === 0 ? (
+                {studentsPickerLoading ? (
+                  <div className="p-8 flex flex-col items-center justify-center text-gray-500 gap-2">
+                    <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                    <p className="text-sm">Öğrenciler yükleniyor…</p>
+                  </div>
+                ) : availableStudents.length === 0 ? (
                   <div className="p-8 text-center text-gray-500">
-                    {studentSearch ? (
+                    {studentSearch.trim() ? (
                       <>
                         <Users className="h-12 w-12 text-gray-300 mx-auto mb-2" />
                         <p className="text-sm">Arama sonucu bulunamadı</p>
@@ -620,7 +678,7 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
                   </div>
                 ) : (
                   <div className="divide-y">
-                    {filteredStudents.map((student) => (
+                    {availableStudents.map((student) => (
                       <div
                         key={student.id}
                         className={`p-3 cursor-pointer hover:bg-blue-50 transition-colors ${
