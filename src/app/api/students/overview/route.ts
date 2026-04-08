@@ -101,6 +101,9 @@ export async function GET() {
     const newRegInScope = enrolledStudents.filter((s) =>
       newRegistrationActiveYearStudentIds.has(s.id)
     ).length
+    const newRegNextYearOnly = allStudents.filter((s) =>
+      futureYearOnlyNewRegistrationStudentIds.has(s.id)
+    ).length
     const renewedOnlyInScope = enrolledStudents.filter(
       (s) => renewedStudentIds.has(s.id) && !newRegistrationStudentIds.has(s.id)
     ).length
@@ -203,7 +206,14 @@ export async function GET() {
 
     return NextResponse.json({
       activeAcademicYear: activeYear
-        ? { id: activeYear.id, name: activeYear.name }
+        ? {
+            id: activeYear.id,
+            name: activeYear.name,
+            label: contractYearLabelFromAcademicYear({
+              name: activeYear.name,
+              startDate: activeYear.startDate,
+            }),
+          }
         : null,
       renewalTargetYear: target,
       preEnrollmentCount,
@@ -215,7 +225,9 @@ export async function GET() {
       byGradeClasses,
       registrationCounts: {
         renewed: renewedOnlyInScope,
-        newRegistration: newRegInScope,
+        newRegistration: newRegInScope + newRegNextYearOnly,
+        newRegistrationActiveYear: newRegInScope,
+        newRegistrationNextYear: newRegNextYearOnly,
         notRenewed: notRenewedCount,
       },
       renewalFractionByGrade,

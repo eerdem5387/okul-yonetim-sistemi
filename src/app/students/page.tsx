@@ -67,7 +67,7 @@ interface OverviewClassRow {
 }
 
 interface StudentsOverview {
-  activeAcademicYear: { id: string; name: string } | null
+  activeAcademicYear: { id: string; name: string; label: string } | null
   renewalTargetYear: { id: string | null; name: string; label: string } | null
   preEnrollmentCount: number
   preEnrollmentTargetYear: { id: string; name: string; label: string } | null
@@ -79,6 +79,8 @@ interface StudentsOverview {
   registrationCounts: {
     renewed: number
     newRegistration: number
+    newRegistrationActiveYear: number
+    newRegistrationNextYear: number
     notRenewed: number
   }
   renewalFractionByGrade: Record<
@@ -820,18 +822,41 @@ export default function StudentsPage() {
               </button>
               <button
                 type="button"
-                onClick={() => router.push("/new-registrations/list")}
-                className="rounded-xl border border-gray-200 bg-white p-3 sm:p-4 text-left transition-all hover:shadow-md"
+                onClick={() => openRegistrationBrowseModal("new_registration")}
+                className={cn(
+                  "rounded-xl border p-3 sm:p-4 text-left transition-all hover:shadow-md",
+                  regBrowseModal === "new_registration"
+                    ? "border-emerald-400 bg-emerald-50/80 ring-2 ring-emerald-300"
+                    : "border-gray-200 bg-white"
+                )}
               >
                 <div className="flex items-center gap-2 text-emerald-800 text-xs font-semibold">
                   <UserPlus className="h-4 w-4" />
                   Yeni kayıt
                 </div>
-                <p className="mt-1 text-xl font-bold text-gray-900">
-                  {overview.registrationCounts.newRegistration}
-                </p>
-                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
-                  Yeni kayıt listesine gitmek için tıklayın
+                <div className="mt-2 space-y-1.5">
+                  <div className="flex items-baseline justify-between gap-2 text-sm">
+                    <span className="text-gray-600 truncate" title={overview.activeAcademicYear?.name}>
+                      {overview.activeAcademicYear?.label ?? "Aktif yıl"}
+                    </span>
+                    <span className="text-lg font-bold tabular-nums text-gray-900 shrink-0">
+                      {overview.registrationCounts.newRegistrationActiveYear ?? 0}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-2 text-sm">
+                    <span
+                      className="text-gray-600 truncate"
+                      title={overview.preEnrollmentTargetYear?.name}
+                    >
+                      {overview.preEnrollmentTargetYear?.label ?? "Sonraki yıl"}
+                    </span>
+                    <span className="text-lg font-bold tabular-nums text-gray-900 shrink-0">
+                      {overview.registrationCounts.newRegistrationNextYear ?? 0}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-2 pt-1 border-t border-emerald-100/80">
+                  Her iki yıla ait yeni kayıtlı öğrencileri görmek için tıklayın
                 </p>
               </button>
               <button
