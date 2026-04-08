@@ -903,7 +903,7 @@ export default function StudentsPage() {
                           {rf != null ? (
                             <span className="font-normal text-sky-800/90">
                               {" "}
-                              · yenileme {rf.renewed}/{rf.total} %{rf.percent}
+                              · kayıt yenileme {rf.renewed}/{rf.total} %{rf.percent}
                             </span>
                           ) : null}
                         </span>
