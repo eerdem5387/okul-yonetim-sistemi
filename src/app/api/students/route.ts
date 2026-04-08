@@ -12,6 +12,11 @@ export async function GET(request: NextRequest) {
         const grade = searchParams.get('grade') || ''
         const gradeBand = searchParams.get('gradeBand') || ''
         const registrationFilter = searchParams.get('registrationFilter') || ''
+        const newRegistrationYearScopeRaw = (searchParams.get('newRegistrationYearScope') || 'all').toLowerCase()
+        const newRegistrationYearScope =
+            newRegistrationYearScopeRaw === 'active' || newRegistrationYearScopeRaw === 'next'
+                ? newRegistrationYearScopeRaw
+                : 'all'
         const registrationMeta = searchParams.get('registrationMeta') === '1' || searchParams.get('registrationMeta') === 'true'
         const graduates = searchParams.get('graduates') === '1' || searchParams.get('graduates') === 'true'
 
@@ -59,12 +64,20 @@ export async function GET(request: NextRequest) {
             )
             whereConditions.push({ id: { in: ids.length > 0 ? ids : [noMatchId] } })
         } else if (registrationFilter === 'new_registration') {
-            const ids = [
-                ...regCtx.newRegistrationActiveYearStudentIds,
-                ...regCtx.futureYearOnlyNewRegistrationStudentIds,
-            ]
-            const unique = [...new Set(ids)]
-            whereConditions.push({ id: { in: unique.length > 0 ? unique : [noMatchId] } })
+            let ids: string[]
+            if (newRegistrationYearScope === 'active') {
+                ids = [...regCtx.newRegistrationActiveYearStudentIds]
+            } else if (newRegistrationYearScope === 'next') {
+                ids = [...regCtx.futureYearOnlyNewRegistrationStudentIds]
+            } else {
+                ids = [
+                    ...new Set([
+                        ...regCtx.newRegistrationActiveYearStudentIds,
+                        ...regCtx.futureYearOnlyNewRegistrationStudentIds,
+                    ]),
+                ]
+            }
+            whereConditions.push({ id: { in: ids.length > 0 ? ids : [noMatchId] } })
         } else if (registrationFilter === 'not_renewed') {
             const excluded = [...new Set([...regCtx.renewedStudentIds, ...regCtx.newRegistrationStudentIds])]
             if (excluded.length > 0) {
