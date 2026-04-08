@@ -844,12 +844,6 @@ export default function StudentsPage() {
                   <span className="text-gray-300 hidden lg:inline" aria-hidden>
                     ·
                   </span>
-                  <span className="inline-flex items-baseline gap-1 tabular-nums">
-                    <span className="text-violet-700 font-medium">Ön kayıt</span>
-                    <span className="text-xl sm:text-2xl font-bold text-violet-950">
-                      {overview.preEnrollmentCount ?? 0}
-                    </span>
-                  </span>
                 </div>
                 <p className="mt-auto text-[10px] sm:text-xs text-gray-500 pt-1">
                   Tıklayınca aktif ve sonraki yıla ait tüm yeni kayıtlılar listelenir
