@@ -75,7 +75,7 @@ interface StudentsOverview {
   ortaokulCount: number
   liseCount: number
   byGradeCounts: Record<string, number>
-  byGradeClasses: Array<{ grade: number; classes: OverviewClassRow[] }>
+  byGradeClasses: Array<{ grade: number; classes: OverviewClassRow[]; unassignedCount: number }>
   registrationCounts: {
     renewed: number
     newRegistration: number
@@ -110,6 +110,16 @@ export default function StudentsPage() {
   const [classModal, setClassModal] = useState<{ id: string; name: string } | null>(null)
   const [classModalStudents, setClassModalStudents] = useState<Student[]>([])
   const [classModalLoading, setClassModalLoading] = useState(false)
+
+  const [unassignedModalGrade, setUnassignedModalGrade] = useState<number | null>(null)
+  const [unassignedModalLoading, setUnassignedModalLoading] = useState(false)
+  const [unassignedModalData, setUnassignedModalData] = useState<{
+    students: Student[]
+    classes: Array<{ id: string; name: string; grade: number; section: string }>
+  } | null>(null)
+  const [assignFlowStudentId, setAssignFlowStudentId] = useState<string | null>(null)
+  const [assignSelectedClassId, setAssignSelectedClassId] = useState("")
+  const [assignSaving, setAssignSaving] = useState(false)
 
   const [notRenewedModalOpen, setNotRenewedModalOpen] = useState(false)
   const [notRenewedModalGrade, setNotRenewedModalGrade] = useState("")
@@ -315,6 +325,64 @@ export default function StudentsPage() {
     }
   }
 
+  const loadUnassignedModal = useCallback(async (grade: number) => {
+    setUnassignedModalLoading(true)
+    setUnassignedModalData(null)
+    setAssignFlowStudentId(null)
+    setAssignSelectedClassId("")
+    try {
+      const res = await fetch(`/api/students/unassigned-by-grade?grade=${grade}`)
+      const data = await res.json()
+      if (res.ok) {
+        setUnassignedModalData({
+          students: Array.isArray(data.students) ? data.students : [],
+          classes: Array.isArray(data.classes) ? data.classes : [],
+        })
+        if (typeof data.error === "string" && data.error) {
+          alert(data.error)
+        }
+      } else {
+        setUnassignedModalData({ students: [], classes: [] })
+        alert(data.error || "Liste yüklenemedi")
+      }
+    } catch (e) {
+      console.error(e)
+      setUnassignedModalData({ students: [], classes: [] })
+    } finally {
+      setUnassignedModalLoading(false)
+    }
+  }, [])
+
+  const openUnassignedForGrade = (grade: number) => {
+    setUnassignedModalGrade(grade)
+    void loadUnassignedModal(grade)
+  }
+
+  const handleAssignStudentToClass = async () => {
+    if (!assignSelectedClassId || !assignFlowStudentId || unassignedModalGrade == null) return
+    setAssignSaving(true)
+    try {
+      const res = await fetch(`/api/classes/${assignSelectedClassId}/students`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentIds: [assignFlowStudentId] }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        setAssignFlowStudentId(null)
+        setAssignSelectedClassId("")
+        await fetchOverview()
+        await loadUnassignedModal(unassignedModalGrade)
+      } else {
+        alert(data.error || "Atama başarısız")
+      }
+    } catch (e) {
+      console.error(e)
+      alert("Atama sırasında hata oluştu")
+    } finally {
+      setAssignSaving(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -820,16 +888,17 @@ export default function StudentsPage() {
                 <CardTitle className="text-base">Sınıf düzeyi ve şubeler</CardTitle>
                 <CardDescription className="text-xs sm:text-sm">
                   {overview.activeAcademicYear
-                    ? `Düzey satırındaki sayı, öğrenci kartındaki sınıfa göre (ön kayıtlı hariç). Şube rozetlerinde de yalnızca bu yıl sayılan öğrenciler sayılır; şubeye tıklayarak listeyi açın.`
+                    ? `Düzey satırındaki sayı, öğrenci kartındaki sınıfa göre (ön kayıtlı hariç). Şube rozetlerinde yalnızca bu yıl sayılan öğrenciler sayılır. Şubeye tıklayınca o şubedeki liste açılır; kırmızı «Atanmamış» kutusu, aktif yılda o düzeyde hiç şubeye yazılmamış öğrencileri gösterir.`
                     : "Aktif akademik yıl yok; şube listesi boş. Sınıf yönetiminden yıl ve sınıf oluşturun."}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-2 pb-4">
-                {overview.byGradeClasses.map(({ grade, classes: cls }) => {
+                {overview.byGradeClasses.map(({ grade, classes: cls, unassignedCount: rawUnassigned }) => {
                   const label = gradeLevelLabel(grade)
                   const count = overview.byGradeCounts[label] ?? 0
                   const open = gradeSectionsOpen[grade] ?? false
                   const rf = overview.renewalFractionByGrade?.[label]
+                  const unassignedCount = rawUnassigned ?? 0
                   return (
                     <div key={grade} className="rounded-lg border border-gray-100 bg-gray-50/80">
                       <button
@@ -857,28 +926,42 @@ export default function StudentsPage() {
                       </button>
                       {open && (
                         <div className="border-t border-gray-100 px-3 pb-3 pt-2">
-                          {cls.length === 0 ? (
+                          {!overview.activeAcademicYear ? (
                             <p className="text-xs text-gray-500">
-                              Bu düzeyde aktif yılda şube yok. Sınıf yönetiminden ekleyebilirsiniz.
+                              Aktif akademik yıl yok; şube ve atama özeti kullanılamaz.
                             </p>
                           ) : (
                             <>
-                              <p className="text-[11px] text-gray-500 mb-2">
-                                {cls.length} şube (aktif akademik yıl)
-                              </p>
-                            <div className="flex flex-wrap gap-2">
-                              {cls.map((c) => (
+                              {cls.length === 0 ? (
+                                <p className="text-xs text-gray-500 mb-2">
+                                  Bu düzeyde aktif yılda şube yok. Sınıf yönetiminden ekleyebilirsiniz.
+                                </p>
+                              ) : (
+                                <p className="text-[11px] text-gray-500 mb-2">
+                                  {cls.length} şube (aktif akademik yıl)
+                                </p>
+                              )}
+                              <div className="flex flex-wrap gap-2">
+                                {cls.map((c) => (
+                                  <button
+                                    key={c.id}
+                                    type="button"
+                                    onClick={() => openClassModal(c.id, c.name)}
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-800 hover:border-indigo-300 hover:bg-indigo-50/50 transition-colors"
+                                  >
+                                    <span>{c.name}</span>
+                                    <span className="text-gray-500">— {c.studentCount} öğrenci</span>
+                                  </button>
+                                ))}
                                 <button
-                                  key={c.id}
                                   type="button"
-                                  onClick={() => openClassModal(c.id, c.name)}
-                                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-800 hover:border-indigo-300 hover:bg-indigo-50/50 transition-colors"
+                                  onClick={() => openUnassignedForGrade(grade)}
+                                  className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50/90 px-2.5 py-1.5 text-xs font-medium text-red-900 hover:border-red-300 hover:bg-red-100/90 transition-colors"
                                 >
-                                  <span>{c.name}</span>
-                                  <span className="text-gray-500">— {c.studentCount} öğrenci</span>
+                                  <span>Atanmamış</span>
+                                  <span className="text-red-800/80">— {unassignedCount} öğrenci</span>
                                 </button>
-                              ))}
-                            </div>
+                              </div>
                             </>
                           )}
                         </div>
@@ -1716,6 +1799,127 @@ export default function StudentsPage() {
               ))}
             </ul>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={unassignedModalGrade !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setUnassignedModalGrade(null)
+            setUnassignedModalData(null)
+            setAssignFlowStudentId(null)
+            setAssignSelectedClassId("")
+          }
+        }}
+      >
+        <DialogContent className="flex max-h-[min(90vh,720px)] w-[calc(100vw-1.5rem)] max-w-lg flex-col gap-0 overflow-hidden p-4 sm:p-6">
+          <DialogHeader>
+            <DialogTitle>
+              {unassignedModalGrade != null
+                ? `${gradeLevelLabel(unassignedModalGrade)} — atanmamış öğrenciler`
+                : "Atanmamış öğrenciler"}
+            </DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
+              Aktif yılda bu düzeyde hiçbir şubeye yazılmamış öğrenciler. Atama ile seçilen şubeye eklenir.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto mt-2">
+            {unassignedModalLoading ? (
+              <p className="text-sm text-gray-500 py-6">Yükleniyor…</p>
+            ) : !unassignedModalData ? (
+              <p className="text-sm text-gray-500 py-6">Veri yüklenemedi.</p>
+            ) : unassignedModalData.students.length === 0 ? (
+              <p className="text-sm text-gray-500 py-6">Bu düzeyde atanmamış öğrenci yok.</p>
+            ) : (
+              <ul className="space-y-3 pr-1 pb-2">
+                {unassignedModalData.students.map((s) => (
+                  <li
+                    key={s.id}
+                    className="rounded-lg border border-gray-100 bg-gray-50/60 p-3 text-sm"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {s.firstName} {s.lastName}
+                        </p>
+                        <p className="text-xs text-gray-500">TC: {s.tcNumber}</p>
+                        {s.grade ? (
+                          <p className="text-xs text-gray-500">Kart: {s.grade}</p>
+                        ) : null}
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="shrink-0 text-xs h-8"
+                        onClick={() => {
+                          setAssignFlowStudentId(s.id)
+                          setAssignSelectedClassId("")
+                        }}
+                      >
+                        Atama
+                      </Button>
+                    </div>
+                    {assignFlowStudentId === s.id && (
+                      <div className="mt-3 rounded-md border border-red-100 bg-red-50/40 p-3 space-y-2">
+                        <p className="text-xs font-medium text-red-900">Şube seçin</p>
+                        {unassignedModalData.classes.length === 0 ? (
+                          <p className="text-xs text-gray-600">
+                            Bu düzeyde şube yok. Önce sınıf yönetiminden şube oluşturun.
+                          </p>
+                        ) : (
+                          <>
+                            <div className="flex flex-wrap gap-2">
+                              {unassignedModalData.classes.map((c) => (
+                                <button
+                                  key={c.id}
+                                  type="button"
+                                  onClick={() => setAssignSelectedClassId(c.id)}
+                                  className={cn(
+                                    "rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors",
+                                    assignSelectedClassId === c.id
+                                      ? "border-red-500 bg-red-100 text-red-950 ring-2 ring-red-400"
+                                      : "border-gray-200 bg-white text-gray-800 hover:border-red-200"
+                                  )}
+                                >
+                                  {c.name}
+                                </button>
+                              ))}
+                            </div>
+                            <div className="flex flex-wrap gap-2 pt-1">
+                              <Button
+                                type="button"
+                                size="sm"
+                                className="h-8 text-xs"
+                                disabled={!assignSelectedClassId || assignSaving}
+                                onClick={() => void handleAssignStudentToClass()}
+                              >
+                                {assignSaving ? "Kaydediliyor…" : "Kaydet"}
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 text-xs"
+                                disabled={assignSaving}
+                                onClick={() => {
+                                  setAssignFlowStudentId(null)
+                                  setAssignSelectedClassId("")
+                                }}
+                              >
+                                İptal
+                              </Button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 

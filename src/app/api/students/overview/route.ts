@@ -118,6 +118,8 @@ export async function GET() {
       byGradeMap[g] = []
     }
 
+    let unassignedCountByGrade: Record<number, number> | null = null
+
     if (activeYear) {
       const classes = await prisma.class.findMany({
         where: { academicYearId: activeYear.id },
@@ -140,8 +142,20 @@ export async function GET() {
             })
       const excludePre = futureYearOnlyNewRegistrationStudentIds
       const countByClassId = new Map<string, number>()
+      const classIdToGrade = new Map<string, number>()
+      for (const c of k12) {
+        classIdToGrade.set(c.id, c.grade)
+      }
+      const assignedStudentIdsByGrade: Record<number, Set<string>> = {}
+      for (let g = 5; g <= 12; g++) {
+        assignedStudentIdsByGrade[g] = new Set()
+      }
       for (const a of assignments) {
         if (excludePre.has(a.studentId)) continue
+        const g = classIdToGrade.get(a.classId)
+        if (g != null && g >= 5 && g <= 12) {
+          assignedStudentIdsByGrade[g]!.add(a.studentId)
+        }
         countByClassId.set(a.classId, (countByClassId.get(a.classId) ?? 0) + 1)
       }
       for (const c of classes) {
@@ -153,11 +167,21 @@ export async function GET() {
           studentCount: countByClassId.get(c.id) ?? 0,
         })
       }
+
+      const counts: Record<number, number> = {}
+      for (let g = 5; g <= 12; g++) {
+        counts[g] = enrolledStudents.filter((s) => {
+          const level = parseStudentGradeLevel(s.grade)
+          return level === g && !assignedStudentIdsByGrade[g]!.has(s.id)
+        }).length
+      }
+      unassignedCountByGrade = counts
     }
 
     const byGradeClasses = [5, 6, 7, 8, 9, 10, 11, 12].map((grade) => ({
       grade,
       classes: byGradeMap[grade],
+      unassignedCount: unassignedCountByGrade?.[grade] ?? 0,
     }))
 
     const ayList = yearRows.map((r) => ({
