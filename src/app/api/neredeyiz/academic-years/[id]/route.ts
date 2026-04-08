@@ -159,6 +159,60 @@ export async function PUT(
   }
 }
 
+/** Yalnızca aktif bayrağını kaldırır; takvim ve tatiller korunur (boş PUT gövdesiyle alan silinmez). */
+export async function PATCH(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const params = await context.params
+    const body = (await request.json()) as { action?: string }
+    if (body.action !== "deactivate") {
+      return NextResponse.json({ error: "Geçersiz işlem" }, { status: 400 })
+    }
+
+    const row = await prisma.academicYear.findUnique({ where: { id: params.id } })
+    if (!row) {
+      return NextResponse.json({ error: "Akademik yıl bulunamadı" }, { status: 404 })
+    }
+    if (row.parentActiveYearId) {
+      return NextResponse.json(
+        {
+          error:
+            "Bu kayıt otomatik oluşturulmuş «sonraki yıl» satırıdır; ana akademik yıldan yönetin.",
+        },
+        { status: 400 }
+      )
+    }
+    if (!row.isActive) {
+      return NextResponse.json({ error: "Bu yıl zaten aktif değil." }, { status: 400 })
+    }
+
+    const academicYear = await prisma.academicYear.update({
+      where: { id: params.id },
+      data: { isActive: false },
+    })
+
+    await syncRenewalPlaceholderForPrimaryYear(academicYear.id)
+
+    return NextResponse.json({
+      ...academicYear,
+      startDate: academicYear.startDate?.toISOString() ?? null,
+      endDate: academicYear.endDate?.toISOString() ?? null,
+      term1Start: academicYear.term1Start?.toISOString() ?? null,
+      term1End: academicYear.term1End?.toISOString() ?? null,
+      term2Start: academicYear.term2Start?.toISOString() ?? null,
+      term2End: academicYear.term2End?.toISOString() ?? null,
+    })
+  } catch (error) {
+    console.error("Error deactivating academic year:", error)
+    return NextResponse.json(
+      { error: "Akademik yıl sonlandırılırken hata oluştu" },
+      { status: 500 }
+    )
+  }
+}
+
 // DELETE - Akademik yıl sil
 export async function DELETE(
   request: NextRequest,

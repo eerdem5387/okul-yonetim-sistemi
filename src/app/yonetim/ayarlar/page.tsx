@@ -70,9 +70,21 @@ interface Subject {
   }>
 }
 
+function yearHasStoredCalendar(y: AcademicYear | null): boolean {
+  if (!y) return false
+  return !!(
+    y.startDate ||
+    y.endDate ||
+    y.term1Start ||
+    y.term1End ||
+    y.term2Start ||
+    y.term2End ||
+    (y.weekendDays && y.weekendDays.length > 0)
+  )
+}
 
 export default function YonetimPage() {
-  const { toasts, success, error, removeToast } = useToast()
+  const { toasts, success, error, info, removeToast } = useToast()
   const [activeTab, setActiveTab] = useState<"years" | "subjects">("years")
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
@@ -226,6 +238,134 @@ export default function YonetimPage() {
     }
   }
 
+  const openAcademicYearEditor = async (year: AcademicYear) => {
+    setEditingYear(year)
+    setYearFormData({
+      ...INITIAL_YEAR_FORM,
+      name: year.name,
+      startDate: year.startDate?.split("T")[0] ?? "",
+      endDate: year.endDate?.split("T")[0] ?? "",
+      term1Start: year.term1Start?.split("T")[0] ?? "",
+      term1End: year.term1End?.split("T")[0] ?? "",
+      term2Start: year.term2Start?.split("T")[0] ?? "",
+      term2End: year.term2End?.split("T")[0] ?? "",
+      isActive: year.isActive,
+      weekendDays: year.weekendDays || [],
+    })
+    setHolidays([])
+    try {
+      const response = await fetch(`/api/neredeyiz/holidays?academicYearId=${year.id}`)
+      if (response.ok) {
+        const data = await response.json()
+        setHolidays(
+          data.map(
+            (h: {
+              id: string
+              name: string
+              type: string
+              startDate: string
+              endDate: string
+              description: string | null
+            }) => ({
+              id: h.id,
+              name: h.name,
+              type: h.type as HolidayFormData["type"],
+              startDate: h.startDate.split("T")[0],
+              endDate: h.endDate.split("T")[0],
+              description: h.description || "",
+            })
+          )
+        )
+      }
+    } catch (err) {
+      console.error("Error fetching holidays:", err)
+    }
+    setShowYearForm(true)
+  }
+
+  const yearCanActivateFromRow = (y: AcademicYear) =>
+    !!(
+      y.startDate &&
+      y.endDate &&
+      y.term1Start &&
+      y.term1End &&
+      y.term2Start &&
+      y.term2End &&
+      (y.weekendDays?.length ?? 0) >= 1
+    )
+
+  const handleDeactivateYear = async (year: AcademicYear) => {
+    if (!year.isActive || year.parentActiveYearId) return
+    if (
+      !window.confirm(
+        "Aktif öğretim yılının bayrağını kaldırmak istiyor musunuz? Sınıf ve öğrenci atamaları silinmez; takvim ve kayıtlar korunur."
+      )
+    ) {
+      return
+    }
+    try {
+      const res = await fetch(`/api/neredeyiz/academic-years/${year.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "deactivate" }),
+      })
+      if (res.ok) {
+        success("Akademik yıl sonlandırıldı.")
+        await fetchAcademicYears()
+      } else {
+        const d = await res.json().catch(() => ({}))
+        error((d as { error?: string }).error || "İşlem başarısız.")
+      }
+    } catch (e) {
+      console.error(e)
+      error("İşlem sırasında hata oluştu.")
+    }
+  }
+
+  const handleActivateYearFromList = async (year: AcademicYear) => {
+    if (year.isActive || year.parentActiveYearId) return
+    if (!yearCanActivateFromRow(year)) {
+      await openAcademicYearEditor(year)
+      info("Takvimi tamamlayıp «Aktif akademik yıl olarak işaretle» ile kaydedin.")
+      return
+    }
+    const otherActive = academicYears.some((y) => y.isActive && y.id !== year.id)
+    if (otherActive) {
+      const ok = window.confirm(
+        "Başka bir aktif öğretim yılı var. Bu kaydı aktif yaparsanız önceki aktif yıl kapatılır; " +
+          "tüm sınıf listeleri temizlenir ve öğrenciler bir üst sınıfa alınır (8. ve 12. sınıflar mezun olur). Devam edilsin mi?"
+      )
+      if (!ok) return
+    }
+    try {
+      const payload = {
+        name: year.name.trim(),
+        isActive: true,
+        startDate: year.startDate,
+        endDate: year.endDate,
+        term1Start: year.term1Start,
+        term1End: year.term1End,
+        term2Start: year.term2Start,
+        term2End: year.term2End,
+        weekendDays: year.weekendDays || [],
+      }
+      const res = await fetch(`/api/neredeyiz/academic-years/${year.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      if (res.ok) {
+        success("Akademik yıl aktifleştirildi.")
+        await fetchAcademicYears()
+      } else {
+        const d = await res.json().catch(() => ({}))
+        error((d as { error?: string }).error || "Aktifleştirme başarısız.")
+      }
+    } catch (e) {
+      console.error(e)
+      error("Aktifleştirme sırasında hata oluştu.")
+    }
+  }
 
   const handleYearSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -709,6 +849,10 @@ export default function YonetimPage() {
     }
   }
 
+  const anotherActiveExists = academicYears.some((y) => y.isActive && y.id !== editingYear?.id)
+  const showFullCalendarFields =
+    yearFormData.isActive || !anotherActiveExists || yearHasStoredCalendar(editingYear)
+
   if (loading) {
     return (
       <div className="p-3 sm:p-4 md:p-6 flex items-center justify-center min-h-[400px]">
@@ -850,47 +994,31 @@ export default function YonetimPage() {
                           </div>
                         )}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
+                      {year.isActive && !year.parentActiveYearId && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => void handleDeactivateYear(year)}
+                          className="text-xs sm:text-sm"
+                        >
+                          Akademik yılı sonlandır
+                        </Button>
+                      )}
+                      {!year.isActive && !year.parentActiveYearId && (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => void handleActivateYearFromList(year)}
+                          className="text-xs sm:text-sm"
+                        >
+                          Bu akademik yılı aktifleştir
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={async () => {
-                          setEditingYear(year)
-                          setYearFormData({
-                            ...INITIAL_YEAR_FORM,
-                            name: year.name,
-                            startDate: year.startDate?.split("T")[0] ?? "",
-                            endDate: year.endDate?.split("T")[0] ?? "",
-                            term1Start: year.term1Start?.split("T")[0] ?? "",
-                            term1End: year.term1End?.split("T")[0] ?? "",
-                            term2Start: year.term2Start?.split("T")[0] ?? "",
-                            term2End: year.term2End?.split("T")[0] ?? "",
-                            isActive: year.isActive,
-                            weekendDays: year.weekendDays || [],
-                          })
-                          // Mevcut tatilleri yükle
-                          try {
-                            const response = await fetch(
-                              `/api/neredeyiz/holidays?academicYearId=${year.id}`
-                            )
-                            if (response.ok) {
-                              const data = await response.json()
-                              setHolidays(
-                                data.map((h: { id: string; name: string; type: string; startDate: string; endDate: string; description: string | null }) => ({
-                                  id: h.id,
-                                  name: h.name,
-                                  type: h.type as HolidayFormData["type"],
-                                  startDate: h.startDate.split("T")[0],
-                                  endDate: h.endDate.split("T")[0],
-                                  description: h.description || "",
-                                }))
-                              )
-                            }
-                          } catch (err) {
-                            console.error("Error fetching holidays:", err)
-                          }
-                          setShowYearForm(true)
-                        }}
+                        onClick={() => void openAcademicYearEditor(year)}
                         className="text-xs sm:text-sm"
                       >
                         <Edit className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
@@ -1105,10 +1233,11 @@ export default function YonetimPage() {
             <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
               <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
                 Gelecek yılı henüz takvimi belli olmadan kaydetmek için yalnızca adı girip «Aktif» kutusunu işaretlemeyin.
-                Bu yılı aktif yıl yaptığınızda başlangıç/bitiş, dönemler ve en az bir hafta tatili günü zorunludur.
-                Başka bir aktif yıl varken yeni yılı aktif yaparsanız sınıf atamaları silinir, öğrenciler bir üst sınıfa
-                geçer; 8. ve 12. sınıflar mezun olur. Kayıt yenileme etiketi aktif yılın adı veya başlangıç tarihinden
-                türetilir.
+                Sistemde hâlihazırda aktif bir yıl varken yeni satır mantıken bir sonraki öğretim yılıdır; bu durumda
+                başlangıç/bitiş, dönemler, hafta tatili ve resmi tatiller yalnızca «Aktif akademik yıl olarak işaretle»
+                seçildiğinde görünür. Bu yılı aktif yaptığınızda takvim alanları zorunludur. Başka bir aktif yıl varken
+                bu kaydı aktif yaparsanız sınıf atamaları silinir, öğrenciler bir üst sınıfa geçer; 8. ve 12. sınıflar
+                mezun olur. Kayıt yenileme etiketi aktif yılın adı veya başlangıç tarihinden türetilir.
               </p>
               <form onSubmit={handleYearSubmit} className="space-y-3 sm:space-y-4">
                 <div>
@@ -1126,6 +1255,60 @@ export default function YonetimPage() {
                     className="h-9 sm:h-10 text-xs sm:text-sm"
                   />
                 </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="isActive"
+                    checked={yearFormData.isActive}
+                    onChange={(e) => {
+                      const checked = e.target.checked
+                      setYearFormData((prev) => {
+                        if (!checked) {
+                          const other = academicYears.some(
+                            (y) => y.isActive && y.id !== editingYear?.id
+                          )
+                          if (other && !yearHasStoredCalendar(editingYear)) {
+                            return {
+                              ...prev,
+                              isActive: false,
+                              startDate: "",
+                              endDate: "",
+                              term1Start: "",
+                              term1End: "",
+                              term2Start: "",
+                              term2End: "",
+                              weekendDays: [],
+                            }
+                          }
+                        }
+                        return { ...prev, isActive: checked }
+                      })
+                      if (!e.target.checked) {
+                        const other = academicYears.some(
+                          (y) => y.isActive && y.id !== editingYear?.id
+                        )
+                        if (other && !yearHasStoredCalendar(editingYear)) {
+                          setHolidays([])
+                        }
+                      }
+                    }}
+                    className="h-4 w-4"
+                  />
+                  <Label htmlFor="isActive" className="text-xs sm:text-sm cursor-pointer">
+                    Aktif Akademik Yıl Olarak İşaretle
+                  </Label>
+                </div>
+
+                {anotherActiveExists && !showFullCalendarFields && (
+                  <p className="text-[11px] text-amber-900/90 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5 leading-snug">
+                    Takvim, hafta tatili ve resmi tatilleri görmek veya düzenlemek için yukarıdaki kutuyu işaretleyin.
+                    Kayıtlı bir taslak takviminiz varsa düzenleme ekranında bu alanlar yine görünür.
+                  </p>
+                )}
+
+                {showFullCalendarFields && (
+                  <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <Label htmlFor="startDate" className="text-xs sm:text-sm">
@@ -1275,21 +1458,6 @@ export default function YonetimPage() {
                       )}
                     </div>
                   )}
-                </div>
-
-                <div className="flex items-center gap-2 pt-2">
-                  <input
-                    type="checkbox"
-                    id="isActive"
-                    checked={yearFormData.isActive}
-                    onChange={(e) =>
-                      setYearFormData({ ...yearFormData, isActive: e.target.checked })
-                    }
-                    className="h-4 w-4"
-                  />
-                  <Label htmlFor="isActive" className="text-xs sm:text-sm cursor-pointer">
-                    Aktif Akademik Yıl Olarak İşaretle
-                  </Label>
                 </div>
 
                 {/* Hafta Tatili Ayarları */}
@@ -1490,6 +1658,8 @@ export default function YonetimPage() {
                     </div>
                   )}
                 </div>
+                  </>
+                )}
 
                 <div className="flex flex-col sm:flex-row gap-2 pt-2">
                   <Button
@@ -1518,6 +1688,7 @@ export default function YonetimPage() {
                       setShowYearForm(false)
                       setEditingYear(null)
                       setYearFormData({ ...INITIAL_YEAR_FORM })
+                      setHolidays([])
                     }}
                     className="flex-1 sm:flex-initial text-xs sm:text-sm"
                   >

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { contractYearLabelFromAcademicYear } from "@/lib/academic-year-ui"
 import { generatePDF, generateContractHTML } from "@/lib/pdf-generator"
 
 export async function GET(
@@ -26,10 +27,23 @@ export async function GET(
             return NextResponse.json({ error: "Registration not found" }, { status: 404 })
         }
 
+        const raw = registration.contractData as Record<string, unknown>
+        const ayId = String(raw.academicYearId ?? "").trim()
+        let academicYearLabel = String(raw.academicYear ?? "").trim()
+        if (!academicYearLabel && ayId) {
+            const row = await prisma.academicYear.findUnique({
+                where: { id: ayId },
+                select: { name: true, startDate: true },
+            })
+            if (row) {
+                academicYearLabel = contractYearLabelFromAcademicYear(row)
+            }
+        }
         const contractData = {
             studentName: `${registration.student.firstName} ${registration.student.lastName}`,
             tcNumber: registration.student.tcNumber,
-            ...(registration.contractData as Record<string, unknown>)
+            ...raw,
+            ...(academicYearLabel ? { academicYear: academicYearLabel } : {}),
         }
 
         const html = generateContractHTML(contractData, 'Yeni Kayıt')

@@ -52,6 +52,15 @@ function escapeHTML(text: string | null | undefined): string {
     .replace(/'/g, '&#39;')
 }
 
+/** Sözleşme PDF'lerinde sabit varsayılan yıl yerine kayıtlı etiket; yoksa anlaşılır yer tutucu. */
+export function pdfAcademicYearLabel(contractData: Record<string, unknown>): string {
+  const y = contractData.academicYear
+  if (y != null && String(y).trim() !== '') return String(y).trim()
+  const name = contractData.academicYearName
+  if (name != null && String(name).trim() !== '') return String(name).trim()
+  return '—'
+}
+
 let schoolLogoDataUriCache: string | null = null
 
 function getSchoolLogoDataUri(): string | null {
@@ -348,7 +357,7 @@ function generateContractSpecificFields(contractData: Record<string, unknown>, c
       return `
         <div class="field">
             <div class="field-label">Eğitim Öğretim Yılı:</div>
-            <div class="field-value">${contractData.academicYear || '2024-2025'}</div>
+            <div class="field-value">${pdfAcademicYearLabel(contractData)}</div>
         </div>
         <div class="field">
             <div class="field-label">Sınıf:</div>
@@ -363,7 +372,7 @@ function generateContractSpecificFields(contractData: Record<string, unknown>, c
       return `
         <div class="field">
             <div class="field-label">Eğitim Öğretim Yılı:</div>
-            <div class="field-value">${contractData.academicYear || '2024-2025'}</div>
+            <div class="field-value">${pdfAcademicYearLabel(contractData)}</div>
         </div>
         <div class="field">
             <div class="field-label">Sınıf:</div>
@@ -586,10 +595,11 @@ export function generateCombinedContractHTML(data: {
 }
 
 function generateMainContractHTML(student: { firstName: string; lastName: string; tcNumber: string; grade: string; address: string; birthDate: string; motherName: string; motherTc: string; motherPhone: string; motherAddress: string; motherOccupation: string; fatherName: string; fatherTc: string; fatherPhone: string; fatherAddress: string; fatherOccupation: string }, contractData: Record<string, unknown>) {
+  const ayLabel = pdfAcademicYearLabel(contractData)
   return `
     <div class="contract-header">
       <div class="contract-title">EĞİTİM ÖĞRETİM HİZMET SÖZLEŞMESİ</div>
-      <div class="contract-subtitle">${contractData.academicYear || '2024-2025'} ÖĞRETİM YILI</div>
+      <div class="contract-subtitle">${ayLabel} ÖĞRETİM YILI</div>
     </div>
 
     <div class="contract-info">
@@ -620,7 +630,7 @@ function generateMainContractHTML(student: { firstName: string; lastName: string
     </div>
 
     <div class="section">
-      <div class="section-title">ÖDEME BİLGİLERİ (${contractData.academicYear || '2024-2025'} Öğretim Yılı İçin)</div>
+      <div class="section-title">ÖDEME BİLGİLERİ (${ayLabel} Öğretim Yılı İçin)</div>
       <table class="table">
         <thead>
           <tr>
@@ -889,7 +899,7 @@ function generateMainContractHTML(student: { firstName: string; lastName: string
 
     <div class="section" style="margin-top: 20px;">
       <p style="text-align: justify; line-height: 1.8; margin-bottom: 15px;">
-        Aşağıda bilgileri beyan edilen öğrenciye ait ${contractData.academicYear || '2026-2027'} eğitim öğretim dönemine ait ücretler, tabloda belirtilen tarihte muaccel olacaktır. Bu tarihten sonra muaccel borç için Maliye Bakanlığı'nın ilan ettiği aylık gecikme zammı oranı ile güncelleştirilecektir.
+        Aşağıda bilgileri beyan edilen öğrenciye ait ${pdfAcademicYearLabel(contractData)} eğitim öğretim dönemine ait ücretler, tabloda belirtilen tarihte muaccel olacaktır. Bu tarihten sonra muaccel borç için Maliye Bakanlığı'nın ilan ettiği aylık gecikme zammı oranı ile güncelleştirilecektir.
       </p>
       <p style="text-align: justify; line-height: 1.8; margin-bottom: 15px;">
         Öğrenci Eğitim Öğretim Ücreti, sözleşme yenileme tarihinde belirlenir. Ücretin sözleşmede belirtilen şekilde Son ödeme tarihine kadar ödenmesi gereklidir.

@@ -1140,10 +1140,13 @@ export default function NewRegistrationPage() {
                     <div className="flex justify-between items-center gap-4 flex-wrap">
                       <div className="flex flex-col gap-2 flex-1 min-w-[240px]">
                         <h3 className="text-lg font-semibold">ÖDEME BİLGİLERİ — Öğretim yılı</h3>
-                        <p className="text-xs text-gray-600">
-                          Yeni kayıt yalnızca <strong>aktif</strong> akademik yıl veya tanımlıysa onu takip eden{" "}
-                          <strong>bir sonraki</strong> akademik yıl için seçilebilir (ör. yaz tatilinde gelecek yıl
-                          kaydı). Kayıt yenileme bu ekrandan yapılmaz; sadece bir sonraki yıl için ayrı akıştır.
+                        <p className="text-xs text-gray-600 leading-relaxed">
+                          <span className="font-medium text-gray-700">Akademik yıl seçimi:</span> Öğrenci eğitim
+                          öğretime <strong>hemen</strong> başlayacaksa (bu dönem okula kayıt){" "}
+                          <strong>aktif akademik yılı</strong> seçin. Öğrenci yalnızca{" "}
+                          <strong>bir sonraki öğretim yılında</strong> okula başlayacaksa (örneğin yaz öncesi gelecek
+                          yıl kaydı) <strong>bir sonraki akademik yılı</strong> seçebilirsiniz. Yeni kayıt sözleşmesi
+                          bu iki seçenekten biriyle sınırlıdır. Kayıt yenileme bu ekrandan yapılmaz.
                         </p>
                         {academicYearsLoading ? (
                           <p className="text-sm text-gray-500">Akademik yıllar yükleniyor…</p>

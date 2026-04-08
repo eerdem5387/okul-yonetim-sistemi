@@ -1552,7 +1552,7 @@ export default function StudentsPage() {
           <DialogHeader className="shrink-0 space-y-1 pr-8 text-left">
             <DialogTitle>
               {regBrowseModal === "renewed" && "Kayıt yenileyenler"}
-              {regBrowseModal === "new_registration" && "Yeni kayıt (aktif akademik yıl)"}
+              {regBrowseModal === "new_registration" && "Yeni kayıt"}
               {regBrowseModal === "pre_enrollment" && "Ön kayıtlı öğrenciler"}
             </DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
@@ -1561,7 +1561,7 @@ export default function StudentsPage() {
                   ? `Hedef yıla (${overview.renewalTargetYear.label}) kayıt yenilemesi olan öğrenciler. Arama, kademe ve sınıf filtreleri uygulanır.`
                   : "Kayıt yenilemesi tanımlı hedef yıla göre eşleşen öğrenciler.")}
               {regBrowseModal === "new_registration" &&
-                "Aktif akademik yıla yeni kayıt sözleşmesi olan öğrenciler (yıl ortası geçişler). Arama, kademe ve sınıf filtreleri uygulanır."}
+                "Aktif akademik yıl veya bir sonraki yıl için yeni kayıt sözleşmesi olan öğrenciler. Gelecek yıl için kayıtlı olanlar ana listede görünmez; burada listelenir. Arama, kademe ve sınıf filtreleri uygulanır."}
               {regBrowseModal === "pre_enrollment" &&
                 (overview?.preEnrollmentTargetYear
                   ? `Aktif yıldan sonra başlayan yıla (ör. ${overview.preEnrollmentTargetYear.label}) yeni kaydı olan öğrenciler; bu yıl toplam sayıma dahil değillerdir.`
@@ -1667,7 +1667,7 @@ export default function StudentsPage() {
               <p className="text-sm text-gray-500 py-6 text-center">
                 {regBrowseModal === "renewed" && "Kriterlere uygun kayıt yenilemesi olan öğrenci yok."}
                 {regBrowseModal === "new_registration" &&
-                  "Kriterlere uygun aktif yıl yeni kaydı olan öğrenci yok."}
+                  "Kriterlere uygun yeni kayıtlı öğrenci yok."}
                 {regBrowseModal === "pre_enrollment" &&
                   "Kriterlere uygun ön kayıtlı öğrenci yok veya tanımlı yıl yok."}
               </p>

@@ -59,8 +59,12 @@ export async function GET(request: NextRequest) {
             )
             whereConditions.push({ id: { in: ids.length > 0 ? ids : [noMatchId] } })
         } else if (registrationFilter === 'new_registration') {
-            const ids = [...regCtx.newRegistrationActiveYearStudentIds]
-            whereConditions.push({ id: { in: ids.length > 0 ? ids : [noMatchId] } })
+            const ids = [
+                ...regCtx.newRegistrationActiveYearStudentIds,
+                ...regCtx.futureYearOnlyNewRegistrationStudentIds,
+            ]
+            const unique = [...new Set(ids)]
+            whereConditions.push({ id: { in: unique.length > 0 ? unique : [noMatchId] } })
         } else if (registrationFilter === 'not_renewed') {
             const excluded = [...new Set([...regCtx.renewedStudentIds, ...regCtx.newRegistrationStudentIds])]
             if (excluded.length > 0) {
