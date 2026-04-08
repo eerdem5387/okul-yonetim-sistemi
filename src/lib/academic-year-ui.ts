@@ -119,7 +119,24 @@ export function resolveActiveAndNextAcademicYear(years: AcademicYearListItem[]):
   })
   const active = byFlag ?? byDateRange ?? null
   if (!active) return { active: null, next: null }
-  const idx = sorted.findIndex((y) => y.id === active.id)
-  const next = idx >= 0 && idx < sorted.length - 1 ? sorted[idx + 1]! : null
+
+  /**
+   * «Bir sonraki yıl» yalnızca ana kayıtlar (parentActiveYearId yok) arasından seçilir.
+   * Taslak yıllarda başlangıç tarihi olmadığı için eski sıralamada (null = 0) listenin başına
+   * düşüyorlardı; aktif yıl sonda kalınca idx+1 boş kalıyordu. Tarihli yıllar önce (kronolojik),
+   * tarihsiz taslaklar sonra sıralanır.
+   */
+  const primariesChrono = [...primaries].sort((a, b) => {
+    const aTime = a.startDate ? new Date(a.startDate).getTime() : NaN
+    const bTime = b.startDate ? new Date(b.startDate).getTime() : NaN
+    const aHas = !Number.isNaN(aTime)
+    const bHas = !Number.isNaN(bTime)
+    if (aHas && bHas && aTime !== bTime) return aTime - bTime
+    if (aHas !== bHas) return aHas ? -1 : 1
+    return a.name.localeCompare(b.name, "tr")
+  })
+  const idx = primariesChrono.findIndex((y) => y.id === active.id)
+  const next =
+    idx >= 0 && idx < primariesChrono.length - 1 ? primariesChrono[idx + 1]! : null
   return { active, next }
 }
