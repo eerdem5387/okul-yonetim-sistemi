@@ -54,7 +54,6 @@ function participantPage(data: MuzikEserIcraCertData, participant: MuzikEserIcra
   const certDate = formatDate(data.createdAt)
   const periodStr = `${formatDate(data.startDate)} – ${formatDate(data.endDate)}`
   const desc = escapeHtml(participant.artworkDescription || "—")
-  const photoUrl = participant.participationPhotoUrl || ""
 
   return `
   <div class="cert-page">
@@ -89,14 +88,6 @@ function participantPage(data: MuzikEserIcraCertData, participant: MuzikEserIcra
         This document certifies that the artwork, whose digital evidence is included in the attached file,
         was created by the student and reflects their own effort, creativity, and production process.
       </p>
-
-      <div class="cert-artwork-box">
-        ${
-          photoUrl
-            ? `<img src="${escapeHtml(photoUrl)}" alt="Digital evidence" class="cert-artwork-img" />`
-            : `<div class="cert-artwork-placeholder">Digital evidence</div>`
-        }
-      </div>
 
       <div class="cert-fields-grid">
         <div class="cert-field cert-field-full">
@@ -156,8 +147,27 @@ function participantPage(data: MuzikEserIcraCertData, participant: MuzikEserIcra
   </div>`
 }
 
+function evidencePage(data: MuzikEserIcraCertData, participant: MuzikEserIcraParticipant): string {
+  const photoUrl = participant.participationPhotoUrl || ""
+  if (!photoUrl) return ""
+
+  return `
+  <div class="evidence-page">
+    <div class="evidence-title">Digital Evidence Attachment</div>
+    <div class="evidence-subtitle">${escapeHtml(`${participant.firstName} ${participant.lastName}`)}</div>
+    <div class="evidence-image-wrap">
+      <img src="${escapeHtml(photoUrl)}" alt="Digital evidence" class="evidence-image" />
+    </div>
+    <div class="evidence-note">
+      Attached to: ${escapeHtml(data.title)}
+    </div>
+  </div>`
+}
+
 export function buildMuzikEserIcraCertificateHTML(data: MuzikEserIcraCertData): string {
-  const pages = data.participants.map((p) => participantPage(data, p)).join("\n")
+  const pages = data.participants
+    .flatMap((p) => [participantPage(data, p), evidencePage(data, p)].filter(Boolean))
+    .join("\n")
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -286,29 +296,6 @@ export function buildMuzikEserIcraCertificateHTML(data: MuzikEserIcraCertData): 
       padding: 0 8px;
     }
 
-    .cert-artwork-box {
-      margin: 0 auto 14px;
-      max-width: 220px;
-      border: 1px solid #d6bc7a;
-      border-radius: 8px;
-      overflow: hidden;
-      background: #fffbeb;
-    }
-    .cert-artwork-img {
-      display: block;
-      width: 100%;
-      max-height: 200px;
-      object-fit: contain;
-    }
-    .cert-artwork-placeholder {
-      height: 140px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #a8a29e;
-      font-size: 11px;
-    }
-
     .cert-fields-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -383,6 +370,57 @@ export function buildMuzikEserIcraCertificateHTML(data: MuzikEserIcraCertData): 
       letter-spacing: 0.8px;
       position: relative;
       z-index: 1;
+    }
+
+    .evidence-page {
+      width: 210mm;
+      min-height: 297mm;
+      background: #fff;
+      margin: 0 auto;
+      padding: 18mm 16mm;
+      page-break-after: always;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 10px;
+    }
+    .evidence-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 24px;
+      font-weight: 700;
+      color: #422006;
+      text-align: center;
+    }
+    .evidence-subtitle {
+      font-size: 13px;
+      color: #57534e;
+      text-align: center;
+      margin-bottom: 6px;
+    }
+    .evidence-image-wrap {
+      width: 100%;
+      max-width: 170mm;
+      border: 1px solid #d4af37;
+      border-radius: 10px;
+      padding: 8mm;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 210mm;
+      background: #fffef8;
+    }
+    .evidence-image {
+      max-width: 100%;
+      max-height: 190mm;
+      object-fit: contain;
+      display: block;
+    }
+    .evidence-note {
+      margin-top: 8px;
+      font-size: 11px;
+      color: #78716c;
+      text-align: center;
     }
 
     @media print {

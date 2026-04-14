@@ -21,6 +21,7 @@ import {
   type TurnuvaBasariCertData,
 } from "@/lib/certificates/turnuva-basari"
 import { buildProjeKatilimCertificateHTML } from "@/lib/certificates/proje-katilim"
+import { applyGlobalCertificateLayout } from "@/lib/certificates/global-certificate-layout"
 
 export async function POST(request: NextRequest) {
   const { hasAccess } = await checkActivityAccess(request)
@@ -86,7 +87,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Bilinmeyen sertifika tipi" }, { status: 400 })
     }
 
-    const pdfResult = await generatePDF(html, {
+    const normalizedHtml = applyGlobalCertificateLayout(html)
+
+    const pdfResult = await generatePDF(normalizedHtml, {
       format: "A4",
       margin: { top: "0mm", right: "0mm", bottom: "0mm", left: "0mm" },
     })

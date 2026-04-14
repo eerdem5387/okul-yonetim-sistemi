@@ -303,7 +303,7 @@ export const MUZIK_SUBTYPES: SubtypeConfig[] = [
   {
     id: "etkinlik_konser",
     label: "Etkinlik / Konser",
-    certificateType: "MUZIK_EGITIM",
+    certificateType: "MUZIK_ESER_ICRA",
     requiresScore: false,
     requiresLanguageLevel: false,
     requiresTeacher: true,

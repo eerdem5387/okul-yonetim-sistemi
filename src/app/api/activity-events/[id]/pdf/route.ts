@@ -46,6 +46,7 @@ import {
   buildProjeKatilimCertificateHTML,
   type ProjeKatilimCertData,
 } from "@/lib/certificates/proje-katilim"
+import { applyGlobalCertificateLayout } from "@/lib/certificates/global-certificate-layout"
 
 export async function GET(
   request: NextRequest,
@@ -420,7 +421,9 @@ export async function GET(
       return NextResponse.json({ error: "Bu sertifika tipi için PDF şablonu henüz tanımlı değil" }, { status: 400 })
     }
 
-    const pdfResult = await generatePDF(html, {
+    const normalizedHtml = applyGlobalCertificateLayout(html)
+
+    const pdfResult = await generatePDF(normalizedHtml, {
       format: "A4",
       margin: { top: "0mm", right: "0mm", bottom: "0mm", left: "0mm" },
     })
