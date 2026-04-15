@@ -40,17 +40,14 @@ export type IncomingParticipant = {
   studentId: string
   score?: number
   languageLevel?: string
-  participationPhotoUrl?: string
   extraDocumentUrl?: string
   artworkDescription?: string | null
   tournamentPlacement?: string | null
   projectRole?: string | null
 }
 
-/** Katılım fotoğrafı kuralı (POST ile aynı) */
 export function validateParticipantsForCertificate(
-  participants: IncomingParticipant[],
-  certificateType: string
+  participants: IncomingParticipant[]
 ): { ok: true; normalized: IncomingParticipant[] } | { ok: false; error: string } {
   const participantStudentIds = participants.map((p) => String(p.studentId || "").trim())
   if (participantStudentIds.some((id) => !id)) {
@@ -59,14 +56,6 @@ export function validateParticipantsForCertificate(
   const uniqueStudentIds = [...new Set(participantStudentIds)]
   if (uniqueStudentIds.length !== participantStudentIds.length) {
     return { ok: false, error: "Aynı öğrenci listede birden fazla kez eklenemez" }
-  }
-
-  const photoRequired = certificateType !== "PROJE_KATILIM"
-  if (photoRequired) {
-    const missingPhoto = participants.find((p) => !p.participationPhotoUrl?.trim())
-    if (missingPhoto) {
-      return { ok: false, error: "Her katılımcı için katılım fotoğrafı zorunludur" }
-    }
   }
 
   return { ok: true, normalized: participants }

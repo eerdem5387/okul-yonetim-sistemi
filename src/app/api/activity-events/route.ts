@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
       evidenceUrls,
       teacherId,
       metadata,
-      participants, // Array<{ studentId, score?, languageLevel?, participationPhotoUrl?, extraDocumentUrl? }>
+      participants, // Array<{ studentId, score?, languageLevel?, extraDocumentUrl? }>
     } = body
 
     // Zorunlu alan kontrolleri
@@ -222,16 +222,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const photoRequired = certificateType !== "PROJE_KATILIM"
-    if (photoRequired) {
-      const missingPhoto = participants.find(
-        (p: { studentId: string; participationPhotoUrl?: string }) => !p.participationPhotoUrl?.trim()
-      )
-      if (missingPhoto) {
-        return NextResponse.json({ error: "Her katılımcı için katılım fotoğrafı zorunludur" }, { status: 400 })
-      }
-    }
-
     function parseParticipantScore(value: unknown): number | null {
       if (value === null || value === undefined || value === "") return null
       const n = parseInt(String(value), 10)
@@ -285,7 +275,6 @@ export async function POST(request: NextRequest) {
             studentId: string
             score?: number
             languageLevel?: string
-            participationPhotoUrl?: string
             extraDocumentUrl?: string
             artworkDescription?: string | null
             tournamentPlacement?: string | null
@@ -294,7 +283,6 @@ export async function POST(request: NextRequest) {
             studentId: p.studentId,
             score: parseParticipantScore(p.score),
             languageLevel: parseParticipantLanguageLevel(p.languageLevel),
-            participationPhotoUrl: p.participationPhotoUrl || null,
             extraDocumentUrl: p.extraDocumentUrl || null,
             artworkDescription: p.artworkDescription?.trim() || null,
             tournamentPlacement: p.tournamentPlacement?.trim() || null,

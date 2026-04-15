@@ -158,7 +158,6 @@ export function FaaliyetForm({ mainType, subtypeId, editEventId }: FaaliyetFormP
                 student: { firstName: string; lastName: string; grade: string }
                 score: number | null
                 languageLevel: string | null
-                participationPhotoUrl: string | null
                 extraDocumentUrl: string | null
                 artworkDescription?: string | null
                 tournamentPlacement?: string | null
@@ -167,7 +166,6 @@ export function FaaliyetForm({ mainType, subtypeId, editEventId }: FaaliyetFormP
                 studentId: p.studentId,
                 studentName: `${p.student.firstName} ${p.student.lastName}`.trim(),
                 studentGrade: p.student.grade ?? "",
-                participationPhotoUrl: p.participationPhotoUrl ?? "",
                 score: p.score != null ? String(p.score) : "",
                 languageLevel: p.languageLevel ?? "",
                 extraDocumentUrl: p.extraDocumentUrl ?? "",
@@ -319,7 +317,6 @@ export function FaaliyetForm({ mainType, subtypeId, editEventId }: FaaliyetFormP
           tcNumber: students.find((s) => s.id === p.studentId)?.tcNumber ?? "",
           grade: p.studentGrade,
           artworkDescription: p.artworkDescription,
-          participationPhotoUrl: p.participationPhotoUrl,
         })),
       }
     }
@@ -409,7 +406,6 @@ export function FaaliyetForm({ mainType, subtypeId, editEventId }: FaaliyetFormP
         studentId: p.studentId,
         score: p.score ? parseInt(p.score, 10) : null,
         languageLevel: p.languageLevel || null,
-        participationPhotoUrl: p.participationPhotoUrl || null,
         extraDocumentUrl: p.extraDocumentUrl || null,
         artworkDescription: p.artworkDescription?.trim() || null,
         tournamentPlacement: p.tournamentPlacement?.trim() || null,

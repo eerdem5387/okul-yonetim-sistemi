@@ -1,13 +1,12 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { Upload, X, Loader2, ImageIcon } from "lucide-react"
+import { Upload, X, Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { LANGUAGE_LEVELS } from "@/lib/activity-types-config"
 import {
   assertFileMaxSize,
-  CLIENT_MAX_PARTICIPATION_PHOTO_BYTES,
   CLIENT_MAX_PDF_BYTES,
   parseUploadResponse,
 } from "@/lib/upload-client"
@@ -16,7 +15,6 @@ export interface ParticipantData {
   studentId: string
   studentName: string
   studentGrade: string
-  participationPhotoUrl: string
   score: string
   languageLevel: string
   extraDocumentUrl: string
@@ -38,12 +36,10 @@ interface StudentRowProps {
   requiresArtworkDescription?: boolean
   showTournamentPlacement?: boolean
   showParticipantProjectRole?: boolean
-  /** false iken katılım fotoğrafı alanı gösterilmez (örn. Proje) */
-  requiresParticipationPhoto?: boolean
-  /** requiresArtworkDescription iken yükleme alanı etiketi */
-  participationPhotoFieldLabel?: string
   /** requiresExtraDocument iken PDF alanı etiketi */
   extraDocumentFieldLabel?: string
+  extraDocumentUploadType?: "extra_doc" | "sports_license_doc"
+  extraDocumentMaxBytes?: number
   onChange: (updated: ParticipantData) => void
   onRemove: () => void
 }
@@ -58,15 +54,13 @@ export function StudentRow({
   requiresArtworkDescription,
   showTournamentPlacement,
   showParticipantProjectRole,
-  requiresParticipationPhoto = true,
-  participationPhotoFieldLabel,
   extraDocumentFieldLabel,
+  extraDocumentUploadType = "extra_doc",
+  extraDocumentMaxBytes = CLIENT_MAX_PDF_BYTES,
   onChange,
   onRemove,
 }: StudentRowProps) {
-  const photoRef = useRef<HTMLInputElement>(null)
   const docRef = useRef<HTMLInputElement>(null)
-  const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [uploadingDoc, setUploadingDoc] = useState(false)
 
   function set(field: keyof ParticipantData, value: string) {
@@ -80,36 +74,10 @@ export function StudentRow({
     return h
   }
 
-  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const sizeErr = assertFileMaxSize(file, CLIENT_MAX_PARTICIPATION_PHOTO_BYTES, "Katılım fotoğrafı")
-    if (sizeErr) {
-      alert(sizeErr)
-      return
-    }
-    setUploadingPhoto(true)
-    try {
-      const formData = new FormData()
-      formData.append("file", file)
-      const res = await fetch("/api/activity-events/upload?type=participation_photo", {
-        method: "POST",
-        headers: getHeaders(),
-        body: formData,
-      })
-      const parsed = await parseUploadResponse(res)
-      if (parsed.ok && parsed.url) set("participationPhotoUrl", parsed.url)
-      else alert(parsed.error || "Fotoğraf yüklenemedi")
-    } finally {
-      setUploadingPhoto(false)
-      if (photoRef.current) photoRef.current.value = ""
-    }
-  }
-
   async function handleDocUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    const sizeErr = assertFileMaxSize(file, CLIENT_MAX_PDF_BYTES, "Ek belge")
+    const sizeErr = assertFileMaxSize(file, extraDocumentMaxBytes, "Ek belge")
     if (sizeErr) {
       alert(sizeErr)
       return
@@ -118,7 +86,7 @@ export function StudentRow({
     try {
       const formData = new FormData()
       formData.append("file", file)
-      const res = await fetch("/api/activity-events/upload?type=extra_doc", {
+      const res = await fetch(`/api/activity-events/upload?type=${extraDocumentUploadType}`, {
         method: "POST",
         headers: getHeaders(),
         body: formData,
@@ -155,50 +123,6 @@ export function StudentRow({
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Katılım Fotoğrafı / Eser görseli */}
-        {requiresParticipationPhoto && (
-          <div>
-            <p className="text-xs font-medium text-gray-600 mb-1.5">
-              {requiresArtworkDescription
-                ? participationPhotoFieldLabel ?? "Eser Görseli"
-                : "Katılım Fotoğrafı"}{" "}
-              <span className="text-red-500">*</span>
-              <span className="text-gray-400 font-normal"> (maks 3 MB)</span>
-            </p>
-            {participant.participationPhotoUrl ? (
-              <div className="relative group">
-                <img
-                  src={participant.participationPhotoUrl}
-                  alt="Katılım"
-                  className="h-24 w-full rounded-lg object-cover border border-gray-200"
-                />
-                <button
-                  onClick={() => set("participationPhotoUrl", "")}
-                  className="absolute top-1 right-1 rounded-full bg-red-500 text-white p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => photoRef.current?.click()}
-                disabled={uploadingPhoto}
-                className="flex h-24 w-full flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-gray-200 text-gray-400 hover:border-indigo-300 hover:text-indigo-500 transition-colors"
-              >
-                {uploadingPhoto ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <>
-                    <ImageIcon className="h-5 w-5" />
-                    <span className="text-xs">Fotoğraf yükle</span>
-                  </>
-                )}
-              </button>
-            )}
-            <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
-          </div>
-        )}
-
         {/* Puan */}
         {requiresScore && (
           <div>
@@ -293,6 +217,10 @@ export function StudentRow({
               {optionalExtraDocument && !requiresExtraDocument && (
                 <span className="text-gray-400 font-normal"> (isteğe bağlı)</span>
               )}
+              <span className="text-gray-400 font-normal">
+                {" "}
+                (maks {Math.round(extraDocumentMaxBytes / (1024 * 1024))} MB)
+              </span>
             </p>
             {participant.extraDocumentUrl ? (
               <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">

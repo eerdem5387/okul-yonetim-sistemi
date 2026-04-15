@@ -109,8 +109,7 @@ export async function PUT(
       if (participants.length === 0) {
         return NextResponse.json({ error: "En az bir katılımcı olmalıdır" }, { status: 400 })
       }
-      const certType = existing.certificateType
-      const v = validateParticipantsForCertificate(participants, certType)
+      const v = validateParticipantsForCertificate(participants)
       if (!v.ok) {
         return NextResponse.json({ error: v.error }, { status: 400 })
       }
@@ -202,7 +201,6 @@ export async function PUT(
             studentId: String(p.studentId),
             score: parseParticipantScore(p.score),
             languageLevel: parseParticipantLanguageLevel(p.languageLevel),
-            participationPhotoUrl: (p.participationPhotoUrl as string) || null,
             extraDocumentUrl: (p.extraDocumentUrl as string) || null,
             artworkDescription: p.artworkDescription != null ? String(p.artworkDescription).trim() || null : null,
             tournamentPlacement: p.tournamentPlacement != null ? String(p.tournamentPlacement).trim() || null : null,

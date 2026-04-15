@@ -58,7 +58,6 @@ export function StepKatilimcilar({
           studentId: student.id,
           studentName: `${student.firstName} ${student.lastName}`,
           studentGrade: student.grade,
-          participationPhotoUrl: "",
           score: "",
           languageLevel: "",
           extraDocumentUrl: "",
@@ -91,9 +90,6 @@ export function StepKatilimcilar({
     if (participants.length === 0) return false
     if (readOnly) return true
     return participants.every((p) => {
-      if (subtypeConfig.requiresParticipationPhoto !== false && !p.participationPhotoUrl?.trim()) {
-        return false
-      }
       if (subtypeConfig.requiresScore && (!p.score || isNaN(Number(p.score)))) return false
       if (subtypeConfig.requiresLanguageLevel && !p.languageLevel) return false
       if (subtypeConfig.requiresArtworkDescription && !p.artworkDescription?.trim()) return false
@@ -207,9 +203,9 @@ export function StepKatilimcilar({
                   requiresArtworkDescription={subtypeConfig.requiresArtworkDescription}
                   showTournamentPlacement={subtypeConfig.showTournamentPlacement}
                   showParticipantProjectRole={subtypeConfig.showParticipantProjectRole}
-                  requiresParticipationPhoto={subtypeConfig.requiresParticipationPhoto !== false}
-                  participationPhotoFieldLabel={subtypeConfig.participationPhotoFieldLabel}
                   extraDocumentFieldLabel={subtypeConfig.extraDocumentFieldLabel}
+                  extraDocumentUploadType={subtypeConfig.extraDocumentUploadType}
+                  extraDocumentMaxBytes={subtypeConfig.extraDocumentMaxBytes}
                   onChange={(updated) => updateParticipant(i, updated)}
                   onRemove={() => removeStudent(p.studentId)}
                 />

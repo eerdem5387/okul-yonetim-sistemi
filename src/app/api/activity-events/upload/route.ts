@@ -19,6 +19,7 @@ const MAX_PHOTO_SIZE = 3 * 1024 * 1024 // 3 MB
 const MAX_VIDEO_SIZE = 4 * 1024 * 1024
 const MAX_IMAGE_SIZE = 3 * 1024 * 1024
 const MAX_DOC_SIZE = 4 * 1024 * 1024
+const MAX_SPORT_LICENSE_DOC_SIZE = 1 * 1024 * 1024
 
 export async function POST(request: NextRequest) {
   const { hasAccess } = await checkActivityAccess(request)
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const { searchParams } = new URL(request.url)
-    // type: participation_photo | evidence | extra_doc | signed_document | signed_curriculum
+    // type: participation_photo | evidence | extra_doc | sports_license_doc | signed_document | signed_curriculum
     const uploadType = searchParams.get("type") || "participation_photo"
 
     const formData = await request.formData()
@@ -69,6 +70,13 @@ export async function POST(request: NextRequest) {
       }
       if (fileSize > MAX_DOC_SIZE) {
         return NextResponse.json({ error: "Ek belge maksimum 4 MB olabilir" }, { status: 400 })
+      }
+    } else if (uploadType === "sports_license_doc") {
+      if (!ALLOWED_DOC_TYPES.includes(mimeType)) {
+        return NextResponse.json({ error: "Sadece PDF dosyası yüklenebilir" }, { status: 400 })
+      }
+      if (fileSize > MAX_SPORT_LICENSE_DOC_SIZE) {
+        return NextResponse.json({ error: "Spor lisansı PDF maksimum 1 MB olabilir" }, { status: 400 })
       }
     } else if (uploadType === "signed_document" || uploadType === "signed_curriculum") {
       const allowed = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_DOC_TYPES]

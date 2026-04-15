@@ -3,6 +3,7 @@ export const CLIENT_MAX_PARTICIPATION_PHOTO_BYTES = 3 * 1024 * 1024
 export const CLIENT_MAX_EVIDENCE_IMAGE_BYTES = 3 * 1024 * 1024
 export const CLIENT_MAX_EVIDENCE_VIDEO_BYTES = 4 * 1024 * 1024
 export const CLIENT_MAX_PDF_BYTES = 4 * 1024 * 1024
+export const CLIENT_MAX_SPORT_LICENSE_PDF_BYTES = 1 * 1024 * 1024
 
 export function formatMaxSizeLabel(maxBytes: number): string {
   if (maxBytes >= 1024 * 1024) {

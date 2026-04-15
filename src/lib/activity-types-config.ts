@@ -120,10 +120,12 @@ export interface SubtypeConfig {
   activityTitleLabel?: string
   /** 1. adım başlık placeholder */
   activityTitlePlaceholder?: string
-  /** requiresArtworkDescription iken fotoğraf alanı etiketi (varsayılan: Eser Görseli) */
-  participationPhotoFieldLabel?: string
   /** requiresExtraDocument iken ek belge alanı etiketi (varsayılan: Ek Belge (PDF)) */
   extraDocumentFieldLabel?: string
+  /** Ek belge upload tipi (sunucu kuralı için) */
+  extraDocumentUploadType?: "extra_doc" | "sports_license_doc"
+  /** Ek belge için istemci boyut sınırı */
+  extraDocumentMaxBytes?: number
   /** Ek belge alanını göster; zorunlu değil (örn. turnuva derece belgesi) */
   optionalExtraDocument?: boolean
   /** Turnuva: toplam yarışmacı sayısı (başarı belgesi) */
@@ -149,8 +151,6 @@ export interface SubtypeConfig {
   outcomePlaceholder?: string
   /** Proje: katılımcı satırında rol alanı */
   showParticipantProjectRole?: boolean
-  /** Katılım fotoğrafı zorunlu (varsayılan: true) */
-  requiresParticipationPhoto?: boolean
 }
 
 // --- Eğitim Alt Türleri ---
@@ -320,7 +320,6 @@ export const MUZIK_SUBTYPES: SubtypeConfig[] = [
     requiresTeacher: true,
     requiresExtraDocument: false,
     requiresArtworkDescription: true,
-    participationPhotoFieldLabel: "Dijital kanıt (görsel)",
     activityTitleLabel: "Etkinlik / Eser İcra Başlığı",
     activityTitlePlaceholder: "örn: Piyano Resitali — Solo Performans — 15 Mayıs 2025",
   },
@@ -337,6 +336,8 @@ export const SPOR_SUBTYPES: SubtypeConfig[] = [
     requiresTeacher: true,
     requiresExtraDocument: true,
     extraDocumentFieldLabel: "Spor lisansı (PDF)",
+    extraDocumentUploadType: "sports_license_doc",
+    extraDocumentMaxBytes: 1 * 1024 * 1024,
     mufredat: BASKETBOL_MUFREDAT,
     mufredatBaslik:
       "LEVENT COLLEGE IB PROGRAMME — Basketball Annual Academic Curriculum (40 Weeks)",
@@ -362,6 +363,8 @@ export const SPOR_SUBTYPES: SubtypeConfig[] = [
     requiresTeacher: true,
     requiresExtraDocument: true,
     extraDocumentFieldLabel: "Spor lisansı (PDF)",
+    extraDocumentUploadType: "sports_license_doc",
+    extraDocumentMaxBytes: 1 * 1024 * 1024,
     mufredat: HENTBOL_MUFREDAT,
     mufredatBaslik:
       "LEVENT COLLEGE IB PROGRAMME — Handball Annual Curriculum Program (40 Weeks)",
@@ -375,6 +378,8 @@ export const SPOR_SUBTYPES: SubtypeConfig[] = [
     requiresTeacher: true,
     requiresExtraDocument: true,
     extraDocumentFieldLabel: "Spor lisansı (PDF)",
+    extraDocumentUploadType: "sports_license_doc",
+    extraDocumentMaxBytes: 1 * 1024 * 1024,
     mufredat: VOLEYBOL_MUFREDAT,
     mufredatBaslik:
       "LEVENT COLLEGE IB PROGRAMME — Volleyball Annual Curriculum Program (40 Weeks)",
@@ -391,7 +396,6 @@ export const PROJE_SUBTYPES: SubtypeConfig[] = [
     requiresLanguageLevel: false,
     requiresTeacher: true,
     requiresExtraDocument: false,
-    requiresParticipationPhoto: false,
     projectDocumentPreview: true,
     showProjectPurpose: true,
     showProjectAchievementLevel: true,
