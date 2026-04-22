@@ -162,7 +162,7 @@ export async function GET(
 </html>
     `
 
-    const pdf = await generatePDF(fullHtml)
+    const pdf = await generatePDF(fullHtml, { disableGlobalLogo: true })
 
     const safeName = `${activity.student.firstName}-${activity.student.lastName}`.replace(
       /[^a-zA-Z0-9-_]/g,

@@ -426,6 +426,7 @@ export async function GET(
     const pdfResult = await generatePDF(normalizedHtml, {
       format: "A4",
       margin: { top: "0mm", right: "0mm", bottom: "0mm", left: "0mm" },
+      disableGlobalLogo: true,
     })
     const pdfBuffer = Buffer.from(pdfResult)
 

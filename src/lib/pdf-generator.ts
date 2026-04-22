@@ -109,6 +109,14 @@ function injectGlobalPdfLogo(html: string): string {
   return `${logoOverlay}\n${html}`
 }
 
+function normalizeTemplateLogoSources(html: string): string {
+  const logoUri = getSchoolLogoDataUri()
+  if (!logoUri) return html
+  return html
+    .replace(/src="\/logo\.png"/g, `src="${logoUri}"`)
+    .replace(/src='\/logo\.png'/g, `src='${logoUri}'`)
+}
+
 export async function generatePDF(
   html: string,
   options?: {
@@ -156,7 +164,8 @@ export async function generatePDF(
 
   const page = await browser.newPage()
 
-  const htmlWithLogo = options?.disableGlobalLogo ? html : injectGlobalPdfLogo(html)
+  const normalizedLogoHtml = normalizeTemplateLogoSources(html)
+  const htmlWithLogo = options?.disableGlobalLogo ? normalizedLogoHtml : injectGlobalPdfLogo(normalizedLogoHtml)
   const encodedHTML = encodeHTMLEntities(htmlWithLogo)
   await page.setContent(encodedHTML, { waitUntil: 'networkidle0' })
 
