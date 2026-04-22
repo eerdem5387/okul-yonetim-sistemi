@@ -400,7 +400,6 @@ export const PROJE_SUBTYPES: SubtypeConfig[] = [
     showProjectPurpose: true,
     showProjectAchievementLevel: true,
     requireProjectOutcome: true,
-    showVicePrincipal: true,
     showParticipantProjectRole: true,
     activityTitleLabel: "Project Title",
     activityTitlePlaceholder: "örn: Sustainable Campus Waste Reduction — IB Group 4 Project",
