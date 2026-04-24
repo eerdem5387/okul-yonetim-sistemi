@@ -52,10 +52,7 @@ export async function GET() {
       (s) => !futureYearOnlyNewRegistrationStudentIds.has(s.id)
     )
 
-    const byGrade = enrolledCountsFromStudentRows(
-      allStudents,
-      futureYearOnlyNewRegistrationStudentIds
-    )
+    const byGrade = enrolledCountsFromStudentRows(enrolledStudents, new Set<string>())
     let ortaokul = 0
     let lise = 0
     for (let g = 5; g <= 8; g++) {

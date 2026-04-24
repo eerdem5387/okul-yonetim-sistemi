@@ -456,7 +456,7 @@ export default function NewRegistrationPage() {
       
       if (!studentId) {
         // Önce TC numarasına göre öğrenci var mı kontrol et (tam eşleşme)
-        const existingStudentResponse = await fetch(`/api/students?search=${studentFormData.tcNumber}&limit=100`)
+        const existingStudentResponse = await fetch(`/api/students?search=${studentFormData.tcNumber}&limit=100&includePreEnrollment=1`)
         let existingStudent = null
         
         if (existingStudentResponse.ok) {
@@ -483,7 +483,7 @@ export default function NewRegistrationPage() {
             // TC numarası zaten varsa tekrar kontrol et
             if (errorData.error && errorData.error.includes("TC") && errorData.error.includes("unique")) {
               // TC numarasına göre tekrar ara
-              const retryResponse = await fetch(`/api/students?search=${studentFormData.tcNumber}&limit=100`)
+              const retryResponse = await fetch(`/api/students?search=${studentFormData.tcNumber}&limit=100&includePreEnrollment=1`)
               if (retryResponse.ok) {
                 const retryData = await retryResponse.json()
                 const retryStudents = Array.isArray(retryData) ? retryData : (retryData.students || [])
@@ -641,7 +641,7 @@ export default function NewRegistrationPage() {
           `✓ Öğrenci sisteme eklendi\n` +
           `✓ Sözleşmeler kaydedildi\n` +
           `✓ Öğrenci "Geçmiş Sözleşmeler" sayfasında görünecek\n` +
-          `✓ Öğrenci "Öğrenci Yönetimi" sayfasında görünecek\n\n` +
+          `✓ Bir sonraki yıl kayıtları Ön Kayıt listesinde takip edilir\n\n` +
           `PDF dosyası indirildi.`)
         
         // Formu temizle
@@ -786,7 +786,8 @@ export default function NewRegistrationPage() {
             <CardDescription className="text-base mt-2">
               <strong>Önemli:</strong> Yeni kayıt yapılacak öğrenci sistemde bulunmamalıdır. 
               Lütfen öğrencinin tüm bilgilerini eksiksiz girin. Kayıt tamamlandığında öğrenci 
-              otomatik olarak sisteme eklenecek ve hem geçmiş sözleşmelerde hem de öğrenci yönetimi sayfasında görünecektir.
+              otomatik olarak sisteme eklenir. Bir sonraki akademik yıl için yapılan kayıtlar
+              öğrenci yönetimi listesinde görünmez; yalnızca Ön Kayıt listesinde takip edilir.
             </CardDescription>
           </CardHeader>
           <CardContent>

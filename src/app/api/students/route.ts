@@ -12,6 +12,9 @@ export async function GET(request: NextRequest) {
         const grade = searchParams.get('grade') || ''
         const gradeBand = searchParams.get('gradeBand') || ''
         const registrationFilter = searchParams.get('registrationFilter') || ''
+        const includePreEnrollment =
+            searchParams.get('includePreEnrollment') === '1' ||
+            searchParams.get('includePreEnrollment') === 'true'
         const newRegistrationYearScopeRaw = (searchParams.get('newRegistrationYearScope') || 'all').toLowerCase()
         const newRegistrationYearScope =
             newRegistrationYearScopeRaw === 'active' || newRegistrationYearScopeRaw === 'next'
@@ -65,7 +68,10 @@ export async function GET(request: NextRequest) {
             whereConditions.push({ id: { in: ids.length > 0 ? ids : [noMatchId] } })
         } else if (registrationFilter === 'new_registration') {
             let ids: string[]
-            if (newRegistrationYearScope === 'active') {
+            if (!includePreEnrollment) {
+                // Öğrenci yönetiminde ön kayıt öğrencileri gösterme: sadece aktif yıl yeni kayıtları.
+                ids = [...regCtx.newRegistrationActiveYearStudentIds]
+            } else if (newRegistrationYearScope === 'active') {
                 ids = [...regCtx.newRegistrationActiveYearStudentIds]
             } else if (newRegistrationYearScope === 'next') {
                 ids = [...regCtx.futureYearOnlyNewRegistrationStudentIds]
@@ -83,11 +89,10 @@ export async function GET(request: NextRequest) {
             if (excluded.length > 0) {
                 whereConditions.push({ NOT: { id: { in: excluded } } })
             }
-        } else if (
-            !registrationFilter &&
-            !search.trim() &&
-            !grade &&
-            !gradeBand &&
+        }
+
+        if (
+            !includePreEnrollment &&
             regCtx.futureYearOnlyNewRegistrationStudentIds.size > 0
         ) {
             const ex = [...regCtx.futureYearOnlyNewRegistrationStudentIds]
