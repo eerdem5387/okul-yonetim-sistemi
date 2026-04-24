@@ -30,6 +30,14 @@ interface Student {
   tcNumber: string
 }
 
+function formatGrade(value: string | null | undefined): string {
+  if (!value) return "-"
+  const v = value.trim()
+  if (!v) return "-"
+  if (/^\d+$/.test(v)) return `${v}. Sınıf`
+  return v
+}
+
 interface DashboardData {
   student: Student
   statistics: {
@@ -332,7 +340,7 @@ export default function RehberlikOgrenciDashboardPage() {
                           {filteredStudents.map((student) => (
                             <option key={student.id} value={student.id}>
                               {student.firstName} {student.lastName}
-                              {student.grade && ` (${student.grade})`}
+                              {student.grade && ` (${formatGrade(student.grade)})`}
                             </option>
                           ))}
                         </select>
@@ -390,7 +398,7 @@ export default function RehberlikOgrenciDashboardPage() {
                         <div className="flex items-center gap-4 text-purple-100">
                           <span className="flex items-center gap-1">
                             <Calendar className="h-4 w-4" />
-                            Sınıf: {dashboardData.student.grade}
+                            Sınıf: {formatGrade(dashboardData.student.grade)}
                           </span>
                           <span className="flex items-center gap-1">
                             <FileText className="h-4 w-4" />

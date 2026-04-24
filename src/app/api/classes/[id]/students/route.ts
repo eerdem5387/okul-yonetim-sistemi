@@ -56,18 +56,16 @@ export async function GET(
       },
     })
 
-    const regCtx = registrationMeta ? await getRenewalTargetContext(prisma) : null
+    const regCtx = await getRenewalTargetContext(prisma)
 
     const rosterRows =
-      regCtx && regCtx.futureYearOnlyNewRegistrationStudentIds.size > 0
-        ? classStudents.filter(
-            (cs) => !regCtx.futureYearOnlyNewRegistrationStudentIds.has(cs.student.id)
-          )
+      regCtx.futureYearOnlyNewRegistrationStudentIds.size > 0
+        ? classStudents.filter((cs) => !regCtx.futureYearOnlyNewRegistrationStudentIds.has(cs.student.id))
         : classStudents
 
     const studentsPayload = rosterRows.map((cs) => {
       const base = cs.student as Record<string, unknown>
-      if (!regCtx) return base
+      if (!registrationMeta) return base
       return {
         ...base,
         registrationStatusText: registrationStatusText(
