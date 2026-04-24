@@ -648,6 +648,10 @@ export default function StudentsPage() {
           registrationMeta: "1",
           registrationFilter: regBrowseModal === "renewed" ? "renewed" : "new_registration",
         })
+        if (regBrowseModal === "new_registration") {
+          // Modalda aktif/sonraki yıl sekmeleri doğru çalışsın diye ön kayıtları dahil et.
+          params.set("includePreEnrollment", "1")
+        }
         if (regBrowseModal === "new_registration" && regBrowseNewRegYearScope !== "all") {
           params.set("newRegistrationYearScope", regBrowseNewRegYearScope)
         }
