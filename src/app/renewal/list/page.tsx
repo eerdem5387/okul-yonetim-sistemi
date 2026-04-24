@@ -947,8 +947,11 @@ export default function RenewalsListPage() {
                           </div>
                           <div className="flex items-center gap-2">
                             <GraduationCap className="h-4 w-4" />
-                            <span>
-                              {safeString(contractData.studentClass || group.student.grade)} (Burada yazan sınıf düzeyi bir sonraki akademik yıl için geçerlidir. Öğrencinin mevcut eğitim gördüğü sınıf düzeyi değildir.)
+                            <span className="flex items-center gap-1 flex-wrap">
+                              <span>{safeString(contractData.studentClass || group.student.grade)}</span>
+                              <span className="text-[11px] text-gray-500">
+                                (Burada yazan sınıf düzeyi bir sonraki akademik yıl için geçerlidir. Öğrencinin mevcut eğitim gördüğü sınıf düzeyi değildir.)
+                              </span>
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
