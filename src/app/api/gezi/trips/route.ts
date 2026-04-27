@@ -6,6 +6,17 @@ import {
 } from "@/lib/geziService"
 import { checkGeziAccess } from "@/lib/access-control"
 
+function parseOptionalBoolean(value: unknown): boolean | undefined {
+  if (value === undefined) return undefined
+  if (typeof value === "boolean") return value
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase()
+    if (normalized === "true") return true
+    if (normalized === "false") return false
+  }
+  return Boolean(value)
+}
+
 export async function GET(request: NextRequest) {
   // Yetki kontrolü
   const { hasAccess } = await checkGeziAccess(request)
@@ -136,7 +147,7 @@ export async function POST(request: NextRequest) {
       quota: p.quota !== null && p.quota !== undefined && p.quota !== ""
         ? (typeof p.quota === "number" ? Math.floor(p.quota) : (isNaN(Number(p.quota)) ? null : Math.floor(Number(p.quota))))
         : null,
-      isActive: p.isActive !== undefined ? Boolean(p.isActive) : true,
+      isActive: parseOptionalBoolean(p.isActive) ?? true,
     }
     
     const trip = await createTrip(normalizedPayload)

@@ -154,6 +154,7 @@ export async function getTrips(options?: {
   const response = await fetch(url, {
     method: "GET",
     headers: getHeaders(),
+    cache: "no-store",
   })
 
   const result = await handleResponse<{ data: Trip[] }>(response)
@@ -172,6 +173,7 @@ export async function getTrip(tripId: string): Promise<Trip> {
   const response = await fetch(url, {
     method: "GET",
     headers: getHeaders(),
+    cache: "no-store",
   })
 
   const result = await handleResponse<{ data: Trip }>(response)
@@ -246,6 +248,7 @@ export async function getTripApplications(
   const response = await fetch(url, {
     method: "GET",
     headers: getHeaders(),
+    cache: "no-store",
   })
 
   return handleResponse<PaginatedResponse<TripApplication>>(response)
@@ -263,6 +266,7 @@ export async function exportTripApplications(tripId: string): Promise<Blob> {
   const response = await fetch(url, {
     method: "GET",
     headers: getHeaders(),
+    cache: "no-store",
   })
 
   if (!response.ok) {

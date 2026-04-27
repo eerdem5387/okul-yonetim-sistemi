@@ -4,6 +4,17 @@ import { checkGeziAccess } from "@/lib/access-control"
 
 type RouteContext = { params: Promise<{ id: string }> }
 
+function parseOptionalBoolean(value: unknown): boolean | undefined {
+  if (value === undefined) return undefined
+  if (typeof value === "boolean") return value
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase()
+    if (normalized === "true") return true
+    if (normalized === "false") return false
+  }
+  return Boolean(value)
+}
+
 export async function GET(request: NextRequest, context: RouteContext) {
   // Yetki kontrolü
   const { hasAccess } = await checkGeziAccess(request)
@@ -180,7 +191,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
     
     if (p.isActive !== undefined) {
-      normalizedPayload.isActive = Boolean(p.isActive)
+      normalizedPayload.isActive = parseOptionalBoolean(p.isActive)
     }
     
     if (Object.keys(normalizedPayload).length === 0) {
