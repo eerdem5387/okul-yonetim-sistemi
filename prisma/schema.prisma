@@ -28,16 +28,16 @@ model Student {
   motherOccupation String
 
   // Baba Bilgileri (Zorunlu)
-  fatherName       String
-  fatherTc         String
-  fatherPhone      String
-  fatherAddress    String
-  fatherOccupation String
+  fatherName          String
+  fatherTc            String
+  fatherPhone         String
+  fatherAddress       String
+  fatherOccupation    String
   // Öğrenim Ücreti (Sadece Admin tarafından düzenlenebilir)
   announcedTuitionFee String? // Kurumun ilan ettiği ücret
-  studentTuitionFee    String? // Öğrenci için belirlenen ücret
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @default(now())
+  studentTuitionFee   String? // Öğrenci için belirlenen ücret
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @default(now())
 
   // Relations
   clubSelections       ClubSelection[]
@@ -50,12 +50,12 @@ model Student {
   activities           Activity[]
   activityParticipants ActivityParticipant[]
   parentMeetings       ParentMeeting[]
-  classAssignments    ClassStudent[] // Sınıf atamaları (FAZ 2)
-  parents             ParentStudent[] // Veli ilişkileri (FAZ 1 - Genişletme)
-  homeworkAssignments HomeworkAssignment[] // Ödev atamaları (FAZ 2)
-  attendances         Attendance[] // Yoklamalar (FAZ 2)
-  examResults         ExamResult[] // Sınav sonuçları (FAZ 3)
-  comments            StudentComment[] // Öğretmen/Rehberlik görüşleri (FAZ 4)
+  classAssignments     ClassStudent[] // Sınıf atamaları (FAZ 2)
+  parents              ParentStudent[] // Veli ilişkileri (FAZ 1 - Genişletme)
+  homeworkAssignments  HomeworkAssignment[] // Ödev atamaları (FAZ 2)
+  attendances          Attendance[] // Yoklamalar (FAZ 2)
+  examResults          ExamResult[] // Sınav sonuçları (FAZ 3)
+  comments             StudentComment[] // Öğretmen/Rehberlik görüşleri (FAZ 4)
 
   @@map("students")
 }
@@ -225,13 +225,14 @@ enum ContactStatus {
 // ============================================
 
 enum ActivityMainType {
-  EGITIM         // Eğitim
-  GEZI           // Gezi
+  EGITIM // Eğitim
+  GEZI // Gezi
   GORSEL_SANATLAR // Görsel Sanatlar
-  MUZIK          // Müzik
-  PROJE          // Proje
-  SPOR           // Spor
-  TURNUVA        // Turnuva
+  MUZIK // Müzik
+  GASTRONOMI // Gastronomi
+  PROJE // Proje
+  SPOR // Spor
+  TURNUVA // Turnuva
 }
 
 enum LanguageLevel {
@@ -246,8 +247,8 @@ enum LanguageLevel {
 model ActivityEvent {
   id              String           @id @default(cuid())
   mainType        ActivityMainType
-  subtype         String?          // ingilizce, ingilizce_fen, ingilizce_mat, ispanyolca, robotik, yapay_zeka, vb.
-  certificateType String           // hangi sertifika şablonu kullanılacak
+  subtype         String? // ingilizce, ingilizce_fen, ingilizce_mat, ispanyolca, robotik, yapay_zeka, vb.
+  certificateType String // hangi sertifika şablonu kullanılacak
   title           String
   description     String?
   outcome         String?
@@ -260,13 +261,13 @@ model ActivityEvent {
   durationMonths  Int?
   durationYears   Int?
   evidenceUrls    String[]         @default([])
-  metadata        Json?            // Kategori'ye özgü ek alanlar (örn: gezi türü, gezi programı)
+  metadata        Json? // Kategori'ye özgü ek alanlar (örn: gezi türü, gezi programı)
   teacherId       String
   createdBy       String
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
-  teacher      Staff                @relation("TeacherActivityEvents", fields: [teacherId], references: [id])
+  teacher      Staff                 @relation("TeacherActivityEvents", fields: [teacherId], references: [id])
   participants ActivityParticipant[]
 
   @@index([mainType])
@@ -280,13 +281,13 @@ model ActivityParticipant {
   id                    String                     @id @default(cuid())
   activityId            String
   studentId             String
-  score                 Int?                       // 0-100
-  languageLevel         LanguageLevel?             // sadece dil eğitimlerinde
+  score                 Int? // 0-100
+  languageLevel         LanguageLevel? // sadece dil eğitimlerinde
   participationPhotoUrl String?
-  artworkDescription    String?                    // Görsel Sanatlar Etkinlik — eser açıklaması
-  tournamentPlacement   String?                    // Turnuva başarı belgesi — derece / sıralama metni (serbest)
-  projectRole           String?                    // Proje içerik belgesi — katılımcının rolü
-  extraDocumentUrl      String?                    // öğrenciye özel ek belge (PDF)
+  artworkDescription    String? // Görsel Sanatlar Etkinlik — eser açıklaması
+  tournamentPlacement   String? // Turnuva başarı belgesi — derece / sıralama metni (serbest)
+  projectRole           String? // Proje içerik belgesi — katılımcının rolü
+  extraDocumentUrl      String? // öğrenciye özel ek belge (PDF)
   verificationStatus    ActivityVerificationStatus @default(IMZA_SURECINDE)
   signedDocumentUrls    String[]                   @default([])
   signedCurriculumUrls  String[]                   @default([])
@@ -297,7 +298,7 @@ model ActivityParticipant {
   updatedAt             DateTime                   @updatedAt
 
   activity ActivityEvent @relation(fields: [activityId], references: [id], onDelete: Cascade)
-  student  Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student  Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([activityId, studentId])
   @@index([activityId])
@@ -330,39 +331,39 @@ enum ActivityType {
 
 // Doğrulama protokolü: İmza sürecinde → Onay bekliyor → Onaylandı
 enum ActivityVerificationStatus {
-  IMZA_SURECINDE  // PDF indirildi, belgeler imzalanıyor / imzalı belge henüz yüklenmedi
-  ONAY_BEKLIYOR   // İmzalı belgeler yüklendi, inceleme bekliyor
-  ONAYLANDI       // Yetkili tarafından onaylandı
+  IMZA_SURECINDE // PDF indirildi, belgeler imzalanıyor / imzalı belge henüz yüklenmedi
+  ONAY_BEKLIYOR // İmzalı belgeler yüklendi, inceleme bekliyor
+  ONAYLANDI // Yetkili tarafından onaylandı
 }
 
 model Activity {
-  id           String       @id @default(cuid())
-  studentId    String
-  type         ActivityType
-  title        String // Faaliyet başlığı
-  description  String? // Detaylı açıklama
-  activityDate DateTime // Faaliyet tarihi (IMMUTABLE - değiştirilemez)
-  location     String? // Konum
-  organizer    String? // Organizatör/Koordinatör
-  duration     Int? // Süre (dakika)
-  participants Int? // Katılımcı sayısı
-  outcome      String? // Sonuç/Kazanım
-  evidence     String? // Kanıt (dosya yolu, link vb.)
-  isVerified   Boolean      @default(false) // ONAYLANDI ise true (geriye dönük uyumluluk)
-  verifiedBy   String? // Doğrulayan/onaylayan kişi
-  verifiedAt   DateTime? // Doğrulama/onay tarihi
-  notes            String? // Notlar
-  certificateData  Json? // Sertifika PDF: başlık, eğitim açıklaması, tarihler, öğretmen/müdür adı
+  id                    String                     @id @default(cuid())
+  studentId             String
+  type                  ActivityType
+  title                 String // Faaliyet başlığı
+  description           String? // Detaylı açıklama
+  activityDate          DateTime // Faaliyet tarihi (IMMUTABLE - değiştirilemez)
+  location              String? // Konum
+  organizer             String? // Organizatör/Koordinatör
+  duration              Int? // Süre (dakika)
+  participants          Int? // Katılımcı sayısı
+  outcome               String? // Sonuç/Kazanım
+  evidence              String? // Kanıt (dosya yolu, link vb.)
+  isVerified            Boolean                    @default(false) // ONAYLANDI ise true (geriye dönük uyumluluk)
+  verifiedBy            String? // Doğrulayan/onaylayan kişi
+  verifiedAt            DateTime? // Doğrulama/onay tarihi
+  notes                 String? // Notlar
+  certificateData       Json? // Sertifika PDF: başlık, eğitim açıklaması, tarihler, öğretmen/müdür adı
   // Faaliyet Ekle ile uyum: kategori ve alt tür (Eğitim, Etkinlik, Spor, Yarışma)
-  category           String? // egitim | etkinlik | spor | yarisma
-  subtype            String? // Alt tür (örn: spanish, basketbol)
+  category              String? // egitim | etkinlik | spor | yarisma
+  subtype               String? // Alt tür (örn: spanish, basketbol)
   participationPhotoUrl String? // Bu öğrencinin faaliyete katılımını kanıtlayan fotoğraf (max 5MB)
   // Doğrulama protokolü: 3 aşama (imza sürecinde → imzalı belge yükle → onaylandı)
   verificationStatus    ActivityVerificationStatus @default(IMZA_SURECINDE)
-  signedDocumentUrls    String[] @default([]) // Taranıp yüklenen imzalı belge URL'leri (ONAY_BEKLIYOR için)
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
-  createdBy        String? // Oluşturan kullanıcı
+  signedDocumentUrls    String[]                   @default([]) // Taranıp yüklenen imzalı belge URL'leri (ONAY_BEKLIYOR için)
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
+  createdBy             String? // Oluşturan kullanıcı
 
   // Relations
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
@@ -433,48 +434,117 @@ enum StaffDepartment {
 }
 
 model Staff {
-  id                 String          @id @default(cuid())
-  firstName          String
-  lastName           String
-  tcNumber           String          @unique
-  email              String?
-  phone              String?
-  department         StaffDepartment
-  position           String? // Pozisyon (Müdür, Müdür Yardımcısı, Sınıf Öğretmeni, vs.)
-  subject            String? // Branş/Ders (öğretmenler için)
-  isActive           Boolean         @default(true)
-  hireDate           DateTime? // İşe başlama tarihi
-  notes              String? // Notlar
-  
+  id         String          @id @default(cuid())
+  firstName  String
+  lastName   String
+  tcNumber   String          @unique
+  email      String?
+  phone      String?
+  department StaffDepartment
+  position   String? // Pozisyon (Müdür, Müdür Yardımcısı, Sınıf Öğretmeni, vs.)
+  subject    String? // Branş/Ders (öğretmenler için)
+  isActive   Boolean         @default(true)
+  hireDate   DateTime? // İşe başlama tarihi
+  notes      String? // Notlar
+
   // Authentication fields (FAZ 1)
   password           String? // Hashed password (bcrypt) - ilk eklemede null, ilk giriş sonrası set edilir
-  isFirstLogin       Boolean         @default(true) // İlk giriş mi?
-  mustChangePassword Boolean         @default(false) // Zorunlu şifre değişikliği bayrağı
+  isFirstLogin       Boolean   @default(true) // İlk giriş mi?
+  mustChangePassword Boolean   @default(false) // Zorunlu şifre değişikliği bayrağı
   lastLoginAt        DateTime? // Son giriş tarihi
-  
+
   // Module Access Permissions
-  hasGeziAccess      Boolean         @default(false) // Gezi Yönetimi erişim yetkisi
-  hasIbAccess        Boolean         @default(false) // IB Yönetimi erişim yetkisi
-  
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
+  hasGeziAccess Boolean @default(false) // Gezi Yönetimi erişim yetkisi
+  hasIbAccess   Boolean @default(false) // IB Yönetimi erişim yetkisi
+
+  // HRM - Yönetici Notları (sadece üst yönetim okur/yazar)
+  adminNotes          Json? // TipTap JSON dokümanı
+  adminNotesUpdatedAt DateTime?
+  adminNotesUpdatedBy String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
   subjectAssignments    SubjectAssignment[]
-  assignedClasses       Class[]              @relation("ClassCounselor")
-  teacherSchedules      Schedule[]           @relation("TeacherSchedules")
-  homeworks             Homework[]           @relation("TeacherHomeworks")
-  attendances           Attendance[]         @relation("TeacherAttendances")
-  createdExams          Exam[]               @relation("ExamCreator")
-  enteredExamResults    ExamResult[]         @relation("ExamResultEntry")
-  studentComments       StudentComment[]     @relation("StaffComments")
-  teacherActivityEvents ActivityEvent[]      @relation("TeacherActivityEvents")
+  assignedClasses       Class[]             @relation("ClassCounselor")
+  teacherSchedules      Schedule[]          @relation("TeacherSchedules")
+  homeworks             Homework[]          @relation("TeacherHomeworks")
+  attendances           Attendance[]        @relation("TeacherAttendances")
+  createdExams          Exam[]              @relation("ExamCreator")
+  enteredExamResults    ExamResult[]        @relation("ExamResultEntry")
+  studentComments       StudentComment[]    @relation("StaffComments")
+  teacherActivityEvents ActivityEvent[]     @relation("TeacherActivityEvents")
+
+  // İç Haberleşme (Chat)
+  chatParticipants ConversationParticipant[] @relation("StaffChatParticipants")
+  sentMessages     Message[]                 @relation("StaffSentMessages")
+  messageReceipts  MessageReceipt[]          @relation("StaffMessageReceipts")
+
+  // HRM
+  leaves         StaffLeave[]
+  approvedLeaves StaffLeave[] @relation("ApprovedLeaves")
+  duties         StaffDuty[]
 
   @@index([tcNumber])
   @@index([department])
   @@index([isActive])
   @@index([firstName, lastName])
   @@map("staff")
+}
+
+// HRM - İzin / Sağlık Raporu / Mazeret
+enum LeaveType {
+  ANNUAL // Yıllık İzin
+  SICK_REPORT // Sağlık Raporu
+  EXCUSE // Mazeret İzni
+  UNPAID // Ücretsiz İzin
+  HOURLY // Saatlik Sevk/İzin
+}
+
+enum LeaveStatus {
+  PENDING // Onay Bekliyor
+  APPROVED // Onaylandı
+  REJECTED // Reddedildi
+}
+
+model StaffLeave {
+  id           String      @id @default(cuid())
+  staffId      String
+  staff        Staff       @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  type         LeaveType
+  startDate    DateTime
+  endDate      DateTime
+  reason       String?     @db.Text
+  status       LeaveStatus @default(PENDING)
+  approvedById String? // Onaylayan yönetici (Staff ID)
+  approvedBy   Staff?      @relation("ApprovedLeaves", fields: [approvedById], references: [id])
+  approvedAt   DateTime?
+  rejectedAt   DateTime?
+  decisionNote String? // Onay/Red notu
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([staffId])
+  @@index([status])
+  @@index([startDate, endDate])
+  @@map("staff_leaves")
+}
+
+// HRM - Nöbet Çizelgesi
+model StaffDuty {
+  id        String   @id @default(cuid())
+  staffId   String
+  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  dayOfWeek Int // 1-7 (Pazartesi-Pazar)
+  location  String // Nöbet Yeri (Örn: Bahçe, 2. Kat)
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([staffId])
+  @@index([dayOfWeek])
+  @@map("staff_duties")
 }
 
 // Neredeyiz Modülü - Yıllık Plan Takip Sistemi
@@ -502,22 +572,22 @@ enum ProgressStatus {
 
 // Akademik Yıl
 model AcademicYear {
-  id          String   @id @default(cuid())
-  name        String // Örn: "2024-2025 Eğitim Öğretim Yılı"
-  startDate   DateTime? // Başlangıç (taslak yılda boş; aktif yapılırken zorunlu)
-  endDate     DateTime? // Bitiş (taslak yılda boş; aktif yapılırken zorunlu)
-  isActive    Boolean  @default(false) // Aktif akademik yıl
-  weekendDays String[] @default([]) // Hafta tatili günleri: ["SATURDAY", "SUNDAY"]
-  term1Start  DateTime? // 1. dönem başlangıcı
-  term1End    DateTime? // 1. dönem bitişi
-  term2Start  DateTime? // 2. dönem başlangıcı
-  term2End    DateTime? // 2. dönem bitişi
+  id                  String         @id @default(cuid())
+  name                String // Örn: "2024-2025 Eğitim Öğretim Yılı"
+  startDate           DateTime? // Başlangıç (taslak yılda boş; aktif yapılırken zorunlu)
+  endDate             DateTime? // Bitiş (taslak yılda boş; aktif yapılırken zorunlu)
+  isActive            Boolean        @default(false) // Aktif akademik yıl
+  weekendDays         String[]       @default([]) // Hafta tatili günleri: ["SATURDAY", "SUNDAY"]
+  term1Start          DateTime? // 1. dönem başlangıcı
+  term1End            DateTime? // 1. dönem bitişi
+  term2Start          DateTime? // 2. dönem başlangıcı
+  term2End            DateTime? // 2. dönem bitişi
   /// Dolgu: kayıt yenileme hedefi; kullanıcı arayüzünde listelenmez (aktif yıl kaydına bağlı otomatik)
-  parentActiveYearId String?
-  parentActiveYear   AcademicYear?  @relation("AcademicYearRenewal", fields: [parentActiveYearId], references: [id], onDelete: Cascade)
+  parentActiveYearId  String?
+  parentActiveYear    AcademicYear?  @relation("AcademicYearRenewal", fields: [parentActiveYearId], references: [id], onDelete: Cascade)
   renewalPlaceholders AcademicYear[] @relation("AcademicYearRenewal")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
 
   // Relations
   subjects    Subject[]
@@ -767,27 +837,27 @@ enum TeklifGorusmeDurumu {
 }
 
 model TeklifGorusmesi {
-  id                String   @id @default(cuid())
+  id                  String    @id @default(cuid())
   // Öğrenci Bilgileri
-  ogrenciAdSoyad    String
-  okul              String
-  sinif             String
+  ogrenciAdSoyad      String
+  okul                String
+  sinif               String
   // Veli Bilgileri
-  veliAdSoyad       String
-  veliTelefon       String
-  veliEmail         String?
-  veliMeslek        String?
-  veliAdres         String?
+  veliAdSoyad         String
+  veliTelefon         String
+  veliEmail           String?
+  veliMeslek          String?
+  veliAdres           String?
   // Teklif Bilgileri
-  teklifEdilenFiyat Float // Teklif edilen fiyat
-  okulFiyati        Float // Okul fiyatı
+  teklifEdilenFiyat   Float // Teklif edilen fiyat
+  okulFiyati          Float // Okul fiyatı
   sonGecerlilikTarihi DateTime? // Teklifin son geçerlilik tarihi (manuel giriş)
   // Görüşmeyi Sonlandır ile işaretlenene kadar tamamlanmış sayılmaz
-  sonlandirildi      Boolean  @default(false)
+  sonlandirildi       Boolean   @default(false)
   // Sistem Bilgileri
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  createdBy         String? // Oluşturan kullanıcı
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  createdBy           String? // Oluşturan kullanıcı
 
   // Relations
   kayitlar TeklifGorusmeKaydi[]
@@ -805,7 +875,7 @@ model TeklifGorusmeKaydi {
   id                String              @id @default(cuid())
   teklifGorusmesiId String
   // Görüşme Bilgileri
-  gorusmeTarihi     DateTime            // Görüşmenin gerçekleştiği tarih (manuel giriş)
+  gorusmeTarihi     DateTime // Görüşmenin gerçekleştiği tarih (manuel giriş)
   gorusmeyiYapan    String // Görüşmeyi yapan kişi adı
   durum             TeklifGorusmeDurumu
   durumNotu         String? // Duruma özel not (örn: "Olumlu - %20 indirim teklif edildi")
@@ -921,13 +991,13 @@ model ScheduleApproval {
   approvedAt  DateTime? // Onay tarihi
   rejectedAt  DateTime? // Red tarihi
   notes       String? // Onay/Red notları
-  
+
   // Değişiklik detayları (JSON string olarak)
-  oldValue    String? // Eski değerler (UPDATE/DELETE için)
-  newValue    String? // Yeni değerler (CREATE/UPDATE için)
-  
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  oldValue String? // Eski değerler (UPDATE/DELETE için)
+  newValue String? // Yeni değerler (CREATE/UPDATE için)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
   schedule Schedule? @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
@@ -948,22 +1018,27 @@ model ScheduleApproval {
 // Her öğrenci için bir veli hesabı oluşturulur
 // Anne ve baba aynı hesapla giriş yapar (aynı şifre)
 model Parent {
-  id                 String   @id @default(cuid())
-  studentTcNumber    String   @unique // Öğrencinin TC'si (giriş için kullanılır)
-  
+  id              String @id @default(cuid())
+  studentTcNumber String @unique // Öğrencinin TC'si (giriş için kullanılır)
+
   // Authentication
   password           String? // Hashed password (bcrypt) - ilk giriş sonrası set edilir
-  isFirstLogin       Boolean  @default(true) // İlk giriş mi?
-  mustChangePassword Boolean  @default(false) // Zorunlu şifre değişikliği
+  isFirstLogin       Boolean   @default(true) // İlk giriş mi?
+  mustChangePassword Boolean   @default(false) // Zorunlu şifre değişikliği
   lastLoginAt        DateTime? // Son giriş tarihi
-  isActive           Boolean  @default(true) // Aktif mi?
-  
+  isActive           Boolean   @default(true) // Aktif mi?
+
   // İlişkiler
-  students           ParentStudent[] // Bu hesaba bağlı veliler (anne, baba, vasi)
-  
+  students ParentStudent[] // Bu hesaba bağlı veliler (anne, baba, vasi)
+
+  // İç Haberleşme (Chat)
+  chatParticipants ConversationParticipant[] @relation("ParentChatParticipants")
+  sentMessages     Message[]                 @relation("ParentSentMessages")
+  messageReceipts  MessageReceipt[]          @relation("ParentMessageReceipts")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@index([studentTcNumber])
   @@index([isActive])
   @@map("parents")
@@ -976,20 +1051,20 @@ model ParentStudent {
   parentId  String // Parent hesabı (öğrenci TC bazlı)
   studentId String // Öğrenci ID
   relation  ParentRelation // ANNE, BABA, VASI
-  
+
   // Veli bilgileri
-  parentName       String // Velinin adı soyadı
-  parentTcNumber   String // Velinin kendi TC'si
-  parentPhone      String? // Velinin telefonu
-  parentEmail      String? // Velinin e-postası
-  
+  parentName     String // Velinin adı soyadı
+  parentTcNumber String // Velinin kendi TC'si
+  parentPhone    String? // Velinin telefonu
+  parentEmail    String? // Velinin e-postası
+
   // Relations
   parent  Parent  @relation(fields: [parentId], references: [id], onDelete: Cascade)
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@unique([parentId, studentId, relation]) // Bir hesapta her veli tipi (anne/baba) bir kez olabilir
   @@index([parentId])
   @@index([studentId])
@@ -1010,32 +1085,32 @@ enum ParentRelation {
 
 // Ödev Modeli
 model Homework {
-  id          String   @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Ödev bilgileri
   title       String // Ödev başlığı
-  description String @db.Text // Ödev açıklaması (detaylı)
+  description String   @db.Text // Ödev açıklaması (detaylı)
   dueDate     DateTime // Teslim tarihi
   subject     String? // Ders adı (opsiyonel)
-  
+
   // Öğretmen bilgileri
-  teacherId   String // Ödevi veren öğretmen
-  teacher     Staff    @relation("TeacherHomeworks", fields: [teacherId], references: [id], onDelete: Cascade)
-  
+  teacherId String // Ödevi veren öğretmen
+  teacher   Staff  @relation("TeacherHomeworks", fields: [teacherId], references: [id], onDelete: Cascade)
+
   // Sınıf bilgileri
-  classId     String? // Sınıf (tüm sınıfa verilirse)
-  class       Class?   @relation(fields: [classId], references: [id], onDelete: Cascade)
-  
+  classId String? // Sınıf (tüm sınıfa verilirse)
+  class   Class?  @relation(fields: [classId], references: [id], onDelete: Cascade)
+
   // Ek bilgiler
   attachmentUrl String? // Ek dosya URL'si (Vercel Blob)
   isActive      Boolean @default(true) // Aktif mi?
-  
+
   // İlişkiler
   assignments HomeworkAssignment[] // Ödev atamaları (öğrenci bazlı)
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@index([teacherId])
   @@index([classId])
   @@index([dueDate])
@@ -1045,23 +1120,23 @@ model Homework {
 
 // Ödev Ataması (Öğrenci Bazlı)
 model HomeworkAssignment {
-  id         String   @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   homeworkId String // Ödev ID
   homework   Homework @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
-  
-  studentId  String // Öğrenci ID
-  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  
+
+  studentId String // Öğrenci ID
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
   // Durum bilgileri
-  isCompleted   Boolean   @default(false) // Tamamlandı mı?
-  completedAt   DateTime? // Tamamlanma tarihi
-  completedBy   String?   // Kim tamamladı (öğretmen veya öğrenci)
-  note          String?   // Öğretmen notu
-  
+  isCompleted Boolean   @default(false) // Tamamlandı mı?
+  completedAt DateTime? // Tamamlanma tarihi
+  completedBy String? // Kim tamamladı (öğretmen veya öğrenci)
+  note        String? // Öğretmen notu
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@unique([homeworkId, studentId]) // Bir öğrenci aynı ödevi birden fazla kez alamaz
   @@index([homeworkId])
   @@index([studentId])
@@ -1071,34 +1146,34 @@ model HomeworkAssignment {
 
 // Yoklama Modeli
 model Attendance {
-  id        String   @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Ders bilgileri
   scheduleId String? // Ders programı ID (opsiyonel)
   schedule   Schedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
-  
-  classId    String // Sınıf ID
-  class      Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
-  
-  teacherId  String // Öğretmen ID
-  teacher    Staff    @relation("TeacherAttendances", fields: [teacherId], references: [id], onDelete: Cascade)
-  
+
+  classId String // Sınıf ID
+  class   Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  teacherId String // Öğretmen ID
+  teacher   Staff  @relation("TeacherAttendances", fields: [teacherId], references: [id], onDelete: Cascade)
+
   // Yoklama bilgileri
   date       DateTime // Yoklama tarihi
   lessonName String // Ders adı
   startTime  String // Ders başlangıç saati (HH:mm)
   endTime    String // Ders bitiş saati (HH:mm)
-  
+
   // Öğrenci yoklama durumu
-  studentId  String // Öğrenci ID
-  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  
-  status     AttendanceStatus @default(PRESENT) // Durum: Geldi, Gelmedi, İzinli, Geç Kaldı
-  note       String? // Not (opsiyonel)
-  
+  studentId String // Öğrenci ID
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  status AttendanceStatus @default(PRESENT) // Durum: Geldi, Gelmedi, İzinli, Geç Kaldı
+  note   String? // Not (opsiyonel)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@index([scheduleId])
   @@index([classId])
   @@index([teacherId])
@@ -1111,8 +1186,8 @@ model Attendance {
 // Yoklama Durumu
 enum AttendanceStatus {
   PRESENT // Geldi
-  ABSENT  // Gelmedi
-  LATE    // Geç Kaldı
+  ABSENT // Gelmedi
+  LATE // Geç Kaldı
   EXCUSED // İzinli
 }
 
@@ -1122,34 +1197,34 @@ enum AttendanceStatus {
 
 // Sınav Modeli
 model Exam {
-  id          String   @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Sınav bilgileri
   name        String // "2024-2025 1. Dönem Deneme Sınavı"
   examType    ExamType // YKS, LGS, KPSS, DIGER
   examDate    DateTime // Sınav tarihi
   grade       Int? // Hangi sınıf seviyesi (9, 10, 11, 12) - opsiyonel (tüm okul için null)
-  description String? @db.Text // Sınav hakkında açıklama
-  
+  description String?  @db.Text // Sınav hakkında açıklama
+
   // Sınıf bazlı sınav (opsiyonel)
-  classId     String? // Belirli bir sınıfa özel sınav
-  class       Class?   @relation(fields: [classId], references: [id], onDelete: SetNull)
-  
+  classId String? // Belirli bir sınıfa özel sınav
+  class   Class?  @relation(fields: [classId], references: [id], onDelete: SetNull)
+
   // Sınav detayları (JSON olarak saklanabilir veya ayrı alanlar)
-  subjects    Json? // Dersler ve puan türleri örn: {"TYT": {...}, "AYT": {...}}
-  
+  subjects Json? // Dersler ve puan türleri örn: {"TYT": {...}, "AYT": {...}}
+
   // Oluşturan
   createdById String // Rehberlik uzmanı Staff ID
-  createdBy   Staff    @relation("ExamCreator", fields: [createdById], references: [id], onDelete: Cascade)
-  
-  isActive    Boolean  @default(true)
-  
+  createdBy   Staff  @relation("ExamCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  isActive Boolean @default(true)
+
   // İlişkiler
-  results     ExamResult[] // Sınav sonuçları
-  
+  results ExamResult[] // Sınav sonuçları
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@index([createdById])
   @@index([grade])
   @@index([classId])
@@ -1160,14 +1235,14 @@ model Exam {
 
 // Sınav Sonucu (Öğrenci Bazlı)
 model ExamResult {
-  id        String   @id @default(cuid())
-  
-  examId    String
-  exam      Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
-  
+  id String @id @default(cuid())
+
+  examId String
+  exam   Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
+
   studentId String
-  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
   // Sonuç bilgileri (JSON olarak saklanır - esneklik için)
   // Örnek: {
   //   "TYT": {"turkce": 35, "matematik": 30, "toplam": 120, "net": 98.5},
@@ -1175,23 +1250,23 @@ model ExamResult {
   //   "totalScore": 450,
   //   "ranking": 1250
   // }
-  scores    Json // Sınav sonuçları (ders bazlı)
-  
+  scores Json // Sınav sonuçları (ders bazlı)
+
   // Genel bilgiler
-  totalScore   Float?  // Toplam puan
-  ranking      Int?    // Sıralama
-  percentile   Float?  // Yüzdelik dilim
-  
+  totalScore Float? // Toplam puan
+  ranking    Int? // Sıralama
+  percentile Float? // Yüzdelik dilim
+
   // Notlar
-  notes        String? @db.Text // Rehberlik notları
-  
+  notes String? @db.Text // Rehberlik notları
+
   // Kim girdi
-  enteredById  String // Rehberlik uzmanı Staff ID
-  enteredBy    Staff    @relation("ExamResultEntry", fields: [enteredById], references: [id], onDelete: Cascade)
-  
+  enteredById String // Rehberlik uzmanı Staff ID
+  enteredBy   Staff  @relation("ExamResultEntry", fields: [enteredById], references: [id], onDelete: Cascade)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@unique([examId, studentId]) // Bir öğrenci aynı sınava birden fazla kez girilemez
   @@index([examId])
   @@index([studentId])
@@ -1202,11 +1277,11 @@ model ExamResult {
 
 // Sınav Tipi
 enum ExamType {
-  YKS    // Yükseköğretim Kurumları Sınavı
-  LGS    // Liselere Geçiş Sınavı
-  KPSS   // Kamu Personeli Seçme Sınavı
+  YKS // Yükseköğretim Kurumları Sınavı
+  LGS // Liselere Geçiş Sınavı
+  KPSS // Kamu Personeli Seçme Sınavı
   DENEME // Deneme Sınavı
-  DIGER  // Diğer
+  DIGER // Diğer
 }
 
 // ============================================
@@ -1215,26 +1290,26 @@ enum ExamType {
 
 // Öğrenci Görüş/Yorum Modeli
 model StudentComment {
-  id        String   @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Öğrenci bilgisi
   studentId String
-  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
   // Yazan kişi (Öğretmen veya Rehberlik)
-  staffId   String
-  staff     Staff    @relation("StaffComments", fields: [staffId], references: [id], onDelete: Cascade)
-  
+  staffId String
+  staff   Staff  @relation("StaffComments", fields: [staffId], references: [id], onDelete: Cascade)
+
   // Görüş bilgileri
   commentType CommentType // ACADEMIC, BEHAVIORAL, GENERAL
-  category    String?      // Ders adı veya alan (örn: "Matematik", "Sosyal Gelişim")
-  content     String       @db.Text // Görüş içeriği
-  isPositive  Boolean      @default(true) // Olumlu/Olumsuz
-  
+  category    String? // Ders adı veya alan (örn: "Matematik", "Sosyal Gelişim")
+  content     String      @db.Text // Görüş içeriği
+  isPositive  Boolean     @default(true) // Olumlu/Olumsuz
+
   // İlişkiler
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@index([studentId])
   @@index([staffId])
   @@index([commentType])
@@ -1244,7 +1319,114 @@ model StudentComment {
 
 // Görüş Tipi
 enum CommentType {
-  ACADEMIC    // Akademik (Ders başarısı, not durumu)
-  BEHAVIORAL  // Davranışsal (Sınıf içi davranış, sosyal ilişkiler)
-  GENERAL     // Genel (Diğer gözlemler)
+  ACADEMIC // Akademik (Ders başarısı, not durumu)
+  BEHAVIORAL // Davranışsal (Sınıf içi davranış, sosyal ilişkiler)
+  GENERAL // Genel (Diğer gözlemler)
+}
+
+// ============================================
+// İÇ HABERLEŞME (CHAT) MODÜLÜ
+// Yalnızca Staff ve Parent arasında çalışır.
+// ============================================
+
+enum ConversationType {
+  PRIVATE // 1:1 özel sohbet
+  GROUP // Grup sohbeti (yöneticilerin oluşturduğu)
+  ANNOUNCEMENT // Duyuru kanalı (sadece adminler mesaj atabilir)
+}
+
+enum ParticipantRole {
+  ADMIN // Sohbet yöneticisi (yalnızca grup/duyuruda anlamlı)
+  MEMBER
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  DOCUMENT
+}
+
+model Conversation {
+  id        String           @id @default(cuid())
+  type      ConversationType
+  title     String? // Grup veya duyuru kanalı adı (PRIVATE için null)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@index([type])
+  @@index([updatedAt])
+  @@map("conversations")
+}
+
+// Sohbet katılımcıları. Polymorphic: tam olarak staffId VEYA parentId dolu olur.
+model ConversationParticipant {
+  id             String          @id @default(cuid())
+  conversationId String
+  conversation   Conversation    @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           ParticipantRole @default(MEMBER)
+
+  staffId  String?
+  staff    Staff?  @relation("StaffChatParticipants", fields: [staffId], references: [id], onDelete: Cascade)
+  parentId String?
+  parent   Parent? @relation("ParentChatParticipants", fields: [parentId], references: [id], onDelete: Cascade)
+
+  joinedAt DateTime @default(now())
+
+  @@unique([conversationId, staffId])
+  @@unique([conversationId, parentId])
+  @@index([conversationId])
+  @@index([staffId])
+  @@index([parentId])
+  @@map("conversation_participants")
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  // Polymorphic gönderici
+  senderStaffId  String?
+  senderStaff    Staff?  @relation("StaffSentMessages", fields: [senderStaffId], references: [id], onDelete: SetNull)
+  senderParentId String?
+  senderParent   Parent? @relation("ParentSentMessages", fields: [senderParentId], references: [id], onDelete: SetNull)
+
+  body          String      @db.Text
+  type          MessageType @default(TEXT)
+  attachmentUrl String? // Vercel Blob URL
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  receipts MessageReceipt[]
+
+  @@index([conversationId])
+  @@index([conversationId, createdAt])
+  @@index([senderStaffId])
+  @@index([senderParentId])
+  @@map("messages")
+}
+
+model MessageReceipt {
+  id        String  @id @default(cuid())
+  messageId String
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  // Polymorphic okuyucu
+  readerStaffId  String?
+  readerStaff    Staff?  @relation("StaffMessageReceipts", fields: [readerStaffId], references: [id], onDelete: Cascade)
+  readerParentId String?
+  readerParent   Parent? @relation("ParentMessageReceipts", fields: [readerParentId], references: [id], onDelete: Cascade)
+
+  readAt DateTime @default(now())
+
+  @@unique([messageId, readerStaffId])
+  @@unique([messageId, readerParentId])
+  @@index([messageId])
+  @@index([readerStaffId])
+  @@index([readerParentId])
+  @@map("message_receipts")
 }

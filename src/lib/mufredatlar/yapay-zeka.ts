@@ -11,9 +11,9 @@ import type { MufredatHafta } from "./ingilizce"
 export type { MufredatHafta }
 
 export const YAPAY_ZEKA_MUFREDAT: MufredatHafta[] = [
-  // ── SEPTEMBER 2024 ──────────────────────────────────────────────────
+  // ── SEPTEMBER 2025 ──────────────────────────────────────────────────
   {
-    ay: "SEPTEMBER 2024",
+    ay: "SEPTEMBER 2025",
     hafta: 1,
     konu: "Course Introduction & What is AI?",
     icerik: "AI example videos, ChatGPT experience",
@@ -38,9 +38,9 @@ export const YAPAY_ZEKA_MUFREDAT: MufredatHafta[] = [
     hedef: "Writes different codes using decision structures.",
   },
 
-  // ── OCTOBER 2024 ────────────────────────────────────────────────────
+  // ── OCTOBER 2025 ────────────────────────────────────────────────────
   {
-    ay: "OCTOBER 2024",
+    ay: "OCTOBER 2025",
     hafta: 5,
     konu: "Loops — For and While",
     icerik: "Code that finds a random number between 1–100",
@@ -65,9 +65,9 @@ export const YAPAY_ZEKA_MUFREDAT: MufredatHafta[] = [
     hedef: "Uses dictionary structures to store information.",
   },
 
-  // ── NOVEMBER 2024 ───────────────────────────────────────────────────
+  // ── NOVEMBER 2025 ───────────────────────────────────────────────────
   {
-    ay: "NOVEMBER 2024",
+    ay: "NOVEMBER 2025",
     hafta: 9,
     konu: "File Reading / Writing — TXT/CSV File Operations",
     icerik: "System that saves notes to a file",
@@ -92,9 +92,9 @@ export const YAPAY_ZEKA_MUFREDAT: MufredatHafta[] = [
     hedef: "Processes and filters data with Pandas.",
   },
 
-  // ── DECEMBER 2024 ───────────────────────────────────────────────────
+  // ── DECEMBER 2025 ───────────────────────────────────────────────────
   {
-    ay: "DECEMBER 2024",
+    ay: "DECEMBER 2025",
     hafta: 13,
     konu: "Introduction to Matplotlib — Plotting Graphs",
     icerik: "Classroom distribution chart",
@@ -119,9 +119,9 @@ export const YAPAY_ZEKA_MUFREDAT: MufredatHafta[] = [
     hedef: "Runs simple ML models with scikit-learn.",
   },
 
-  // ── JANUARY 2025 ────────────────────────────────────────────────────
+  // ── JANUARY 2026 ────────────────────────────────────────────────────
   {
-    ay: "JANUARY 2025",
+    ay: "JANUARY 2026",
     hafta: 17,
     konu: "Regression Analysis — Linear Regression Logic",
     icerik: "House price prediction example",
@@ -146,9 +146,9 @@ export const YAPAY_ZEKA_MUFREDAT: MufredatHafta[] = [
     hedef: "Measures model accuracy and performance.",
   },
 
-  // ── FEBRUARY 2025 ───────────────────────────────────────────────────
+  // ── FEBRUARY 2026 ───────────────────────────────────────────────────
   {
-    ay: "FEBRUARY 2025",
+    ay: "FEBRUARY 2026",
     hafta: 21,
     konu: "Image Processing + IoU — OpenCV Basics",
     icerik: "Image upload, grayscale, IoU calculation",
@@ -173,9 +173,9 @@ export const YAPAY_ZEKA_MUFREDAT: MufredatHafta[] = [
     hedef: "Writes a basic chatbot.",
   },
 
-  // ── MARCH 2025 ──────────────────────────────────────────────────────
+  // ── MARCH 2026 ──────────────────────────────────────────────────────
   {
-    ay: "MARCH 2025",
+    ay: "MARCH 2026",
     hafta: 25,
     konu: "AI Ethics & Safety — Data Privacy & Algorithm Bias",
     icerik: "Group discussion",
@@ -200,9 +200,9 @@ export const YAPAY_ZEKA_MUFREDAT: MufredatHafta[] = [
     hedef: "Applies transfer learning with YOLO/SSD.",
   },
 
-  // ── APRIL 2025 ──────────────────────────────────────────────────────
+  // ── APRIL 2026 ──────────────────────────────────────────────────────
   {
-    ay: "APRIL 2025",
+    ay: "APRIL 2026",
     hafta: 29,
     konu: "Project Application 2 — Model Evaluation",
     icerik: "Calculating mAP50/mAP95",
@@ -227,9 +227,9 @@ export const YAPAY_ZEKA_MUFREDAT: MufredatHafta[] = [
     hedef: "Finalizes and tests project.",
   },
 
-  // ── MAY 2025 ────────────────────────────────────────────────────────
+  // ── MAY 2026 ────────────────────────────────────────────────────────
   {
-    ay: "MAY 2025",
+    ay: "MAY 2026",
     hafta: 33,
     konu: "Project Presentation Preparation — Slide & Report Creation",
     icerik: "PowerPoint/report writing",
@@ -254,9 +254,9 @@ export const YAPAY_ZEKA_MUFREDAT: MufredatHafta[] = [
     hedef: "Analyzes AI applications in real life.",
   },
 
-  // ── JUNE 2025 ───────────────────────────────────────────────────────
+  // ── JUNE 2026 ───────────────────────────────────────────────────────
   {
-    ay: "JUNE 2025",
+    ay: "JUNE 2026",
     hafta: 37,
     konu: "Advanced Python Topics — Decorator & Generator Logic",
     icerik: "Examples with small projects",

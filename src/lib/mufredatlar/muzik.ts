@@ -10,9 +10,9 @@ import type { MufredatHafta } from "./ingilizce"
 export type { MufredatHafta }
 
 export const MUZIK_MUFREDAT: MufredatHafta[] = [
-  // ── SEPTEMBER 2024 ──────────────────────────────────────────────────
+  // ── SEPTEMBER 2025 ──────────────────────────────────────────────────
   {
-    ay: "SEPTEMBER 2024",
+    ay: "SEPTEMBER 2025",
     hafta: 1,
     konu: "National Anthem",
     icerik: "Singing the Turkish National Anthem with proper breathing",
@@ -37,9 +37,9 @@ export const MUZIK_MUFREDAT: MufredatHafta[] = [
     hedef: "Explore characteristics of classical music periods",
   },
 
-  // ── OCTOBER 2024 ────────────────────────────────────────────────────
+  // ── OCTOBER 2025 ────────────────────────────────────────────────────
   {
-    ay: "OCTOBER 2024",
+    ay: "OCTOBER 2025",
     hafta: 5,
     konu: "Pop Music",
     icerik: "Information about pop music",
@@ -64,9 +64,9 @@ export const MUZIK_MUFREDAT: MufredatHafta[] = [
     hedef: "Recognize key jazz and blues artists and their works",
   },
 
-  // ── NOVEMBER 2024 ───────────────────────────────────────────────────
+  // ── NOVEMBER 2025 ───────────────────────────────────────────────────
   {
-    ay: "NOVEMBER 2024",
+    ay: "NOVEMBER 2025",
     hafta: 9,
     konu: "Rap and Hip-hop Music",
     icerik: "Information about rap and hip-hop music",
@@ -91,9 +91,9 @@ export const MUZIK_MUFREDAT: MufredatHafta[] = [
     hedef: "Study influential rock and metal bands and songs",
   },
 
-  // ── DECEMBER 2024 ───────────────────────────────────────────────────
+  // ── DECEMBER 2025 ───────────────────────────────────────────────────
   {
-    ay: "DECEMBER 2024",
+    ay: "DECEMBER 2025",
     hafta: 13,
     konu: "Opera Music",
     icerik: "Information about opera music",
@@ -118,9 +118,9 @@ export const MUZIK_MUFREDAT: MufredatHafta[] = [
     hedef: "Explore different forms of Turkish folk and art music",
   },
 
-  // ── JANUARY 2025 ────────────────────────────────────────────────────
+  // ── JANUARY 2026 ────────────────────────────────────────────────────
   {
-    ay: "JANUARY 2025",
+    ay: "JANUARY 2026",
     hafta: 17,
     konu: "Turkish Music",
     icerik: "Information about traditional Turkish music",
@@ -145,9 +145,9 @@ export const MUZIK_MUFREDAT: MufredatHafta[] = [
     hedef: "Explore prominent Anatolian rock bands and musicians",
   },
 
-  // ── FEBRUARY 2025 ───────────────────────────────────────────────────
+  // ── FEBRUARY 2026 ───────────────────────────────────────────────────
   {
-    ay: "FEBRUARY 2025",
+    ay: "FEBRUARY 2026",
     hafta: 21,
     konu: "Arabesque Music",
     icerik: "Information about Arabesque music",
@@ -172,9 +172,9 @@ export const MUZIK_MUFREDAT: MufredatHafta[] = [
     hedef: "Study popular Turkish pop singers and songs",
   },
 
-  // ── MARCH 2025 ──────────────────────────────────────────────────────
+  // ── MARCH 2026 ──────────────────────────────────────────────────────
   {
-    ay: "MARCH 2025",
+    ay: "MARCH 2026",
     hafta: 25,
     konu: "Atatürk and Music",
     icerik: "Atatürk's contributions to Turkish music",
@@ -199,9 +199,9 @@ export const MUZIK_MUFREDAT: MufredatHafta[] = [
     hedef: "Learn about famous composers and musicians",
   },
 
-  // ── APRIL 2025 ──────────────────────────────────────────────────────
+  // ── APRIL 2026 ──────────────────────────────────────────────────────
   {
-    ay: "APRIL 2025",
+    ay: "APRIL 2026",
     hafta: 29,
     konu: "Information about Musicians",
     icerik: "Information about composers and musicians",
@@ -226,9 +226,9 @@ export const MUZIK_MUFREDAT: MufredatHafta[] = [
     hedef: "Understand the cultural context of musicians' works",
   },
 
-  // ── MAY 2025 ────────────────────────────────────────────────────────
+  // ── MAY 2026 ────────────────────────────────────────────────────────
   {
-    ay: "MAY 2025",
+    ay: "MAY 2026",
     hafta: 33,
     konu: "Information about Musicians",
     icerik: "Çaykovski, Puccini, Debussy, Rachmaninov: life and works",
@@ -253,9 +253,9 @@ export const MUZIK_MUFREDAT: MufredatHafta[] = [
     hedef: "Discuss how artificial intelligence is used in music",
   },
 
-  // ── JUNE 2025 ───────────────────────────────────────────────────────
+  // ── JUNE 2026 ───────────────────────────────────────────────────────
   {
-    ay: "JUNE 2025",
+    ay: "JUNE 2026",
     hafta: 37,
     konu: "Creating Music with AI",
     icerik: "Composing music using artificial intelligence tools",

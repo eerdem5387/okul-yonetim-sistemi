@@ -11,6 +11,8 @@ import { buildGorselSanatlarEgitimCertificateHTML } from "@/lib/certificates/gor
 import { buildGorselSanatlarEtkinlikCertificateHTML } from "@/lib/certificates/gorsel-sanatlar-etkinlik"
 import { buildMuzikEgitimCertificateHTML } from "@/lib/certificates/muzik-egitim"
 import { buildMuzikEserIcraCertificateHTML } from "@/lib/certificates/muzik-eser-icra"
+import { buildGastronomiEgitimCertificateHTML } from "@/lib/certificates/gastronomi-egitim"
+import { buildGastronomiEtkinlikCertificateHTML } from "@/lib/certificates/gastronomi-etkinlik"
 import { buildBasketbolEgitimCertificateHTML } from "@/lib/certificates/basketbol-egitim"
 import { buildBedenEgitimCertificateHTML } from "@/lib/certificates/beden-egitim"
 import { buildHentbolEgitimCertificateHTML } from "@/lib/certificates/hentbol-egitim"
@@ -57,6 +59,10 @@ export async function POST(request: NextRequest) {
       html = buildGorselSanatlarEtkinlikCertificateHTML(certData)
     } else if (certificateType === "MUZIK_EGITIM") {
       html = buildMuzikEgitimCertificateHTML(certData)
+    } else if (certificateType === "GASTRONOMI_EGITIM") {
+      html = buildGastronomiEgitimCertificateHTML(certData)
+    } else if (certificateType === "GASTRONOMI_ETKINLIK") {
+      html = buildGastronomiEtkinlikCertificateHTML(certData)
     } else if (certificateType === "MUZIK_ESER_ICRA") {
       html = buildMuzikEserIcraCertificateHTML(certData)
     } else if (certificateType === "BASKETBOL_EGITIM") {

@@ -11,9 +11,9 @@ import type { MufredatHafta } from "./ingilizce"
 export type { MufredatHafta }
 
 export const VOLEYBOL_MUFREDAT: MufredatHafta[] = [
-  // ── SEPTEMBER 2024 ──────────────────────────────────────────────────
+  // ── SEPTEMBER 2025 ──────────────────────────────────────────────────
   {
-    ay: "SEPTEMBER 2024",
+    ay: "SEPTEMBER 2025",
     hafta: 1,
     konu: "Introduction to Volleyball",
     icerik: "Rules of volleyball, court layout, basic equipment",
@@ -37,9 +37,9 @@ export const VOLEYBOL_MUFREDAT: MufredatHafta[] = [
     icerik: "Overhead setting technique",
     hedef: "Practice consistent set delivery",
   },
-  // ── OCTOBER 2024 ─────────────────────────────────────────────────────
+  // ── OCTOBER 2025 ─────────────────────────────────────────────────────
   {
-    ay: "OCTOBER 2024",
+    ay: "OCTOBER 2025",
     hafta: 5,
     konu: "Serving Fundamentals",
     icerik: "Underhand serve technique",
@@ -63,9 +63,9 @@ export const VOLEYBOL_MUFREDAT: MufredatHafta[] = [
     icerik: "Hitting approach and arm swing",
     hedef: "Execute powerful and accurate spikes",
   },
-  // ── NOVEMBER 2024 ───────────────────────────────────────────────────
+  // ── NOVEMBER 2025 ───────────────────────────────────────────────────
   {
-    ay: "NOVEMBER 2024",
+    ay: "NOVEMBER 2025",
     hafta: 9,
     konu: "Blocking Fundamentals",
     icerik: "Proper hand positioning and timing for blocks",
@@ -89,9 +89,9 @@ export const VOLEYBOL_MUFREDAT: MufredatHafta[] = [
     icerik: "Transitioning from defense to offense",
     hedef: "Improve quick switches in play",
   },
-  // ── DECEMBER 2024 ─────────────────────────────────────────────────────
+  // ── DECEMBER 2025 ─────────────────────────────────────────────────────
   {
-    ay: "DECEMBER 2024",
+    ay: "DECEMBER 2025",
     hafta: 13,
     konu: "Defense Formation",
     icerik: "Coverage zones and digging",
@@ -115,9 +115,9 @@ export const VOLEYBOL_MUFREDAT: MufredatHafta[] = [
     icerik: "Roles in a 5-1 system",
     hedef: "Implement advanced offensive formation",
   },
-  // ── JANUARY 2025 ─────────────────────────────────────────────────────
+  // ── JANUARY 2026 ─────────────────────────────────────────────────────
   {
-    ay: "JANUARY 2025",
+    ay: "JANUARY 2026",
     hafta: 17,
     konu: "Communication & Teamwork",
     icerik: "On-court communication drills",
@@ -141,9 +141,9 @@ export const VOLEYBOL_MUFREDAT: MufredatHafta[] = [
     icerik: "Reading hitters, double blocks",
     hedef: "Apply strategic blocking",
   },
-  // ── FEBRUARY 2025 ───────────────────────────────────────────────────
+  // ── FEBRUARY 2026 ───────────────────────────────────────────────────
   {
-    ay: "FEBRUARY 2025",
+    ay: "FEBRUARY 2026",
     hafta: 21,
     konu: "Serve Receive Formation",
     icerik: "3- and 4-person receive formations",
@@ -167,9 +167,9 @@ export const VOLEYBOL_MUFREDAT: MufredatHafta[] = [
     icerik: "Simulated matches with feedback",
     hedef: "Apply skills in game scenarios",
   },
-  // ── MARCH 2025 ──────────────────────────────────────────────────────
+  // ── MARCH 2026 ──────────────────────────────────────────────────────
   {
-    ay: "MARCH 2025",
+    ay: "MARCH 2026",
     hafta: 25,
     konu: "Libero Skills",
     icerik: "Passing, digging, defensive positioning",
@@ -193,9 +193,9 @@ export const VOLEYBOL_MUFREDAT: MufredatHafta[] = [
     icerik: "Back row attacks and defense",
     hedef: "Develop opposite hitter role",
   },
-  // ── APRIL 2025 ──────────────────────────────────────────────────────
+  // ── APRIL 2026 ──────────────────────────────────────────────────────
   {
-    ay: "APRIL 2025",
+    ay: "APRIL 2026",
     hafta: 29,
     konu: "Offensive Combinations",
     icerik: "Running combination plays (x-plays)",
@@ -219,9 +219,9 @@ export const VOLEYBOL_MUFREDAT: MufredatHafta[] = [
     icerik: "Lateral slide and crossover steps",
     hedef: "Refine blocking movement",
   },
-  // ── MAY 2025 ────────────────────────────────────────────────────────
+  // ── MAY 2026 ────────────────────────────────────────────────────────
   {
-    ay: "MAY 2025",
+    ay: "MAY 2026",
     hafta: 33,
     konu: "Tournament Preparation",
     icerik: "Strategy planning and scrimmage",
@@ -245,9 +245,9 @@ export const VOLEYBOL_MUFREDAT: MufredatHafta[] = [
     icerik: "Internal tournament play",
     hedef: "Gain competitive experience",
   },
-  // ── JUNE 2025 ───────────────────────────────────────────────────────
+  // ── JUNE 2026 ───────────────────────────────────────────────────────
   {
-    ay: "JUNE 2025",
+    ay: "JUNE 2026",
     hafta: 37,
     konu: "Final Review",
     icerik: "Revisiting key skills and concepts",

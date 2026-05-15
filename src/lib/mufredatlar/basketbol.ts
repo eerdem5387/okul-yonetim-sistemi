@@ -10,9 +10,9 @@ import type { MufredatHafta } from "./ingilizce"
 export type { MufredatHafta }
 
 export const BASKETBOL_MUFREDAT: MufredatHafta[] = [
-  // ── SEPTEMBER 2024 ──────────────────────────────────────────────────
+  // ── SEPTEMBER 2025 ──────────────────────────────────────────────────
   {
-    ay: "SEPTEMBER 2024",
+    ay: "SEPTEMBER 2025",
     hafta: 1,
     konu: "Introduction to Basketball",
     icerik: "Rules, court layout, and safety",
@@ -37,9 +37,9 @@ export const BASKETBOL_MUFREDAT: MufredatHafta[] = [
     hedef: "Improve passing accuracy and variety",
   },
 
-  // ── OCTOBER 2024 ────────────────────────────────────────────────────
+  // ── OCTOBER 2025 ────────────────────────────────────────────────────
   {
-    ay: "OCTOBER 2024",
+    ay: "OCTOBER 2025",
     hafta: 5,
     konu: "Layup Techniques",
     icerik: "Practice right-hand and left-hand layups",
@@ -64,9 +64,9 @@ export const BASKETBOL_MUFREDAT: MufredatHafta[] = [
     hedef: "Improve individual defense",
   },
 
-  // ── NOVEMBER 2024 ───────────────────────────────────────────────────
+  // ── NOVEMBER 2025 ───────────────────────────────────────────────────
   {
-    ay: "NOVEMBER 2024",
+    ay: "NOVEMBER 2025",
     hafta: 9,
     konu: "Offensive Moves",
     icerik: "Driving, pivoting, spin moves",
@@ -91,9 +91,9 @@ export const BASKETBOL_MUFREDAT: MufredatHafta[] = [
     hedef: "Improve team defense",
   },
 
-  // ── DECEMBER 2024 ───────────────────────────────────────────────────
+  // ── DECEMBER 2025 ───────────────────────────────────────────────────
   {
-    ay: "DECEMBER 2024",
+    ay: "DECEMBER 2025",
     hafta: 13,
     konu: "Free Throw Shooting",
     icerik: "Form, routine, and consistency",
@@ -118,9 +118,9 @@ export const BASKETBOL_MUFREDAT: MufredatHafta[] = [
     hedef: "Enhance inside scoring",
   },
 
-  // ── JANUARY 2025 ────────────────────────────────────────────────────
+  // ── JANUARY 2026 ────────────────────────────────────────────────────
   {
-    ay: "JANUARY 2025",
+    ay: "JANUARY 2026",
     hafta: 17,
     konu: "Conditioning for Speed & Agility",
     icerik: "Sprints, ladder drills, and plyometric exercises",
@@ -145,9 +145,9 @@ export const BASKETBOL_MUFREDAT: MufredatHafta[] = [
     hedef: "Master off-ball movement",
   },
 
-  // ── FEBRUARY 2025 ───────────────────────────────────────────────────
+  // ── FEBRUARY 2026 ───────────────────────────────────────────────────
   {
-    ay: "FEBRUARY 2025",
+    ay: "FEBRUARY 2026",
     hafta: 21,
     konu: "Team Communication & Signals",
     icerik: "On-court communication",
@@ -172,9 +172,9 @@ export const BASKETBOL_MUFREDAT: MufredatHafta[] = [
     hedef: "Prepare for clutch moments",
   },
 
-  // ── MARCH 2025 ──────────────────────────────────────────────────────
+  // ── MARCH 2026 ──────────────────────────────────────────────────────
   {
-    ay: "MARCH 2025",
+    ay: "MARCH 2026",
     hafta: 25,
     konu: "Rebounding & Boxing Out",
     icerik: "Boxing out drills under pressure",
@@ -199,9 +199,9 @@ export const BASKETBOL_MUFREDAT: MufredatHafta[] = [
     hedef: "Perform under defensive pressure",
   },
 
-  // ── APRIL 2025 ──────────────────────────────────────────────────────
+  // ── APRIL 2026 ──────────────────────────────────────────────────────
   {
-    ay: "APRIL 2025",
+    ay: "APRIL 2026",
     hafta: 29,
     konu: "Advanced Defensive Tactics",
     icerik: "Double teams, traps",
@@ -226,9 +226,9 @@ export const BASKETBOL_MUFREDAT: MufredatHafta[] = [
     hedef: "Expand off-ball options",
   },
 
-  // ── MAY 2025 ────────────────────────────────────────────────────────
+  // ── MAY 2026 ────────────────────────────────────────────────────────
   {
-    ay: "MAY 2025",
+    ay: "MAY 2026",
     hafta: 33,
     konu: "Building Team Chemistry",
     icerik: "Trust exercises and communication",
@@ -253,9 +253,9 @@ export const BASKETBOL_MUFREDAT: MufredatHafta[] = [
     hedef: "Learn from professional examples",
   },
 
-  // ── JUNE 2025 ───────────────────────────────────────────────────────
+  // ── JUNE 2026 ───────────────────────────────────────────────────────
   {
-    ay: "JUNE 2025",
+    ay: "JUNE 2026",
     hafta: 37,
     konu: "Mental Training & Focus",
     icerik: "Visualization and focus techniques",

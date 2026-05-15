@@ -7,6 +7,7 @@ import {
   MapPin,
   Palette,
   Music,
+  ChefHat,
   Lightbulb,
   Trophy,
   Swords,
@@ -26,6 +27,7 @@ const MAIN_TYPE_ICONS: Record<ActivityMainType, React.ElementType> = {
   GEZI: MapPin,
   GORSEL_SANATLAR: Palette,
   MUZIK: Music,
+  GASTRONOMI: ChefHat,
   PROJE: Lightbulb,
   SPOR: Trophy,
   TURNUVA: Swords,
@@ -36,6 +38,7 @@ const MAIN_TYPES: ActivityMainType[] = [
   "GEZI",
   "GORSEL_SANATLAR",
   "MUZIK",
+  "GASTRONOMI",
   "PROJE",
   "SPOR",
   "TURNUVA",
@@ -70,7 +73,7 @@ export function CategoryTiles({ basePath = "/faaliyet-yonetimi/yeni" }: Category
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-4">
         {MAIN_TYPES.map((type) => {
           const Icon = MAIN_TYPE_ICONS[type]
           const subtypes = SUBTYPES_BY_MAIN_TYPE[type] ?? []

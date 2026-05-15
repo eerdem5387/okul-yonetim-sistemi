@@ -459,6 +459,28 @@ export default function RootLayout({
     )
   }
 
+  // Öğretmen — /mesajlar kök layout’ta sidebar (sayfa içinde tekrarlanmaması için)
+  if (authRole === "teacher" && pathname === "/mesajlar") {
+    return (
+      <html lang="tr">
+        <head>
+          <title>Mesajlar - Öğretmen Paneli</title>
+          <meta name="description" content="Okul içi mesajlaşma" />
+          <link rel="icon" href="/logo.png?v=2" type="image/png" />
+          <link rel="apple-touch-icon" href="/logo.png?v=2" />
+        </head>
+        <body className={inter.className}>
+          <div className="flex h-screen overflow-hidden bg-gray-50 lg:flex-row">
+            <OgretmenSidebar />
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+              {children}
+            </div>
+          </div>
+        </body>
+      </html>
+    )
+  }
+
   // Öğretmen — IB faaliyet sihirbazı/detayı /faaliyet-yonetimi altında; aynı öğretmen kabuğu
   if (authRole === "teacher" && pathname?.startsWith("/faaliyet-yonetimi")) {
     return (
@@ -511,7 +533,13 @@ export default function RootLayout({
         <body className={inter.className}>
           <div className="flex h-screen bg-gray-50">
             <VeliSidebar key="veli-sidebar" />
-            <div className="flex-1 overflow-y-auto">
+            <div
+              className={
+                pathname === "/veli/mesajlar"
+                  ? "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+                  : "flex-1 overflow-y-auto"
+              }
+            >
               {children}
             </div>
           </div>
@@ -533,7 +561,13 @@ export default function RootLayout({
         <body className={inter.className}>
           <div className="flex h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
             <Sidebar />
-            <main className="flex-1 overflow-y-auto">
+            <main
+              className={
+                pathname === "/mesajlar"
+                  ? "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-white"
+                  : "flex-1 overflow-y-auto"
+              }
+            >
               {children}
             </main>
           </div>

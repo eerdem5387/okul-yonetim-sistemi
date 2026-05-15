@@ -11,9 +11,9 @@ import type { MufredatHafta } from "./ingilizce"
 export type { MufredatHafta }
 
 export const ROBOTIK_MUFREDAT: MufredatHafta[] = [
-  // ── SEPTEMBER 2024 ──────────────────────────────────────────────────
+  // ── SEPTEMBER 2025 ──────────────────────────────────────────────────
   {
-    ay: "SEPTEMBER 2024",
+    ay: "SEPTEMBER 2025",
     hafta: 1,
     konu: "Project Introduction & Erasmus+ Briefing",
     icerik: "—",
@@ -38,9 +38,9 @@ export const ROBOTIK_MUFREDAT: MufredatHafta[] = [
     hedef: "Explains multirotor types and their advantages.",
   },
 
-  // ── OCTOBER 2024 ────────────────────────────────────────────────────
+  // ── OCTOBER 2025 ────────────────────────────────────────────────────
   {
-    ay: "OCTOBER 2024",
+    ay: "OCTOBER 2025",
     hafta: 5,
     konu: "Introduction to Electricity",
     icerik: "—",
@@ -65,9 +65,9 @@ export const ROBOTIK_MUFREDAT: MufredatHafta[] = [
     hedef: "Learns the function of an ESC and connects it correctly.",
   },
 
-  // ── NOVEMBER 2024 ───────────────────────────────────────────────────
+  // ── NOVEMBER 2025 ───────────────────────────────────────────────────
   {
-    ay: "NOVEMBER 2024",
+    ay: "NOVEMBER 2025",
     hafta: 9,
     konu: "LiPo Battery Features",
     icerik: "—",
@@ -92,9 +92,9 @@ export const ROBOTIK_MUFREDAT: MufredatHafta[] = [
     hedef: "Learns how to install PX4 / ArduPilot firmware.",
   },
 
-  // ── DECEMBER 2024 ───────────────────────────────────────────────────
+  // ── DECEMBER 2025 ───────────────────────────────────────────────────
   {
-    ay: "DECEMBER 2024",
+    ay: "DECEMBER 2025",
     hafta: 13,
     konu: "ESC Calibration",
     icerik: "—",
@@ -119,9 +119,9 @@ export const ROBOTIK_MUFREDAT: MufredatHafta[] = [
     hedef: "Monitors and analyzes channel data.",
   },
 
-  // ── JANUARY 2025 ────────────────────────────────────────────────────
+  // ── JANUARY 2026 ────────────────────────────────────────────────────
   {
-    ay: "JANUARY 2025",
+    ay: "JANUARY 2026",
     hafta: 17,
     konu: "GPS and GNSS Systems",
     icerik: "—",
@@ -146,9 +146,9 @@ export const ROBOTIK_MUFREDAT: MufredatHafta[] = [
     hedef: "Completes wiring and connection checks.",
   },
 
-  // ── FEBRUARY 2025 ───────────────────────────────────────────────────
+  // ── FEBRUARY 2026 ───────────────────────────────────────────────────
   {
-    ay: "FEBRUARY 2025",
+    ay: "FEBRUARY 2026",
     hafta: 21,
     konu: "QGroundControl Introduction",
     icerik: "—",
@@ -173,9 +173,9 @@ export const ROBOTIK_MUFREDAT: MufredatHafta[] = [
     hedef: "Learns to monitor real-time flight data.",
   },
 
-  // ── MARCH 2025 ──────────────────────────────────────────────────────
+  // ── MARCH 2026 ──────────────────────────────────────────────────────
   {
-    ay: "MARCH 2025",
+    ay: "MARCH 2026",
     hafta: 25,
     konu: "What is PID? – Fundamentals",
     icerik: "—",
@@ -200,9 +200,9 @@ export const ROBOTIK_MUFREDAT: MufredatHafta[] = [
     hedef: "Reads position data from Pixhawk using Raspberry Pi.",
   },
 
-  // ── APRIL 2025 ──────────────────────────────────────────────────────
+  // ── APRIL 2026 ──────────────────────────────────────────────────────
   {
-    ay: "APRIL 2025",
+    ay: "APRIL 2026",
     hafta: 29,
     konu: "UBEC and 5V Power Supply",
     icerik: "—",
@@ -227,9 +227,9 @@ export const ROBOTIK_MUFREDAT: MufredatHafta[] = [
     hedef: "Processes camera images using OpenCV in Python.",
   },
 
-  // ── MAY 2025 ────────────────────────────────────────────────────────
+  // ── MAY 2026 ────────────────────────────────────────────────────────
   {
-    ay: "MAY 2025",
+    ay: "MAY 2026",
     hafta: 33,
     konu: "Drone Test Flights",
     icerik: "—",
@@ -254,9 +254,9 @@ export const ROBOTIK_MUFREDAT: MufredatHafta[] = [
     hedef: "Executes autonomous flight on planned route.",
   },
 
-  // ── JUNE 2025 ───────────────────────────────────────────────────────
+  // ── JUNE 2026 ───────────────────────────────────────────────────────
   {
-    ay: "JUNE 2025",
+    ay: "JUNE 2026",
     hafta: 37,
     konu: "Drone Flight Logging & Reporting",
     icerik: "—",

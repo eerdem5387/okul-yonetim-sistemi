@@ -20,9 +20,11 @@ import {
   Handshake,
 } from "lucide-react"
 import { useState, useEffect } from "react"
+import { UnreadBadge } from "@/components/chat/UnreadBadge"
 
 const baseNavigation = [
   { name: "Dashboard", href: "/rehberlik", icon: LayoutDashboard },
+  { name: "Mesajlar", href: "/mesajlar", icon: MessageSquare },
   { name: "Neredeyiz?", href: "/rehberlik/neredeyiz", icon: Target },
   { name: "Sınıf Yönetimi", href: "/sinif-yonetimi", icon: School },
   { name: "Gezi Yönetimi", href: "/rehberlik/gezi", icon: MapPin },
@@ -135,6 +137,7 @@ export function RehberlikSidebar() {
                   aria-hidden="true"
                 />
                 <span className="flex-1">{item.name}</span>
+                {item.href === "/mesajlar" && <UnreadBadge />}
                 {isActive && (
                   <div className="h-2 w-2 bg-white rounded-full shadow-lg animate-pulse" />
                 )}

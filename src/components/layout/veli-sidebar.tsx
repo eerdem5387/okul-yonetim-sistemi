@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { User, LogOut, ChevronLeft, ChevronRight, Users } from "lucide-react"
+import { User, LogOut, ChevronLeft, ChevronRight, Users, MessageSquare } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { UnreadBadge } from "@/components/chat/UnreadBadge"
 
 interface VeliSidebarProps {
   className?: string
@@ -39,6 +40,7 @@ export default function VeliSidebar({ className }: VeliSidebarProps) {
 
   const navigation = [
     { name: "Öğrencim", href: "/veli/panel", icon: User },
+    { name: "Mesajlar", href: "/veli/mesajlar", icon: MessageSquare },
     { name: "Kulüp Seçimi", href: "/parent", icon: Users },
   ]
 
@@ -93,8 +95,9 @@ export default function VeliSidebar({ className }: VeliSidebarProps) {
             >
               <item.icon className="h-5 w-5 flex-shrink-0" />
               {!isCollapsed && (
-                <span className="font-medium truncate">{item.name}</span>
+                <span className="font-medium truncate flex-1">{item.name}</span>
               )}
+              {item.href === "/veli/mesajlar" && !isCollapsed && <UnreadBadge />}
             </Link>
           )
         })}

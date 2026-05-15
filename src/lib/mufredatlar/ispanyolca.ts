@@ -8,9 +8,9 @@ import type { MufredatHafta } from "./ingilizce"
 export type { MufredatHafta }
 
 export const ISPANYOLCA_MUFREDAT: MufredatHafta[] = [
-  // ── SEPTEMBER 2024 ──────────────────────────────────────────────────
+  // ── SEPTEMBER 2025 ──────────────────────────────────────────────────
   {
-    ay: "SEPTEMBER 2024",
+    ay: "SEPTEMBER 2025",
     hafta: 1,
     konu: "Spanish Basics: Greetings and Introductions",
     icerik: "Alphabet, pronunciation, greetings, self-introduction",
@@ -35,9 +35,9 @@ export const ISPANYOLCA_MUFREDAT: MufredatHafta[] = [
     hedef: "Describe where people are from and what languages they speak.",
   },
 
-  // ── OCTOBER 2024 ────────────────────────────────────────────────────
+  // ── OCTOBER 2025 ────────────────────────────────────────────────────
   {
-    ay: "OCTOBER 2024",
+    ay: "OCTOBER 2025",
     hafta: 5,
     konu: "Grammar: Subject Pronouns and Ser",
     icerik: "Yo, tú, él/ella, ser conjugation, identity expressions",
@@ -62,9 +62,9 @@ export const ISPANYOLCA_MUFREDAT: MufredatHafta[] = [
     hedef: "Create and present a short personal profile in Spanish.",
   },
 
-  // ── NOVEMBER 2024 ───────────────────────────────────────────────────
+  // ── NOVEMBER 2025 ───────────────────────────────────────────────────
   {
-    ay: "NOVEMBER 2024",
+    ay: "NOVEMBER 2025",
     hafta: 9,
     konu: "Daily Life: Present Tense of Regular Verbs",
     icerik: "-ar, -er, -ir verbs, routines, simple frequency words",
@@ -89,9 +89,9 @@ export const ISPANYOLCA_MUFREDAT: MufredatHafta[] = [
     hedef: "Ask for and give basic information using simple questions.",
   },
 
-  // ── DECEMBER 2024 ───────────────────────────────────────────────────
+  // ── DECEMBER 2025 ───────────────────────────────────────────────────
   {
-    ay: "DECEMBER 2024",
+    ay: "DECEMBER 2025",
     hafta: 13,
     konu: "Food and Drinks",
     icerik: "Meals, beverages, likes and dislikes",
@@ -116,9 +116,9 @@ export const ISPANYOLCA_MUFREDAT: MufredatHafta[] = [
     hedef: "Write and present a simple menu using target vocabulary.",
   },
 
-  // ── JANUARY 2025 ────────────────────────────────────────────────────
+  // ── JANUARY 2026 ────────────────────────────────────────────────────
   {
-    ay: "JANUARY 2025",
+    ay: "JANUARY 2026",
     hafta: 17,
     konu: "Home and Rooms",
     icerik: "Rooms in a house, furniture, location words",
@@ -143,9 +143,9 @@ export const ISPANYOLCA_MUFREDAT: MufredatHafta[] = [
     hedef: "Understand the main idea and details in short Spanish dialogues.",
   },
 
-  // ── FEBRUARY 2025 ───────────────────────────────────────────────────
+  // ── FEBRUARY 2026 ───────────────────────────────────────────────────
   {
-    ay: "FEBRUARY 2025",
+    ay: "FEBRUARY 2026",
     hafta: 21,
     konu: "Hobbies and Free Time",
     icerik: "Sports, hobbies, leisure activities, preferences",
@@ -170,9 +170,9 @@ export const ISPANYOLCA_MUFREDAT: MufredatHafta[] = [
     hedef: "Recognize the diversity of Spanish-speaking cultures.",
   },
 
-  // ── MARCH 2025 ──────────────────────────────────────────────────────
+  // ── MARCH 2026 ──────────────────────────────────────────────────────
   {
-    ay: "MARCH 2025",
+    ay: "MARCH 2026",
     hafta: 25,
     konu: "Health and the Body",
     icerik: "Body parts, simple health problems, advice phrases",
@@ -197,9 +197,9 @@ export const ISPANYOLCA_MUFREDAT: MufredatHafta[] = [
     hedef: "Understand basic spoken Spanish in everyday contexts.",
   },
 
-  // ── APRIL 2025 ──────────────────────────────────────────────────────
+  // ── APRIL 2026 ──────────────────────────────────────────────────────
   {
-    ay: "APRIL 2025",
+    ay: "APRIL 2026",
     hafta: 29,
     konu: "Past Experiences: Introduction to Preterite",
     icerik: "Common preterite verbs, yesterday, last week",
@@ -224,9 +224,9 @@ export const ISPANYOLCA_MUFREDAT: MufredatHafta[] = [
     hedef: "Read short passages and answer comprehension questions.",
   },
 
-  // ── MAY 2025 ────────────────────────────────────────────────────────
+  // ── MAY 2026 ────────────────────────────────────────────────────────
   {
-    ay: "MAY 2025",
+    ay: "MAY 2026",
     hafta: 33,
     konu: "Review: Core Grammar and Vocabulary",
     icerik: "Ser/estar, tener, regular verbs, thematic vocabulary",
@@ -251,9 +251,9 @@ export const ISPANYOLCA_MUFREDAT: MufredatHafta[] = [
     hedef: "Assess and reinforce the essential Spanish language skills.",
   },
 
-  // ── JUNE 2025 ───────────────────────────────────────────────────────
+  // ── JUNE 2026 ───────────────────────────────────────────────────────
   {
-    ay: "JUNE 2025",
+    ay: "JUNE 2026",
     hafta: 37,
     konu: "Spanish Project Presentation",
     icerik: "Poster, visual aids, self-expression, presentation",

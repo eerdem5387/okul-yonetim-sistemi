@@ -13,9 +13,9 @@ export interface MufredatHafta {
 }
 
 export const INGILIZCE_MUFREDAT: MufredatHafta[] = [
-  // ── SEPTEMBER 2024 ──────────────────────────────────────────────────
+  // ── SEPTEMBER 2025 ──────────────────────────────────────────────────
   {
-    ay: "SEPTEMBER 2024",
+    ay: "SEPTEMBER 2025",
     hafta: 1,
     konu: "Lifestyles",
     icerik: "1a Night and Day Around the Milky Way · 1b Grammar in Use",
@@ -44,9 +44,9 @@ export const INGILIZCE_MUFREDAT: MufredatHafta[] = [
       "To form and use the past simple and used to correctly in speech and writing, to apply the correct order of adjectives, to make comparisons accurately. To learn vocabulary for clothes-patterns & materials, to listen for a specific information (multiple choice questions), to act out a dialogue and practice every day English for describing lost property, to learn the pronunciation of silent letters, to read an e-mail and replace adjectives in the given paragraph, to write an e-mail about a weekend break.",
   },
 
-  // ── OCTOBER 2024 ────────────────────────────────────────────────────
+  // ── OCTOBER 2025 ────────────────────────────────────────────────────
   {
-    ay: "OCTOBER 2024",
+    ay: "OCTOBER 2025",
     hafta: 5,
     konu: "Shop Till You Drop",
     icerik: "Culture 2: Borough Market 1000 years of shopping · Review 2",
@@ -68,9 +68,9 @@ export const INGILIZCE_MUFREDAT: MufredatHafta[] = [
       "To learn vocabulary for feelings & sounds, to listen for specific information (listen for attitude), to act out a dialogue and practice every day English for a witness report, to learn the pronunciation of stressed words, to read the story (sequencing task) and learn a variety of adjectives and adverbs, to write a well-organized story, incorporating past tenses and descriptive language. To listen/read for gist (brainstorming), to read for specific information (gap-fill task), to collect information and write a short paragraph (ICT). To test/consolidate vocabulary and grammar learnt through the unit, to practice every day English.",
   },
 
-  // ── NOVEMBER 2024 ───────────────────────────────────────────────────
+  // ── NOVEMBER 2025 ───────────────────────────────────────────────────
   {
-    ay: "NOVEMBER 2024",
+    ay: "NOVEMBER 2025",
     hafta: 8,
     konu: "Survival Stories",
     icerik: "Values A: Diversity · Public Speaking Skills A · CLIL A: History: In England a century ago",
@@ -106,9 +106,9 @@ export const INGILIZCE_MUFREDAT: MufredatHafta[] = [
       "To learn vocabulary for fast food dishes and drinks, to listen to and understand dialogues related to food (listen for cohesion & multiple choice), to act out a dialogue and practice every day English for ordering a takeaway, to learn the pronunciation of like-d' like, to read for specific information (gap-fill task) (multiple choice), to write an online review about a recently visited restaurant.",
   },
 
-  // ── DECEMBER 2024 ───────────────────────────────────────────────────
+  // ── DECEMBER 2025 ───────────────────────────────────────────────────
   {
-    ay: "DECEMBER 2024",
+    ay: "DECEMBER 2025",
     hafta: 13,
     konu: "Food, Glorious Food",
     icerik: "Culture 5: Festive Sweets in the UK · Review 5",
@@ -137,9 +137,9 @@ export const INGILIZCE_MUFREDAT: MufredatHafta[] = [
       "To test/consolidate vocabulary and grammar learnt through the unit, to practice every day English. To listen and read for specific information (paragraph completion), to research ways to volunteer and create a one-minute video promoting volunteering (ICT).",
   },
 
-  // ── JANUARY 2025 ────────────────────────────────────────────────────
+  // ── JANUARY 2026 ────────────────────────────────────────────────────
   {
-    ay: "JANUARY 2025",
+    ay: "JANUARY 2026",
     hafta: 17,
     konu: "Health",
     icerik: "Public Speaking Skills B · CLIL B: Food Preparation & Nutrition: Food Label",
@@ -168,9 +168,9 @@ export const INGILIZCE_MUFREDAT: MufredatHafta[] = [
       "To read for detail (T/F/DS Statements), to use appropriate vocabulary and expressions to discuss and write about cultural and sporting events, to collect information about a race in other countries and make a presentation about it (ICT). To test/consolidate vocabulary and grammar learnt through the unit, to practice every day English.",
   },
 
-  // ── FEBRUARY 2025 ───────────────────────────────────────────────────
+  // ── FEBRUARY 2026 ───────────────────────────────────────────────────
   {
-    ay: "FEBRUARY 2025",
+    ay: "FEBRUARY 2026",
     hafta: 21,
     konu: "Landmarks",
     icerik: "8a A Hidden of Wonders",
@@ -199,9 +199,9 @@ export const INGILIZCE_MUFREDAT: MufredatHafta[] = [
       "To listen/read for specific information (multiple matching), to enhance their research and critical thinking skills by analyzing famous landmarks and their significance (ICT). To test/consolidate vocabulary and grammar learnt through the unit, to practice every day English.",
   },
 
-  // ── MARCH 2025 ──────────────────────────────────────────────────────
+  // ── MARCH 2026 ──────────────────────────────────────────────────────
   {
-    ay: "MARCH 2025",
+    ay: "MARCH 2026",
     hafta: 25,
     konu: "Live and Let Live",
     icerik: "9a No Dodos",
@@ -230,9 +230,9 @@ export const INGILIZCE_MUFREDAT: MufredatHafta[] = [
       "To listen and read for specific information (matching paragraphs to circles), to understand key principles of good citizenship, including responsibility, respect, and community involvement, and analyze real-life examples. To listen to and read the model in the given text, to collect information and give presentation about how to save water at home (ICT). To read and explain the concept of the greenhouse effect and its role in global climate change, identify the causes and consequences using scientific vocabulary (ICT).",
   },
 
-  // ── APRIL 2025 ──────────────────────────────────────────────────────
+  // ── APRIL 2026 ──────────────────────────────────────────────────────
   {
-    ay: "APRIL 2025",
+    ay: "APRIL 2026",
     hafta: 29,
     konu: "Holiday Time",
     icerik: "10a Top Travellers",
@@ -261,9 +261,9 @@ export const INGILIZCE_MUFREDAT: MufredatHafta[] = [
       "To develop reading and listening comprehension skills through texts and discussions about Scotland, to collect information about different places and types of holidays in other countries and create a brochure (ICT). To test/consolidate vocabulary and grammar learnt through the unit, to practice every day English.",
   },
 
-  // ── MAY 2025 ────────────────────────────────────────────────────────
+  // ── MAY 2026 ────────────────────────────────────────────────────────
   {
-    ay: "MAY 2025",
+    ay: "MAY 2026",
     hafta: 33,
     konu: "Join in the Fun",
     icerik: "11a Two Festivals for the Price of One!",
@@ -292,9 +292,9 @@ export const INGILIZCE_MUFREDAT: MufredatHafta[] = [
       "To read for specific information (short answer, matching opposites), to collect information about an annual festival and write a short text about it for a website's culture column (ICT). To test/consolidate vocabulary and grammar learnt through the unit, to practice every day English.",
   },
 
-  // ── JUNE 2025 ───────────────────────────────────────────────────────
+  // ── JUNE 2026 ───────────────────────────────────────────────────────
   {
-    ay: "JUNE 2025",
+    ay: "JUNE 2026",
     hafta: 37,
     konu: "Going Online",
     icerik: "12a Better Safe than Sorry!",

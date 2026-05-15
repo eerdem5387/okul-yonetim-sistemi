@@ -8,9 +8,9 @@ import type { MufredatHafta } from "./ingilizce"
 export type { MufredatHafta }
 
 export const BEDEN_EGITIMI_MUFREDAT: MufredatHafta[] = [
-  // ── SEPTEMBER 2024 ──────────────────────────────────────────────────
+  // ── SEPTEMBER 2025 ──────────────────────────────────────────────────
   {
-    ay: "SEPTEMBER 2024",
+    ay: "SEPTEMBER 2025",
     hafta: 1,
     konu: "Introduction to Physical Education",
     icerik: "Overview of the course and importance of physical activity",
@@ -34,9 +34,9 @@ export const BEDEN_EGITIMI_MUFREDAT: MufredatHafta[] = [
     icerik: "Exercises to develop motor skills and coordination",
     hedef: "Improve coordination and fundamental movement skills",
   },
-  // ── OCTOBER 2024 ────────────────────────────────────────────────────
+  // ── OCTOBER 2025 ────────────────────────────────────────────────────
   {
-    ay: "OCTOBER 2024",
+    ay: "OCTOBER 2025",
     hafta: 5,
     konu: "Running Techniques",
     icerik: "Running form and endurance training",
@@ -60,9 +60,9 @@ export const BEDEN_EGITIMI_MUFREDAT: MufredatHafta[] = [
     icerik: "Rules of volleyball and serving",
     hedef: "Learn basic volleyball rules and serving techniques",
   },
-  // ── NOVEMBER 2024 ───────────────────────────────────────────────────
+  // ── NOVEMBER 2025 ───────────────────────────────────────────────────
   {
-    ay: "NOVEMBER 2024",
+    ay: "NOVEMBER 2025",
     hafta: 9,
     konu: "Volleyball Skills",
     icerik: "Passing and setting in volleyball",
@@ -86,9 +86,9 @@ export const BEDEN_EGITIMI_MUFREDAT: MufredatHafta[] = [
     icerik: "Basics of sprint and middle-distance running",
     hedef: "Understand techniques for track running events",
   },
-  // ── DECEMBER 2024 ───────────────────────────────────────────────────
+  // ── DECEMBER 2025 ───────────────────────────────────────────────────
   {
-    ay: "DECEMBER 2024",
+    ay: "DECEMBER 2025",
     hafta: 13,
     konu: "Field Events",
     icerik: "Basics of long jump and high jump",
@@ -112,9 +112,9 @@ export const BEDEN_EGITIMI_MUFREDAT: MufredatHafta[] = [
     icerik: "Basic dance steps and rhythmic movement",
     hedef: "Express movement creatively through dance",
   },
-  // ── JANUARY 2025 ────────────────────────────────────────────────────
+  // ── JANUARY 2026 ────────────────────────────────────────────────────
   {
-    ay: "JANUARY 2025",
+    ay: "JANUARY 2026",
     hafta: 17,
     konu: "Handball Basics",
     icerik: "Rules and skills of handball",
@@ -138,9 +138,9 @@ export const BEDEN_EGITIMI_MUFREDAT: MufredatHafta[] = [
     icerik: "Circuit training and group exercises",
     hedef: "Improve overall fitness through circuit workouts",
   },
-  // ── FEBRUARY 2025 ───────────────────────────────────────────────────
+  // ── FEBRUARY 2026 ───────────────────────────────────────────────────
   {
-    ay: "FEBRUARY 2025",
+    ay: "FEBRUARY 2026",
     hafta: 21,
     konu: "Outdoor Activities",
     icerik: "Outdoor games and hiking",
@@ -164,9 +164,9 @@ export const BEDEN_EGITIMI_MUFREDAT: MufredatHafta[] = [
     icerik: "Healthy eating for athletes",
     hedef: "Understand the role of nutrition in physical performance",
   },
-  // ── MARCH 2025 ──────────────────────────────────────────────────────
+  // ── MARCH 2026 ──────────────────────────────────────────────────────
   {
-    ay: "MARCH 2025",
+    ay: "MARCH 2026",
     hafta: 25,
     konu: "Swimming Fundamentals",
     icerik: "Introduction to swimming and water safety",
@@ -190,9 +190,9 @@ export const BEDEN_EGITIMI_MUFREDAT: MufredatHafta[] = [
     icerik: "Strategies for team sports and teamwork",
     hedef: "Develop teamwork and strategic thinking in sports",
   },
-  // ── APRIL 2025 ──────────────────────────────────────────────────────
+  // ── APRIL 2026 ──────────────────────────────────────────────────────
   {
-    ay: "APRIL 2025",
+    ay: "APRIL 2026",
     hafta: 29,
     konu: "Self-Defense Basics",
     icerik: "Introduction to self-defense techniques",
@@ -216,9 +216,9 @@ export const BEDEN_EGITIMI_MUFREDAT: MufredatHafta[] = [
     icerik: "Applying volleyball skills in gameplay",
     hedef: "Practice volleyball strategies in game scenarios",
   },
-  // ── MAY 2025 ────────────────────────────────────────────────────────
+  // ── MAY 2026 ────────────────────────────────────────────────────────
   {
-    ay: "MAY 2025",
+    ay: "MAY 2026",
     hafta: 33,
     konu: "Football Game Play",
     icerik: "Applying football skills in gameplay",
@@ -242,9 +242,9 @@ export const BEDEN_EGITIMI_MUFREDAT: MufredatHafta[] = [
     icerik: "Creating and performing a dance routine",
     hedef: "Choreograph and perform a dance routine",
   },
-  // ── JUNE 2025 ───────────────────────────────────────────────────────
+  // ── JUNE 2026 ───────────────────────────────────────────────────────
   {
-    ay: "JUNE 2025",
+    ay: "JUNE 2026",
     hafta: 37,
     konu: "Review of Sports",
     icerik: "Reviewing skills and knowledge learned",

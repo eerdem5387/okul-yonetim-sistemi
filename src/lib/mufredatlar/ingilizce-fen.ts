@@ -8,9 +8,9 @@ import type { MufredatHafta } from "./ingilizce"
 export type { MufredatHafta }
 
 export const INGILIZCE_FEN_MUFREDAT: MufredatHafta[] = [
-  // ── SEPTEMBER 2024 ──────────────────────────────────────────────────
+  // ── SEPTEMBER 2025 ──────────────────────────────────────────────────
   {
-    ay: "SEPTEMBER 2024",
+    ay: "SEPTEMBER 2025",
     hafta: 1,
     konu: "Introduction to Science",
     icerik: "Scientific method, lab safety, measurement techniques",
@@ -35,9 +35,9 @@ export const INGILIZCE_FEN_MUFREDAT: MufredatHafta[] = [
     hedef: "Understand the basic functions of major organ systems.",
   },
 
-  // ── OCTOBER 2024 ────────────────────────────────────────────────────
+  // ── OCTOBER 2025 ────────────────────────────────────────────────────
   {
-    ay: "OCTOBER 2024",
+    ay: "OCTOBER 2025",
     hafta: 5,
     konu: "Chemistry: Atomic Structure",
     icerik: "Atoms, elements, compounds, periodic table",
@@ -62,9 +62,9 @@ export const INGILIZCE_FEN_MUFREDAT: MufredatHafta[] = [
     hedef: "Understand acid-base reactions and pH concepts.",
   },
 
-  // ── NOVEMBER 2024 ───────────────────────────────────────────────────
+  // ── NOVEMBER 2025 ───────────────────────────────────────────────────
   {
-    ay: "NOVEMBER 2024",
+    ay: "NOVEMBER 2025",
     hafta: 9,
     konu: "Physics: Motion",
     icerik: "Speed, velocity, acceleration, graphs",
@@ -89,9 +89,9 @@ export const INGILIZCE_FEN_MUFREDAT: MufredatHafta[] = [
     hedef: "Explain Ohm's law and circuit concepts.",
   },
 
-  // ── DECEMBER 2024 ───────────────────────────────────────────────────
+  // ── DECEMBER 2025 ───────────────────────────────────────────────────
   {
-    ay: "DECEMBER 2024",
+    ay: "DECEMBER 2025",
     hafta: 13,
     konu: "Earth Science: The Atmosphere",
     icerik: "Layers of the atmosphere, weather vs. climate",
@@ -116,9 +116,9 @@ export const INGILIZCE_FEN_MUFREDAT: MufredatHafta[] = [
     hedef: "Analyze human impact on the environment.",
   },
 
-  // ── JANUARY 2025 ────────────────────────────────────────────────────
+  // ── JANUARY 2026 ────────────────────────────────────────────────────
   {
-    ay: "JANUARY 2025",
+    ay: "JANUARY 2026",
     hafta: 17,
     konu: "Biology: Genetics",
     icerik: "DNA structure, genes, inheritance",
@@ -143,9 +143,9 @@ export const INGILIZCE_FEN_MUFREDAT: MufredatHafta[] = [
     hedef: "Understand how substances dissolve and interact in solutions.",
   },
 
-  // ── FEBRUARY 2025 ───────────────────────────────────────────────────
+  // ── FEBRUARY 2026 ───────────────────────────────────────────────────
   {
-    ay: "FEBRUARY 2025",
+    ay: "FEBRUARY 2026",
     hafta: 21,
     konu: "Physics: Waves",
     icerik: "Sound, light, wave properties",
@@ -170,9 +170,9 @@ export const INGILIZCE_FEN_MUFREDAT: MufredatHafta[] = [
     hedef: "Analyze different types of energy resources.",
   },
 
-  // ── MARCH 2025 ──────────────────────────────────────────────────────
+  // ── MARCH 2026 ──────────────────────────────────────────────────────
   {
-    ay: "MARCH 2025",
+    ay: "MARCH 2026",
     hafta: 25,
     konu: "Biology: Microorganisms",
     icerik: "Bacteria, viruses, fungi, protists",
@@ -197,9 +197,9 @@ export const INGILIZCE_FEN_MUFREDAT: MufredatHafta[] = [
     hedef: "Explain the role of chemical reactions in living organisms.",
   },
 
-  // ── APRIL 2025 ──────────────────────────────────────────────────────
+  // ── APRIL 2026 ──────────────────────────────────────────────────────
   {
-    ay: "APRIL 2025",
+    ay: "APRIL 2026",
     hafta: 29,
     konu: "Physics: Nuclear Physics",
     icerik: "Radioactivity, nuclear energy, fission",
@@ -224,9 +224,9 @@ export const INGILIZCE_FEN_MUFREDAT: MufredatHafta[] = [
     hedef: "Analyze Earth's natural resources and conservation methods.",
   },
 
-  // ── MAY 2025 ────────────────────────────────────────────────────────
+  // ── MAY 2026 ────────────────────────────────────────────────────────
   {
-    ay: "MAY 2025",
+    ay: "MAY 2026",
     hafta: 33,
     konu: "Biology: Biotechnology",
     icerik: "Genetic engineering, cloning, CRISPR",
@@ -251,9 +251,9 @@ export const INGILIZCE_FEN_MUFREDAT: MufredatHafta[] = [
     hedef: "Assess and reinforce key scientific concepts.",
   },
 
-  // ── JUNE 2025 ───────────────────────────────────────────────────────
+  // ── JUNE 2026 ───────────────────────────────────────────────────────
   {
-    ay: "JUNE 2025",
+    ay: "JUNE 2026",
     hafta: 37,
     konu: "Scientific Inquiry Project",
     icerik: "Research, experiment design, analysis",

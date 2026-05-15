@@ -12,9 +12,9 @@ import type { MufredatHafta } from "./ingilizce"
 export type { MufredatHafta }
 
 export const GORSEL_SANATLAR_MUFREDAT: MufredatHafta[] = [
-  // ── SEPTEMBER 2024 ──────────────────────────────────────────────────
+  // ── SEPTEMBER 2025 ──────────────────────────────────────────────────
   {
-    ay: "SEPTEMBER 2024",
+    ay: "SEPTEMBER 2025",
     hafta: 1,
     konu: "Line Study – Vertical, Diagonal, and Wavy Lines in Graphite Pencil",
     icerik: "Visual Arts",
@@ -43,9 +43,9 @@ export const GORSEL_SANATLAR_MUFREDAT: MufredatHafta[] = [
       "Students will create freehand sketches using graphite pencil that reflect their current understanding of line quality and demonstrate their creativity and imagination through expressive use of vertical, diagonal, and wavy lines.",
   },
 
-  // ── OCTOBER 2024 ────────────────────────────────────────────────────
+  // ── OCTOBER 2025 ────────────────────────────────────────────────────
   {
-    ay: "OCTOBER 2024",
+    ay: "OCTOBER 2025",
     hafta: 5,
     konu: "Drawing of Three-Dimensional Objects (Angle, Measurement, and Proportion)",
     icerik: "Visual Arts",
@@ -74,9 +74,9 @@ export const GORSEL_SANATLAR_MUFREDAT: MufredatHafta[] = [
       "Students will observe a live human model and practice capturing the figure's proportions and posture by sketching the outer contours, improving their observational and figure drawing skills.",
   },
 
-  // ── NOVEMBER 2024 ───────────────────────────────────────────────────
+  // ── NOVEMBER 2025 ───────────────────────────────────────────────────
   {
-    ay: "NOVEMBER 2024",
+    ay: "NOVEMBER 2025",
     hafta: 9,
     konu: "Still Life (Vase, Bottle, and Fruits) – Acrylic Painting on Canvas",
     icerik: "Visual Arts",
@@ -105,9 +105,9 @@ export const GORSEL_SANATLAR_MUFREDAT: MufredatHafta[] = [
       "Students will paint a nature landscape on canvas using acrylic paints, learning to depict natural elements such as sky, trees, water, and terrain while applying techniques in color mixing, perspective, and composition.",
   },
 
-  // ── DECEMBER 2024 ───────────────────────────────────────────────────
+  // ── DECEMBER 2025 ───────────────────────────────────────────────────
   {
-    ay: "DECEMBER 2024",
+    ay: "DECEMBER 2025",
     hafta: 13,
     konu: "Cityscape – Acrylic Painting on Canvas",
     icerik: "Visual Arts",
@@ -136,9 +136,9 @@ export const GORSEL_SANATLAR_MUFREDAT: MufredatHafta[] = [
       "Students will paint various bird species on canvas using acrylic paints, exploring the use of color, texture, and detail to accurately represent feathers, form, and natural habitats while developing their observation and painting techniques.",
   },
 
-  // ── JANUARY 2025 ────────────────────────────────────────────────────
+  // ── JANUARY 2026 ────────────────────────────────────────────────────
   {
-    ay: "JANUARY 2025",
+    ay: "JANUARY 2026",
     hafta: 17,
     konu: "Space-Themed Acrylic Painting on Canvas",
     icerik: "Visual Arts",
@@ -167,9 +167,9 @@ export const GORSEL_SANATLAR_MUFREDAT: MufredatHafta[] = [
       "Students will create a detailed portrait focusing on the human face and sensory organs, developing their skills in anatomy observation, proportion, shading, and fine detail to enhance realism in portrait drawing or painting.",
   },
 
-  // ── FEBRUARY 2025 ───────────────────────────────────────────────────
+  // ── FEBRUARY 2026 ───────────────────────────────────────────────────
   {
-    ay: "FEBRUARY 2025",
+    ay: "FEBRUARY 2026",
     hafta: 21,
     konu: "Semi-Abstract Human Portrait Study",
     icerik: "Visual Arts",
@@ -198,9 +198,9 @@ export const GORSEL_SANATLAR_MUFREDAT: MufredatHafta[] = [
       "Students will create human figure sculptures using ceramic materials, learning techniques of modeling, shaping, and texturing to develop three-dimensional artistic skills and an understanding of human anatomy in sculpture.",
   },
 
-  // ── MARCH 2025 ──────────────────────────────────────────────────────
+  // ── MARCH 2026 ──────────────────────────────────────────────────────
   {
-    ay: "MARCH 2025",
+    ay: "MARCH 2026",
     hafta: 25,
     konu: "Sculpture and Ceramic Human Figure Studies",
     icerik: "Visual Arts",
@@ -229,9 +229,9 @@ export const GORSEL_SANATLAR_MUFREDAT: MufredatHafta[] = [
       "Students will create a fantasy-themed painting on canvas using acrylic paints, exploring imaginative concepts, vibrant colors, and creative composition to develop their storytelling and artistic expression skills.",
   },
 
-  // ── APRIL 2025 ──────────────────────────────────────────────────────
+  // ── APRIL 2026 ──────────────────────────────────────────────────────
   {
-    ay: "APRIL 2025",
+    ay: "APRIL 2026",
     hafta: 29,
     konu: "Abstract Painting Featuring Geometric Shapes",
     icerik: "Visual Arts",
@@ -260,9 +260,9 @@ export const GORSEL_SANATLAR_MUFREDAT: MufredatHafta[] = [
       "Students will practice reproduction techniques by replicating a selected artwork on canvas, focusing on accuracy, detail, and mastering painting skills to enhance their technical ability and understanding of art styles.",
   },
 
-  // ── MAY 2025 ────────────────────────────────────────────────────────
+  // ── MAY 2026 ────────────────────────────────────────────────────────
   {
-    ay: "MAY 2025",
+    ay: "MAY 2026",
     hafta: 33,
     konu: "Genetic Engineering, Cloning, CRISPR",
     icerik: "Visual Arts",
@@ -291,9 +291,9 @@ export const GORSEL_SANATLAR_MUFREDAT: MufredatHafta[] = [
       "Students will engage in a comprehensive review of key visual art concepts and techniques through practical projects and mock assessments, reinforcing their skills and preparing for real-world artistic challenges and evaluations.",
   },
 
-  // ── JUNE 2025 ───────────────────────────────────────────────────────
+  // ── JUNE 2026 ───────────────────────────────────────────────────────
   {
-    ay: "JUNE 2025",
+    ay: "JUNE 2026",
     hafta: 37,
     konu: "Research, Experiment Design, Analysis",
     icerik: "Visual Arts",

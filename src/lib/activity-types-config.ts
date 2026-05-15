@@ -1,6 +1,6 @@
 /**
  * Faaliyet Yönetimi — Merkezi Konfigürasyon
- * 7 ana kategori, alt türler, sertifika tipleri ve form kuralları
+ * 8 ana kategori, alt türler, sertifika tipleri ve form kuralları
  */
 
 import type { MufredatHafta } from "./mufredatlar/ingilizce"
@@ -11,6 +11,7 @@ export const ACTIVITY_MAIN_TYPES = [
   "GEZI",
   "GORSEL_SANATLAR",
   "MUZIK",
+  "GASTRONOMI",
   "PROJE",
   "SPOR",
   "TURNUVA",
@@ -23,6 +24,7 @@ export const MAIN_TYPE_LABELS: Record<ActivityMainType, string> = {
   GEZI: "Gezi",
   GORSEL_SANATLAR: "Görsel Sanatlar",
   MUZIK: "Müzik",
+  GASTRONOMI: "Gastronomi",
   PROJE: "Proje",
   SPOR: "Spor",
   TURNUVA: "Turnuva",
@@ -33,6 +35,7 @@ export const MAIN_TYPE_COLORS: Record<ActivityMainType, string> = {
   GEZI: "bg-emerald-500/10 text-emerald-700 border-emerald-200 hover:bg-emerald-500/20",
   GORSEL_SANATLAR: "bg-pink-500/10 text-pink-700 border-pink-200 hover:bg-pink-500/20",
   MUZIK: "bg-purple-500/10 text-purple-700 border-purple-200 hover:bg-purple-500/20",
+  GASTRONOMI: "bg-rose-500/10 text-rose-700 border-rose-200 hover:bg-rose-500/20",
   PROJE: "bg-amber-500/10 text-amber-700 border-amber-200 hover:bg-amber-500/20",
   SPOR: "bg-orange-500/10 text-orange-700 border-orange-200 hover:bg-orange-500/20",
   TURNUVA: "bg-cyan-500/10 text-cyan-700 border-cyan-200 hover:bg-cyan-500/20",
@@ -43,6 +46,7 @@ export const MAIN_TYPE_ACTIVE_COLORS: Record<ActivityMainType, string> = {
   GEZI: "bg-emerald-600 text-white border-emerald-600",
   GORSEL_SANATLAR: "bg-pink-600 text-white border-pink-600",
   MUZIK: "bg-purple-600 text-white border-purple-600",
+  GASTRONOMI: "bg-rose-600 text-white border-rose-600",
   PROJE: "bg-amber-600 text-white border-amber-600",
   SPOR: "bg-orange-600 text-white border-orange-600",
   TURNUVA: "bg-cyan-600 text-white border-cyan-600",
@@ -60,6 +64,8 @@ export const CERTIFICATE_TYPES = [
   "GORSEL_SANATLAR_ETKINLIK",
   "MUZIK_EGITIM",
   "MUZIK_ESER_ICRA",
+  "GASTRONOMI_EGITIM",
+  "GASTRONOMI_ETKINLIK",
   "BASKETBOL_EGITIM",
   "BEDEN_EGITIMI_EGITIM",
   "HENTBOL_EGITIM",
@@ -82,6 +88,8 @@ export const CERTIFICATE_TYPE_LABELS: Record<CertificateType, string> = {
   GORSEL_SANATLAR_ETKINLIK: "Certificate of Artwork Creation",
   MUZIK_EGITIM: "LEVENT COLLEGE IB PROGRAMME MUSIC ANNUAL CURRICULUM PROGRAM",
   MUZIK_ESER_ICRA: "LEVENT COLLEGE IB PROGRAMME CERTIFICATE OF ARTWORK CREATION",
+  GASTRONOMI_EGITIM: "LEVENT COLLEGE GASTRONOMY ACTIVITY SCHEDULE",
+  GASTRONOMI_ETKINLIK: "LEVENT COLLEGE IB PROGRAMME CERTIFICATE OF CULINARY CREATION",
   BASKETBOL_EGITIM: "Basketbol Eğitimi Katılım Sertifikası",
   BEDEN_EGITIMI_EGITIM: "Beden Eğitimi Katılım Sertifikası",
   HENTBOL_EGITIM: "Hentbol Eğitimi Katılım Sertifikası",
@@ -162,6 +170,7 @@ import { ROBOTIK_MUFREDAT } from "./mufredatlar/robotik"
 import { YAPAY_ZEKA_MUFREDAT } from "./mufredatlar/yapay-zeka"
 import { GORSEL_SANATLAR_MUFREDAT } from "./mufredatlar/gorsel-sanatlar"
 import { MUZIK_MUFREDAT } from "./mufredatlar/muzik"
+import { GASTRONOMI_MUFREDAT } from "./mufredatlar/gastronomi"
 import { BASKETBOL_MUFREDAT } from "./mufredatlar/basketbol"
 import { BEDEN_EGITIMI_MUFREDAT } from "./mufredatlar/beden-egitimi"
 import { HENTBOL_MUFREDAT } from "./mufredatlar/hentbol"
@@ -325,6 +334,35 @@ export const MUZIK_SUBTYPES: SubtypeConfig[] = [
   },
 ]
 
+// --- Gastronomi Alt Türleri ---
+export const GASTRONOMI_SUBTYPES: SubtypeConfig[] = [
+  {
+    id: "egitim",
+    label: "Eğitim",
+    certificateType: "GASTRONOMI_EGITIM",
+    requiresScore: false,
+    requiresLanguageLevel: false,
+    requiresTeacher: true,
+    requiresExtraDocument: false,
+    mufredat: GASTRONOMI_MUFREDAT,
+    mufredatBaslik: "LEVENT COLLEGE GASTRONOMY ACTIVITY SCHEDULE (40 Weeks)",
+    activityTitleLabel: "Eğitim Başlığı",
+    activityTitlePlaceholder: "örn: Kitchen Art — Annual Gastronomy Programme",
+  },
+  {
+    id: "etkinlik",
+    label: "Etkinlik",
+    certificateType: "GASTRONOMI_ETKINLIK",
+    requiresScore: false,
+    requiresLanguageLevel: false,
+    requiresTeacher: true,
+    requiresExtraDocument: false,
+    requiresArtworkDescription: true,
+    activityTitleLabel: "Etkinlik Başlığı",
+    activityTitlePlaceholder: "örn: Layer Cake Workshop — 12 June 2026",
+  },
+]
+
 // --- Spor Alt Türleri ---
 export const SPOR_SUBTYPES: SubtypeConfig[] = [
   {
@@ -443,6 +481,7 @@ export const SUBTYPES_BY_MAIN_TYPE: Record<ActivityMainType, SubtypeConfig[]> = 
   GEZI: GEZI_SUBTYPES,
   GORSEL_SANATLAR: GORSEL_SANATLAR_SUBTYPES,
   MUZIK: MUZIK_SUBTYPES,
+  GASTRONOMI: GASTRONOMI_SUBTYPES,
   PROJE: PROJE_SUBTYPES,
   SPOR: SPOR_SUBTYPES,
   TURNUVA: TURNUVA_SUBTYPES,

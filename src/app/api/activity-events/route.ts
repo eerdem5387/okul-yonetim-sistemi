@@ -11,6 +11,7 @@ const ALLOWED_ACTIVITY_MAIN_TYPES = new Set<string>([
   "GEZI",
   "GORSEL_SANATLAR",
   "MUZIK",
+  "GASTRONOMI",
   "PROJE",
   "SPOR",
   "TURNUVA",

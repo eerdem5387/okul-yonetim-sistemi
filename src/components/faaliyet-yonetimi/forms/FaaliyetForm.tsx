@@ -264,7 +264,10 @@ export function FaaliyetForm({ mainType, subtypeId, editEventId }: FaaliyetFormP
       }
     }
 
-    if (subtypeConfig!.certificateType === "MUZIK_EGITIM") {
+    if (
+      subtypeConfig!.certificateType === "MUZIK_EGITIM" ||
+      subtypeConfig!.certificateType === "GASTRONOMI_EGITIM"
+    ) {
       return {
         title: detay.title,
         startDate: detay.startDate,
@@ -303,7 +306,8 @@ export function FaaliyetForm({ mainType, subtypeId, editEventId }: FaaliyetFormP
 
     if (
       subtypeConfig!.certificateType === "GORSEL_SANATLAR_ETKINLIK" ||
-      subtypeConfig!.certificateType === "MUZIK_ESER_ICRA"
+      subtypeConfig!.certificateType === "MUZIK_ESER_ICRA" ||
+      subtypeConfig!.certificateType === "GASTRONOMI_ETKINLIK"
     ) {
       return {
         title: detay.title,

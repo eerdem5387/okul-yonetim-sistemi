@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ToastContainer, useToast } from "@/components/ui/toast"
+import Link from "next/link"
 import {
   Plus,
   Edit,
@@ -18,6 +19,7 @@ import {
   Phone,
   Loader2,
   Briefcase,
+  Eye,
 } from "lucide-react"
 
 type StaffDepartment =
@@ -910,6 +912,13 @@ export default function PersonelPage() {
                       </td>
                       <td className="px-2 sm:px-3 lg:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
                         <div className="flex items-center gap-1 sm:gap-2">
+                          <Link
+                            href={`/personel/${staffMember.id}`}
+                            title="Personel Kartı"
+                            className="inline-flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-700 transition-colors hover:bg-gray-50 hover:text-blue-700"
+                          >
+                            <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
+                          </Link>
                           <Button
                             variant="outline"
                             size="sm"

@@ -21,8 +21,10 @@ import {
   MapPin,
   Award,
   Plus,
+  CalendarOff,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { UnreadBadge } from "@/components/chat/UnreadBadge"
 
 interface OgretmenSidebarProps {
   className?: string
@@ -77,6 +79,7 @@ export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
 
   const navigation = [
     { name: "Ana Sayfa", href: "/ogretmen", icon: Home },
+    { name: "Mesajlar", href: "/mesajlar", icon: MessageSquare },
     { name: "Neredeyiz?", href: "/ogretmen/neredeyiz", icon: Target },
     { name: "Ders Programım", href: "/ogretmen/ders-programim", icon: Calendar },
     { name: "Ödev Yönetimi", href: "/ogretmen/odevler", icon: BookOpen },
@@ -84,6 +87,7 @@ export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
     { name: "Öğrenci Görüşleri", href: "/ogretmen/gorusler", icon: MessageSquare },
     { name: "Öğrenci Dashboard", href: "/ogretmen/ogrenci-dashboard", icon: GraduationCap },
     { name: "Gecikmeler", href: "/ogretmen/gecikmeler", icon: AlertTriangle },
+    { name: "İzinlerim", href: "/ogretmen/izinlerim", icon: CalendarOff },
     // Yetki bazlı modüller - Sadece yetkisi varsa göster
     ...(hasGeziAccess === true ? [{ name: "Gezi Yönetimi", href: "/ogretmen/gezi-yonetimi", icon: MapPin }] : []),
     // IB Faaliyet - tüm öğretmenler görebilir
@@ -168,8 +172,9 @@ export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
             >
               <item.icon className="h-5 w-5 flex-shrink-0" />
               {!isCollapsed && (
-                <span className="font-medium truncate">{item.name}</span>
+                <span className="font-medium truncate flex-1">{item.name}</span>
               )}
+              {item.href === "/mesajlar" && !isCollapsed && <UnreadBadge />}
             </Link>
           )
         })}

@@ -29,9 +29,11 @@ import {
   Settings,
 } from "lucide-react"
 import { useState, useEffect } from "react"
+import { UnreadBadge } from "@/components/chat/UnreadBadge"
 const allNavigation = [
   // 1. Dashboard
   { name: "Dashboard", href: "/", icon: LayoutDashboard, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
+  { name: "Mesajlar", href: "/mesajlar", icon: MessageSquare, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor", "teacher"] },
   // 2. Yeni Kayıt
   { name: "Yeni Kayıt", href: "/new-registration", icon: FileText, roles: ["admin", "principal", "student_affairs", "head_counselor"] },
   // 3. Kayıt Yenileme
@@ -226,6 +228,7 @@ export function Sidebar() {
                   aria-hidden="true"
                 />
                 <span className="flex-1">{item.name}</span>
+                {item.href === "/mesajlar" && <UnreadBadge />}
                 {isActive && (
                   <div className="h-2 w-2 bg-white rounded-full shadow-lg animate-pulse" />
                 )}

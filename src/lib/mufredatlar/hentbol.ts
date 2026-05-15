@@ -11,9 +11,9 @@ import type { MufredatHafta } from "./ingilizce"
 export type { MufredatHafta }
 
 export const HENTBOL_MUFREDAT: MufredatHafta[] = [
-  // ── SEPTEMBER 2024 ──────────────────────────────────────────────────
+  // ── SEPTEMBER 2025 ──────────────────────────────────────────────────
   {
-    ay: "SEPTEMBER 2024",
+    ay: "SEPTEMBER 2025",
     hafta: 1,
     konu: "Introduction to Handball",
     icerik: "Rules, safety guidelines, and basic overview of the sport",
@@ -37,9 +37,9 @@ export const HENTBOL_MUFREDAT: MufredatHafta[] = [
     icerik: "Proper catching techniques, ball control drills",
     hedef: "Improve ball handling and secure catches",
   },
-  // ── OCTOBER 2024 ─────────────────────────────────────────────────────
+  // ── OCTOBER 2025 ─────────────────────────────────────────────────────
   {
-    ay: "OCTOBER 2024",
+    ay: "OCTOBER 2025",
     hafta: 5,
     konu: "Dribbling Skills",
     icerik: "Dribbling fundamentals and agility drills",
@@ -63,9 +63,9 @@ export const HENTBOL_MUFREDAT: MufredatHafta[] = [
     icerik: "Man-to-man and zone defense concepts",
     hedef: "Improve defensive positioning and teamwork",
   },
-  // ── NOVEMBER 2024 ───────────────────────────────────────────────────
+  // ── NOVEMBER 2025 ───────────────────────────────────────────────────
   {
-    ay: "NOVEMBER 2024",
+    ay: "NOVEMBER 2025",
     hafta: 9,
     konu: "Goalkeeper Fundamentals",
     icerik: "Goalkeeping stance and reflex exercises",
@@ -89,9 +89,9 @@ export const HENTBOL_MUFREDAT: MufredatHafta[] = [
     icerik: "Full scrimmage and tactical feedback",
     hedef: "Apply skills in realistic game situations",
   },
-  // ── DECEMBER 2024 ─────────────────────────────────────────────────────
+  // ── DECEMBER 2025 ─────────────────────────────────────────────────────
   {
-    ay: "DECEMBER 2024",
+    ay: "DECEMBER 2025",
     hafta: 13,
     konu: "Fast Breaks & Transition Offense",
     icerik: "Speed drills and fast-break techniques",
@@ -115,9 +115,9 @@ export const HENTBOL_MUFREDAT: MufredatHafta[] = [
     icerik: "Set plays for defensive formations",
     hedef: "Organize effective team defense",
   },
-  // ── JANUARY 2025 ─────────────────────────────────────────────────────
+  // ── JANUARY 2026 ─────────────────────────────────────────────────────
   {
-    ay: "JANUARY 2025",
+    ay: "JANUARY 2026",
     hafta: 17,
     konu: "Counterattacks",
     icerik: "Quick response drills after turnovers",
@@ -141,9 +141,9 @@ export const HENTBOL_MUFREDAT: MufredatHafta[] = [
     icerik: "Review recorded matches and analyze strategies",
     hedef: "Learn from match situations",
   },
-  // ── FEBRUARY 2025 ───────────────────────────────────────────────────
+  // ── FEBRUARY 2026 ───────────────────────────────────────────────────
   {
-    ay: "FEBRUARY 2025",
+    ay: "FEBRUARY 2026",
     hafta: 21,
     konu: "Set Plays & Out-of-Bounds",
     icerik: "Designing plays for specific game situations",
@@ -167,9 +167,9 @@ export const HENTBOL_MUFREDAT: MufredatHafta[] = [
     icerik: "Rules, formats, and etiquette of tournaments",
     hedef: "Prepare for competitive tournaments",
   },
-  // ── MARCH 2025 ──────────────────────────────────────────────────────
+  // ── MARCH 2026 ──────────────────────────────────────────────────────
   {
-    ay: "MARCH 2025",
+    ay: "MARCH 2026",
     hafta: 25,
     konu: "Referee Signals & Laws",
     icerik: "Understanding handball officiating signals",
@@ -193,9 +193,9 @@ export const HENTBOL_MUFREDAT: MufredatHafta[] = [
     icerik: "3-on-3 drills to refine skills",
     hedef: "Enhance skill development",
   },
-  // ── APRIL 2025 ──────────────────────────────────────────────────────
+  // ── APRIL 2026 ──────────────────────────────────────────────────────
   {
-    ay: "APRIL 2025",
+    ay: "APRIL 2026",
     hafta: 29,
     konu: "Team Building Activities",
     icerik: "Team trust and cohesion exercises",
@@ -219,9 +219,9 @@ export const HENTBOL_MUFREDAT: MufredatHafta[] = [
     icerik: "Scrimmages with coaching feedback",
     hedef: "Apply strategies under guidance",
   },
-  // ── MAY 2025 ────────────────────────────────────────────────────────
+  // ── MAY 2026 ────────────────────────────────────────────────────────
   {
-    ay: "MAY 2025",
+    ay: "MAY 2026",
     hafta: 33,
     konu: "Fitness Maintenance",
     icerik: "Off-season training tips",
@@ -245,9 +245,9 @@ export const HENTBOL_MUFREDAT: MufredatHafta[] = [
     icerik: "Power-play and penalty-kill situations",
     hedef: "Prepare for game scenarios",
   },
-  // ── JUNE 2025 ───────────────────────────────────────────────────────
+  // ── JUNE 2026 ───────────────────────────────────────────────────────
   {
-    ay: "JUNE 2025",
+    ay: "JUNE 2026",
     hafta: 37,
     konu: "Review & Recap",
     icerik: "Summary of techniques learned",

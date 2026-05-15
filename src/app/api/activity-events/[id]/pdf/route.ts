@@ -19,6 +19,14 @@ import {
 import { buildMuzikEgitimCertificateHTML, MuzikEgitimCertData } from "@/lib/certificates/muzik-egitim"
 import { buildMuzikEserIcraCertificateHTML, MuzikEserIcraCertData } from "@/lib/certificates/muzik-eser-icra"
 import {
+  buildGastronomiEgitimCertificateHTML,
+  type GastronomiEgitimCertData,
+} from "@/lib/certificates/gastronomi-egitim"
+import {
+  buildGastronomiEtkinlikCertificateHTML,
+  type GastronomiEtkinlikCertData,
+} from "@/lib/certificates/gastronomi-etkinlik"
+import {
   buildBasketbolEgitimCertificateHTML,
   type BasketbolEgitimCertData,
 } from "@/lib/certificates/basketbol-egitim"
@@ -307,6 +315,39 @@ export async function GET(
         })),
       }
       html = buildMuzikEgitimCertificateHTML(certData)
+    } else if (event.certificateType === "GASTRONOMI_EGITIM") {
+      const certData: GastronomiEgitimCertData = {
+        title: event.title,
+        startDate: event.startDate.toISOString(),
+        endDate: event.endDate.toISOString(),
+        teacherName: `${event.teacher.firstName} ${event.teacher.lastName}`,
+        organizerName: event.organizerName,
+        createdAt: event.createdAt.toISOString(),
+        participants: selectedParticipants.map((p) => ({
+          firstName: p.student.firstName,
+          lastName: p.student.lastName,
+          tcNumber: p.student.tcNumber,
+          grade: p.student.grade,
+        })),
+      }
+      html = buildGastronomiEgitimCertificateHTML(certData)
+    } else if (event.certificateType === "GASTRONOMI_ETKINLIK") {
+      const certData: GastronomiEtkinlikCertData = {
+        title: event.title,
+        startDate: event.startDate.toISOString(),
+        endDate: event.endDate.toISOString(),
+        teacherName: `${event.teacher.firstName} ${event.teacher.lastName}`,
+        createdAt: event.createdAt.toISOString(),
+        participants: selectedParticipants.map((p) => ({
+          firstName: p.student.firstName,
+          lastName: p.student.lastName,
+          tcNumber: p.student.tcNumber,
+          grade: p.student.grade,
+          artworkDescription: p.artworkDescription ?? "",
+          participationPhotoUrl: p.participationPhotoUrl ?? "",
+        })),
+      }
+      html = buildGastronomiEtkinlikCertificateHTML(certData)
     } else if (event.certificateType === "MUZIK_ESER_ICRA") {
       const certData: MuzikEserIcraCertData = {
         title: event.title,
