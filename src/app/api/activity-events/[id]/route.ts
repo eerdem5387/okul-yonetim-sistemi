@@ -203,6 +203,8 @@ export async function PUT(
             languageLevel: parseParticipantLanguageLevel(p.languageLevel),
             extraDocumentUrl: (p.extraDocumentUrl as string) || null,
             artworkDescription: p.artworkDescription != null ? String(p.artworkDescription).trim() || null : null,
+            participationPhotoUrl:
+              p.participationPhotoUrl != null ? String(p.participationPhotoUrl).trim() || null : null,
             tournamentPlacement: p.tournamentPlacement != null ? String(p.tournamentPlacement).trim() || null : null,
             projectRole: p.projectRole != null ? String(p.projectRole).trim() || null : null,
           })),

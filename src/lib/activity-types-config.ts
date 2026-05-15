@@ -122,8 +122,13 @@ export interface SubtypeConfig {
   showNumberOfArtworks?: boolean
   /** "Müdür Yardımcısı" alanını göster (Görsel Sanatlar) */
   showVicePrincipal?: boolean
-  /** Katılımcı satırında eser açıklaması (Görsel Sanatlar Etkinlik) */
+  /** Katılımcı satırında eser açıklaması (Görsel Sanatlar / Gastronomi Etkinlik vb.) */
   requiresArtworkDescription?: boolean
+  /** Katılımcı satırında görsel kanıt fotoğrafı (varsayılan: requiresArtworkDescription ile aynı) */
+  requiresParticipationPhoto?: boolean
+  artworkDescriptionLabel?: string
+  artworkDescriptionPlaceholder?: string
+  participationPhotoLabel?: string
   /** 1. adım başlık alanı etiketi (varsayılan: Eğitim Başlığı / Gezi Başlığı) */
   activityTitleLabel?: string
   /** 1. adım başlık placeholder */
@@ -289,6 +294,9 @@ export const GORSEL_SANATLAR_SUBTYPES: SubtypeConfig[] = [
     requiresTeacher: true,
     requiresExtraDocument: false,
     requiresArtworkDescription: true,
+    artworkDescriptionLabel: "Artwork Description",
+    artworkDescriptionPlaceholder: "Describe the artwork (medium, theme, technique...)",
+    participationPhotoLabel: "Artwork Photo (visual evidence)",
     mufredat: GORSEL_SANATLAR_MUFREDAT,
     mufredatBaslik:
       "LEVENT COLLEGE IB PROGRAMME — Visual Arts Annual Curriculum (40 Weeks)",
@@ -329,6 +337,9 @@ export const MUZIK_SUBTYPES: SubtypeConfig[] = [
     requiresTeacher: true,
     requiresExtraDocument: false,
     requiresArtworkDescription: true,
+    artworkDescriptionLabel: "Performance / Work Description",
+    artworkDescriptionPlaceholder: "Describe the piece performed (instrument, repertoire, context...)",
+    participationPhotoLabel: "Performance Photo (visual evidence)",
     activityTitleLabel: "Etkinlik / Eser İcra Başlığı",
     activityTitlePlaceholder: "örn: Piyano Resitali — Solo Performans — 15 Mayıs 2025",
   },
@@ -358,6 +369,10 @@ export const GASTRONOMI_SUBTYPES: SubtypeConfig[] = [
     requiresTeacher: true,
     requiresExtraDocument: false,
     requiresArtworkDescription: true,
+    artworkDescriptionLabel: "Dish / Culinary Work Description",
+    artworkDescriptionPlaceholder:
+      "Describe the dish or culinary work (ingredients, techniques, presentation...)",
+    participationPhotoLabel: "Culinary Work Photo (visual evidence)",
     activityTitleLabel: "Etkinlik Başlığı",
     activityTitlePlaceholder: "örn: Layer Cake Workshop — 12 June 2026",
   },

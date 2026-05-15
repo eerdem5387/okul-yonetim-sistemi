@@ -160,6 +160,7 @@ export function FaaliyetForm({ mainType, subtypeId, editEventId }: FaaliyetFormP
                 languageLevel: string | null
                 extraDocumentUrl: string | null
                 artworkDescription?: string | null
+                participationPhotoUrl?: string | null
                 tournamentPlacement?: string | null
                 projectRole?: string | null
               }) => ({
@@ -170,6 +171,7 @@ export function FaaliyetForm({ mainType, subtypeId, editEventId }: FaaliyetFormP
                 languageLevel: p.languageLevel ?? "",
                 extraDocumentUrl: p.extraDocumentUrl ?? "",
                 artworkDescription: p.artworkDescription ?? "",
+                participationPhotoUrl: p.participationPhotoUrl ?? "",
                 tournamentPlacement: p.tournamentPlacement ?? "",
                 projectRole: p.projectRole ?? "",
               })
@@ -321,6 +323,7 @@ export function FaaliyetForm({ mainType, subtypeId, editEventId }: FaaliyetFormP
           tcNumber: students.find((s) => s.id === p.studentId)?.tcNumber ?? "",
           grade: p.studentGrade,
           artworkDescription: p.artworkDescription,
+          participationPhotoUrl: p.participationPhotoUrl,
         })),
       }
     }
@@ -412,6 +415,7 @@ export function FaaliyetForm({ mainType, subtypeId, editEventId }: FaaliyetFormP
         languageLevel: p.languageLevel || null,
         extraDocumentUrl: p.extraDocumentUrl || null,
         artworkDescription: p.artworkDescription?.trim() || null,
+        participationPhotoUrl: p.participationPhotoUrl?.trim() || null,
         tournamentPlacement: p.tournamentPlacement?.trim() || null,
         projectRole: p.projectRole?.trim() || null,
       }))

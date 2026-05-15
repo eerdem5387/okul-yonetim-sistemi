@@ -278,6 +278,7 @@ export async function POST(request: NextRequest) {
             languageLevel?: string
             extraDocumentUrl?: string
             artworkDescription?: string | null
+            participationPhotoUrl?: string | null
             tournamentPlacement?: string | null
             projectRole?: string | null
           }) => ({
@@ -286,6 +287,7 @@ export async function POST(request: NextRequest) {
             languageLevel: parseParticipantLanguageLevel(p.languageLevel),
             extraDocumentUrl: p.extraDocumentUrl || null,
             artworkDescription: p.artworkDescription?.trim() || null,
+            participationPhotoUrl: p.participationPhotoUrl?.trim() || null,
             tournamentPlacement: p.tournamentPlacement?.trim() || null,
             projectRole: p.projectRole?.trim() || null,
           })),

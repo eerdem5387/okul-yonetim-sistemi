@@ -62,6 +62,7 @@ export function StepKatilimcilar({
           languageLevel: "",
           extraDocumentUrl: "",
           artworkDescription: "",
+          participationPhotoUrl: "",
           tournamentPlacement: "",
           projectRole: "",
         },
@@ -93,6 +94,9 @@ export function StepKatilimcilar({
       if (subtypeConfig.requiresScore && (!p.score || isNaN(Number(p.score)))) return false
       if (subtypeConfig.requiresLanguageLevel && !p.languageLevel) return false
       if (subtypeConfig.requiresArtworkDescription && !p.artworkDescription?.trim()) return false
+      const needsPhoto =
+        subtypeConfig.requiresParticipationPhoto ?? subtypeConfig.requiresArtworkDescription ?? false
+      if (needsPhoto && !p.participationPhotoUrl?.trim()) return false
       if (subtypeConfig.requiresExtraDocument && !p.extraDocumentUrl?.trim()) return false
       if (subtypeConfig.showParticipantProjectRole && !p.projectRole?.trim()) return false
       return true
@@ -201,6 +205,10 @@ export function StepKatilimcilar({
                   requiresExtraDocument={subtypeConfig.requiresExtraDocument}
                   optionalExtraDocument={subtypeConfig.optionalExtraDocument}
                   requiresArtworkDescription={subtypeConfig.requiresArtworkDescription}
+                  requiresParticipationPhoto={subtypeConfig.requiresParticipationPhoto}
+                  artworkDescriptionLabel={subtypeConfig.artworkDescriptionLabel}
+                  artworkDescriptionPlaceholder={subtypeConfig.artworkDescriptionPlaceholder}
+                  participationPhotoLabel={subtypeConfig.participationPhotoLabel}
                   showTournamentPlacement={subtypeConfig.showTournamentPlacement}
                   showParticipantProjectRole={subtypeConfig.showParticipantProjectRole}
                   extraDocumentFieldLabel={subtypeConfig.extraDocumentFieldLabel}

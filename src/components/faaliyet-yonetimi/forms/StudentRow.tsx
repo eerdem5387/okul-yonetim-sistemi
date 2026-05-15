@@ -7,7 +7,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { LANGUAGE_LEVELS } from "@/lib/activity-types-config"
 import {
   assertFileMaxSize,
+  CLIENT_MAX_PARTICIPATION_PHOTO_BYTES,
   CLIENT_MAX_PDF_BYTES,
+  formatMaxSizeLabel,
   parseUploadResponse,
 } from "@/lib/upload-client"
 
@@ -19,6 +21,7 @@ export interface ParticipantData {
   languageLevel: string
   extraDocumentUrl: string
   artworkDescription: string
+  participationPhotoUrl: string
   /** Turnuva başarı belgesi — derece metni (serbest) */
   tournamentPlacement: string
   /** Proje içerik belgesi — katılımcının rolü */
@@ -34,6 +37,10 @@ interface StudentRowProps {
   /** Zorunlu olmayan ek belge (PDF) */
   optionalExtraDocument?: boolean
   requiresArtworkDescription?: boolean
+  requiresParticipationPhoto?: boolean
+  artworkDescriptionLabel?: string
+  artworkDescriptionPlaceholder?: string
+  participationPhotoLabel?: string
   showTournamentPlacement?: boolean
   showParticipantProjectRole?: boolean
   /** requiresExtraDocument iken PDF alanı etiketi */
@@ -52,6 +59,10 @@ export function StudentRow({
   requiresExtraDocument,
   optionalExtraDocument,
   requiresArtworkDescription,
+  requiresParticipationPhoto,
+  artworkDescriptionLabel,
+  artworkDescriptionPlaceholder,
+  participationPhotoLabel,
   showTournamentPlacement,
   showParticipantProjectRole,
   extraDocumentFieldLabel,
@@ -61,7 +72,12 @@ export function StudentRow({
   onRemove,
 }: StudentRowProps) {
   const docRef = useRef<HTMLInputElement>(null)
+  const photoRef = useRef<HTMLInputElement>(null)
   const [uploadingDoc, setUploadingDoc] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+
+  const showParticipationPhoto =
+    requiresParticipationPhoto ?? requiresArtworkDescription ?? false
 
   function set(field: keyof ParticipantData, value: string) {
     onChange({ ...participant, [field]: value })
@@ -72,6 +88,32 @@ export function StudentRow({
     const h: Record<string, string> = {}
     if (token) h["Authorization"] = `Bearer ${token}`
     return h
+  }
+
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const sizeErr = assertFileMaxSize(file, CLIENT_MAX_PARTICIPATION_PHOTO_BYTES, "Katılım fotoğrafı")
+    if (sizeErr) {
+      alert(sizeErr)
+      return
+    }
+    setUploadingPhoto(true)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      const res = await fetch("/api/activity-events/upload?type=participation_photo", {
+        method: "POST",
+        headers: getHeaders(),
+        body: formData,
+      })
+      const parsed = await parseUploadResponse(res)
+      if (parsed.ok && parsed.url) set("participationPhotoUrl", parsed.url)
+      else alert(parsed.error || "Fotoğraf yüklenemedi")
+    } finally {
+      setUploadingPhoto(false)
+      if (photoRef.current) photoRef.current.value = ""
+    }
   }
 
   async function handleDocUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -160,18 +202,84 @@ export function StudentRow({
           </div>
         )}
 
-        {/* Eser açıklaması (Görsel Sanatlar Etkinlik) */}
+        {/* Eser / yemek açıklaması (etkinlik türleri) */}
         {requiresArtworkDescription && (
           <div className="sm:col-span-2 lg:col-span-4">
             <p className="text-xs font-medium text-gray-600 mb-1.5">
-              Artwork Description <span className="text-red-500">*</span>
+              {artworkDescriptionLabel ?? "Artwork Description"}{" "}
+              <span className="text-red-500">*</span>
             </p>
             <Textarea
               value={participant.artworkDescription}
               onChange={(e) => set("artworkDescription", e.target.value)}
-              placeholder="Describe the artwork (medium, theme, technique...)"
+              placeholder={
+                artworkDescriptionPlaceholder ??
+                "Describe the artwork (medium, theme, technique...)"
+              }
               rows={3}
               className="resize-y min-h-[72px]"
+            />
+          </div>
+        )}
+
+        {showParticipationPhoto && (
+          <div className="sm:col-span-2 lg:col-span-4">
+            <p className="text-xs font-medium text-gray-600 mb-1.5">
+              {participationPhotoLabel ?? "Participation Photo (visual evidence)"}{" "}
+              <span className="text-red-500">*</span>
+              <span className="text-gray-400 font-normal">
+                {" "}
+                (maks {formatMaxSizeLabel(CLIENT_MAX_PARTICIPATION_PHOTO_BYTES)} · JPEG, PNG, WEBP, GIF, HEIC)
+              </span>
+            </p>
+            {participant.participationPhotoUrl ? (
+              <div className="flex flex-wrap items-start gap-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <img
+                  src={participant.participationPhotoUrl}
+                  alt={`${participant.studentName} — görsel kanıt`}
+                  className="h-28 w-28 rounded-lg object-cover border border-gray-200"
+                />
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => photoRef.current?.click()}
+                    disabled={uploadingPhoto}
+                    className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                  >
+                    Fotoğrafı değiştir
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => set("participationPhotoUrl", "")}
+                    className="text-xs text-red-500 hover:text-red-700 font-medium text-left"
+                  >
+                    Kaldır
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => photoRef.current?.click()}
+                disabled={uploadingPhoto}
+                className="flex h-24 w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-200 text-xs text-gray-400 hover:border-indigo-300 hover:text-indigo-500 transition-colors"
+              >
+                {uploadingPhoto ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4" />
+                    Görsel kanıt yükle
+                  </>
+                )}
+              </button>
+            )}
+            <input
+              ref={photoRef}
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/webp,image/gif,image/heic,image/heif"
+              className="hidden"
+              onChange={handlePhotoUpload}
             />
           </div>
         )}
