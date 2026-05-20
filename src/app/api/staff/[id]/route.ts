@@ -1,14 +1,25 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { StaffDepartment } from "@prisma/client"
+import { resolveStaffActor } from "@/lib/hr/actor"
+import { hasPermission, resolveActorWithPermission } from "@/lib/permissions"
 
 // GET - Tek personel getir
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const actor = await resolveStaffActor(request)
+  const params = await context.params
+  if (!actor) {
+    return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 401 })
+  }
+  const canViewAll = await hasPermission(actor.staffId, actor.department, "staff", "view")
+  if (!canViewAll && actor.staffId !== params.id) {
+    return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 403 })
+  }
+
   try {
-    const params = await context.params
     const staff = await prisma.staff.findUnique({
       where: { id: params.id },
     })
@@ -35,6 +46,11 @@ export async function PUT(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const actor = await resolveActorWithPermission(request, "staff", "edit")
+  if (!actor) {
+    return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 403 })
+  }
+
   try {
     const params = await context.params
     const body = await request.json()

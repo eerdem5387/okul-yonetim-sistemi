@@ -2,11 +2,17 @@
 
 import { useEffect, useState } from "react"
 import { IBFaaliyetDashboard } from "@/components/ib-faaliyet-dashboard/IBFaaliyetDashboard"
+import { IbViewerManagementModal } from "@/components/faaliyet-yonetimi/IbViewerManagementModal"
 
 export default function FaaliyetYonetimiPage() {
+  const [showViewerModal, setShowViewerModal] = useState(false)
   const [isTeacher, setIsTeacher] = useState(false)
+  const [canManageViewers, setCanManageViewers] = useState(false)
+
   useEffect(() => {
-    setIsTeacher(typeof window !== "undefined" && localStorage.getItem("auth_role") === "teacher")
+    const role = localStorage.getItem("auth_role")
+    setIsTeacher(role === "teacher")
+    setCanManageViewers(role !== "teacher" && role !== null)
   }, [])
 
   return (
@@ -17,10 +23,14 @@ export default function FaaliyetYonetimiPage() {
         faaliyetEkleHref="/faaliyet-ekle"
         faaliyetDuzenleHref={(activityId) => `/faaliyet-yonetimi/duzenle/${activityId}`}
         studentDetailHref={(id) =>
-          isTeacher ? `/ogretmen/ib-yonetimi/ogrenci/${id}` : `/activities/student/${id}`
+          isTeacher ? `/ogretmen/faaliyet-yonetimi/ogrenci/${id}` : `/faaliyet-yonetimi/ogrenci/${id}`
         }
-        showViewerButton={false}
+        showViewerButton={canManageViewers}
+        onViewerClick={() => setShowViewerModal(true)}
       />
+      {showViewerModal && (
+        <IbViewerManagementModal onClose={() => setShowViewerModal(false)} />
+      )}
     </div>
   )
 }

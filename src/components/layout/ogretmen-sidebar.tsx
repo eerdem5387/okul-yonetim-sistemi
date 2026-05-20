@@ -25,6 +25,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { UnreadBadge } from "@/components/chat/UnreadBadge"
+import { fetchPermissionsMe, hasPermissionKey, staffAuthHeaders } from "@/lib/permissions/client"
 
 interface OgretmenSidebarProps {
   className?: string
@@ -36,33 +37,28 @@ export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const [staffName, setStaffName] = useState("")
   const [staffSubject, setStaffSubject] = useState("")
-  const [hasGeziAccess, setHasGeziAccess] = useState<boolean>(false)
-  const [, setHasIbAccess] = useState<boolean>(false)
+  const [permissionKeys, setPermissionKeys] = useState<string[]>([])
+  const hasGeziAccess = hasPermissionKey(permissionKeys, "gezi", "view")
+  const hasIbAccess = hasPermissionKey(permissionKeys, "activity_events", "view")
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const name = localStorage.getItem("staff_name") || "Öğretmen"
       setStaffName(name)
-      
-      // Öğretmen ders bilgisini ve yetkilerini API'den çek
+
       const staffId = localStorage.getItem("staff_id")
       if (staffId) {
-        fetch(`/api/staff/${staffId}`)
+        fetch(`/api/staff/${staffId}`, { headers: staffAuthHeaders() })
           .then((res) => res.json())
           .then((data) => {
-            if (data.subject) {
-              setStaffSubject(data.subject)
-            }
-            // Yetkileri açıkça set et (true/false)
-            setHasGeziAccess(data.hasGeziAccess === true)
-            setHasIbAccess(data.hasIbAccess === true)
+            if (data.subject) setStaffSubject(data.subject)
           })
-          .catch(() => {
-            // Hata durumunda erişim yok
-            setHasGeziAccess(false)
-            setHasIbAccess(false)
-          })
+          .catch(() => {})
       }
+
+      fetchPermissionsMe().then((data) => {
+        if (data?.permissions) setPermissionKeys(data.permissions)
+      })
     }
   }, [])
 
@@ -89,10 +85,13 @@ export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
     { name: "Gecikmeler", href: "/ogretmen/gecikmeler", icon: AlertTriangle },
     { name: "İzinlerim", href: "/ogretmen/izinlerim", icon: CalendarOff },
     // Yetki bazlı modüller - Sadece yetkisi varsa göster
-    ...(hasGeziAccess === true ? [{ name: "Gezi Yönetimi", href: "/ogretmen/gezi-yonetimi", icon: MapPin }] : []),
-    // IB Faaliyet - tüm öğretmenler görebilir
-    { name: "IB Faaliyet Yönetimi", href: "/ogretmen/ib-yonetimi", icon: Award },
-    { name: "Faaliyet Ekle", href: "/ogretmen/ib-yonetimi/faaliyet-ekle", icon: Plus },
+    ...(hasGeziAccess ? [{ name: "Gezi Yönetimi", href: "/ogretmen/gezi-yonetimi", icon: MapPin }] : []),
+    ...(hasIbAccess
+      ? [
+          { name: "Faaliyet Yönetimi", href: "/ogretmen/faaliyet-yonetimi", icon: Award },
+          { name: "Faaliyet Ekle", href: "/faaliyet-ekle", icon: Plus },
+        ]
+      : []),
   ]
 
   return (
@@ -153,8 +152,9 @@ export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
       <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
         {navigation.map((item) => {
           const isActive =
-            item.href === "/ogretmen/ib-yonetimi"
+            item.href === "/ogretmen/faaliyet-yonetimi"
               ? pathname === item.href ||
+                pathname?.startsWith("/ogretmen/faaliyet-yonetimi") ||
                 pathname?.startsWith("/ogretmen/ib-yonetimi") ||
                 pathname?.startsWith("/faaliyet-yonetimi")
               : pathname === item.href || (item.href !== "/ogretmen" && pathname?.startsWith(item.href))

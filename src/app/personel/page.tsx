@@ -126,7 +126,10 @@ export default function PersonelPage() {
       if (selectedDepartment !== "all") params.append("department", selectedDepartment)
       if (activeFilter !== "all") params.append("isActive", activeFilter)
 
-      const response = await fetch(`/api/staff?${params.toString()}`)
+      const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null
+      const response = await fetch(`/api/staff?${params.toString()}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
       if (response.ok) {
         const data = await response.json()
         // Güvenli array kontrolü

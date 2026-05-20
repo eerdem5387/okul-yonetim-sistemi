@@ -227,6 +227,16 @@ export default function RootLayout({
       return
     }
 
+    if (pathname === "/yonetim/yetkilendirme") {
+      if (normalizedRole === "admin") return
+      if (!redirectingRef.current) {
+        redirectingRef.current = true
+        router.push("/login")
+        setTimeout(() => { redirectingRef.current = false }, 100)
+      }
+      return
+    }
+
     // Veli sayfaları için kontrol (/veli-gorusmeleri ve /admin/veli-gorusmeleri hariç)
     // ÖNEMLİ: Bu kontrol /veli-gorusmeleri kontrolünden SONRA yapılmalı
     if ((pathname?.startsWith("/veli") && pathname !== "/veli-gorusmeleri") || pathname === "/parent") {
@@ -314,7 +324,7 @@ export default function RootLayout({
       if (normalizedRole === "teacher") {
         if (!redirectingRef.current) {
           redirectingRef.current = true
-          router.push("/ogretmen/ib-yonetimi/faaliyet-ekle")
+          router.push("/faaliyet-ekle")
           setTimeout(() => { redirectingRef.current = false }, 100)
         }
         return

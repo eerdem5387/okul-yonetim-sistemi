@@ -485,12 +485,30 @@ model Staff {
   leaves         StaffLeave[]
   approvedLeaves StaffLeave[] @relation("ApprovedLeaves")
   duties         StaffDuty[]
+  permissions    StaffPermission[]
 
   @@index([tcNumber])
   @@index([department])
   @@index([isActive])
   @@index([firstName, lastName])
   @@map("staff")
+}
+
+// Modül bazlı yetkilendirme (Süper Admin tarafından yönetilir)
+model StaffPermission {
+  id        String   @id @default(cuid())
+  staffId   String
+  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  module    String
+  action    String
+  granted   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([staffId, module, action])
+  @@index([staffId])
+  @@index([module])
+  @@map("staff_permissions")
 }
 
 // HRM - İzin / Sağlık Raporu / Mazeret

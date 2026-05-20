@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { checkIbAccess } from "@/lib/access-control"
+import { checkActivityAccess } from "@/lib/access-control"
 import { ActivityMainType, ActivityVerificationStatus, Prisma } from "@prisma/client"
 import { MAIN_TYPE_LABELS } from "@/lib/activity-types-config"
 
@@ -29,7 +29,7 @@ function aggregateStatuses(statuses: ActivityVerificationStatus[]): ActivityVeri
 }
 
 export async function GET(request: NextRequest) {
-  const { hasAccess } = await checkIbAccess(request)
+  const { hasAccess } = await checkActivityAccess(request)
   if (!hasAccess) {
     return NextResponse.json({ error: "Bu işlem için yetkiniz bulunmamaktadır" }, { status: 403 })
   }

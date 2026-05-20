@@ -1,19 +1,17 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { generatePDF, generateIBActivityReportHTML } from "@/lib/pdf-generator"
+import { requireIbViewerFromRequest } from "@/lib/ib-viewer-auth"
+import { getApprovedActivitiesForStudentPdf } from "@/lib/ib-viewer-data"
+import { IB_MAIN_TYPE_LABELS } from "@/lib/ib-activity-types"
 
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    // IB Viewer authentication check
-    const url = new URL(request.url)
-    const tokenParam = url.searchParams.get("token")
-    
-    // For now, we'll accept token from query params (in production, use proper JWT validation)
-    // The token is stored in localStorage on client side and passed as query param
-    if (!tokenParam) {
+    const session = await requireIbViewerFromRequest(request)
+    if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -21,7 +19,6 @@ export async function GET(
     const studentId = params.id
     const language = (new URL(request.url).searchParams.get("lang") || "tr") as "tr" | "en"
 
-    // Fetch student
     const student = await prisma.student.findUnique({
       where: { id: studentId },
       select: {
@@ -41,18 +38,8 @@ export async function GET(
       return NextResponse.json({ error: "Student birth date is missing" }, { status: 400 })
     }
 
-    // Fetch verified activities for this student
-    const activities = await prisma.activity.findMany({
-      where: {
-        studentId: studentId,
-        isVerified: true,
-      },
-      orderBy: {
-        activityDate: "desc",
-      },
-    })
+    const approvedRows = await getApprovedActivitiesForStudentPdf(studentId)
 
-    // Generate HTML
     const html = generateIBActivityReportHTML({
       student: {
         firstName: student.firstName,
@@ -60,34 +47,33 @@ export async function GET(
         grade: student.grade,
         birthDate: student.birthDate.toISOString(),
       },
-      activities: activities.map((activity) => ({
-        type: activity.type as string,
-        title: activity.title,
-        description: activity.description,
-        activityDate: activity.activityDate.toISOString(),
-        location: activity.location,
-        organizer: activity.organizer,
-        duration: activity.duration,
-        participants: activity.participants,
-        outcome: activity.outcome,
-        evidence: activity.evidence || "",
-        notes: activity.notes,
-        verifiedAt: activity.verifiedAt?.toISOString() || null,
+      activities: approvedRows.map((row) => ({
+        type: IB_MAIN_TYPE_LABELS[row.mainTypeLabel],
+        title: row.title,
+        description: row.description,
+        activityDate: row.startDate.toISOString(),
+        location: null,
+        organizer: row.organizerName,
+        duration: null,
+        participants: null,
+        outcome: row.outcome,
+        evidence: "",
+        notes: null,
+        verifiedAt: row.endDate.toISOString(),
       })),
       language,
     })
 
-    // Generate PDF
     const pdf = await generatePDF(html)
 
-    // Sanitize file name (remove special characters)
     const sanitizeFileName = (name: string) => name.replace(/[^a-zA-Z0-9-_]/g, "-")
     const safeFirstName = sanitizeFileName(student.firstName)
     const safeLastName = sanitizeFileName(student.lastName)
 
-    const fileName = language === "en"
-      ? `ib-activity-report-${safeFirstName}-${safeLastName}.pdf`
-      : `ib-faaliyet-raporu-${safeFirstName}-${safeLastName}.pdf`
+    const fileName =
+      language === "en"
+        ? `ib-activity-report-${safeFirstName}-${safeLastName}.pdf`
+        : `ib-faaliyet-raporu-${safeFirstName}-${safeLastName}.pdf`
 
     return new NextResponse(Buffer.from(pdf), {
       headers: {
@@ -100,4 +86,3 @@ export async function GET(
     return NextResponse.json({ error: "Failed to generate PDF" }, { status: 500 })
   }
 }
-

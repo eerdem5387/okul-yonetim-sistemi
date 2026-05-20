@@ -97,7 +97,7 @@ export default function RehberlikPage() {
     { name: "Sınıf Yönetimi", href: "/sinif-yonetimi", icon: School, color: "from-indigo-600 to-purple-600" },
     { name: "Gezi Yönetimi", href: "/rehberlik/gezi", icon: MapPin, color: "from-green-600 to-emerald-600" },
     { name: "Kulüp Yönetimi", href: "/rehberlik/clubs", icon: Users, color: "from-purple-600 to-pink-600" },
-    { name: "IB Faaliyet Yönetimi", href: "/rehberlik/activities", icon: Award, color: "from-yellow-600 to-orange-600" },
+    { name: "Faaliyet Yönetimi", href: "/faaliyet-yonetimi", icon: Award, color: "from-yellow-600 to-orange-600" },
     { name: "Veli Görüşmeleri", href: "/rehberlik/veli-gorusmeleri", icon: MessageSquare, color: "from-teal-600 to-cyan-600" },
   ]
 

@@ -223,11 +223,16 @@ export function StudentActivityDetail({
                       role="link"
                       tabIndex={0}
                       className="card-soft border border-gray-100 cursor-pointer transition-shadow hover:shadow-md focus-visible:outline focus-visible:ring-2 focus-visible:ring-indigo-500"
-                      onClick={() => router.push(activity.detailHref || `/activities/kayit/${activity.id}?from=student&studentId=${student.id}`)}
+                      onClick={() =>
+                        router.push(
+                          activity.detailHref ||
+                            `/faaliyet-yonetimi/${activity.id.replace(/^event:[^:]+:/, "").split(":")[0] ?? activity.id}`
+                        )
+                      }
                       onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
+                        if ((e.key === "Enter" || e.key === " ") && activity.detailHref) {
                           e.preventDefault()
-                          router.push(activity.detailHref || `/activities/kayit/${activity.id}?from=student&studentId=${student.id}`)
+                          router.push(activity.detailHref)
                         }
                       }}
                     >

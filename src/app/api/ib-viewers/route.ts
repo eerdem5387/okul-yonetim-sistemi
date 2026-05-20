@@ -1,17 +1,20 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcrypt"
+import { resolveActorWithPermission } from "@/lib/permissions"
 
 // GET - IB Viewer listesi
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const actor = await resolveActorWithPermission(request, "ib_viewer_accounts", "view")
+  if (!actor) {
+    return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 403 })
+  }
+
   try {
     const viewers = await prisma.iBViewer.findMany({
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy: { createdAt: "desc" },
     })
 
-    // Şifreleri döndürme
     const safeViewers = viewers.map((viewer) => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password, ...rest } = viewer
@@ -27,40 +30,31 @@ export async function GET() {
 
 // POST - Yeni IB Viewer oluştur
 export async function POST(request: NextRequest) {
+  const actor = await resolveActorWithPermission(request, "ib_viewer_accounts", "create")
+  if (!actor) {
+    return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 403 })
+  }
+
   try {
     const body = await request.json()
     const { username, password, fullName, email, organization } = body
 
-    // Kullanıcı adı kontrolü
-    const existing = await prisma.iBViewer.findUnique({
-      where: { username },
-    })
-
+    const existing = await prisma.iBViewer.findUnique({ where: { username } })
     if (existing) {
       return NextResponse.json({ error: "Bu kullanıcı adı zaten kullanılıyor" }, { status: 400 })
     }
 
-    // Şifreyi hash'le
     const hashedPassword = await bcrypt.hash(password, 10)
 
     const viewer = await prisma.iBViewer.create({
-      data: {
-        username,
-        password: hashedPassword,
-        fullName,
-        email,
-        organization,
-      },
+      data: { username, password: hashedPassword, fullName, email, organization },
     })
 
-    // Şifreyi döndürme
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...safeViewer } = viewer
-
     return NextResponse.json(safeViewer)
   } catch (error) {
     console.error("Error creating IB viewer:", error)
     return NextResponse.json({ error: "Failed to create IB viewer" }, { status: 500 })
   }
 }
-

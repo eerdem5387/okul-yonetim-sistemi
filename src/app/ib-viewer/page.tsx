@@ -97,6 +97,7 @@ export default function IBViewerPage() {
             <div>
               <h1 className="text-lg font-bold text-gray-900">IB Faaliyet Paneli</h1>
               <p className="text-xs text-gray-500">Hoş geldiniz, {viewerName}</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">Onaylı faaliyet kayıtları</p>
             </div>
           </div>
           <Button variant="outline" size="sm" onClick={handleLogout}>

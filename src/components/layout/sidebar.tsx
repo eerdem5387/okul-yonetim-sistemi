@@ -27,9 +27,11 @@ import {
   School,
   GraduationCap,
   Settings,
+  Shield,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { UnreadBadge } from "@/components/chat/UnreadBadge"
+import { fetchPermissionsMe, hasPermissionKey } from "@/lib/permissions/client"
 const allNavigation = [
   // 1. Dashboard
   { name: "Dashboard", href: "/", icon: LayoutDashboard, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
@@ -47,6 +49,7 @@ const allNavigation = [
   { name: "Öğrenci Dashboard", href: "/ogrenci-dashboard", icon: LayoutDashboard, roles: ["admin", "principal", "student_affairs"] },
   // 7. Personel Yönetimi
   { name: "Personel Yönetimi", href: "/personel", icon: Briefcase, roles: ["admin", "principal", "student_affairs"] },
+  { name: "Yetkilendirme", href: "/yonetim/yetkilendirme", icon: Shield, roles: ["admin"], permission: "permissions.view" },
   {
     name: "Ayarlar",
     href: "/yonetim/ayarlar",
@@ -82,65 +85,58 @@ export function Sidebar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [currentRole, setCurrentRole] = useState<string | null>(null)
   const [staffName, setStaffName] = useState<string>("")
-  const [hasGeziAccess, setHasGeziAccess] = useState<boolean | null>(null) // null = henüz kontrol edilmedi
-  const [, setHasIbAccess] = useState<boolean | null>(null) // null = henüz kontrol edilmedi
+  const [permissionKeys, setPermissionKeys] = useState<string[] | null>(null)
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const role = localStorage.getItem("auth_role")
       const name = localStorage.getItem("staff_name")
-      const staffId = localStorage.getItem("staff_id")
       setCurrentRole(role)
       setStaffName(name || "Kullanıcı")
-      
-      // Staff yetkilerini çek - TÜM ROLLER için kontrol et
-      if (staffId) {
-        fetch(`/api/staff/${staffId}`)
-          .then((res) => res.json())
-          .then((data) => {
-            // Yetkileri açıkça set et (true/false/null)
-            // null = henüz bilinmiyor, varsayılan erişim var
-            // false = açıkça kapatılmış, erişim yok
-            // true = açıkça açılmış, erişim var
-            setHasGeziAccess(data.hasGeziAccess === true ? true : data.hasGeziAccess === false ? false : null)
-            setHasIbAccess(data.hasIbAccess === true ? true : data.hasIbAccess === false ? false : null)
-          })
-          .catch(() => {
-            // Hata durumunda null bırak (varsayılan erişim)
-            setHasGeziAccess(null)
-            setHasIbAccess(null)
-          })
-      } else {
-        // Staff ID yoksa null bırak (varsayılan erişim)
-        setHasGeziAccess(null)
-        setHasIbAccess(null)
-      }
+      fetchPermissionsMe().then((data) => {
+        if (data?.permissions) setPermissionKeys(data.permissions)
+      })
     }
   }, [])
 
-  // Rol bazlı navigation filtreleme + Yetki kontrolü
+  const hrefToPermission: Record<string, string> = {
+    "/": "dashboard.view",
+    "/mesajlar": "messaging.view",
+    "/new-registration": "registrations.create",
+    "/renewal": "registrations.view",
+    "/teklif-gorusmeleri": "applications.view",
+    "/yonetim/parent-meetings": "parent_meetings.view",
+    "/students": "students.view",
+    "/ogrenci-dashboard": "students.view",
+    "/personel": "staff.view",
+    "/yonetim/yetkilendirme": "permissions.view",
+    "/yonetim/ayarlar": "settings.view",
+    "/neredeyiz": "neredeyiz.view",
+    "/sinif-yonetimi": "classes.view",
+    "/onay-paneli": "approval_panel.view",
+    "/basvurular": "applications.view",
+    "/gezi": "gezi.view",
+    "/clubs": "clubs.view",
+    "/faaliyet-yonetimi": "activity_events.view",
+    "/rehberlik/sinavlar": "exams.view",
+    "/rehberlik/gorusler": "student_comments.view",
+    "/rehberlik/ogrenci-dashboard": "students.view",
+    "/uniform": "registrations.view",
+    "/meal": "registrations.view",
+    "/service": "registrations.view",
+    "/book": "registrations.view",
+  }
+
   const navigation = allNavigation.filter((item) => {
     if (!currentRole) return false
-    
-    // Rol kontrolü
     if (!item.roles.includes(currentRole)) return false
-    
-    // Gezi Yönetimi için yetki kontrolü
-    if (item.href === "/gezi" || item.href.startsWith("/gezi")) {
-      // Admin, principal, student_affairs, counselor, head_counselor için her zaman göster
-      if (currentRole === "admin" || currentRole === "principal" || currentRole === "student_affairs" || currentRole === "counselor" || currentRole === "head_counselor") {
-        return true
-      }
-      
-      // Teacher için mutlaka hasGeziAccess true olmalı
-      if (currentRole === "teacher" && hasGeziAccess !== true) return false
+
+    const perm = (item as { permission?: string }).permission ?? hrefToPermission[item.href]
+    if (perm && permissionKeys) {
+      return hasPermissionKey(permissionKeys, perm.split(".")[0], perm.split(".")[1])
     }
-    
-    // Faaliyet Yönetimi - tüm yetkili roller görebilir (teacher bu sidebar'da değil)
-    if (item.href === "/faaliyet-yonetimi" || item.href.startsWith("/faaliyet-yonetimi")) {
-      return true
-    }
-    
+    if (perm && !permissionKeys) return item.roles.includes(currentRole)
+
     return true
   })
 

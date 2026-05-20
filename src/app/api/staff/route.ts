@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { StaffDepartment } from "@prisma/client"
+import { resolveActorWithPermission } from "@/lib/permissions"
 
 // GET - Tüm personeli listele (filtreleme ile)
 export async function GET(request: NextRequest) {
+  const actor = await resolveActorWithPermission(request, "staff", "view")
+  if (!actor) {
+    return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 403 })
+  }
+
   try {
     const searchParams = request.nextUrl.searchParams
     const search = searchParams.get("search")
@@ -76,6 +82,11 @@ export async function GET(request: NextRequest) {
 
 // POST - Yeni personel ekle
 export async function POST(request: NextRequest) {
+  const actor = await resolveActorWithPermission(request, "staff", "create")
+  if (!actor) {
+    return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 403 })
+  }
+
   try {
     const body = await request.json()
     const {

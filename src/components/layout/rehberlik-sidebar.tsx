@@ -29,7 +29,7 @@ const baseNavigation = [
   { name: "Sınıf Yönetimi", href: "/sinif-yonetimi", icon: School },
   { name: "Gezi Yönetimi", href: "/rehberlik/gezi", icon: MapPin },
   { name: "Kulüp Yönetimi", href: "/rehberlik/clubs", icon: Users },
-  { name: "IB Faaliyet Yönetimi", href: "/rehberlik/activities", icon: Award },
+  { name: "Faaliyet Yönetimi", href: "/faaliyet-yonetimi", icon: Award },
   { name: "Veli Görüşmeleri", href: "/rehberlik/veli-gorusmeleri", icon: MessageSquare },
 ]
 

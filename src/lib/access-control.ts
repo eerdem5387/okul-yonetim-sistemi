@@ -1,54 +1,37 @@
 import { NextRequest } from "next/server"
-import { prisma } from "@/lib/prisma"
+import { resolveStaffActor } from "@/lib/hr/actor"
+import { hasPermission } from "@/lib/permissions"
+
+async function resolveStaffIdFromRequest(request: NextRequest): Promise<string | null> {
+  const actor = await resolveStaffActor(request)
+  if (actor) return actor.staffId
+
+  const authHeader = request.headers.get("Authorization")
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.substring(7)
+    const parts = token.split("_")
+    if (parts.length >= 2) return parts[parts.length - 2]
+  }
+
+  const { searchParams } = new URL(request.url)
+  return searchParams.get("staffId")
+}
 
 /**
- * Faaliyet Yönetimi erişim kontrolü (yeni modül)
+ * Faaliyet Yönetimi erişim kontrolü
  */
-export async function checkActivityAccess(request: NextRequest): Promise<{ hasAccess: boolean; staffId: string | null }> {
+export async function checkActivityAccess(
+  request: NextRequest
+): Promise<{ hasAccess: boolean; staffId: string | null }> {
   try {
-    const authHeader = request.headers.get("Authorization")
-    let staffId: string | null = null
-
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      const token = authHeader.substring(7)
-      const tokenParts = token.split("_")
-      if (tokenParts.length >= 2) {
-        staffId = tokenParts[1]
-      }
+    const actor = await resolveStaffActor(request)
+    if (actor) {
+      const ok = await hasPermission(actor.staffId, actor.department, "activity_events", "view")
+      return { hasAccess: ok, staffId: actor.staffId }
     }
 
-    if (!staffId) {
-      const { searchParams } = new URL(request.url)
-      staffId = searchParams.get("staffId")
-    }
-
-    if (!staffId) {
-      return { hasAccess: false, staffId: null }
-    }
-
-    const staff = await prisma.staff.findUnique({
-      where: { id: staffId },
-      select: { id: true, department: true, hasIbAccess: true, isActive: true },
-    })
-
-    if (!staff || !staff.isActive) {
-      return { hasAccess: false, staffId }
-    }
-
-    if (
-      staff.department === "SUPER_ADMIN" ||
-      staff.department === "MUDUR" ||
-      staff.department === "MUDUR_YARDIMCISI" ||
-      staff.department === "OGRENCI_ISLERI" ||
-      staff.department === "REHBERLIK" ||
-      staff.department === "BAS_REHBERLIK"
-    ) {
-      return { hasAccess: true, staffId }
-    }
-
-    if (staff.department === "OGRETMEN") {
-      return { hasAccess: staff.hasIbAccess === true, staffId }
-    }
+    const staffId = await resolveStaffIdFromRequest(request)
+    if (!staffId) return { hasAccess: false, staffId: null }
 
     return { hasAccess: false, staffId }
   } catch {
@@ -58,137 +41,19 @@ export async function checkActivityAccess(request: NextRequest): Promise<{ hasAc
 
 /**
  * Gezi Yönetimi erişim kontrolü
- * @param request NextRequest
- * @returns { hasAccess: boolean, staffId: string | null }
  */
-export async function checkGeziAccess(request: NextRequest): Promise<{ hasAccess: boolean; staffId: string | null }> {
+export async function checkGeziAccess(
+  request: NextRequest
+): Promise<{ hasAccess: boolean; staffId: string | null }> {
   try {
-    // Authorization header'dan staffId'yi çıkar
-    const authHeader = request.headers.get("Authorization")
-    let staffId: string | null = null
-    
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      const token = authHeader.substring(7)
-      const tokenParts = token.split("_")
-      if (tokenParts.length >= 2) {
-        staffId = tokenParts[1]
-      }
+    const actor = await resolveStaffActor(request)
+    if (actor) {
+      const ok = await hasPermission(actor.staffId, actor.department, "gezi", "view")
+      return { hasAccess: ok, staffId: actor.staffId }
     }
-    
-    // Query parametresinden de alınabilir
-    if (!staffId) {
-      const { searchParams } = new URL(request.url)
-      staffId = searchParams.get("staffId")
-    }
-    
-    if (!staffId) {
-      return { hasAccess: false, staffId: null }
-    }
-    
-    // Staff bilgilerini çek
-    const staff = await prisma.staff.findUnique({
-      where: { id: staffId },
-      select: {
-        id: true,
-        department: true,
-        hasGeziAccess: true,
-        isActive: true,
-      },
-    })
-    
-    if (!staff || !staff.isActive) {
-      return { hasAccess: false, staffId }
-    }
-    
-    // Admin, principal, student_affairs, counselor, head_counselor için varsayılan erişim
-    if (
-      staff.department === "SUPER_ADMIN" ||
-      staff.department === "MUDUR" ||
-      staff.department === "MUDUR_YARDIMCISI" ||
-      staff.department === "OGRENCI_ISLERI" ||
-      staff.department === "REHBERLIK" ||
-      staff.department === "BAS_REHBERLIK"
-    ) {
-      return { hasAccess: true, staffId }
-    }
-    
-    // Teacher için hasGeziAccess kontrolü
-    if (staff.department === "OGRETMEN") {
-      return { hasAccess: staff.hasGeziAccess === true, staffId }
-    }
-    
-    return { hasAccess: false, staffId }
+    return { hasAccess: false, staffId: null }
   } catch (error) {
     console.error("Error checking gezi access:", error)
     return { hasAccess: false, staffId: null }
   }
 }
-
-/**
- * IB Yönetimi erişim kontrolü
- * @param request NextRequest
- * @returns { hasAccess: boolean, staffId: string | null }
- */
-export async function checkIbAccess(request: NextRequest): Promise<{ hasAccess: boolean; staffId: string | null }> {
-  try {
-    // Authorization header'dan staffId'yi çıkar
-    const authHeader = request.headers.get("Authorization")
-    let staffId: string | null = null
-    
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      const token = authHeader.substring(7)
-      const tokenParts = token.split("_")
-      if (tokenParts.length >= 2) {
-        staffId = tokenParts[1]
-      }
-    }
-    
-    // Query parametresinden de alınabilir
-    if (!staffId) {
-      const { searchParams } = new URL(request.url)
-      staffId = searchParams.get("staffId")
-    }
-    
-    if (!staffId) {
-      return { hasAccess: false, staffId: null }
-    }
-    
-    // Staff bilgilerini çek
-    const staff = await prisma.staff.findUnique({
-      where: { id: staffId },
-      select: {
-        id: true,
-        department: true,
-        hasIbAccess: true,
-        isActive: true,
-      },
-    })
-    
-    if (!staff || !staff.isActive) {
-      return { hasAccess: false, staffId }
-    }
-    
-    // Admin, principal, student_affairs, counselor, head_counselor için varsayılan erişim
-    if (
-      staff.department === "SUPER_ADMIN" ||
-      staff.department === "MUDUR" ||
-      staff.department === "MUDUR_YARDIMCISI" ||
-      staff.department === "OGRENCI_ISLERI" ||
-      staff.department === "REHBERLIK" ||
-      staff.department === "BAS_REHBERLIK"
-    ) {
-      return { hasAccess: true, staffId }
-    }
-    
-    // Teacher için hasIbAccess kontrolü
-    if (staff.department === "OGRETMEN") {
-      return { hasAccess: staff.hasIbAccess === true, staffId }
-    }
-    
-    return { hasAccess: false, staffId }
-  } catch (error) {
-    console.error("Error checking IB access:", error)
-    return { hasAccess: false, staffId: null }
-  }
-}
-
