@@ -44,6 +44,22 @@ export const PERMISSION_MODULES: PermissionModuleDef[] = [
   { id: "settings", label: "Ayarlar", group: "Sistem", actions: ["view", "edit"] },
 ]
 
+/** Personel matrisinde devredilemez; yalnızca SUPER_ADMIN bu modüle erişir */
+export const ADMIN_ONLY_PERMISSION_MODULE_ID = "permissions" as const
+
+/** Süper yöneticinin başkasına atayabileceği modül satırları (yetkilendirme hariç) */
+export function editablePermissionModules(): PermissionModuleDef[] {
+  return PERMISSION_MODULES.filter((m) => m.id !== ADMIN_ONLY_PERMISSION_MODULE_ID)
+}
+
+/** Bir modülde süper yöneticiyle aynı yetki = o modüldeki tüm aksiyon anahtarları */
+export function fullPermissionKeysForModule(moduleId: string): string[] {
+  if (moduleId === ADMIN_ONLY_PERMISSION_MODULE_ID) return []
+  const mod = PERMISSION_MODULES.find((m) => m.id === moduleId)
+  if (!mod) return []
+  return mod.actions.map((a) => permissionKey(mod.id, a))
+}
+
 export function permissionKey(module: string, action: string): string {
   return `${module}.${action}`
 }

@@ -1,9 +1,10 @@
 /** İstemci tarafı yetki API yardımcıları */
 
-export function staffAuthHeaders(): HeadersInit {
+export function staffAuthHeaders(): Record<string, string> {
   if (typeof window === "undefined") return {}
   const token = localStorage.getItem("auth_token")
-  return token ? { Authorization: `Bearer ${token}` } : {}
+  if (!token) return {}
+  return { Authorization: `Bearer ${token}` }
 }
 
 export type PermissionsMeResponse = {

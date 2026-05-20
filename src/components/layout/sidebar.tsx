@@ -49,7 +49,7 @@ const allNavigation = [
   { name: "Öğrenci Dashboard", href: "/ogrenci-dashboard", icon: LayoutDashboard, roles: ["admin", "principal", "student_affairs"] },
   // 7. Personel Yönetimi
   { name: "Personel Yönetimi", href: "/personel", icon: Briefcase, roles: ["admin", "principal", "student_affairs"] },
-  { name: "Yetkilendirme", href: "/yonetim/yetkilendirme", icon: Shield, roles: ["admin"], permission: "permissions.view" },
+  { name: "Yetkilendirme", href: "/yonetim/yetkilendirme", icon: Shield, roles: ["admin"], superAdminOnly: true },
   {
     name: "Ayarlar",
     href: "/yonetim/ayarlar",
@@ -86,6 +86,7 @@ export function Sidebar() {
   const [currentRole, setCurrentRole] = useState<string | null>(null)
   const [staffName, setStaffName] = useState<string>("")
   const [permissionKeys, setPermissionKeys] = useState<string[] | null>(null)
+  const [isSuperAdminUser, setIsSuperAdminUser] = useState(false)
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -95,6 +96,7 @@ export function Sidebar() {
       setStaffName(name || "Kullanıcı")
       fetchPermissionsMe().then((data) => {
         if (data?.permissions) setPermissionKeys(data.permissions)
+        setIsSuperAdminUser(data?.isSuperAdmin === true || data?.department === "SUPER_ADMIN")
       })
     }
   }, [])
@@ -109,7 +111,6 @@ export function Sidebar() {
     "/students": "students.view",
     "/ogrenci-dashboard": "students.view",
     "/personel": "staff.view",
-    "/yonetim/yetkilendirme": "permissions.view",
     "/yonetim/ayarlar": "settings.view",
     "/neredeyiz": "neredeyiz.view",
     "/sinif-yonetimi": "classes.view",
@@ -130,6 +131,10 @@ export function Sidebar() {
   const navigation = allNavigation.filter((item) => {
     if (!currentRole) return false
     if (!item.roles.includes(currentRole)) return false
+
+    if ((item as { superAdminOnly?: boolean }).superAdminOnly) {
+      return isSuperAdminUser
+    }
 
     const perm = (item as { permission?: string }).permission ?? hrefToPermission[item.href]
     if (perm && permissionKeys) {

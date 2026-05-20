@@ -3,7 +3,9 @@ import type { StaffDepartment } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { isHrAdmin } from "./constants"
 
-const TOKEN_MAX_AGE_MS = 24 * 60 * 60 * 1000
+/** Okul oturumları için varsayılan 7 gün; `.env` ile `STAFF_TOKEN_MAX_AGE_MS` (milisaniye) verilebilir. */
+const TOKEN_MAX_AGE_MS =
+  Number.parseInt(process.env.STAFF_TOKEN_MAX_AGE_MS || "", 10) || 7 * 24 * 60 * 60 * 1000
 
 export interface StaffActor {
   staffId: string

@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireSuperAdmin } from "@/lib/permissions"
-import { PERMISSION_MODULES, permissionKey } from "@/lib/permissions/constants"
+import {
+  ADMIN_ONLY_PERMISSION_MODULE_ID,
+  editablePermissionModules,
+  permissionKey,
+} from "@/lib/permissions/constants"
 
 export async function GET(
   request: NextRequest,
@@ -35,7 +39,7 @@ export async function GET(
     explicit.set(permissionKey(p.module, p.action), p.granted)
   }
 
-  const matrix = PERMISSION_MODULES.map((mod) => ({
+  const matrix = editablePermissionModules().map((mod) => ({
     module: mod.id,
     label: mod.label,
     group: mod.group,
@@ -88,7 +92,13 @@ export async function PUT(
   await prisma.$transaction(async (tx) => {
     await tx.staffPermission.deleteMany({ where: { staffId: id } })
     const toCreate = entries
-      .filter((e) => e.granted === true && e.module && e.action)
+      .filter(
+        (e) =>
+          e.granted === true &&
+          e.module &&
+          e.action &&
+          String(e.module) !== ADMIN_ONLY_PERMISSION_MODULE_ID
+      )
       .map((e) => ({
         staffId: id,
         module: String(e.module),

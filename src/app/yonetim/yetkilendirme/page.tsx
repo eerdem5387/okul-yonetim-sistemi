@@ -33,82 +33,167 @@ type MatrixModule = {
   actions: MatrixAction[]
 }
 
+async function fetchStaffRows(params: URLSearchParams): Promise<{ rows: StaffRow[]; error?: string }> {
+  const res = await fetch(`/api/staff?${params.toString()}`, {
+    headers: staffAuthHeaders(),
+    cache: "no-store",
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    return {
+      rows: [],
+      error: (body as { error?: string }).error || `Personel listesi alınamadı (${res.status})`,
+    }
+  }
+  const data = await res.json()
+  const staff = Array.isArray(data.staff) ? data.staff : []
+  return { rows: staff }
+}
+
 export default function YetkilendirmePage() {
   const { toasts, showToast, removeToast } = useToast()
-  const [loading, setLoading] = useState(true)
+  const [verifying, setVerifying] = useState(true)
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+  const [sessionMessage, setSessionMessage] = useState<string | null>(null)
+
+  const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [staffList, setStaffList] = useState<StaffRow[]>([])
+  const [baselineStaff, setBaselineStaff] = useState<StaffRow[]>([])
+  const [searchResults, setSearchResults] = useState<StaffRow[] | null>(null)
+  const [searchBusy, setSearchBusy] = useState(false)
+  const [listError, setListError] = useState<string | null>(null)
+
   const [search, setSearch] = useState("")
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [matrix, setMatrix] = useState<MatrixModule[]>([])
   const [staffInfo, setStaffInfo] = useState<StaffRow | null>(null)
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+
+  const loadMatrix = useCallback(
+    async (staffId: string) => {
+      setLoading(true)
+      try {
+        const res = await fetch(`/api/permissions/staff/${staffId}`, {
+          headers: staffAuthHeaders(),
+          cache: "no-store",
+        })
+        if (!res.ok) {
+          showToast("İzin matrisi yüklenemedi", "error")
+          return
+        }
+        const data = await res.json()
+        setStaffInfo(data.staff)
+        setMatrix(data.matrix)
+        setSelectedId(staffId)
+      } finally {
+        setLoading(false)
+      }
+    },
+    [showToast]
+  )
 
   useEffect(() => {
-    const localRole = localStorage.getItem("auth_role")
-    const localDept = localStorage.getItem("staff_department")
+    let cancelled = false
 
-    fetch("/api/permissions/me", { headers: staffAuthHeaders() })
-      .then((r) => r.json())
-      .then((data) => {
-        const allowed =
-          data.isSuperAdmin === true ||
-          data.loginRole === "admin" ||
-          localRole === "admin" ||
-          localDept === "SUPER_ADMIN"
-        setIsSuperAdmin(allowed)
-        if (!allowed) setLoading(false)
-      })
-      .catch(() => {
-        const allowed = localRole === "admin" || localDept === "SUPER_ADMIN"
-        setIsSuperAdmin(allowed)
-        if (!allowed) setLoading(false)
-      })
-  }, [])
-
-  const loadStaffList = useCallback(async () => {
-    const res = await fetch("/api/staff?limit=500&isActive=true", {
-      headers: staffAuthHeaders(),
-    })
-    if (res.ok) {
-      const data = await res.json()
-      setStaffList(data.staff ?? [])
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!isSuperAdmin) return
-    loadStaffList().finally(() => setLoading(false))
-  }, [isSuperAdmin, loadStaffList])
-
-  const loadMatrix = useCallback(async (staffId: string) => {
-    setLoading(true)
-    try {
-      const res = await fetch(`/api/permissions/staff/${staffId}`, {
-        headers: staffAuthHeaders(),
-      })
-      if (!res.ok) {
-        showToast("İzin matrisi yüklenemedi", "error")
+    ;(async () => {
+      const headers = staffAuthHeaders()
+      if (!headers.Authorization) {
+        if (!cancelled) {
+          setIsSuperAdmin(false)
+          setSessionMessage("Oturum bulunamadı. Lütfen çıkış yapıp tekrar giriş yapın.")
+          setVerifying(false)
+        }
         return
       }
-      const data = await res.json()
-      setStaffInfo(data.staff)
-      setMatrix(data.matrix)
-      setSelectedId(staffId)
-    } finally {
-      setLoading(false)
+
+      const me = await fetch("/api/permissions/me", { headers, cache: "no-store" })
+      if (cancelled) return
+
+      if (!me.ok) {
+        setIsSuperAdmin(false)
+        setSessionMessage(
+          me.status === 401
+            ? "Oturum süresi dolmuş veya geçersiz. Çıkış yapıp tekrar giriş yapın."
+            : "Hesabınız doğrulanamadı."
+        )
+        setVerifying(false)
+        return
+      }
+
+      const data = await me.json()
+      if (data.department !== "SUPER_ADMIN") {
+        setIsSuperAdmin(false)
+        setSessionMessage("Bu sayfaya yalnızca sistem yöneticisi (Süper Admin) erişebilir.")
+        setVerifying(false)
+        return
+      }
+
+      setIsSuperAdmin(true)
+      setSessionMessage(null)
+
+      const { rows, error } = await fetchStaffRows(
+        new URLSearchParams({ limit: "500", isActive: "all" })
+      )
+      if (cancelled) return
+
+      if (error) {
+        setListError(error)
+        showToast(error, "error")
+        setBaselineStaff([])
+      } else {
+        setListError(null)
+        setBaselineStaff(rows)
+        if (rows.length === 0) {
+          setListError("Veritabanında personel kaydı bulunamadı.")
+        }
+      }
+      setVerifying(false)
+    })()
+
+    return () => {
+      cancelled = true
     }
   }, [showToast])
 
-  const filteredStaff = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    if (!q) return staffList
-    return staffList.filter(
-      (s) =>
-        `${s.firstName} ${s.lastName}`.toLowerCase().includes(q) ||
-        s.department.toLowerCase().includes(q)
-    )
-  }, [staffList, search])
+  useEffect(() => {
+    if (!isSuperAdmin || verifying) return
+
+    const q = search.trim()
+    if (!q) {
+      setSearchResults(null)
+      setSearchBusy(false)
+      return
+    }
+
+    setSearchBusy(true)
+    let cancelled = false
+    const handle = window.setTimeout(async () => {
+      const params = new URLSearchParams({
+        search: q,
+        limit: "100",
+        isActive: "all",
+      })
+      const { rows, error } = await fetchStaffRows(params)
+      if (cancelled) return
+      setSearchBusy(false)
+      if (error) {
+        showToast(error, "error")
+        setSearchResults([])
+        return
+      }
+      setSearchResults(rows)
+    }, 300)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(handle)
+    }
+  }, [search, isSuperAdmin, verifying, showToast])
+
+  const displayStaff = useMemo(() => {
+    const q = search.trim()
+    if (q) return searchResults ?? []
+    return baselineStaff
+  }, [search, searchResults, baselineStaff])
 
   const toggleAction = (modIdx: number, actIdx: number) => {
     setMatrix((prev) => {
@@ -120,6 +205,17 @@ export default function YetkilendirmePage() {
       next[modIdx] = mod
       return next
     })
+  }
+
+  const grantFullModule = (moduleId: string) => {
+    setMatrix((prev) =>
+      prev.map((mod) =>
+        mod.module !== moduleId
+          ? mod
+          : { ...mod, actions: mod.actions.map((a) => ({ ...a, granted: true as boolean | null })) }
+      )
+    )
+    showToast("Bu modül için tüm işlemler açıldı. Kaydetmeyi unutmayın.", "info")
   }
 
   const handleSave = async () => {
@@ -161,15 +257,20 @@ export default function YetkilendirmePage() {
     return Array.from(map.entries())
   }, [matrix])
 
-  if (!loading && !isSuperAdmin) {
+  if (verifying) {
+    return (
+      <div className="p-8 flex justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-indigo-600" />
+      </div>
+    )
+  }
+
+  if (!isSuperAdmin) {
     return (
       <div className="p-8 max-w-lg mx-auto">
         <Card>
           <CardContent className="pt-6">
-            <p className="text-gray-600">
-              Bu sayfaya yalnızca sistem yöneticisi (Süper Admin) erişebilir. Oturumunuz
-              süresi dolmuş olabilir; çıkış yapıp tekrar giriş deneyin.
-            </p>
+            <p className="text-gray-600">{sessionMessage || "Erişim reddedildi."}</p>
           </CardContent>
         </Card>
       </div>
@@ -184,7 +285,9 @@ export default function YetkilendirmePage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Yetkilendirme Sistemi</h1>
           <p className="text-sm text-gray-500">
-            Personel bazlı modül izinleri. Boş hücre = departman varsayılanı.
+            Yalnızca <strong>personel (Staff)</strong> listelenir; veli hesapları bu yapıda yoktur. Bir modülde
+            &quot;Tam yetki&quot; ile o modüldeki tüm işlemleri (süper yöneticiyle aynı kapsam) verirsiniz.
+            Yetkilendirme modülünü başkasına devredemezsiniz.
           </p>
         </div>
       </div>
@@ -199,27 +302,46 @@ export default function YetkilendirmePage() {
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
               <Input
                 className="pl-8"
-                placeholder="Ara..."
+                placeholder="Ad, soyad veya departman ara..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
+            {listError && (
+              <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md p-2">
+                {listError}
+              </p>
+            )}
             <div className="max-h-[60vh] overflow-y-auto space-y-1">
-              {filteredStaff.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => loadMatrix(s.id)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                    selectedId === s.id
-                      ? "bg-indigo-100 text-indigo-900 font-medium"
-                      : "hover:bg-gray-100 text-gray-700"
-                  }`}
-                >
-                  {s.firstName} {s.lastName}
-                  <span className="block text-xs text-gray-500">{s.department}</span>
-                </button>
-              ))}
+              {searchBusy && (
+                <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Aranıyor…
+                </div>
+              )}
+              {!searchBusy &&
+                displayStaff.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => loadMatrix(s.id)}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                      selectedId === s.id
+                        ? "bg-indigo-100 text-indigo-900 font-medium"
+                        : "hover:bg-gray-100 text-gray-700"
+                    }`}
+                  >
+                    {s.firstName} {s.lastName}
+                    <span className="block text-xs text-gray-500">{s.department}</span>
+                  </button>
+                ))}
+              {!searchBusy && displayStaff.length === 0 && (
+                <p className="text-sm text-gray-500 py-4 text-center">
+                  {search.trim()
+                    ? "Sonuç yok. Farklı bir arama deneyin."
+                    : "Personel listesi boş. Yukarıdaki uyarıya bakın veya sayfayı yenileyin."}
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -269,7 +391,18 @@ export default function YetkilendirmePage() {
                           key={mod.module}
                           className="border rounded-lg p-3 bg-gray-50/50"
                         >
-                          <Label className="font-medium text-gray-900">{mod.label}</Label>
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <Label className="font-medium text-gray-900">{mod.label}</Label>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="text-xs shrink-0"
+                              onClick={() => grantFullModule(mod.module)}
+                            >
+                              Modülde tam yetki
+                            </Button>
+                          </div>
                           <div className="flex flex-wrap gap-2 mt-2">
                             {mod.actions.map((act, actIdx) => (
                               <button
@@ -290,7 +423,7 @@ export default function YetkilendirmePage() {
                                 }`}
                                 title={
                                   act.granted === null
-                                    ? "Varsayılan (departman)"
+                                    ? "Tanımlı değil — kapalı"
                                     : act.granted
                                       ? "Açık"
                                       : "Kapalı"

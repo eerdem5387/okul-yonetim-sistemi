@@ -119,14 +119,28 @@ export function IBFaaliyetDashboard({
   const [downloadingPdfKey, setDownloadingPdfKey] = useState<string | null>(null)
   const [totalPages, setTotalPages] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
+  const [listError, setListError] = useState<string | null>(null)
+  const [statsError, setStatsError] = useState<string | null>(null)
 
   const fetchStats = useCallback(async () => {
     try {
       const res = await fetch("/api/activity-events/stats", { headers: getAuthHeaders() })
-      if (res.ok) setStats(await res.json())
-      else setStats(null)
+      if (res.ok) {
+        setStats(await res.json())
+        setStatsError(null)
+      } else {
+        const body = await res.json().catch(() => ({}))
+        setStats(null)
+        setStatsError(
+          (body as { error?: string }).error ||
+            (res.status === 403
+              ? "İstatistikler için oturum süresi dolmuş veya yetki yok. Çıkış yapıp tekrar giriş yapın."
+              : `İstatistikler yüklenemedi (${res.status})`)
+        )
+      }
     } catch {
       setStats(null)
+      setStatsError("İstatistikler yüklenemedi (ağ hatası).")
     } finally {
       setLoading(false)
     }
@@ -150,9 +164,24 @@ export function IBFaaliyetDashboard({
         setListItems(data.items ?? [])
         setTotalPages(data.pagination?.totalPages ?? 1)
         setTotalCount(data.pagination?.total ?? 0)
+        setListError(null)
+      } else {
+        const body = await res.json().catch(() => ({}))
+        setListItems([])
+        setTotalPages(1)
+        setTotalCount(0)
+        setListError(
+          (body as { error?: string }).error ||
+            (res.status === 403
+              ? "Faaliyet listesi için oturum süresi dolmuş veya yetki yok. Çıkış yapıp tekrar giriş yapın."
+              : `Liste yüklenemedi (${res.status})`)
+        )
       }
     } catch {
       setListItems([])
+      setTotalPages(1)
+      setTotalCount(0)
+      setListError("Liste yüklenemedi (ağ hatası).")
     } finally {
       setLoadingList(false)
     }
@@ -306,6 +335,26 @@ export function IBFaaliyetDashboard({
           </div>
         </div>
       </div>
+
+      {(listError || statsError) && (
+        <div
+          role="alert"
+          className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-sm"
+        >
+          <p className="font-semibold">Liste veya istatistikler yüklenemedi</p>
+          <p className="mt-1 text-amber-900/90">
+            Bu durum genelde <strong>oturum süresinin dolması</strong> veya yetki kontrolünden kaynaklanır; faaliyet
+            kayıtlarının toplu silindiği anlamına gelmez.
+          </p>
+          {statsError && <p className="mt-2 text-amber-950">{statsError}</p>}
+          {listError && <p className="mt-2 text-amber-950">{listError}</p>}
+          <p className="mt-2 text-xs text-amber-900/85">
+            Çözüm: Çıkış yapıp tekrar giriş yapın. Gerekirse veritabanında{" "}
+            <code className="rounded bg-amber-100/80 px-1 py-0.5 text-[11px]">activity_events</code> satır sayısını
+            doğrulayın.
+          </p>
+        </div>
+      )}
 
       {/* KPI - Doğrulama protokolü: İmza sürecinde → Onay bekliyor → Onaylandı */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
