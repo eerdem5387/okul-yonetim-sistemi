@@ -32,6 +32,7 @@ import {
 import { useState, useEffect } from "react"
 import { UnreadBadge } from "@/components/chat/UnreadBadge"
 import { fetchPermissionsMe, hasPermissionKey } from "@/lib/permissions/client"
+import { isPrimarySystemAdminStaffId } from "@/lib/permissions/system-admin"
 const allNavigation = [
   // 1. Dashboard
   { name: "Dashboard", href: "/", icon: LayoutDashboard, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
@@ -64,9 +65,9 @@ const allNavigation = [
   { name: "Gezi Yönetimi", href: "/gezi", icon: MapPin, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
   { name: "Kulüp Yönetimi", href: "/clubs", icon: Users, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
   { name: "Faaliyet Yönetimi", href: "/faaliyet-yonetimi", icon: Award, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
-  { name: "Sınav Yönetimi", href: "/rehberlik/sinavlar", icon: FileText, roles: ["counselor", "head_counselor"] },
-  { name: "Öğrenci Görüşleri", href: "/rehberlik/gorusler", icon: MessageSquare, roles: ["counselor", "head_counselor"] },
-  { name: "Öğrenci Dashboard", href: "/rehberlik/ogrenci-dashboard", icon: LayoutDashboard, roles: ["counselor", "head_counselor"] },
+  { name: "Sınav Yönetimi", href: "/rehberlik/sinavlar", icon: FileText, roles: ["admin", "counselor", "head_counselor"] },
+  { name: "Öğrenci Görüşleri", href: "/rehberlik/gorusler", icon: MessageSquare, roles: ["admin", "counselor", "head_counselor"] },
+  { name: "Öğrenci Dashboard", href: "/rehberlik/ogrenci-dashboard", icon: LayoutDashboard, roles: ["admin", "counselor", "head_counselor"] },
   { name: "Forma Sözleşmesi", href: "/uniform", icon: Shirt, roles: ["admin", "principal", "student_affairs"] },
   { name: "Yemek Sözleşmesi", href: "/meal", icon: Utensils, roles: ["admin", "principal", "student_affairs"] },
   { name: "Servis Sözleşmesi", href: "/service", icon: Bus, roles: ["admin", "principal", "student_affairs"] },
@@ -89,16 +90,28 @@ export function Sidebar() {
   const [isSuperAdminUser, setIsSuperAdminUser] = useState(false)
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const role = localStorage.getItem("auth_role")
-      const name = localStorage.getItem("staff_name")
-      setCurrentRole(role)
-      setStaffName(name || "Kullanıcı")
-      fetchPermissionsMe().then((data) => {
-        if (data?.permissions) setPermissionKeys(data.permissions)
-        setIsSuperAdminUser(data?.isSuperAdmin === true || data?.department === "SUPER_ADMIN")
-      })
-    }
+    if (typeof window === "undefined") return
+
+    const role = localStorage.getItem("auth_role")
+    const name = localStorage.getItem("staff_name")
+    const dept = localStorage.getItem("staff_department")
+    const staffId = localStorage.getItem("staff_id")
+    setCurrentRole(role)
+    setStaffName(name || "Kullanıcı")
+
+    const localSuperAdmin =
+      dept === "SUPER_ADMIN" || isPrimarySystemAdminStaffId(staffId)
+    setIsSuperAdminUser(localSuperAdmin)
+
+    fetchPermissionsMe().then((data) => {
+      if (data?.permissions) setPermissionKeys(data.permissions)
+      setIsSuperAdminUser(
+        localSuperAdmin ||
+          data?.isSuperAdmin === true ||
+          data?.department === "SUPER_ADMIN" ||
+          isPrimarySystemAdminStaffId(data?.staffId)
+      )
+    })
   }, [])
 
   const hrefToPermission: Record<string, string> = {
@@ -130,10 +143,19 @@ export function Sidebar() {
 
   const navigation = allNavigation.filter((item) => {
     if (!currentRole) return false
+
+    const teacherPortal = item.href.startsWith("/ogretmen")
+    if (teacherPortal) return false
+
+    if (isSuperAdminUser) {
+      if ((item as { superAdminOnly?: boolean }).superAdminOnly) return true
+      return true
+    }
+
     if (!item.roles.includes(currentRole)) return false
 
     if ((item as { superAdminOnly?: boolean }).superAdminOnly) {
-      return isSuperAdminUser
+      return false
     }
 
     const perm = (item as { permission?: string }).permission ?? hrefToPermission[item.href]

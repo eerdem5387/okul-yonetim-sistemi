@@ -8,6 +8,7 @@ import {
   permissionKey,
   type PermissionAction,
 } from "./constants"
+import { isPrimarySystemAdminStaffId } from "./system-admin"
 
 export { PERMISSION_MODULES, PERMISSION_ACTIONS, PERMISSION_ACTION_LABELS } from "./constants"
 export type { PermissionModuleDef, PermissionAction } from "./constants"
@@ -27,7 +28,8 @@ const DEFAULT_DEPARTMENT_PERMISSIONS: Partial<
   Record<StaffDepartment, Array<{ module: string; action: PermissionAction }>>
 > = {}
 
-export function isSuperAdmin(department: StaffDepartment): boolean {
+export function isSuperAdmin(department: StaffDepartment, staffId?: string): boolean {
+  if (staffId && isPrimarySystemAdminStaffId(staffId)) return true
   return department === SUPER_ADMIN_DEPT
 }
 
@@ -65,7 +67,7 @@ export async function hasPermission(
   module: string,
   action: PermissionAction
 ): Promise<boolean> {
-  if (isSuperAdmin(department)) return true
+  if (isSuperAdmin(department, staffId)) return true
 
   // Yetkilendirme: yalnızca süper yönetici (StaffPermission ile devredilemez)
   if (module === ADMIN_ONLY_PERMISSION_MODULE_ID) return false
@@ -95,7 +97,7 @@ export async function getEffectivePermissionKeys(
   staffId: string,
   department: StaffDepartment
 ): Promise<string[]> {
-  if (isSuperAdmin(department)) {
+  if (isSuperAdmin(department, staffId)) {
     return PERMISSION_MODULES.flatMap((m) => m.actions.map((a) => permissionKey(m.id, a)))
   }
 
@@ -147,7 +149,7 @@ export async function assertPermission(
 
 export async function requireSuperAdmin(request: NextRequest): Promise<StaffActor | null> {
   const actor = await resolveStaffActor(request)
-  if (!actor || !isSuperAdmin(actor.department)) return null
+  if (!actor || !isSuperAdmin(actor.department, actor.staffId)) return null
   return actor
 }
 
@@ -158,7 +160,7 @@ export async function resolveActorWithPermission(
 ): Promise<StaffActor | null> {
   const actor = await resolveStaffActor(request)
   if (!actor) return null
-  if (isSuperAdmin(actor.department)) return actor
+  if (isSuperAdmin(actor.department, actor.staffId)) return actor
   const ok = await assertPermission(actor, module, action)
   return ok ? actor : null
 }

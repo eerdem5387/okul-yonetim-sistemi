@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     staffId: actor.staffId,
     department: actor.department,
     loginRole,
-    isSuperAdmin: isSuperAdmin(actor.department),
+    isSuperAdmin: isSuperAdmin(actor.department, actor.staffId),
     permissions,
   })
 }

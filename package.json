@@ -14,6 +14,7 @@
     "migrate-activities:dry": "tsx scripts/migrate-activities-to-new-structure.ts --dry-run",
     "seed:staff-permissions": "tsx scripts/seed-staff-permissions-from-legacy.ts",
     "seed:staff-dept-permissions": "tsx scripts/seed-staff-permissions-backfill-depts.ts",
+    "ensure:system-admin": "tsx scripts/ensure-primary-system-admin.ts",
     "migrate:baseline-then-deploy": "bash scripts/prisma-baseline-then-deploy.sh",
     "migrate:repair-drift": "bash scripts/prisma-repair-drift.sh"
   },

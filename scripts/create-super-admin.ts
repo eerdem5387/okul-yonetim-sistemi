@@ -12,13 +12,31 @@
  */
 
 import { PrismaClient } from "@prisma/client";
+import { PRIMARY_SYSTEM_ADMIN_STAFF_ID } from "../src/lib/permissions/system-admin";
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log("🚀 Süper Admin oluşturuluyor...\n");
 
-  // Mevcut Süper Admin kontrolü
+  const primary = await prisma.staff.findUnique({
+    where: { id: PRIMARY_SYSTEM_ADMIN_STAFF_ID },
+  });
+
+  if (primary) {
+    const updated = await prisma.staff.update({
+      where: { id: PRIMARY_SYSTEM_ADMIN_STAFF_ID },
+      data: {
+        department: "SUPER_ADMIN",
+        position: "Sistem Yöneticisi",
+        isActive: true,
+      },
+    });
+    console.log("✅ Birincil sistem yöneticisi SUPER_ADMIN olarak ayarlandı:");
+    console.log(`👤 ${updated.firstName} ${updated.lastName} (${updated.tcNumber})`);
+    return;
+  }
+
   const existingAdmin = await prisma.staff.findFirst({
     where: { department: "SUPER_ADMIN" },
   });

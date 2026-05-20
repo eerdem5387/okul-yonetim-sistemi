@@ -144,9 +144,13 @@ export default function RootLayout({
       return
     }
 
-    // Rehberlik sayfaları için kontrol
+    // Rehberlik sayfaları için kontrol (sistem yöneticisi dahil)
     if (pathname?.startsWith("/rehberlik")) {
-      if (normalizedRole !== "counselor" && normalizedRole !== "head_counselor") {
+      if (
+        normalizedRole !== "counselor" &&
+        normalizedRole !== "head_counselor" &&
+        normalizedRole !== "admin"
+      ) {
         if (!redirectingRef.current) {
           redirectingRef.current = true
           router.push("/login")

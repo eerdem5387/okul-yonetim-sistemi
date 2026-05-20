@@ -10,6 +10,7 @@ import {
   type PermissionAction,
 } from "@/lib/permissions/constants"
 import { staffAuthHeaders } from "@/lib/permissions/client"
+import { isPrimarySystemAdminStaffId } from "@/lib/permissions/system-admin"
 import { Loader2, Save, Shield, Search } from "lucide-react"
 import { useToast, ToastContainer } from "@/components/ui/toast"
 
@@ -120,7 +121,11 @@ export default function YetkilendirmePage() {
       }
 
       const data = await me.json()
-      if (data.department !== "SUPER_ADMIN") {
+      const allowed =
+        data.isSuperAdmin === true ||
+        data.department === "SUPER_ADMIN" ||
+        isPrimarySystemAdminStaffId(data.staffId)
+      if (!allowed) {
         setIsSuperAdmin(false)
         setSessionMessage("Bu sayfaya yalnızca sistem yöneticisi (Süper Admin) erişebilir.")
         setVerifying(false)
