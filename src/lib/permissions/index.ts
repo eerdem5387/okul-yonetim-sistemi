@@ -1,7 +1,11 @@
 import type { NextRequest } from "next/server"
 import type { StaffDepartment } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
-import { resolveStaffActor, type StaffActor } from "@/lib/hr/actor"
+import {
+  readLoginRoleFromRequest,
+  resolveStaffActor,
+  type StaffActor,
+} from "@/lib/hr/actor"
 import {
   PERMISSION_MODULES,
   permissionKey,
@@ -17,7 +21,7 @@ const SUPER_ADMIN_DEPT: StaffDepartment = "SUPER_ADMIN"
 const DEFAULT_DEPARTMENT_PERMISSIONS: Partial<
   Record<StaffDepartment, Array<{ module: string; action: PermissionAction }>>
 > = {
-  MUDUR: PERMISSION_MODULES.flatMap((m) =>
+  MUDUR: PERMISSION_MODULES.filter((m) => m.id !== "permissions").flatMap((m) =>
     m.actions.map((action) => ({ module: m.id, action }))
   ),
   MUDUR_YARDIMCISI: PERMISSION_MODULES.filter((m) => m.id !== "permissions").flatMap((m) =>
@@ -73,6 +77,14 @@ const DEFAULT_DEPARTMENT_PERMISSIONS: Partial<
 
 export function isSuperAdmin(department: StaffDepartment): boolean {
   return department === SUPER_ADMIN_DEPT
+}
+
+/** Girişte `admin` rolü verilmiş süper yönetici oturumu (tc-login ile eşleşir) */
+export function isSuperAdminSession(
+  department: StaffDepartment,
+  loginRole: string | null | undefined
+): boolean {
+  return isSuperAdmin(department) || loginRole === "admin"
 }
 
 export async function getStaffPermissionMap(staffId: string): Promise<Map<string, boolean>> {
@@ -180,7 +192,9 @@ export async function assertPermission(
 
 export async function requireSuperAdmin(request: NextRequest): Promise<StaffActor | null> {
   const actor = await resolveStaffActor(request)
-  if (!actor || !isSuperAdmin(actor.department)) return null
+  if (!actor) return null
+  const loginRole = readLoginRoleFromRequest(request)
+  if (!isSuperAdminSession(actor.department, loginRole)) return null
   return actor
 }
 

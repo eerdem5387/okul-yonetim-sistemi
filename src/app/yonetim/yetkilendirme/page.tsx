@@ -45,15 +45,25 @@ export default function YetkilendirmePage() {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
 
   useEffect(() => {
+    const localRole = localStorage.getItem("auth_role")
+    const localDept = localStorage.getItem("staff_department")
+
     fetch("/api/permissions/me", { headers: staffAuthHeaders() })
       .then((r) => r.json())
       .then((data) => {
-        setIsSuperAdmin(data.isSuperAdmin === true)
-        if (!data.isSuperAdmin) {
-          setLoading(false)
-        }
+        const allowed =
+          data.isSuperAdmin === true ||
+          data.loginRole === "admin" ||
+          localRole === "admin" ||
+          localDept === "SUPER_ADMIN"
+        setIsSuperAdmin(allowed)
+        if (!allowed) setLoading(false)
       })
-      .catch(() => setLoading(false))
+      .catch(() => {
+        const allowed = localRole === "admin" || localDept === "SUPER_ADMIN"
+        setIsSuperAdmin(allowed)
+        if (!allowed) setLoading(false)
+      })
   }, [])
 
   const loadStaffList = useCallback(async () => {
@@ -157,7 +167,8 @@ export default function YetkilendirmePage() {
         <Card>
           <CardContent className="pt-6">
             <p className="text-gray-600">
-              Bu sayfaya yalnızca süper yönetici erişebilir.
+              Bu sayfaya yalnızca sistem yöneticisi (Süper Admin) erişebilir. Oturumunuz
+              süresi dolmuş olabilir; çıkış yapıp tekrar giriş deneyin.
             </p>
           </CardContent>
         </Card>

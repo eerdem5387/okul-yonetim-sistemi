@@ -21,6 +21,19 @@ function readBearerToken(request: NextRequest): string | null {
   return header.trim()
 }
 
+/** Token formatı: `${role}_${staffId}_${timestamp}` → girişte atanan rol öneki */
+export function parseLoginRoleFromToken(token: string): string | null {
+  const parts = token.split("_")
+  if (parts.length < 3) return null
+  return parts.slice(0, parts.length - 2).join("_")
+}
+
+export function readLoginRoleFromRequest(request: NextRequest): string | null {
+  const token = readBearerToken(request)
+  if (!token) return null
+  return parseLoginRoleFromToken(token)
+}
+
 /**
  * Bearer token'dan aktif Staff'ı çözer.
  * Token formatı: `${role}_${staffId}_${timestamp}` (rol "student_affairs" gibi alt çizgili olabilir → son iki parça baz alınır).
