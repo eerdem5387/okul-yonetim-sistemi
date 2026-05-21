@@ -55,6 +55,14 @@ export function canViewActivityEvents(me: PermissionsMeResponse | null): boolean
   return me.hasIbAccess === true
 }
 
+/** Faaliyet oluşturma — matris izni veya (geriye uyum) hasIbAccess */
+export function canCreateActivityEvents(me: PermissionsMeResponse | null): boolean {
+  if (!me) return false
+  if (me.isSuperAdmin) return true
+  if (hasPermissionKey(me.permissions, "activity_events", "create")) return true
+  return me.hasIbAccess === true
+}
+
 /** Gezi yönetimi — matris izni veya (geriye uyum) hasGeziAccess */
 export function canViewGezi(me: PermissionsMeResponse | null): boolean {
   if (!me) return false

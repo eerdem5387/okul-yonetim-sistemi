@@ -335,17 +335,14 @@ export default function RootLayout({
       return
     }
 
-    // Faaliyet Ekle – admin, principal, student_affairs, counselor, head_counselor kendi panelinden erişir
+    // Faaliyet Ekle – yetkili roller (öğretmen dahil; layout aşağıda OgretmenSidebar ile)
     if (pathname === "/faaliyet-ekle") {
-      if (normalizedRole != null && ["admin", "principal", "student_affairs", "counselor", "head_counselor"].includes(normalizedRole)) {
-        return
-      }
-      if (normalizedRole === "teacher") {
-        if (!redirectingRef.current) {
-          redirectingRef.current = true
-          router.push("/faaliyet-ekle")
-          setTimeout(() => { redirectingRef.current = false }, 100)
-        }
+      if (
+        normalizedRole != null &&
+        ["admin", "principal", "student_affairs", "counselor", "head_counselor", "teacher"].includes(
+          normalizedRole
+        )
+      ) {
         return
       }
       if (!redirectingRef.current) {
@@ -510,13 +507,16 @@ export default function RootLayout({
     )
   }
 
-  // Öğretmen — IB faaliyet sihirbazı/detayı /faaliyet-yonetimi altında; aynı öğretmen kabuğu
-  if (authRole === "teacher" && pathname?.startsWith("/faaliyet-yonetimi")) {
+  // Öğretmen — faaliyet ekleme + yönetim/sihirbaz (/faaliyet-ekle, /faaliyet-yonetimi/*)
+  if (
+    authRole === "teacher" &&
+    (pathname === "/faaliyet-ekle" || pathname?.startsWith("/faaliyet-yonetimi"))
+  ) {
     return (
       <html lang="tr">
         <head>
           <title>Faaliyet Yönetimi - Öğretmen Paneli</title>
-          <meta name="description" content="IB faaliyet oluşturma ve takip" />
+          <meta name="description" content="Faaliyet oluşturma ve takip" />
           <link rel="icon" href="/logo.png?v=2" type="image/png" />
           <link rel="apple-touch-icon" href="/logo.png?v=2" />
         </head>

@@ -7,15 +7,10 @@ import { ArrowLeft } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
 import { CategoryTiles } from "@/components/faaliyet-yonetimi/CategoryTiles"
-
-const ALLOWED_ROLES = [
-  "admin",
-  "principal",
-  "student_affairs",
-  "counselor",
-  "head_counselor",
-  "teacher",
-]
+import {
+  canCreateActivityEvents,
+  fetchPermissionsMe,
+} from "@/lib/permissions/client"
 
 export interface FaaliyetEklePageProps {
   fallbackRedirect?: string
@@ -28,26 +23,51 @@ export interface FaaliyetEklePageProps {
 }
 
 export function FaaliyetEklePage({
-  fallbackRedirect = "/",
-  backHref = "/faaliyet-yonetimi",
-  backLabel = "Faaliyet Yönetimi",
+  fallbackRedirect,
+  backHref,
+  backLabel,
   certificateWizardBasePath = "/faaliyet-yonetimi/yeni",
 }: FaaliyetEklePageProps) {
   const router = useRouter()
-  const [hasAccess, setHasAccess] = useState<boolean | null>(null)
+  const [ready, setReady] = useState(false)
+  const [hasAccess, setHasAccess] = useState(false)
+  const [resolvedBackHref, setResolvedBackHref] = useState(backHref ?? "/faaliyet-yonetimi")
+  const [resolvedBackLabel, setResolvedBackLabel] = useState(backLabel ?? "Faaliyet Yönetimi")
+  const [resolvedFallback, setResolvedFallback] = useState(fallbackRedirect ?? "/")
 
   useEffect(() => {
     const role = typeof window !== "undefined" ? localStorage.getItem("auth_role") : null
-    setHasAccess(role !== null && ALLOWED_ROLES.includes(role))
-  }, [])
+    const isTeacher = role === "teacher"
+
+    if (isTeacher) {
+      setResolvedBackHref(backHref ?? "/ogretmen/faaliyet-yonetimi")
+      setResolvedBackLabel(backLabel ?? "Faaliyet Yönetimi")
+      setResolvedFallback(fallbackRedirect ?? "/ogretmen")
+    } else {
+      setResolvedBackHref(backHref ?? "/faaliyet-yonetimi")
+      setResolvedBackLabel(backLabel ?? "Faaliyet Yönetimi")
+      setResolvedFallback(fallbackRedirect ?? "/")
+    }
+
+    fetchPermissionsMe()
+      .then((me) => {
+        if (!me) {
+          setHasAccess(false)
+          return
+        }
+        setHasAccess(canCreateActivityEvents(me))
+      })
+      .catch(() => setHasAccess(false))
+      .finally(() => setReady(true))
+  }, [backHref, backLabel, fallbackRedirect])
 
   useEffect(() => {
-    if (hasAccess === false) {
-      router.push(fallbackRedirect)
+    if (ready && !hasAccess) {
+      router.push(resolvedFallback)
     }
-  }, [hasAccess, fallbackRedirect, router])
+  }, [ready, hasAccess, resolvedFallback, router])
 
-  if (hasAccess === null) {
+  if (!ready) {
     return (
       <div className="p-6">
         <Card>
@@ -60,16 +80,16 @@ export function FaaliyetEklePage({
     )
   }
 
-  if (hasAccess === false) return null
+  if (!hasAccess) return null
 
   return (
     <div className="p-6 pb-12 max-w-6xl mx-auto space-y-8">
       <Link
-        href={backHref}
+        href={resolvedBackHref}
         className="inline-flex items-center gap-2 rounded-xl px-1 py-1 text-sm font-semibold text-gray-600 hover:text-indigo-600 -ml-1"
       >
         <ArrowLeft className="h-4 w-4" />
-        {backLabel}
+        {resolvedBackLabel}
       </Link>
 
       <div>
