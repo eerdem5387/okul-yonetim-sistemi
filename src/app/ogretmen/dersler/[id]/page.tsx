@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ToastContainer, useToast } from "@/components/ui/toast"
+import { useToast } from "@/components/ui/toast"
 import {
   BookOpen,
   Loader2,
@@ -53,7 +53,7 @@ interface Subject {
 export default function OgretmenDersDetayPage() {
   const params = useParams()
   const router = useRouter()
-  const { toasts, success, error, removeToast } = useToast()
+  const { success, error } = useToast()
   const [subject, setSubject] = useState<Subject | null>(null)
   const [loading, setLoading] = useState(true)
   const [updatingTopicId, setUpdatingTopicId] = useState<string | null>(null)
@@ -285,10 +285,7 @@ export default function OgretmenDersDetayPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-        <div className="p-4 sm:p-6 lg:p-8">
-      <ToastContainer toasts={toasts} onClose={removeToast} />
-
-      {/* Header */}
+        <div className="p-4 sm:p-6 lg:p-8">{/* Header */}
       <div className="mb-6">
         <Link href="/ogretmen">
           <Button variant="outline" size="sm" className="mb-4">

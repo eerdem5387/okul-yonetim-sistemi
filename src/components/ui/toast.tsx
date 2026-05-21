@@ -1,15 +1,27 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react"
 import { X, CheckCircle2, AlertCircle, Info, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export type ToastType = "success" | "error" | "info" | "warning"
 
+/** Tüm bilgilendirme pop-up'ları için varsayılan görünürlük süresi */
+export const TOAST_DURATION_MS = 5000
+
 export interface Toast {
   id: string
   message: string
   type: ToastType
+  durationMs?: number
 }
 
 interface ToastProps {
@@ -18,13 +30,17 @@ interface ToastProps {
 }
 
 const ToastComponent = ({ toast, onClose }: ToastProps) => {
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
+
   useEffect(() => {
+    const duration = toast.durationMs ?? TOAST_DURATION_MS
     const timer = setTimeout(() => {
-      onClose(toast.id)
-    }, 5000)
+      onCloseRef.current(toast.id)
+    }, duration)
 
     return () => clearTimeout(timer)
-  }, [toast.id, onClose])
+  }, [toast.id, toast.durationMs])
 
   const icons = {
     success: <CheckCircle2 className="h-5 w-5 text-green-600" />,
@@ -73,35 +89,73 @@ export const ToastContainer = ({ toasts, onClose }: { toasts: Toast[]; onClose: 
   if (toasts.length === 0) return null
 
   return (
-    <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 max-w-md">
-      {toasts.map((toast) => (
-        <ToastComponent key={toast.id} toast={toast} onClose={onClose} />
-      ))}
+    <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 max-w-md pointer-events-none">
+      <div className="flex flex-col gap-2 pointer-events-auto">
+        {toasts.map((toast) => (
+          <ToastComponent key={toast.id} toast={toast} onClose={onClose} />
+        ))}
+      </div>
     </div>
   )
 }
 
-export const useToast = () => {
+export type ToastContextValue = {
+  toasts: Toast[]
+  showToast: (message: string, type?: ToastType, durationMs?: number) => void
+  removeToast: (id: string) => void
+  success: (message: string) => void
+  error: (message: string) => void
+  info: (message: string) => void
+  warning: (message: string) => void
+}
+
+const ToastContext = createContext<ToastContextValue | null>(null)
+
+function useToastState(): ToastContextValue {
   const [toasts, setToasts] = useState<Toast[]>([])
 
-  const showToast = (message: string, type: ToastType = "info") => {
-    const id = Math.random().toString(36).substring(7)
-    const newToast: Toast = { id, message, type }
-    setToasts((prev) => [...prev, newToast])
-  }
-
-  const removeToast = (id: string) => {
+  const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id))
-  }
+  }, [])
+
+  const showToast = useCallback(
+    (message: string, type: ToastType = "info", durationMs?: number) => {
+      const id = Math.random().toString(36).substring(7)
+      setToasts((prev) => [...prev, { id, message, type, durationMs }])
+    },
+    []
+  )
+
+  const success = useCallback((message: string) => showToast(message, "success"), [showToast])
+  const error = useCallback((message: string) => showToast(message, "error"), [showToast])
+  const info = useCallback((message: string) => showToast(message, "info"), [showToast])
+  const warning = useCallback((message: string) => showToast(message, "warning"), [showToast])
 
   return {
     toasts,
     showToast,
     removeToast,
-    success: (message: string) => showToast(message, "success"),
-    error: (message: string) => showToast(message, "error"),
-    info: (message: string) => showToast(message, "info"),
-    warning: (message: string) => showToast(message, "warning"),
+    success,
+    error,
+    info,
+    warning,
   }
 }
 
+/** Uygulama genelinde tek toast kuyruğu; tüm bildirimler {TOAST_DURATION_MS} ms sonra kapanır */
+export function ToastProvider({ children }: { children: ReactNode }) {
+  const value = useToastState()
+
+  return (
+    <ToastContext.Provider value={value}>
+      {children}
+      <ToastContainer toasts={value.toasts} onClose={value.removeToast} />
+    </ToastContext.Provider>
+  )
+}
+
+export const useToast = (): ToastContextValue => {
+  const ctx = useContext(ToastContext)
+  if (ctx) return ctx
+  return useToastState()
+}

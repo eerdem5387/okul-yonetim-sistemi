@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ToastContainer, useToast } from "@/components/ui/toast"
+import { useToast } from "@/components/ui/toast"
 import { RehberlikSidebar } from "@/components/layout/rehberlik-sidebar"
 import {
   Plus,
@@ -49,7 +49,7 @@ interface ParentMeeting {
 }
 
 export default function VeliGorusmeleriPage() {
-  const { toasts, success, error, removeToast } = useToast()
+  const { success, error } = useToast()
   const [meetings, setMeetings] = useState<ParentMeeting[]>([])
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
@@ -296,10 +296,7 @@ export default function VeliGorusmeleriPage() {
     <div className="flex h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <RehberlikSidebar />
       <main className="flex-1 overflow-y-auto">
-        <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 relative">
-      {/* Toast Notifications */}
-      <ToastContainer toasts={toasts} onClose={removeToast} />
-      {/* Header */}
+        <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 relative">{/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div className="flex-1 min-w-0">
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">

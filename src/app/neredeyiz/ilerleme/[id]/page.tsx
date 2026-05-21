@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ToastContainer, useToast } from "@/components/ui/toast"
+import { useToast } from "@/components/ui/toast"
 import {
   CheckCircle2,
   Clock,
@@ -119,7 +119,7 @@ export default function IlerlemeDetayPage() {
   const params = useParams()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { toasts, success, error, removeToast } = useToast()
+  const { success, error } = useToast()
   const [subject, setSubject] = useState<Subject | null>(null)
   const [loading, setLoading] = useState(true)
   const [updatingTopicId, setUpdatingTopicId] = useState<string | null>(null)
@@ -644,10 +644,7 @@ export default function IlerlemeDetayPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-      <ToastContainer toasts={toasts} onClose={removeToast} />
-
-      {/* Header */}
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6">{/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
           <Link href="/neredeyiz/ilerleme">

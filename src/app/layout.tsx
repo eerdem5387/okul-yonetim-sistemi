@@ -7,8 +7,23 @@ import OgretmenSidebar from "@/components/layout/ogretmen-sidebar"
 import VeliSidebar from "@/components/layout/veli-sidebar"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState, useRef } from "react"
+import { ToastProvider } from "@/components/ui/toast"
 
 const inter = Inter({ subsets: ["latin"] })
+
+function LayoutBody({
+  className,
+  children,
+}: {
+  className?: string
+  children: React.ReactNode
+}) {
+  return (
+    <body className={className}>
+      <ToastProvider>{children}</ToastProvider>
+    </body>
+  )
+}
 
 type AuthRole = "admin" | "principal" | "student_affairs" | "parent" | "teacher" | "counselor" | "head_counselor" | null
 
@@ -388,14 +403,14 @@ export default function RootLayout({
   if (isLoading) {
     return (
       <html lang="tr">
-        <body className={inter.className}>
+        <LayoutBody className={inter.className}>
           <div className="min-h-screen flex items-center justify-center">
             <div className="text-center">
               <div className="spinner mx-auto mb-4" />
               <p className="text-gray-600">Yükleniyor...</p>
             </div>
           </div>
-        </body>
+        </LayoutBody>
       </html>
     )
   }
@@ -410,9 +425,9 @@ export default function RootLayout({
           <link rel="icon" href="/logo.png?v=2" type="image/png" />
           <link rel="apple-touch-icon" href="/logo.png?v=2" />
         </head>
-        <body className={inter.className}>
+        <LayoutBody className={inter.className}>
           {children}
-        </body>
+        </LayoutBody>
       </html>
     )
   }
@@ -427,9 +442,9 @@ export default function RootLayout({
           <link rel="icon" href="/logo.png?v=2" type="image/png" />
           <link rel="apple-touch-icon" href="/logo.png?v=2" />
         </head>
-        <body className={inter.className}>
+        <LayoutBody className={inter.className}>
           {children}
-        </body>
+        </LayoutBody>
       </html>
     )
   }
@@ -444,9 +459,9 @@ export default function RootLayout({
           <link rel="icon" href="/logo.png?v=2" type="image/png" />
           <link rel="apple-touch-icon" href="/logo.png?v=2" />
         </head>
-        <body className={inter.className}>
+        <LayoutBody className={inter.className}>
           {children}
-        </body>
+        </LayoutBody>
       </html>
     )
   }
@@ -461,14 +476,14 @@ export default function RootLayout({
           <link rel="icon" href="/logo.png?v=2" type="image/png" />
           <link rel="apple-touch-icon" href="/logo.png?v=2" />
         </head>
-        <body className={inter.className}>
+        <LayoutBody className={inter.className}>
           <div className="flex h-screen bg-gray-50 lg:flex-row">
             <OgretmenSidebar />
             <div className="flex-1 overflow-y-auto w-full lg:w-auto">
               {children}
             </div>
           </div>
-        </body>
+        </LayoutBody>
       </html>
     )
   }
@@ -483,14 +498,14 @@ export default function RootLayout({
           <link rel="icon" href="/logo.png?v=2" type="image/png" />
           <link rel="apple-touch-icon" href="/logo.png?v=2" />
         </head>
-        <body className={inter.className}>
+        <LayoutBody className={inter.className}>
           <div className="flex h-screen overflow-hidden bg-gray-50 lg:flex-row">
             <OgretmenSidebar />
             <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
               {children}
             </div>
           </div>
-        </body>
+        </LayoutBody>
       </html>
     )
   }
@@ -505,14 +520,14 @@ export default function RootLayout({
           <link rel="icon" href="/logo.png?v=2" type="image/png" />
           <link rel="apple-touch-icon" href="/logo.png?v=2" />
         </head>
-        <body className={inter.className}>
+        <LayoutBody className={inter.className}>
           <div className="flex h-screen bg-gray-50 lg:flex-row">
             <OgretmenSidebar />
             <div className="flex-1 overflow-y-auto w-full lg:w-auto">
               {children}
             </div>
           </div>
-        </body>
+        </LayoutBody>
       </html>
     )
   }
@@ -527,9 +542,9 @@ export default function RootLayout({
           <link rel="icon" href="/logo.png?v=2" type="image/png" />
           <link rel="apple-touch-icon" href="/logo.png?v=2" />
         </head>
-        <body className={inter.className}>
+        <LayoutBody className={inter.className}>
           {children}
-        </body>
+        </LayoutBody>
       </html>
     )
   }
@@ -544,7 +559,7 @@ export default function RootLayout({
           <link rel="icon" href="/logo.png?v=2" type="image/png" />
           <link rel="apple-touch-icon" href="/logo.png?v=2" />
         </head>
-        <body className={inter.className}>
+        <LayoutBody className={inter.className}>
           <div className="flex h-screen bg-gray-50">
             <VeliSidebar key="veli-sidebar" />
             <div
@@ -557,7 +572,7 @@ export default function RootLayout({
               {children}
             </div>
           </div>
-        </body>
+        </LayoutBody>
       </html>
     )
   }
@@ -572,7 +587,7 @@ export default function RootLayout({
           <link rel="icon" href="/logo.png?v=2" type="image/png" />
           <link rel="apple-touch-icon" href="/logo.png?v=2" />
         </head>
-        <body className={inter.className}>
+        <LayoutBody className={inter.className}>
           <div className="flex h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
             <Sidebar />
             <main
@@ -585,7 +600,7 @@ export default function RootLayout({
               {children}
             </main>
           </div>
-        </body>
+        </LayoutBody>
       </html>
     )
   }
@@ -593,14 +608,14 @@ export default function RootLayout({
   // Auth yoksa yönlendirme ekranı
   return (
     <html lang="tr">
-      <body className={inter.className}>
+      <LayoutBody className={inter.className}>
         <div className="min-h-screen flex items-center justify-center">
           <div className="text-center">
             <div className="spinner mx-auto mb-4" />
             <p className="text-gray-600">Yönlendiriliyor...</p>
           </div>
         </div>
-      </body>
+      </LayoutBody>
     </html>
   )
 }

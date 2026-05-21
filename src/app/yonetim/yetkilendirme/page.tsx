@@ -12,7 +12,7 @@ import {
 import { staffAuthHeaders } from "@/lib/permissions/client"
 import { isPrimarySystemAdminStaffId } from "@/lib/permissions/system-admin"
 import { Loader2, Save, Shield, Search } from "lucide-react"
-import { useToast, ToastContainer } from "@/components/ui/toast"
+import { useToast } from "@/components/ui/toast"
 
 type StaffRow = {
   id: string
@@ -52,7 +52,7 @@ async function fetchStaffRows(params: URLSearchParams): Promise<{ rows: StaffRow
 }
 
 export default function YetkilendirmePage() {
-  const { toasts, showToast, removeToast } = useToast()
+  const { showToast } = useToast()
   const [verifying, setVerifying] = useState(true)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [sessionMessage, setSessionMessage] = useState<string | null>(null)
@@ -283,9 +283,7 @@ export default function YetkilendirmePage() {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
-      <ToastContainer toasts={toasts} onClose={removeToast} />
-      <div className="flex items-center gap-3">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6"><div className="flex items-center gap-3">
         <Shield className="h-8 w-8 text-indigo-600" />
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Yetkilendirme Sistemi</h1>

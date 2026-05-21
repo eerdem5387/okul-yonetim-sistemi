@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ToastContainer, useToast } from "@/components/ui/toast"
+import { useToast } from "@/components/ui/toast"
 import {
   AlertTriangle,
   Plus,
@@ -51,7 +51,7 @@ const disruptionTypeLabels: Record<string, string> = {
 }
 
 export default function AksamalarPage() {
-  const { toasts, success, error, removeToast } = useToast()
+  const { success, error } = useToast()
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [disruptions, setDisruptions] = useState<Disruption[]>([])
@@ -284,10 +284,7 @@ export default function AksamalarPage() {
   }
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 relative">
-      <ToastContainer toasts={toasts} onClose={removeToast} />
-
-      {/* Header */}
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 relative">{/* Header */}
       <div className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-3">

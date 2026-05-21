@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ToastContainer, useToast } from "@/components/ui/toast"
+import { useToast } from "@/components/ui/toast"
 import { Skeleton } from "@/components/ui/skeleton"
 import Link from "next/link"
 import {
@@ -64,7 +64,7 @@ interface DisruptionReport {
 }
 
 export default function NeredeyizPage() {
-  const { toasts, error, removeToast } = useToast()
+  const { error } = useToast()
   const [activeYear, setActiveYear] = useState<AcademicYear | null>(null)
   const [selectedGrade, setSelectedGrade] = useState<string>("")
   const [selectedSection, setSelectedSection] = useState<string>("")
@@ -193,10 +193,7 @@ export default function NeredeyizPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 relative min-h-full bg-gradient-to-br from-gray-50 to-blue-50/30">
-      <ToastContainer toasts={toasts} onClose={removeToast} />
-
-      {/* Header */}
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 relative min-h-full bg-gradient-to-br from-gray-50 to-blue-50/30">{/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-lg">

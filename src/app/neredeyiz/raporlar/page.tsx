@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ToastContainer, useToast } from "@/components/ui/toast"
+import { useToast } from "@/components/ui/toast"
 import {
   BarChart3,
   TrendingUp,
@@ -108,7 +108,7 @@ interface DisruptionReport {
 }
 
 export default function RaporlarPage() {
-  const { toasts, error, removeToast } = useToast()
+  const { error } = useToast()
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [activeYearId, setActiveYearId] = useState<string>("")
   const [progressReport, setProgressReport] = useState<ProgressReport | null>(null)
@@ -537,10 +537,7 @@ export default function RaporlarPage() {
   }
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 relative">
-      <ToastContainer toasts={toasts} onClose={removeToast} />
-
-      {/* Header */}
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 relative">{/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
           <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-purple-600 to-purple-700 flex items-center justify-center shadow-lg">
@@ -1683,9 +1680,6 @@ export default function RaporlarPage() {
             </CardContent>
           </Card>
         </div>
-      )}
-
-      <ToastContainer toasts={toasts} onClose={removeToast} />
-    </div>
+      )}</div>
   )
 }

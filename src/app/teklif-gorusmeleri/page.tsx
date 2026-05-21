@@ -11,7 +11,7 @@ import {
   FileSpreadsheet, Plus, Trash2, Edit, Clock, Handshake, MessageSquare, History,
   CheckCircle2, XCircle, HelpCircle, Calendar, UserCircle, Flag
 } from "lucide-react"
-import { ToastContainer, useToast } from "@/components/ui/toast"
+import { useToast } from "@/components/ui/toast"
 
 interface TeklifGorusmesi {
   id: string
@@ -63,7 +63,7 @@ export default function TeklifGorusmeleriPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [showFormModal, setShowFormModal] = useState(false)
   const [editingTeklif, setEditingTeklif] = useState<TeklifGorusmesi | null>(null)
-  const { toasts, success, error, removeToast } = useToast()
+  const { success, error } = useToast()
   
   // Filtreler
   const [selectedSinif, setSelectedSinif] = useState("")
@@ -203,10 +203,7 @@ export default function TeklifGorusmeleriPage() {
   ].filter(Boolean).length
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Toast Notifications */}
-      <ToastContainer toasts={toasts} onClose={removeToast} />
-      {/* Header */}
+    <div className="p-6 space-y-6">{/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Teklif Görüşmeleri</h1>

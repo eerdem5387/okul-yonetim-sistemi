@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { ToastContainer, useToast } from "@/components/ui/toast"
+import { useToast } from "@/components/ui/toast"
 import {
   Loader2,
   BookOpen,
@@ -47,7 +47,7 @@ interface Subject {
 export default function IlerlemePage() {
   const searchParams = useSearchParams()
   const statusFilter = searchParams.get("status") || ""
-  const { toasts, error, removeToast } = useToast()
+  const { error } = useToast()
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [selectedYearId, setSelectedYearId] = useState<string>("")
@@ -130,10 +130,7 @@ export default function IlerlemePage() {
   }
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 relative">
-      <ToastContainer toasts={toasts} onClose={removeToast} />
-
-      {/* Header */}
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 relative">{/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
           <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-green-600 to-green-700 flex items-center justify-center shadow-lg">

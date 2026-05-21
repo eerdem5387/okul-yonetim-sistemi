@@ -14,6 +14,7 @@ import {
   Clock,
   BookOpen,
 } from "lucide-react"
+import { useToast } from "@/components/ui/toast"
 
 interface Topic {
   id: string
@@ -51,7 +52,7 @@ export default function OnayPage() {
   const [loading, setLoading] = useState(true)
   const [approving, setApproving] = useState(false)
   const [staffId, setStaffId] = useState<string | null>(null)
-  const [toastMessage, setToastMessage] = useState<{ type: "success" | "error"; message: string } | null>(null)
+  const { success, error } = useToast()
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -81,11 +82,11 @@ export default function OnayPage() {
         const data = await response.json()
         setTopic(data)
       } else {
-        setToastMessage({ type: "error", message: "Konu yüklenirken hata oluştu!" })
+        error("Konu yüklenirken hata oluştu!")
       }
     } catch (err) {
       console.error("Error fetching topic:", err)
-      setToastMessage({ type: "error", message: "Konu yüklenirken hata oluştu!" })
+      error("Konu yüklenirken hata oluştu!")
     } finally {
       setLoading(false)
     }
@@ -96,7 +97,7 @@ export default function OnayPage() {
 
     const progress = topic.progress?.[0]
     if (!progress || progress.status !== "PENDING_APPROVAL") {
-      setToastMessage({ type: "error", message: "Bu konu onay bekliyor durumunda değil!" })
+      error("Bu konu onay bekliyor durumunda değil!")
       return
     }
 
@@ -110,17 +111,17 @@ export default function OnayPage() {
       })
 
       if (response.ok) {
-        setToastMessage({ type: "success", message: "Konu başarıyla onaylandı!" })
+        success("Konu başarıyla onaylandı!")
         setTimeout(() => {
           router.push("/rehberlik")
         }, 2000)
       } else {
         const errorData = await response.json()
-        setToastMessage({ type: "error", message: errorData.error || "Onay işlemi sırasında hata oluştu!" })
+        error(errorData.error || "Onay işlemi sırasında hata oluştu!")
       }
     } catch (err) {
       console.error("Error approving progress:", err)
-      setToastMessage({ type: "error", message: "Onay işlemi sırasında bir hata oluştu!" })
+      error("Onay işlemi sırasında bir hata oluştu!")
     } finally {
       setApproving(false)
     }
@@ -165,15 +166,6 @@ export default function OnayPage() {
     <div className="flex h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <RehberlikSidebar />
       <main className="flex-1 overflow-y-auto">
-        {/* Toast Notification */}
-        {toastMessage && (
-          <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
-            toastMessage.type === "success" ? "bg-green-500 text-white" : "bg-red-500 text-white"
-          }`}>
-            <p className="font-medium">{toastMessage.message}</p>
-          </div>
-        )}
-
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Link href="/rehberlik">
             <Button variant="outline" size="sm" className="mb-6">

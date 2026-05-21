@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ToastContainer, useToast } from "@/components/ui/toast"
+import { useToast } from "@/components/ui/toast"
 import NotificationBell from "@/components/notifications/notification-bell"
 import {
   Loader2,
@@ -83,7 +83,7 @@ interface DelayedData {
 
 export default function OgretmenPage() {
   const router = useRouter()
-  const { toasts, error, removeToast } = useToast()
+  const { error } = useToast()
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [delayedData, setDelayedData] = useState<DelayedData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -206,10 +206,7 @@ export default function OgretmenPage() {
         </div>
 
         {/* Content */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <ToastContainer toasts={toasts} onClose={removeToast} />
-
-        {/* Hızlı Erişim Butonları */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">{/* Hızlı Erişim Butonları */}
             {delayedData && delayedData.summary.totalDelayedTopics > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
               <Link href="/ogretmen/gecikmeler">

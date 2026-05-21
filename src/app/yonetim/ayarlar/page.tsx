@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ToastContainer, useToast } from "@/components/ui/toast"
+import { useToast } from "@/components/ui/toast"
 import {
   Calendar,
   Plus,
@@ -84,7 +84,7 @@ function yearHasStoredCalendar(y: AcademicYear | null): boolean {
 }
 
 export default function YonetimPage() {
-  const { toasts, success, error, info, removeToast } = useToast()
+  const { success, error, info } = useToast()
   const [activeTab, setActiveTab] = useState<"years" | "subjects">("years")
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
@@ -862,10 +862,7 @@ export default function YonetimPage() {
   }
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 relative">
-      <ToastContainer toasts={toasts} onClose={removeToast} />
-
-      {/* Header */}
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 relative">{/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
           <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-lg">

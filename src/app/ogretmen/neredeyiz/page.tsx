@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ToastContainer, useToast } from "@/components/ui/toast"
+import { useToast } from "@/components/ui/toast"
 import {
   Target,
   Loader2,
@@ -66,7 +66,7 @@ interface DashboardStats {
 
 export default function OgretmenNeredeyizPage() {
   const router = useRouter()
-  const { toasts, success, error, removeToast } = useToast()
+  const { success, error } = useToast()
   const [loading, setLoading] = useState(true)
   const [classes, setClasses] = useState<Class[]>([])
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null)
@@ -342,10 +342,7 @@ export default function OgretmenNeredeyizPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <ToastContainer toasts={toasts} onClose={removeToast} />
-      
-      {/* Header */}
+    <div className="min-h-screen bg-gray-50">{/* Header */}
       <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 shadow-lg">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pl-16 lg:pl-4 sm:pl-6">
           <div className="flex items-center gap-4 mb-4">
