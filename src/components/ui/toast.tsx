@@ -156,6 +156,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
 export const useToast = (): ToastContextValue => {
   const ctx = useContext(ToastContext)
-  if (ctx) return ctx
-  return useToastState()
+  if (!ctx) {
+    throw new Error("useToast, ToastProvider içinde kullanılmalıdır")
+  }
+  return ctx
 }
