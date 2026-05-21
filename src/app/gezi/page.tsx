@@ -21,6 +21,7 @@ import {
 } from "lucide-react"
 import type { Trip, CreateTripData } from "@/lib/geziService"
 import { useRouter } from "next/navigation"
+import { canViewGezi, fetchPermissionsMe } from "@/lib/permissions/client"
 
 // Helper function to get auth headers
 function getAuthHeaders(): HeadersInit {
@@ -76,10 +77,9 @@ export default function GeziPage() {
       
       // Teacher için yetki kontrolü
       if (role === "teacher" && staffId) {
-        fetch(`/api/staff/${staffId}`)
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.hasGeziAccess) {
+        fetchPermissionsMe()
+          .then((me) => {
+            if (canViewGezi(me)) {
               setHasAccess(true)
             } else {
               setHasAccess(false)

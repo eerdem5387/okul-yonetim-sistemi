@@ -26,7 +26,7 @@ import {
 import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { UnreadBadge } from "@/components/chat/UnreadBadge"
-import { fetchPermissionsMe, hasPermissionKey, staffAuthHeaders } from "@/lib/permissions/client"
+import { fetchPermissionsMe, hasPermissionKey } from "@/lib/permissions/client"
 
 interface OgretmenSidebarProps {
   className?: string
@@ -69,18 +69,9 @@ export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
       const name = localStorage.getItem("staff_name") || "Öğretmen"
       setStaffName(name)
 
-      const staffId = localStorage.getItem("staff_id")
-      if (staffId) {
-        fetch(`/api/staff/${staffId}`, { headers: staffAuthHeaders() })
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.subject) setStaffSubject(data.subject)
-          })
-          .catch(() => {})
-      }
-
       fetchPermissionsMe().then((data) => {
         if (data?.permissions) setPermissionKeys(data.permissions)
+        if (data?.subject) setStaffSubject(data.subject)
       })
     }
   }, [])

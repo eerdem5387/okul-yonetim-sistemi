@@ -4,7 +4,11 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { IBFaaliyetDashboard } from "@/components/ib-faaliyet-dashboard/IBFaaliyetDashboard"
 import { Loader2 } from "lucide-react"
-import { canViewActivityStaffStats, fetchPermissionsMe } from "@/lib/permissions/client"
+import {
+  canViewActivityEvents,
+  canViewActivityStaffStats,
+  fetchPermissionsMe,
+} from "@/lib/permissions/client"
 
 export default function OgretmenFaaliyetYonetimiPage() {
   const router = useRouter()
@@ -20,11 +24,18 @@ export default function OgretmenFaaliyetYonetimiPage() {
       router.push("/login")
       return
     }
-    Promise.all([fetch(`/api/staff/${staffId}`).then((res) => res.json()), fetchPermissionsMe()])
-      .then(([data, me]) => {
-        setHasAccess(!!data.hasIbAccess)
+
+    fetchPermissionsMe()
+      .then((me) => {
+        if (!me) {
+          setHasAccess(false)
+          router.push("/login")
+          return
+        }
+        const allowed = canViewActivityEvents(me)
+        setHasAccess(allowed)
         setCanViewStaffStats(canViewActivityStaffStats(me))
-        if (!data.hasIbAccess) router.push("/ogretmen")
+        if (!allowed) router.push("/ogretmen")
       })
       .catch(() => {
         setHasAccess(false)

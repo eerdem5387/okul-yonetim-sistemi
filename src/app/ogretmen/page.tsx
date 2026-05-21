@@ -104,7 +104,7 @@ export default function OgretmenPage() {
 
       setStaffName(name || "")
       setStaffId(id)
-      fetchStaffInfo(id) // Öğretmen bilgilerini çek
+      fetchStaffInfo() // Öğretmen bilgilerini çek
       fetchAssignedSubjects(id)
       fetchDelayedTopics(id)
 
@@ -129,13 +129,11 @@ export default function OgretmenPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const fetchStaffInfo = async (staffId: string) => {
+  const fetchStaffInfo = async () => {
     try {
-      const response = await fetch(`/api/staff/${staffId}`)
-      if (response.ok) {
-        const data = await response.json()
-        setStaffSubject(data.subject || null)
-      }
+      const { fetchPermissionsMe } = await import("@/lib/permissions/client")
+      const me = await fetchPermissionsMe()
+      if (me?.subject) setStaffSubject(me.subject)
     } catch (err) {
       console.error("Error fetching staff info:", err)
     }

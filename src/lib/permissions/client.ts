@@ -12,6 +12,13 @@ export type PermissionsMeResponse = {
   department: string
   isSuperAdmin: boolean
   permissions: string[]
+  firstName?: string
+  lastName?: string
+  fullName?: string
+  subject?: string | null
+  hasGeziAccess?: boolean
+  hasIbAccess?: boolean
+  isActive?: boolean
 }
 
 export async function fetchPermissionsMe(): Promise<PermissionsMeResponse | null> {
@@ -38,4 +45,20 @@ export function canViewActivityStaffStats(me: PermissionsMeResponse | null): boo
   if (!me) return false
   if (me.isSuperAdmin) return true
   return hasPermissionKey(me.permissions, "activity_staff_stats", "view")
+}
+
+/** Faaliyet yönetimi — matris izni veya (geriye uyum) hasIbAccess */
+export function canViewActivityEvents(me: PermissionsMeResponse | null): boolean {
+  if (!me) return false
+  if (me.isSuperAdmin) return true
+  if (hasPermissionKey(me.permissions, "activity_events", "view")) return true
+  return me.hasIbAccess === true
+}
+
+/** Gezi yönetimi — matris izni veya (geriye uyum) hasGeziAccess */
+export function canViewGezi(me: PermissionsMeResponse | null): boolean {
+  if (!me) return false
+  if (me.isSuperAdmin) return true
+  if (hasPermissionKey(me.permissions, "gezi", "view")) return true
+  return me.hasGeziAccess === true
 }

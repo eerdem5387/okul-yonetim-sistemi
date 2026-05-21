@@ -22,6 +22,7 @@ import {
   ArrowLeft,
 } from "lucide-react"
 import type { Trip, CreateTripData } from "@/lib/geziService"
+import { canViewGezi, fetchPermissionsMe } from "@/lib/permissions/client"
 
 // Helper function to get auth headers
 function getAuthHeaders(): HeadersInit {
@@ -74,15 +75,9 @@ export default function OgretmenGeziYonetimiPage() {
         return
       }
       
-      // Teacher için yetki kontrolü
-      fetch(`/api/staff/${staffId}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.hasGeziAccess) {
-            setHasAccess(true)
-          } else {
-            setHasAccess(false)
-          }
+      fetchPermissionsMe()
+        .then((me) => {
+          setHasAccess(canViewGezi(me))
         })
         .catch(() => {
           setHasAccess(false)
