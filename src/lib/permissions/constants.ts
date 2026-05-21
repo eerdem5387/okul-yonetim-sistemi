@@ -34,6 +34,12 @@ export const PERMISSION_MODULES: PermissionModuleDef[] = [
   { id: "gezi", label: "Gezi Yönetimi", group: "Faaliyet", actions: ["view", "create", "edit", "delete", "export"] },
   { id: "clubs", label: "Kulüp Yönetimi", group: "Faaliyet", actions: ["view", "create", "edit", "delete", "export"] },
   { id: "activity_events", label: "Faaliyet Yönetimi", group: "Faaliyet", actions: ["view", "create", "edit", "delete", "export", "approve"] },
+  {
+    id: "activity_staff_stats",
+    label: "Personel Faaliyet İstatistikleri",
+    group: "Faaliyet",
+    actions: ["view"],
+  },
   { id: "ib_viewer_accounts", label: "IB Viewer Hesapları", group: "Faaliyet", actions: ["view", "create", "edit", "delete"] },
   { id: "homework", label: "Ödevler", group: "Akademik", actions: ["view", "create", "edit", "delete"] },
   { id: "attendance", label: "Yoklama", group: "Akademik", actions: ["view", "create", "edit"] },
@@ -46,6 +52,9 @@ export const PERMISSION_MODULES: PermissionModuleDef[] = [
 
 /** Personel matrisinde devredilemez; yalnızca SUPER_ADMIN bu modüle erişir */
 export const ADMIN_ONLY_PERMISSION_MODULE_ID = "permissions" as const
+
+/** Öğretmen bazlı faaliyet giriş sayıları — yalnızca açıkça yetkilendirilen personel */
+export const ACTIVITY_STAFF_STATS_MODULE_ID = "activity_staff_stats" as const
 
 /** Süper yöneticinin başkasına atayabileceği modül satırları (yetkilendirme hariç) */
 export function editablePermissionModules(): PermissionModuleDef[] {

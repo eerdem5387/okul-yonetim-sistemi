@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireSuperAdmin } from "@/lib/permissions"
-import {
-  ADMIN_ONLY_PERMISSION_MODULE_ID,
-  editablePermissionModules,
-  permissionKey,
-} from "@/lib/permissions/constants"
+import { buildPermissionMatrix } from "@/lib/permissions/matrix"
+import { permissionKey } from "@/lib/permissions/constants"
+import { replaceStaffPermissions } from "@/lib/permissions/persist"
 
 export async function GET(
   request: NextRequest,
@@ -39,19 +37,13 @@ export async function GET(
     explicit.set(permissionKey(p.module, p.action), p.granted)
   }
 
-  const matrix = editablePermissionModules().map((mod) => ({
-    module: mod.id,
-    label: mod.label,
-    group: mod.group,
-    actions: mod.actions.map((action) => {
-      const key = permissionKey(mod.id, action)
-      return {
-        action,
-        key,
-        granted: explicit.has(key) ? explicit.get(key) === true : null,
-      }
-    }),
-  }))
+  const matrix = buildPermissionMatrix(
+    staff.permissions.map((p) => ({
+      module: p.module,
+      action: p.action,
+      granted: p.granted,
+    }))
+  )
 
   return NextResponse.json({
     staff: {
@@ -90,24 +82,7 @@ export async function PUT(
   }
 
   await prisma.$transaction(async (tx) => {
-    await tx.staffPermission.deleteMany({ where: { staffId: id } })
-    const toCreate = entries
-      .filter(
-        (e) =>
-          e.granted === true &&
-          e.module &&
-          e.action &&
-          String(e.module) !== ADMIN_ONLY_PERMISSION_MODULE_ID
-      )
-      .map((e) => ({
-        staffId: id,
-        module: String(e.module),
-        action: String(e.action),
-        granted: true,
-      }))
-    if (toCreate.length > 0) {
-      await tx.staffPermission.createMany({ data: toCreate })
-    }
+    await replaceStaffPermissions(tx, id, entries)
   })
 
   return NextResponse.json({ success: true })

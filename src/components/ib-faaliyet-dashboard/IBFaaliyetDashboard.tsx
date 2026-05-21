@@ -50,6 +50,15 @@ export interface IBDashboardStats {
   }>
 }
 
+export interface IBDashboardStaffEntrySummary {
+  staffId: string
+  fullName: string
+  departmentLabel: string
+  activityCount: number
+  participantCount: number
+  thisYearCount: number
+}
+
 /** Birleşik liste satırı — GET /api/ib-dashboard/faaliyet-list */
 export interface IBDashboardUnifiedItem {
   source: "event"
@@ -89,6 +98,10 @@ export interface IBFaaliyetDashboardProps {
   faaliyetDuzenleHref?: (activityId: string) => string
   showViewerButton?: boolean
   onViewerClick?: () => void
+  /** Personel bazlı istatistik sayfası */
+  personelIstatistikHref?: string
+  /** activity_staff_stats.view — yalnızca yetkilendirilen kullanıcılar */
+  canViewStaffStats?: boolean
 }
 
 export function IBFaaliyetDashboard({
@@ -99,8 +112,15 @@ export function IBFaaliyetDashboard({
   faaliyetDuzenleHref = (id) => `/faaliyet-yonetimi/duzenle/${id}`,
   showViewerButton = true,
   onViewerClick,
+  personelIstatistikHref = "/faaliyet-yonetimi/personel-istatistik",
+  canViewStaffStats = false,
 }: IBFaaliyetDashboardProps) {
   const [stats, setStats] = useState<IBDashboardStats | null>(null)
+  const [topStaff, setTopStaff] = useState<IBDashboardStaffEntrySummary[]>([])
+  const [staffStatsSummary, setStaffStatsSummary] = useState<{
+    staffWithEntries: number
+    thisYearActivities: number
+  } | null>(null)
   const [listItems, setListItems] = useState<IBDashboardUnifiedItem[]>([])
   const [students, setStudents] = useState<Array<{ id: string; firstName: string; lastName: string; grade: string }>>([])
   const [loading, setLoading] = useState(true)
@@ -121,6 +141,46 @@ export function IBFaaliyetDashboard({
   const [totalCount, setTotalCount] = useState(0)
   const [listError, setListError] = useState<string | null>(null)
   const [statsError, setStatsError] = useState<string | null>(null)
+
+  const fetchStaffSummary = useCallback(async () => {
+    try {
+      const res = await fetch("/api/ib-dashboard/personel-istatistik?top=6", {
+        headers: getAuthHeaders(),
+        cache: "no-store",
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setTopStaff(
+          (data.staff ?? []).map(
+            (s: {
+              staffId: string
+              fullName: string
+              departmentLabel: string
+              activityCount: number
+              participantCount: number
+              thisYearCount: number
+            }) => ({
+              staffId: s.staffId,
+              fullName: s.fullName,
+              departmentLabel: s.departmentLabel,
+              activityCount: s.activityCount,
+              participantCount: s.participantCount,
+              thisYearCount: s.thisYearCount,
+            })
+          )
+        )
+        if (data.summary) {
+          setStaffStatsSummary({
+            staffWithEntries: data.summary.staffWithEntries,
+            thisYearActivities: data.summary.thisYearActivities,
+          })
+        }
+      }
+    } catch {
+      setTopStaff([])
+      setStaffStatsSummary(null)
+    }
+  }, [])
 
   const fetchStats = useCallback(async () => {
     try {
@@ -212,8 +272,13 @@ export function IBFaaliyetDashboard({
 
   useEffect(() => {
     fetchStats()
+    if (canViewStaffStats) fetchStaffSummary()
+    else {
+      setTopStaff([])
+      setStaffStatsSummary(null)
+    }
     fetchStudents()
-  }, [fetchStats, fetchStudents])
+  }, [fetchStats, fetchStaffSummary, fetchStudents, canViewStaffStats])
 
   useEffect(() => {
     fetchActivities()
@@ -256,6 +321,7 @@ export function IBFaaliyetDashboard({
           throw new Error(j.error || "Silinemedi")
         }
       fetchStats()
+      if (canViewStaffStats) fetchStaffSummary()
       fetchActivities()
     } catch (e) {
       alert(e instanceof Error ? e.message : "Silme işlemi başarısız.")
@@ -431,6 +497,58 @@ export function IBFaaliyetDashboard({
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
+        {canViewStaffStats && (
+        <Card className="border-0 shadow-md lg:col-span-3">
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 pb-2">
+            <div>
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <Users className="h-5 w-5 text-violet-600" />
+                Personel giriş özeti
+              </CardTitle>
+              <CardDescription>
+                Sorumlu öğretmene göre faaliyet giriş sayıları
+                {staffStatsSummary
+                  ? ` · ${staffStatsSummary.staffWithEntries} personel · Bu yıl ${staffStatsSummary.thisYearActivities} kayıt`
+                  : ""}
+              </CardDescription>
+            </div>
+            <Link href={personelIstatistikHref}>
+              <Button variant="outline" size="sm">
+                Tüm istatistikler
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </Link>
+          </CardHeader>
+          <CardContent>
+            {topStaff.length > 0 ? (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {topStaff.map((s, i) => (
+                  <Link
+                    key={s.staffId}
+                    href={`${personelIstatistikHref}?staffId=${s.staffId}`}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50/60 px-4 py-3 transition-colors hover:border-violet-300 hover:bg-violet-50/40"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-violet-600">#{i + 1}</p>
+                      <p className="font-semibold text-gray-900 truncate">{s.fullName}</p>
+                      <p className="text-xs text-gray-500">{s.departmentLabel}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-lg font-bold text-violet-700">{s.activityCount}</p>
+                      <p className="text-xs text-gray-500">faaliyet</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 py-4 text-center">
+                Henüz personel bazlı faaliyet kaydı yok.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+        )}
+
         {/* Kategoriler */}
         <Card className="border-0 shadow-md lg:col-span-1">
           <CardHeader className="pb-2">

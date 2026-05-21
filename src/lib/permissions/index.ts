@@ -17,6 +17,7 @@ export {
   parsePermissionKey,
   legacyFlagsToPermissionKeys,
   ADMIN_ONLY_PERMISSION_MODULE_ID,
+  ACTIVITY_STAFF_STATS_MODULE_ID,
   editablePermissionModules,
   fullPermissionKeysForModule,
 } from "./constants"

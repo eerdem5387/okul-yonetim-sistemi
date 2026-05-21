@@ -32,3 +32,10 @@ export function hasPermissionKey(
   if (!permissions) return false
   return permissions.includes(`${module}.${action}`)
 }
+
+/** Personel faaliyet istatistikleri — süper yönetici veya activity_staff_stats.view */
+export function canViewActivityStaffStats(me: PermissionsMeResponse | null): boolean {
+  if (!me) return false
+  if (me.isSuperAdmin) return true
+  return hasPermissionKey(me.permissions, "activity_staff_stats", "view")
+}

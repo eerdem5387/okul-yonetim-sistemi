@@ -4,10 +4,12 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { IBFaaliyetDashboard } from "@/components/ib-faaliyet-dashboard/IBFaaliyetDashboard"
 import { Loader2 } from "lucide-react"
+import { canViewActivityStaffStats, fetchPermissionsMe } from "@/lib/permissions/client"
 
 export default function OgretmenFaaliyetYonetimiPage() {
   const router = useRouter()
   const [hasAccess, setHasAccess] = useState<boolean | null>(null)
+  const [canViewStaffStats, setCanViewStaffStats] = useState(false)
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -18,10 +20,10 @@ export default function OgretmenFaaliyetYonetimiPage() {
       router.push("/login")
       return
     }
-    fetch(`/api/staff/${staffId}`)
-      .then((res) => res.json())
-      .then((data) => {
+    Promise.all([fetch(`/api/staff/${staffId}`).then((res) => res.json()), fetchPermissionsMe()])
+      .then(([data, me]) => {
         setHasAccess(!!data.hasIbAccess)
+        setCanViewStaffStats(canViewActivityStaffStats(me))
         if (!data.hasIbAccess) router.push("/ogretmen")
       })
       .catch(() => {
@@ -48,6 +50,8 @@ export default function OgretmenFaaliyetYonetimiPage() {
         faaliyetEkleHref="/faaliyet-ekle"
         faaliyetDuzenleHref={(activityId) => `/faaliyet-yonetimi/duzenle/${activityId}`}
         studentDetailHref={(id) => `/ogretmen/faaliyet-yonetimi/ogrenci/${id}`}
+        personelIstatistikHref="/ogretmen/faaliyet-yonetimi/personel-istatistik"
+        canViewStaffStats={canViewStaffStats}
         showViewerButton={false}
       />
     </div>
