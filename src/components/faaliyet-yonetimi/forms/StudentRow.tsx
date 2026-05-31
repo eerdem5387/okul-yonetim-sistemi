@@ -17,6 +17,7 @@ export interface ParticipantData {
   studentId: string
   studentName: string
   studentGrade: string
+  studentTcNumber: string
   score: string
   languageLevel: string
   extraDocumentUrl: string

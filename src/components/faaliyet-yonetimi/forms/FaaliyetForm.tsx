@@ -20,14 +20,6 @@ interface FaaliyetFormProps {
   editEventId?: string
 }
 
-interface StudentOption {
-  id: string
-  firstName: string
-  lastName: string
-  grade: string
-  tcNumber: string
-}
-
 interface Teacher {
   id: string
   firstName: string
@@ -81,13 +73,13 @@ export function FaaliyetForm({ mainType, subtypeId, editEventId }: FaaliyetFormP
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const [detay, setDetay] = useState<StepDetayData>(INITIAL_DETAY)
   const [participants, setParticipants] = useState<ParticipantData[]>([])
-  const [students, setStudents] = useState<StudentOption[]>([])
   const [teachers, setTeachers] = useState<Teacher[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [showPdfModal, setShowPdfModal] = useState(false)
   const [participantsLocked, setParticipantsLocked] = useState(false)
   const [editLoadError, setEditLoadError] = useState<string | null>(null)
+  const [teachersLoadError, setTeachersLoadError] = useState<string | null>(null)
 
   const subtypeConfig = getSubtypeConfig(mainType, subtypeId)
 
@@ -97,16 +89,28 @@ export function FaaliyetForm({ mainType, subtypeId, editEventId }: FaaliyetFormP
       setLoading(true)
       setEditLoadError(null)
       try {
-        const [stRes, staffRes] = await Promise.all([
-          fetch("/api/students?limit=2000", { headers: getAuthHeaders() }),
-          fetch("/api/staff?limit=500", { headers: getAuthHeaders() }),
-        ])
-        const stData = await stRes.json()
+        const staffRes = await fetch("/api/activity-events/teachers", { headers: getAuthHeaders() })
+        if (!staffRes.ok) {
+          const errBody = await staffRes.json().catch(() => ({}))
+          throw new Error(errBody.error || "Öğretmen listesi yüklenemedi")
+        }
         const staffData = await staffRes.json()
         if (cancelled) return
-        setStudents(Array.isArray(stData) ? stData : stData?.students ?? [])
-        const staffList = Array.isArray(staffData) ? staffData : staffData?.staff ?? []
-        setTeachers(staffList.map((s: Teacher) => ({ id: s.id, firstName: s.firstName, lastName: s.lastName })))
+        const staffList = Array.isArray(staffData) ? staffData : staffData?.teachers ?? []
+        setTeachers(
+          staffList.map((s: Teacher) => ({
+            id: s.id,
+            firstName: s.firstName,
+            lastName: s.lastName,
+          }))
+        )
+        setTeachersLoadError(null)
+
+        const loggedInStaffId =
+          typeof window !== "undefined" ? localStorage.getItem("staff_id") : null
+        if (loggedInStaffId && staffList.some((s: Teacher) => s.id === loggedInStaffId)) {
+          setDetay((prev) => (prev.teacherId ? prev : { ...prev, teacherId: loggedInStaffId }))
+        }
 
         if (editEventId) {
           const evRes = await fetch(`/api/activity-events/${editEventId}`, { headers: getAuthHeaders() })
@@ -155,7 +159,7 @@ export function FaaliyetForm({ mainType, subtypeId, editEventId }: FaaliyetFormP
             (ev.participants || []).map(
               (p: {
                 studentId: string
-                student: { firstName: string; lastName: string; grade: string }
+                student: { firstName: string; lastName: string; grade: string; tcNumber?: string }
                 score: number | null
                 languageLevel: string | null
                 extraDocumentUrl: string | null
@@ -167,6 +171,7 @@ export function FaaliyetForm({ mainType, subtypeId, editEventId }: FaaliyetFormP
                 studentId: p.studentId,
                 studentName: `${p.student.firstName} ${p.student.lastName}`.trim(),
                 studentGrade: p.student.grade ?? "",
+                studentTcNumber: p.student.tcNumber ?? "",
                 score: p.score != null ? String(p.score) : "",
                 languageLevel: p.languageLevel ?? "",
                 extraDocumentUrl: p.extraDocumentUrl ?? "",
@@ -180,7 +185,12 @@ export function FaaliyetForm({ mainType, subtypeId, editEventId }: FaaliyetFormP
         }
       } catch (e) {
         if (!cancelled) {
-          setEditLoadError(e instanceof Error ? e.message : "Yükleme hatası")
+          const msg = e instanceof Error ? e.message : "Yükleme hatası"
+          if (msg.includes("Öğretmen")) {
+            setTeachersLoadError(msg)
+          } else {
+            setEditLoadError(msg)
+          }
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -227,7 +237,7 @@ export function FaaliyetForm({ mainType, subtypeId, editEventId }: FaaliyetFormP
         participants: participants.map((p) => ({
           firstName: p.studentName.split(" ")[0] ?? "",
           lastName: p.studentName.split(" ").slice(1).join(" ") ?? "",
-          tcNumber: students.find((s) => s.id === p.studentId)?.tcNumber ?? "",
+          tcNumber: p.studentTcNumber ?? "",
           grade: p.studentGrade,
         })),
       }
@@ -243,7 +253,7 @@ export function FaaliyetForm({ mainType, subtypeId, editEventId }: FaaliyetFormP
         participants: participants.map((p) => ({
           firstName: p.studentName.split(" ")[0] ?? "",
           lastName: p.studentName.split(" ").slice(1).join(" ") ?? "",
-          tcNumber: students.find((s) => s.id === p.studentId)?.tcNumber ?? "",
+          tcNumber: p.studentTcNumber ?? "",
           grade: p.studentGrade,
         })),
       }
@@ -260,7 +270,7 @@ export function FaaliyetForm({ mainType, subtypeId, editEventId }: FaaliyetFormP
         participants: participants.map((p) => ({
           firstName: p.studentName.split(" ")[0] ?? "",
           lastName: p.studentName.split(" ").slice(1).join(" ") ?? "",
-          tcNumber: students.find((s) => s.id === p.studentId)?.tcNumber ?? "",
+          tcNumber: p.studentTcNumber ?? "",
           grade: p.studentGrade,
         })),
       }
@@ -280,7 +290,7 @@ export function FaaliyetForm({ mainType, subtypeId, editEventId }: FaaliyetFormP
         participants: participants.map((p) => ({
           firstName: p.studentName.split(" ")[0] ?? "",
           lastName: p.studentName.split(" ").slice(1).join(" ") ?? "",
-          tcNumber: students.find((s) => s.id === p.studentId)?.tcNumber ?? "",
+          tcNumber: p.studentTcNumber ?? "",
           grade: p.studentGrade,
         })),
       }
@@ -300,7 +310,7 @@ export function FaaliyetForm({ mainType, subtypeId, editEventId }: FaaliyetFormP
         participants: participants.map((p) => ({
           firstName: p.studentName.split(" ")[0] ?? "",
           lastName: p.studentName.split(" ").slice(1).join(" ") ?? "",
-          tcNumber: students.find((s) => s.id === p.studentId)?.tcNumber ?? "",
+          tcNumber: p.studentTcNumber ?? "",
           grade: p.studentGrade,
         })),
       }
@@ -320,7 +330,7 @@ export function FaaliyetForm({ mainType, subtypeId, editEventId }: FaaliyetFormP
         participants: participants.map((p) => ({
           firstName: p.studentName.split(" ")[0] ?? "",
           lastName: p.studentName.split(" ").slice(1).join(" ") ?? "",
-          tcNumber: students.find((s) => s.id === p.studentId)?.tcNumber ?? "",
+          tcNumber: p.studentTcNumber ?? "",
           grade: p.studentGrade,
           artworkDescription: p.artworkDescription,
           participationPhotoUrl: p.participationPhotoUrl,
@@ -334,7 +344,7 @@ export function FaaliyetForm({ mainType, subtypeId, editEventId }: FaaliyetFormP
         participants: participants.map((p) => ({
           firstName: p.studentName.split(" ")[0] ?? "",
           lastName: p.studentName.split(" ").slice(1).join(" ") ?? "",
-          tcNumber: students.find((s) => s.id === p.studentId)?.tcNumber ?? "",
+          tcNumber: p.studentTcNumber ?? "",
           grade: p.studentGrade,
           score: parseInt(p.score) || 0,
           languageLevel: p.languageLevel || "A1",
@@ -348,7 +358,7 @@ export function FaaliyetForm({ mainType, subtypeId, editEventId }: FaaliyetFormP
       participants: participants.map((p) => ({
         firstName: p.studentName.split(" ")[0] ?? "",
         lastName: p.studentName.split(" ").slice(1).join(" ") ?? "",
-        tcNumber: students.find((s) => s.id === p.studentId)?.tcNumber ?? "",
+        tcNumber: p.studentTcNumber ?? "",
         grade: p.studentGrade,
         score: parseInt(p.score) || 0,
       })),
@@ -372,7 +382,7 @@ export function FaaliyetForm({ mainType, subtypeId, editEventId }: FaaliyetFormP
       participants: placed.map((p) => ({
         firstName: p.studentName.split(" ")[0] ?? "",
         lastName: p.studentName.split(" ").slice(1).join(" ") ?? "",
-        tcNumber: students.find((s) => s.id === p.studentId)?.tcNumber ?? "",
+        tcNumber: p.studentTcNumber ?? "",
         grade: p.studentGrade,
         placement: p.tournamentPlacement.trim(),
       })),
@@ -567,6 +577,11 @@ export function FaaliyetForm({ mainType, subtypeId, editEventId }: FaaliyetFormP
 
       {/* Form Body */}
       <div className="max-w-3xl mx-auto px-6 py-8">
+        {teachersLoadError && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            {teachersLoadError}
+          </div>
+        )}
         {step === 1 && (
           <StepDetay
             data={detay}
@@ -594,7 +609,7 @@ export function FaaliyetForm({ mainType, subtypeId, editEventId }: FaaliyetFormP
             outcomePlaceholder={subtypeConfig.outcomePlaceholder}
             projectPreviewParticipants={participants.map((p) => ({
               name: p.studentName,
-              tcNumber: students.find((s) => s.id === p.studentId)?.tcNumber ?? "",
+              tcNumber: p.studentTcNumber ?? "",
               projectRole: p.projectRole ?? "",
               grade: p.studentGrade,
             }))}
@@ -605,7 +620,6 @@ export function FaaliyetForm({ mainType, subtypeId, editEventId }: FaaliyetFormP
         {step === 2 && (
           <StepKatilimcilar
             participants={participants}
-            studentOptions={students}
             subtypeConfig={subtypeConfig}
             onChange={setParticipants}
             onBack={() => setStep(1)}

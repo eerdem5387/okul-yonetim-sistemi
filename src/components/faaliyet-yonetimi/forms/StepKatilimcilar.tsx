@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useCallback, useMemo } from "react"
-import { Search, Users, X } from "lucide-react"
+import { useState, useCallback, useMemo, useEffect } from "react"
+import { Search, Users, X, Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { StudentRow, type ParticipantData } from "./StudentRow"
@@ -17,7 +17,6 @@ interface StudentOption {
 
 interface StepKatilimcilarProps {
   participants: ParticipantData[]
-  studentOptions: StudentOption[]
   subtypeConfig: SubtypeConfig
   onChange: (participants: ParticipantData[]) => void
   onBack: () => void
@@ -26,9 +25,15 @@ interface StepKatilimcilarProps {
   readOnly?: boolean
 }
 
+function getAuthHeaders(): HeadersInit {
+  const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null
+  const h: HeadersInit = {}
+  if (token) (h as Record<string, string>)["Authorization"] = `Bearer ${token}`
+  return h
+}
+
 export function StepKatilimcilar({
   participants,
-  studentOptions,
   subtypeConfig,
   onChange,
   onBack,
@@ -36,17 +41,55 @@ export function StepKatilimcilar({
   readOnly = false,
 }: StepKatilimcilarProps) {
   const [searchQuery, setSearchQuery] = useState("")
+  const [searchResults, setSearchResults] = useState<StudentOption[]>([])
+  const [searching, setSearching] = useState(false)
+  const [searchError, setSearchError] = useState<string | null>(null)
 
-  const filteredStudents = studentOptions.filter((s) => {
-    if (!searchQuery.trim()) return true
-    const q = searchQuery.toLowerCase()
-    const fullName = `${s.firstName} ${s.lastName}`.toLowerCase()
-    return fullName.includes(q) || s.grade.toLowerCase().includes(q) || s.tcNumber.includes(q)
-  })
+  useEffect(() => {
+    if (readOnly) return
+
+    let cancelled = false
+    const timer = setTimeout(async () => {
+      setSearching(true)
+      setSearchError(null)
+      try {
+        const params = new URLSearchParams({ limit: "5000" })
+        if (searchQuery.trim()) params.set("search", searchQuery.trim())
+        const res = await fetch(`/api/activity-events/students?${params}`, {
+          headers: getAuthHeaders(),
+        })
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}))
+          throw new Error(j.error || "Öğrenci listesi yüklenemedi")
+        }
+        const data = await res.json()
+        if (cancelled) return
+        const list: StudentOption[] = Array.isArray(data) ? data : data.students ?? []
+        setSearchResults(list)
+      } catch (e) {
+        if (!cancelled) {
+          setSearchResults([])
+          setSearchError(e instanceof Error ? e.message : "Öğrenci listesi yüklenemedi")
+        }
+      } finally {
+        if (!cancelled) setSearching(false)
+      }
+    }, 300)
+
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [searchQuery, readOnly])
 
   const selectedIds = useMemo(
     () => new Set(participants.map((p) => p.studentId)),
     [participants]
+  )
+
+  const visibleStudents = useMemo(
+    () => searchResults.filter((s) => !selectedIds.has(s.id)),
+    [searchResults, selectedIds]
   )
 
   const addStudent = useCallback(
@@ -58,6 +101,7 @@ export function StepKatilimcilar({
           studentId: student.id,
           studentName: `${student.firstName} ${student.lastName}`,
           studentGrade: student.grade,
+          studentTcNumber: student.tcNumber,
           score: "",
           languageLevel: "",
           extraDocumentUrl: "",
@@ -140,39 +184,42 @@ export function StepKatilimcilar({
           )}
         </div>
 
-        <div className="max-h-52 overflow-y-auto rounded-lg border border-gray-200 bg-white">
-          {filteredStudents.length === 0 ? (
-            <p className="px-4 py-3 text-sm text-gray-400 text-center">Öğrenci bulunamadı</p>
+        {searchError && (
+          <p className="mb-2 text-sm text-red-600">{searchError}</p>
+        )}
+
+        <div className="max-h-64 overflow-y-auto rounded-lg border border-gray-200 bg-white">
+          {searching ? (
+            <div className="flex items-center justify-center gap-2 px-4 py-6 text-sm text-gray-500">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Yükleniyor…
+            </div>
+          ) : visibleStudents.length === 0 ? (
+            <p className="px-4 py-3 text-sm text-gray-400 text-center">
+              {searchQuery.trim() ? "Öğrenci bulunamadı" : "Tüm öğrenciler eklendi veya liste boş"}
+            </p>
           ) : (
-            filteredStudents.slice(0, 50).map((student) => {
-              const isSelected = selectedIds.has(student.id)
-              return (
-                <button
-                  key={student.id}
-                  onClick={() => !isSelected && addStudent(student)}
-                  disabled={isSelected}
-                  className={`
-                    w-full flex items-center justify-between px-4 py-2.5 text-left text-sm border-b border-gray-50 last:border-0 transition-colors
-                    ${isSelected
-                      ? "bg-indigo-50 text-indigo-500 cursor-default"
-                      : "hover:bg-gray-50 text-gray-700 cursor-pointer"
-                    }
-                  `}
-                >
-                  <span>
-                    <span className="font-medium">{student.firstName} {student.lastName}</span>
-                    <span className="text-gray-400 text-xs ml-2">{student.grade}</span>
-                  </span>
-                  {isSelected ? (
-                    <span className="text-xs text-indigo-500 font-medium">✓ Eklendi</span>
-                  ) : (
-                    <span className="text-xs text-gray-400">+ Ekle</span>
-                  )}
-                </button>
-              )
-            })
+            visibleStudents.map((student) => (
+              <button
+                key={student.id}
+                type="button"
+                onClick={() => addStudent(student)}
+                className="w-full flex items-center justify-between px-4 py-2.5 text-left text-sm border-b border-gray-50 last:border-0 transition-colors hover:bg-gray-50 text-gray-700 cursor-pointer"
+              >
+                <span>
+                  <span className="font-medium">{student.firstName} {student.lastName}</span>
+                  <span className="text-gray-400 text-xs ml-2">{student.grade}</span>
+                </span>
+                <span className="text-xs text-gray-400">+ Ekle</span>
+              </button>
+            ))
           )}
         </div>
+        {!searching && visibleStudents.length > 0 && (
+          <p className="mt-2 text-xs text-gray-500">
+            {visibleStudents.length} öğrenci listeleniyor — sınır yoktur, arama ile daraltabilirsiniz.
+          </p>
+        )}
       </div>
       )}
 
