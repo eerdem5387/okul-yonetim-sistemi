@@ -138,9 +138,8 @@ export async function generatePDF(
     chromium.setGraphicsMode = false
     browser = await puppeteer.launch({
       args: [...chromium.args, '--disable-dev-shm-usage', '--disable-gpu'],
-      defaultViewport: chromium.defaultViewport,
       executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
+      headless: true,
     })
   } else {
     const localChrome = getLocalChromePath()
