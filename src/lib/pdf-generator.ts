@@ -134,10 +134,13 @@ export async function generatePDF(
   let browser: Awaited<ReturnType<typeof puppeteer.launch>>
 
   if (isProduction) {
+    // Reduces memory on Vercel; required for stable @sparticuz/chromium runs
+    chromium.setGraphicsMode = false
     browser = await puppeteer.launch({
-      args: chromium.args,
+      args: [...chromium.args, '--disable-dev-shm-usage', '--disable-gpu'],
+      defaultViewport: chromium.defaultViewport,
       executablePath: await chromium.executablePath(),
-      headless: true,
+      headless: chromium.headless,
     })
   } else {
     const localChrome = getLocalChromePath()
@@ -167,7 +170,8 @@ export async function generatePDF(
   const normalizedLogoHtml = normalizeTemplateLogoSources(html)
   const htmlWithLogo = options?.disableGlobalLogo ? normalizedLogoHtml : injectGlobalPdfLogo(normalizedLogoHtml)
   const encodedHTML = encodeHTMLEntities(htmlWithLogo)
-  await page.setContent(encodedHTML, { waitUntil: 'networkidle0' })
+  // networkidle0 often times out on Vercel (Google Fonts @import keeps connections open)
+  await page.setContent(encodedHTML, { waitUntil: 'load', timeout: 45_000 })
 
   const pdf = await page.pdf({
     format: (options?.format || 'A4') as 'A4',

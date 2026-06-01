@@ -56,6 +56,8 @@ import {
 } from "@/lib/certificates/proje-katilim"
 import { applyGlobalCertificateLayout } from "@/lib/certificates/global-certificate-layout"
 
+export const maxDuration = 60
+
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }

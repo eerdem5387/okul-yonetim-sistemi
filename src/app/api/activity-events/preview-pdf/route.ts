@@ -25,6 +25,9 @@ import {
 import { buildProjeKatilimCertificateHTML } from "@/lib/certificates/proje-katilim"
 import { applyGlobalCertificateLayout } from "@/lib/certificates/global-certificate-layout"
 
+/** PDF render (Puppeteer) can exceed default serverless timeout on Vercel */
+export const maxDuration = 60
+
 export async function POST(request: NextRequest) {
   const { hasAccess } = await checkActivityAccess(request)
   if (!hasAccess) {
@@ -110,7 +113,14 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error("preview-pdf error:", error)
-    return NextResponse.json({ error: "PDF önizleme oluşturulurken hata oluştu" }, { status: 500 })
+    const detail = error instanceof Error ? error.message : String(error)
+    console.error("preview-pdf error:", detail, error)
+    return NextResponse.json(
+      {
+        error: "PDF önizleme oluşturulurken hata oluştu",
+        ...(process.env.NODE_ENV === "development" ? { detail } : {}),
+      },
+      { status: 500 }
+    )
   }
 }
