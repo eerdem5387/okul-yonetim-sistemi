@@ -28,6 +28,7 @@ import {
   GraduationCap,
   Settings,
   Shield,
+  UserSearch,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { UnreadBadge } from "@/components/chat/UnreadBadge"
@@ -50,6 +51,7 @@ const allNavigation = [
   { name: "Öğrenci Dashboard", href: "/ogrenci-dashboard", icon: LayoutDashboard, roles: ["admin", "principal", "student_affairs"] },
   // 7. Personel Yönetimi
   { name: "Personel Yönetimi", href: "/personel", icon: Briefcase, roles: ["admin", "principal", "student_affairs"] },
+  { name: "İK Başvuruları", href: "/ik-basvurular", icon: UserSearch, roles: ["admin", "principal", "student_affairs"] },
   { name: "Yetkilendirme", href: "/yonetim/yetkilendirme", icon: Shield, roles: ["admin"], superAdminOnly: true },
   {
     name: "Ayarlar",
@@ -124,6 +126,7 @@ export function Sidebar() {
     "/students": "students.view",
     "/ogrenci-dashboard": "students.view",
     "/personel": "staff.view",
+    "/ik-basvurular": "hr_recruitment.view",
     "/yonetim/ayarlar": "settings.view",
     "/neredeyiz": "neredeyiz.view",
     "/sinif-yonetimi": "classes.view",

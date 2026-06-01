@@ -70,3 +70,9 @@ export function canViewGezi(me: PermissionsMeResponse | null): boolean {
   if (hasPermissionKey(me.permissions, "gezi", "view")) return true
   return me.hasGeziAccess === true
 }
+
+export function canViewHrRecruitment(me: PermissionsMeResponse | null): boolean {
+  if (!me) return false
+  if (me.isSuperAdmin) return true
+  return hasPermissionKey(me.permissions, "hr_recruitment", "view")
+}

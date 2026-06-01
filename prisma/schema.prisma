@@ -220,6 +220,48 @@ enum ContactStatus {
   ILETISIME_GECILMEDI
 }
 
+// İK öğretmen başvuruları (ik-leventokullari webhook)
+enum HrApplicationStatus {
+  YENI
+  INCELENDI
+  GORUSME
+  RED
+  ISE_ALINDI
+}
+
+model HrJobApplication {
+  id                       String              @id @default(cuid())
+  externalId               String              @unique
+  fullName                 String
+  residence                String
+  birthYear                Int
+  phone                    String
+  universityDepartment     String
+  formationStatus          String
+  appliedBranch            String
+  experienceLevels         Json // string[] — Ortaokul, Lise
+  totalExperience          String
+  hasPrivateSchoolExperience Boolean
+  pedagogicalApproach      String              @db.Text
+  clubsAndActivities       String              @db.Text
+  references               Json // { firstName, lastName, title, phone }[]
+  cvUrl                    String
+  cvFileName               String
+  status                   HrApplicationStatus @default(YENI)
+  internalNote             String?             @db.Text
+  assignedToStaffId        String?
+  lastContactedAt          DateTime?
+  createdAt                DateTime
+  syncedAt                 DateTime            @default(now())
+  updatedAt                DateTime            @updatedAt
+
+  @@index([externalId])
+  @@index([appliedBranch])
+  @@index([status])
+  @@index([createdAt])
+  @@map("hr_job_applications")
+}
+
 // ============================================
 // FAALİYET YÖNETİMİ — Yeni Modüller
 // ============================================
