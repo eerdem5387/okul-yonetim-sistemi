@@ -10,17 +10,27 @@ type ReferencePayload = {
   phone: string
 }
 
+function phoneDigits(value: string): number {
+  return value.replace(/\D/g, "").length
+}
+
 function isValidReferences(refs: unknown): refs is ReferencePayload[] {
-  if (!Array.isArray(refs) || refs.length < 2) return false
-  return refs.every(
-    (r) =>
-      r &&
-      typeof r === "object" &&
-      typeof (r as ReferencePayload).firstName === "string" &&
-      typeof (r as ReferencePayload).lastName === "string" &&
-      typeof (r as ReferencePayload).title === "string" &&
-      typeof (r as ReferencePayload).phone === "string"
-  )
+  if (!Array.isArray(refs)) return false
+  if (refs.length === 0) return true
+  return refs.every((r) => {
+    if (!r || typeof r !== "object") return false
+    const ref = r as ReferencePayload
+    return (
+      typeof ref.firstName === "string" &&
+      ref.firstName.trim().length >= 2 &&
+      typeof ref.lastName === "string" &&
+      ref.lastName.trim().length >= 2 &&
+      typeof ref.title === "string" &&
+      ref.title.trim().length >= 2 &&
+      typeof ref.phone === "string" &&
+      phoneDigits(ref.phone) >= 10
+    )
+  })
 }
 
 export async function POST(request: NextRequest) {
@@ -67,12 +77,23 @@ export async function POST(request: NextRequest) {
     ] as const
 
     for (const key of required) {
-      if (payload[key] === undefined || payload[key] === null || payload[key] === "") {
+      const val = payload[key]
+      if (val === undefined || val === null) {
         return NextResponse.json(
           { error: `Invalid payload - missing field: ${key}` },
           { status: 400 }
         )
       }
+      if (key !== "references" && val === "") {
+        return NextResponse.json(
+          { error: `Invalid payload - missing field: ${key}` },
+          { status: 400 }
+        )
+      }
+    }
+
+    if (!Array.isArray(payload.references)) {
+      return NextResponse.json({ error: "Invalid references" }, { status: 400 })
     }
 
     if (!Array.isArray(payload.experienceLevels) || payload.experienceLevels.length === 0) {
@@ -126,11 +147,22 @@ export async function POST(request: NextRequest) {
     console.error("[IK Webhook] Hata:", error)
 
     if (error && typeof error === "object" && "code" in error) {
-      if (error.code === "P2002") {
+      const code = String(error.code)
+      if (code === "P2002") {
         return NextResponse.json({ success: true, message: "Başvuru zaten mevcut" }, { status: 200 })
       }
-      if (error.code === "P1001" || error.code === "P1002") {
+      if (code === "P1001" || code === "P1002") {
         return NextResponse.json({ error: "Database connection error" }, { status: 503 })
+      }
+      if (code === "P2021") {
+        console.error("[IK Webhook] hr_job_applications tablosu yok — migration çalıştırın")
+        return NextResponse.json(
+          {
+            error: "Database not ready",
+            message: "hr_job_applications tablosu bulunamadı. prisma migrate deploy çalıştırın.",
+          },
+          { status: 503 }
+        )
       }
     }
 
