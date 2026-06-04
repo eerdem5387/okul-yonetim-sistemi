@@ -4,7 +4,8 @@ import { join } from "path"
 import { prisma } from "@/lib/prisma"
 import { checkActivityAccess } from "@/lib/access-control"
 import { generatePDF, generateMufredatPageHTML } from "@/lib/pdf-generator"
-import { getSubtypeConfig, type ActivityMainType, type MufredatHafta } from "@/lib/activity-types-config"
+import { buildMufredatMonths } from "@/lib/mufredat-pdf"
+import { getSubtypeConfig, type ActivityMainType } from "@/lib/activity-types-config"
 
 function getLogoBase64(): string {
   try {
@@ -24,28 +25,7 @@ function buildMufredatHtml(params: {
   const mufredat = cfg?.mufredat
   if (!mufredat?.length) return ""
 
-  const monthsMap = new Map<string, Array<{
-    week: string
-    subject: string
-    objective: string
-    practice: string
-    achievements: string
-  }>>()
-
-  for (const row of mufredat as MufredatHafta[]) {
-    const month = row.ay?.trim() || "MUFREDAT"
-    const bucket = monthsMap.get(month) ?? []
-    bucket.push({
-      week: typeof row.hafta === "number" ? `${row.hafta}. Hafta` : String(row.hafta),
-      subject: row.konu ?? "",
-      objective: row.hedef ?? "",
-      practice: row.icerik ?? "",
-      achievements: row.hedef ?? "",
-    })
-    monthsMap.set(month, bucket)
-  }
-
-  const months = [...monthsMap.entries()].map(([label, rows]) => ({ label, rows }))
+  const months = buildMufredatMonths(mufredat)
   const logoBase64 = getLogoBase64()
   const programTitle = cfg?.mufredatBaslik ?? "LEVENT COLLEGE IB PROGRAMME — Curriculum"
 

@@ -12,6 +12,7 @@ import {
   type MufredatHafta,
   type FormVariant,
 } from "@/lib/activity-types-config"
+import { formatMufredatWeekLabel } from "@/lib/mufredat-pdf"
 import {
   PROJE_DOCUMENT_STATEMENT,
   PROJE_PROGRAMME_DURATION_WEEKS,
@@ -269,7 +270,7 @@ export function StepDetay({
                         )}
                         <tr key={`row-${i}`} className={i % 2 === 0 ? "bg-white" : "bg-indigo-50/40"}>
                           <td className="px-3 py-2 font-semibold text-indigo-700 align-top whitespace-nowrap">
-                            {typeof row.hafta === "number" ? `${row.hafta}. Hafta` : `${row.hafta}. Hafta`}
+                            {formatMufredatWeekLabel(row.hafta)}
                           </td>
                           <td className="px-3 py-2 text-gray-800 align-top font-medium">{row.konu}</td>
                           <td className="px-3 py-2 text-gray-700 align-top">{row.icerik}</td>

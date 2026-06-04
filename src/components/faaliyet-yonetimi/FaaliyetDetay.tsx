@@ -33,6 +33,7 @@ import {
   type ActivityMainType,
   type MufredatHafta,
 } from "@/lib/activity-types-config"
+import { formatMufredatWeekLabel } from "@/lib/mufredat-pdf"
 import { assertFileMaxSize, CLIENT_MAX_PDF_BYTES, parseUploadResponse } from "@/lib/upload-client"
 import type { ActivityEventDetail } from "./FaaliyetDetay.shared"
 
@@ -106,8 +107,7 @@ export function FaaliyetDetay({ id }: { id: string }) {
   }
 
   function normalizeWeekLabel(hafta: MufredatHafta["hafta"]): string {
-    if (typeof hafta === "number") return `${hafta}. Hafta`
-    return `${hafta}`
+    return formatMufredatWeekLabel(hafta)
   }
 
   const handleUploadSigned = async (pid: string, file: File) => {
