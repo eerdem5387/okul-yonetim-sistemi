@@ -529,7 +529,7 @@ export default function RenewalPage() {
     }
 
     try {
-      // Kayıt yenileme sınıfı sunucuda da doğrulanır; öğrenci kartı başarılı işlemde bir üst düzeye güncellenir.
+      // Hedef sınıf (studentClass) sözleşmede kaydedilir; öğrencinin aktif sınıf düzeyi değişmez.
       const contracts = [
         {
           type: "renewal",
@@ -587,13 +587,6 @@ export default function RenewalPage() {
       )
 
       const allSuccessful = responses.every(response => response.ok)
-
-      if (allSuccessful) {
-        setSelectedStudent((s) =>
-          s ? { ...s, grade: renewalClass } : s
-        )
-        setMainContractData((prev) => ({ ...prev, studentClass: renewalClass }))
-      }
 
       if (!allSuccessful) {
         const errorResponses = responses.filter(r => !r.ok)

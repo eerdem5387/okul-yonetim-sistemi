@@ -187,10 +187,8 @@ export async function POST(request: NextRequest) {
                     },
                 },
             })
-            await tx.student.update({
-                where: { id: studentId },
-                data: { grade: renewalClassLabel },
-            })
+            // Aktif sınıf düzeyi yalnızca akademik yıl devrinde güncellenir; yenileme sadece
+            // sözleşmede hedef yılı/sınıfı (studentClass) kayıt altına alır.
             if (selectedClubs && Array.isArray(selectedClubs) && selectedClubs.length > 0) {
                 const clubSelections = selectedClubs
                     .filter((clubId: string) => clubId && typeof clubId === "string")
