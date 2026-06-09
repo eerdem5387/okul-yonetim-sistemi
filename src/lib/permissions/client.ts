@@ -76,3 +76,17 @@ export function canViewHrRecruitment(me: PermissionsMeResponse | null): boolean 
   if (me.isSuperAdmin) return true
   return hasPermissionKey(me.permissions, "hr_recruitment", "view")
 }
+
+export function canViewHrRetention(me: PermissionsMeResponse | null): boolean {
+  if (!me) return false
+  if (me.isSuperAdmin) return true
+  if (me.department === "MUDUR" || me.department === "MUDUR_YARDIMCISI") return true
+  return hasPermissionKey(me.permissions, "hr_retention", "view")
+}
+
+export function canEditHrRetention(me: PermissionsMeResponse | null): boolean {
+  if (!me) return false
+  if (me.isSuperAdmin) return true
+  if (me.department === "MUDUR" || me.department === "MUDUR_YARDIMCISI") return true
+  return hasPermissionKey(me.permissions, "hr_retention", "edit")
+}

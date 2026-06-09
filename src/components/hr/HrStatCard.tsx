@@ -1,11 +1,12 @@
 "use client"
 
+import type { ReactNode } from "react"
 import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface HrStatCardProps {
   label: string
-  value: number | string
+  value: number | string | ReactNode
   icon?: LucideIcon
   hint?: string
   tone?: "blue" | "amber" | "emerald" | "rose"

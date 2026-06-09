@@ -20,6 +20,7 @@ import {
   Loader2,
   Briefcase,
   Eye,
+  MessageSquare,
 } from "lucide-react"
 
 type StaffDepartment =
@@ -309,32 +310,41 @@ export default function PersonelPage() {
             Okul personelini yönetin ve kayıt altına alın
           </p>
         </div>
-        <Button
-          onClick={() => {
-            setShowForm(true)
-            setEditingStaff(null)
-            setFormData({
-              firstName: "",
-              lastName: "",
-              tcNumber: "",
-              email: "",
-              phone: "",
-              department: "OGRETMEN",
-              position: "",
-              subject: "",
-              isActive: true,
-              hireDate: "",
-              notes: "",
-              hasGeziAccess: false,
-              hasIbAccess: false,
-            })
-          }}
-          size="sm"
-          className="w-full sm:w-auto text-xs sm:text-sm"
-        >
-          <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-          Yeni Personel Ekle
-        </Button>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <Link
+            href="/personel/gorusmeler"
+            className="inline-flex h-9 w-full items-center justify-center rounded-md border border-gray-200 bg-white px-3 text-xs font-medium hover:bg-gray-50 sm:w-auto sm:text-sm"
+          >
+            <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            Personel Görüşmeler
+          </Link>
+          <Button
+            onClick={() => {
+              setShowForm(true)
+              setEditingStaff(null)
+              setFormData({
+                firstName: "",
+                lastName: "",
+                tcNumber: "",
+                email: "",
+                phone: "",
+                department: "OGRETMEN",
+                position: "",
+                subject: "",
+                isActive: true,
+                hireDate: "",
+                notes: "",
+                hasGeziAccess: false,
+                hasIbAccess: false,
+              })
+            }}
+            size="sm"
+            className="w-full sm:w-auto text-xs sm:text-sm"
+          >
+            <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            Yeni Personel Ekle
+          </Button>
+        </div>
       </div>
 
       {/* İstatistikler */}

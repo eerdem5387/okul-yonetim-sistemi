@@ -528,6 +528,8 @@ model Staff {
   approvedLeaves StaffLeave[] @relation("ApprovedLeaves")
   duties         StaffDuty[]
   permissions    StaffPermission[]
+  retentionCycles       StaffRetentionCycle[]
+  conductedRetentionMeetings StaffRetentionMeeting[] @relation("ConductedRetentionMeetings")
 
   @@index([tcNumber])
   @@index([department])
@@ -605,6 +607,48 @@ model StaffDuty {
   @@index([staffId])
   @@index([dayOfWeek])
   @@map("staff_duties")
+}
+
+// HRM - Yıl sonu devam görüşmeleri
+enum StaffRetentionOutcome {
+  WILL_CONTINUE // Devam Edecek
+  UNCERTAIN // Belirsiz
+  WILL_NOT_CONTINUE // Devam Etmeyecek
+}
+
+model StaffRetentionCycle {
+  id                      String                 @id @default(cuid())
+  staffId                 String
+  staff                   Staff                  @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  targetAcademicYearId    String?
+  targetAcademicYearLabel String
+  currentOutcome          StaffRetentionOutcome?
+  lastMeetingAt           DateTime?
+  createdAt               DateTime               @default(now())
+  updatedAt               DateTime               @updatedAt
+  meetings                StaffRetentionMeeting[]
+
+  @@unique([staffId, targetAcademicYearLabel])
+  @@index([currentOutcome])
+  @@index([targetAcademicYearLabel])
+  @@map("staff_retention_cycles")
+}
+
+model StaffRetentionMeeting {
+  id            String                @id @default(cuid())
+  cycleId       String
+  cycle         StaffRetentionCycle   @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  meetingAt     DateTime
+  conductedById String?
+  conductedBy   Staff?                @relation("ConductedRetentionMeetings", fields: [conductedById], references: [id], onDelete: SetNull)
+  outcome       StaffRetentionOutcome
+  notes         String?               @db.Text
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  @@index([cycleId])
+  @@index([meetingAt])
+  @@map("staff_retention_meetings")
 }
 
 // Neredeyiz Modülü - Yıllık Plan Takip Sistemi

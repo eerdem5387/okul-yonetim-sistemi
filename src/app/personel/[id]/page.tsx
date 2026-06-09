@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import {
   ArrowLeft,
   Briefcase,
@@ -11,22 +11,24 @@ import {
   Loader2,
   Mail,
   MapPin,
+  MessageSquare,
   Phone,
   Shield,
   StickyNote,
   TrendingUp,
 } from "lucide-react"
-import type { LeaveStatus, LeaveType, StaffDepartment } from "@prisma/client"
+import type { LeaveStatus, LeaveType, StaffDepartment, StaffRetentionOutcome } from "@prisma/client"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  WeeklyScheduleCalendar,
-  type WeeklyScheduleItem,
-} from "@/components/hr/WeeklyScheduleCalendar"
+import type { WeeklyScheduleItem } from "@/components/hr/WeeklyScheduleCalendar"
 import { LeaveMonthCalendar } from "@/components/hr/LeaveMonthCalendar"
 import { LeaveRequestDialog } from "@/components/hr/LeaveRequestDialog"
 import { LeaveApprovalRow, type LeaveItem } from "@/components/hr/LeaveApprovalRow"
 import { AdminNotesEditor } from "@/components/hr/AdminNotesEditor"
+import { StaffDashboardHeader, type StaffDashboardData } from "@/components/hr/StaffDashboardHeader"
+import { StaffRetentionTimeline, type RetentionMeetingItem } from "@/components/hr/StaffRetentionTimeline"
+import { StaffScheduleEditor } from "@/components/hr/StaffScheduleEditor"
+import { RetentionOutcomeBadge } from "@/components/hr/RetentionOutcomeBadge"
 import { DAY_OF_WEEK_LABELS } from "@/lib/hr/constants"
 import {
   departmentLabel,
@@ -34,6 +36,11 @@ import {
   getAuthHeaders,
   isHrAdminClient,
 } from "@/components/hr/hr-utils"
+import {
+  canEditHrRetention,
+  canViewHrRetention,
+  fetchPermissionsMe,
+} from "@/lib/permissions/client"
 
 interface StaffDetail {
   id: string
@@ -68,26 +75,46 @@ interface DutyItem {
   notes: string | null
 }
 
+interface RetentionCycleData {
+  id: string
+  targetAcademicYearLabel: string
+  currentOutcome: StaffRetentionOutcome | null
+  lastMeetingAt: string | null
+  meetings: RetentionMeetingItem[]
+}
+
 export default function StaffDetailPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const params = useParams<{ id: string }>()
   const staffId = params.id
+  const initialTab = searchParams.get("tab") || "schedule"
+
   const [staff, setStaff] = useState<StaffDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [scheduleItems, setScheduleItems] = useState<WeeklyScheduleItem[]>([])
   const [leaves, setLeaves] = useState<LeaveItem[]>([])
   const [progress, setProgress] = useState<ProgressSummary[]>([])
   const [duties, setDuties] = useState<DutyItem[]>([])
+  const [dashboardData, setDashboardData] = useState<StaffDashboardData | null>(null)
+  const [retentionCycle, setRetentionCycle] = useState<RetentionCycleData | null>(null)
   const [showLeaveDialog, setShowLeaveDialog] = useState(false)
+  const [activeTab, setActiveTab] = useState(initialTab)
 
   const [isAdmin, setIsAdmin] = useState(false)
   const [isSelf, setIsSelf] = useState(false)
+  const [canEditRetention, setCanEditRetention] = useState(false)
+  const [canViewRetention, setCanViewRetention] = useState(false)
 
   useEffect(() => {
     if (typeof window === "undefined") return
     setIsAdmin(isHrAdminClient())
     const me = localStorage.getItem("staff_id")
     setIsSelf(me === staffId)
+    fetchPermissionsMe().then((perms) => {
+      setCanViewRetention(canViewHrRetention(perms))
+      setCanEditRetention(canEditHrRetention(perms))
+    })
   }, [staffId])
 
   const loadStaff = useCallback(async () => {
@@ -142,13 +169,49 @@ export default function StaffDetailPage() {
     }
   }, [staffId])
 
+  const loadDashboard = useCallback(async () => {
+    const res = await fetch(`/api/hr/staff/${staffId}/dashboard`, {
+      headers: getAuthHeaders(),
+      cache: "no-store",
+    })
+    if (res.ok) {
+      const data = await res.json()
+      setDashboardData({
+        leaves: data.leaves,
+        schedule: data.schedule,
+        retention: data.retention,
+      })
+    }
+  }, [staffId])
+
+  const loadRetention = useCallback(async () => {
+    if (!canViewRetention && !isAdmin) return
+    const res = await fetch(`/api/hr/retention/cycles?staffId=${staffId}`, {
+      headers: getAuthHeaders(),
+      cache: "no-store",
+    })
+    if (res.ok) {
+      const data = await res.json()
+      setRetentionCycle(data.cycle ?? null)
+    }
+  }, [staffId, canViewRetention, isAdmin])
+
   useEffect(() => {
     if (!staffId) return
     setLoading(true)
-    Promise.all([loadStaff(), loadSchedule(), loadLeaves(), loadProgress(), loadDuties()]).finally(
-      () => setLoading(false)
-    )
-  }, [staffId, loadStaff, loadSchedule, loadLeaves, loadProgress, loadDuties])
+    Promise.all([
+      loadStaff(),
+      loadSchedule(),
+      loadLeaves(),
+      loadProgress(),
+      loadDuties(),
+      loadDashboard(),
+    ]).finally(() => setLoading(false))
+  }, [staffId, loadStaff, loadSchedule, loadLeaves, loadProgress, loadDuties, loadDashboard])
+
+  useEffect(() => {
+    if (canViewRetention || isAdmin) void loadRetention()
+  }, [canViewRetention, isAdmin, loadRetention])
 
   const leaveCalendarItems = useMemo(
     () =>
@@ -170,6 +233,9 @@ export default function StaffDetailPage() {
     }
     return out
   }, [duties])
+
+  const showRetentionTab = isAdmin || canViewRetention
+  const canEditSchedule = isAdmin
 
   if (loading) {
     return (
@@ -233,17 +299,26 @@ export default function StaffDetailPage() {
               )}
             </div>
           </div>
-          <div>
+          <div className="flex flex-col items-end gap-2">
             <span
               className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${staff.isActive ? "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200" : "bg-gray-100 text-gray-600 ring-1 ring-gray-200"}`}
             >
               {staff.isActive ? "Aktif" : "Pasif"}
             </span>
+            {dashboardData && (
+              <RetentionOutcomeBadge outcome={dashboardData.retention.currentOutcome} />
+            )}
           </div>
         </div>
       </div>
 
-      <Tabs defaultValue="schedule" className="space-y-4">
+      {dashboardData && (isAdmin || canViewRetention) && (
+        <div className="mb-6">
+          <StaffDashboardHeader data={dashboardData} />
+        </div>
+      )}
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="flex-wrap">
           <TabsTrigger value="schedule">
             <CalendarDays className="mr-1.5 h-4 w-4" />
@@ -253,6 +328,12 @@ export default function StaffDetailPage() {
             <CalendarRange className="mr-1.5 h-4 w-4" />
             İzinler
           </TabsTrigger>
+          {showRetentionTab && (
+            <TabsTrigger value="retention">
+              <MessageSquare className="mr-1.5 h-4 w-4" />
+              Yıl Sonu Görüşmeleri
+            </TabsTrigger>
+          )}
           <TabsTrigger value="progress">
             <TrendingUp className="mr-1.5 h-4 w-4" />
             Müfredat İlerleme
@@ -274,11 +355,15 @@ export default function StaffDetailPage() {
         </TabsList>
 
         <TabsContent value="schedule">
-          {scheduleItems.length === 0 ? (
-            <EmptyState>Bu personel için ders programı tanımlı değil.</EmptyState>
-          ) : (
-            <WeeklyScheduleCalendar items={scheduleItems} />
-          )}
+          <StaffScheduleEditor
+            staffId={staffId}
+            canEdit={canEditSchedule}
+            items={scheduleItems}
+            onChanged={() => {
+              void loadSchedule()
+              void loadDashboard()
+            }}
+          />
         </TabsContent>
 
         <TabsContent value="leaves" className="space-y-4">
@@ -290,12 +375,30 @@ export default function StaffDetailPage() {
                 key={l.id}
                 leave={l}
                 isAdmin={isAdmin}
-                onChanged={loadLeaves}
+                onChanged={() => {
+                  void loadLeaves()
+                  void loadDashboard()
+                }}
                 showStaffName={false}
               />
             ))}
           </div>
         </TabsContent>
+
+        {showRetentionTab && (
+          <TabsContent value="retention">
+            <StaffRetentionTimeline
+              staffId={staffId}
+              targetYearLabel={retentionCycle?.targetAcademicYearLabel ?? dashboardData?.retention.targetAcademicYearLabel ?? null}
+              meetings={retentionCycle?.meetings ?? []}
+              canEdit={canEditRetention || isAdmin}
+              onChanged={() => {
+                void loadRetention()
+                void loadDashboard()
+              }}
+            />
+          </TabsContent>
+        )}
 
         <TabsContent value="progress">
           {progress.length === 0 ? (

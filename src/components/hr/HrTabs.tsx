@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Users, LayoutDashboard, Calendar, Shield } from "lucide-react"
+import { Users, LayoutDashboard, Calendar, Shield, MessageSquare } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useEffect, useState } from "react"
 import { isHrAdminClient } from "./hr-utils"
@@ -18,6 +18,7 @@ interface TabDef {
 const TABS: TabDef[] = [
   { href: "/personel/dashboard", label: "HR Dashboard", icon: LayoutDashboard, adminOnly: true },
   { href: "/personel", label: "Personel Listesi", icon: Users, exact: true },
+  { href: "/personel/gorusmeler", label: "Personel Görüşmeler", icon: MessageSquare, adminOnly: true },
   { href: "/personel/izinler", label: "İzinler", icon: Calendar, adminOnly: true },
   { href: "/personel/nobet", label: "Nöbet", icon: Shield, adminOnly: true },
 ]

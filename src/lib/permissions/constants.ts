@@ -31,6 +31,12 @@ export const PERMISSION_MODULES: PermissionModuleDef[] = [
     group: "İK",
     actions: ["view", "edit", "delete", "export"],
   },
+  {
+    id: "hr_retention",
+    label: "Personel Görüşmeleri (Yıl Sonu)",
+    group: "İK",
+    actions: ["view", "create", "edit", "delete", "export"],
+  },
   { id: "students", label: "Öğrenci Yönetimi", group: "Öğrenci", actions: ["view", "create", "edit", "delete", "export"] },
   { id: "classes", label: "Sınıf Yönetimi", group: "Öğrenci", actions: ["view", "create", "edit", "delete"] },
   { id: "registrations", label: "Kayıt / Yenileme / Sözleşmeler", group: "Kayıt", actions: ["view", "create", "edit", "delete", "export"] },
