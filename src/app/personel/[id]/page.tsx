@@ -389,6 +389,7 @@ export default function StaffDetailPage() {
           <TabsContent value="retention">
             <StaffRetentionTimeline
               staffId={staffId}
+              staffName={`${staff.firstName} ${staff.lastName}`}
               targetYearLabel={retentionCycle?.targetAcademicYearLabel ?? dashboardData?.retention.targetAcademicYearLabel ?? null}
               meetings={retentionCycle?.meetings ?? []}
               canEdit={canEditRetention || isAdmin}
@@ -396,6 +397,7 @@ export default function StaffDetailPage() {
                 void loadRetention()
                 void loadDashboard()
               }}
+              onStaffRemoved={() => router.push("/personel")}
             />
           </TabsContent>
         )}

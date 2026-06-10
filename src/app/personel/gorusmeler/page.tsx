@@ -140,6 +140,8 @@ export default function PersonelGorusmelerPage() {
 
   if (!allowed) return null
 
+  const modalStaff = data?.rows.find((r) => r.staff.id === modalStaffId)?.staff
+
   return (
     <div className="px-4 py-6 sm:px-6 space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -276,7 +278,14 @@ export default function PersonelGorusmelerPage() {
             </div>
             <RetentionMeetingForm
               staffId={modalStaffId}
+              staffName={
+                modalStaff ? `${modalStaff.firstName} ${modalStaff.lastName}` : undefined
+              }
               onSuccess={() => {
+                setModalStaffId(null)
+                void load()
+              }}
+              onStaffRemoved={() => {
                 setModalStaffId(null)
                 void load()
               }}

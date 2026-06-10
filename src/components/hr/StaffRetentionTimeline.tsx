@@ -8,7 +8,9 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { RETENTION_OUTCOME_LABELS, RETENTION_OUTCOMES } from "@/lib/hr/retention"
 import { RetentionOutcomeBadge } from "./RetentionOutcomeBadge"
+import { removeStaffFromList, updateRetentionMeeting } from "@/lib/hr/retention-client"
 import { RetentionMeetingForm } from "./RetentionMeetingForm"
+import { RetentionWillNotContinueDialog } from "./RetentionWillNotContinueDialog"
 import { formatDateTime, getAuthHeaders } from "./hr-utils"
 
 export interface RetentionMeetingItem {
@@ -21,18 +23,22 @@ export interface RetentionMeetingItem {
 
 interface StaffRetentionTimelineProps {
   staffId: string
+  staffName?: string
   targetYearLabel: string | null
   meetings: RetentionMeetingItem[]
   canEdit: boolean
   onChanged: () => void
+  onStaffRemoved?: () => void
 }
 
 export function StaffRetentionTimeline({
   staffId,
+  staffName,
   targetYearLabel,
   meetings,
   canEdit,
   onChanged,
+  onStaffRemoved,
 }: StaffRetentionTimelineProps) {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -40,6 +46,7 @@ export function StaffRetentionTimeline({
   const [editOutcome, setEditOutcome] = useState<StaffRetentionOutcome>("UNCERTAIN")
   const [editNotes, setEditNotes] = useState("")
   const [saving, setSaving] = useState(false)
+  const [confirmEditOpen, setConfirmEditOpen] = useState(false)
 
   const startEdit = (m: RetentionMeetingItem) => {
     const d = new Date(m.meetingAt)
@@ -50,23 +57,25 @@ export function StaffRetentionTimeline({
     setEditNotes(m.notes ?? "")
   }
 
-  const saveEdit = async () => {
+  const persistEdit = async (removeFromList: boolean) => {
     if (!editingId) return
     setSaving(true)
     try {
-      const res = await fetch(`/api/hr/retention/meetings/${editingId}`, {
-        method: "PATCH",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          meetingAt: new Date(editMeetingAt).toISOString(),
-          outcome: editOutcome,
-          notes: editNotes.trim() || null,
-        }),
+      await updateRetentionMeeting(editingId, {
+        meetingAt: new Date(editMeetingAt).toISOString(),
+        outcome: editOutcome,
+        notes: editNotes.trim() || null,
       })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || "Güncellenemedi")
+
+      if (removeFromList) {
+        await removeStaffFromList(staffId)
+        setConfirmEditOpen(false)
+        setEditingId(null)
+        onStaffRemoved?.()
+        return
       }
+
+      setConfirmEditOpen(false)
       setEditingId(null)
       onChanged()
     } catch (e) {
@@ -74,6 +83,15 @@ export function StaffRetentionTimeline({
     } finally {
       setSaving(false)
     }
+  }
+
+  const saveEdit = () => {
+    if (!editingId) return
+    if (editOutcome === "WILL_NOT_CONTINUE") {
+      setConfirmEditOpen(true)
+      return
+    }
+    void persistEdit(false)
   }
 
   const handleDelete = async (id: string) => {
@@ -103,10 +121,15 @@ export function StaffRetentionTimeline({
           {showForm ? (
             <RetentionMeetingForm
               staffId={staffId}
+              staffName={staffName}
               compact
               onSuccess={() => {
                 setShowForm(false)
                 onChanged()
+              }}
+              onStaffRemoved={() => {
+                setShowForm(false)
+                onStaffRemoved?.()
               }}
               onCancel={() => setShowForm(false)}
             />
@@ -223,6 +246,17 @@ export function StaffRetentionTimeline({
           ))}
         </div>
       )}
+
+      <RetentionWillNotContinueDialog
+        open={confirmEditOpen}
+        onOpenChange={(open) => {
+          if (!saving) setConfirmEditOpen(open)
+        }}
+        staffName={staffName}
+        loading={saving}
+        onKeepOnly={() => void persistEdit(false)}
+        onRemoveFromList={() => void persistEdit(true)}
+      />
     </div>
   )
 }
