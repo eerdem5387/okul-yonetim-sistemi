@@ -77,23 +77,25 @@ export async function PUT(
       )
     }
 
+    const updateData: Record<string, unknown> = {
+      firstName,
+      lastName,
+      tcNumber,
+      email: email || null,
+      phone: phone || null,
+      department: department as StaffDepartment,
+      position: position || null,
+      subject: subject || null,
+      isActive: isActive !== undefined ? isActive : true,
+      hireDate: hireDate ? new Date(hireDate) : null,
+      notes: notes || null,
+    }
+    if (hasGeziAccess !== undefined) updateData.hasGeziAccess = hasGeziAccess === true
+    if (hasIbAccess !== undefined) updateData.hasIbAccess = hasIbAccess === true
+
     const staff = await prisma.staff.update({
       where: { id: params.id },
-      data: {
-        firstName,
-        lastName,
-        tcNumber,
-        email: email || null,
-        phone: phone || null,
-        department: department as StaffDepartment,
-        position: position || null,
-        subject: subject || null,
-        isActive: isActive !== undefined ? isActive : true,
-        hireDate: hireDate ? new Date(hireDate) : null,
-        notes: notes || null,
-        hasGeziAccess: hasGeziAccess === true,
-        hasIbAccess: hasIbAccess === true,
-      },
+      data: updateData,
     })
 
     return NextResponse.json(staff)
@@ -123,6 +125,11 @@ export async function DELETE(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const actor = await resolveActorWithPermission(request, "staff", "delete")
+  if (!actor) {
+    return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 403 })
+  }
+
   try {
     const params = await context.params
     await prisma.staff.delete({

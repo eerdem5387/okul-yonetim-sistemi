@@ -21,6 +21,7 @@ import {
   Award,
 } from "lucide-react"
 import Link from "next/link"
+import { getAuthHeaders } from "@/components/hr/hr-utils"
 
 interface DashboardStats {
   totalStudents: number
@@ -151,7 +152,7 @@ export default function HomePage() {
         fetch("/api/new-registrations"),
         fetch("/api/renewals"),
         fetch("/api/teklif-gorusmeleri?limit=5&page=1"),
-        fetch("/api/staff?limit=1&page=1"),
+        fetch("/api/staff?limit=1&page=1", { headers: getAuthHeaders() }),
         fetch("/api/uniform-contracts"),
         fetch("/api/meal-contracts"),
         fetch("/api/service-contracts"),
