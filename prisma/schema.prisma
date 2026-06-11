@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Student {
@@ -229,6 +230,15 @@ enum HrApplicationStatus {
   ISE_ALINDI
 }
 
+enum HrApplicationMeetingOutcome {
+  OLUMLU
+  KARARSIZ
+  OLUMSUZ
+  TEKLIF
+  ISE_ALINDI
+  RED
+}
+
 model HrJobApplication {
   id                       String              @id @default(cuid())
   externalId               String              @unique
@@ -251,15 +261,37 @@ model HrJobApplication {
   internalNote             String?             @db.Text
   assignedToStaffId        String?
   lastContactedAt          DateTime?
+  lastMeetingAt            DateTime?
+  lastMeetingOutcome       HrApplicationMeetingOutcome?
   createdAt                DateTime
   syncedAt                 DateTime            @default(now())
   updatedAt                DateTime            @updatedAt
+
+  meetings HrJobApplicationMeeting[]
 
   @@index([externalId])
   @@index([appliedBranch])
   @@index([status])
   @@index([createdAt])
+  @@index([lastMeetingAt])
   @@map("hr_job_applications")
+}
+
+model HrJobApplicationMeeting {
+  id            String                      @id @default(cuid())
+  applicationId String
+  application   HrJobApplication            @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  meetingAt     DateTime
+  conductedById String?
+  conductedBy   Staff?                      @relation("ConductedHrApplicationMeetings", fields: [conductedById], references: [id], onDelete: SetNull)
+  outcome       HrApplicationMeetingOutcome
+  notes         String?                     @db.Text
+  createdAt     DateTime                    @default(now())
+  updatedAt     DateTime                    @updatedAt
+
+  @@index([applicationId])
+  @@index([meetingAt])
+  @@map("hr_job_application_meetings")
 }
 
 // ============================================
@@ -530,6 +562,7 @@ model Staff {
   permissions    StaffPermission[]
   retentionCycles       StaffRetentionCycle[]
   conductedRetentionMeetings StaffRetentionMeeting[] @relation("ConductedRetentionMeetings")
+  conductedHrApplicationMeetings HrJobApplicationMeeting[] @relation("ConductedHrApplicationMeetings")
 
   @@index([tcNumber])
   @@index([department])

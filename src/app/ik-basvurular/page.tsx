@@ -18,7 +18,11 @@ import {
   FileText,
   ExternalLink,
   Loader2,
+  MessageSquare,
 } from "lucide-react"
+import { HrApplicationMeetingOutcomeBadge } from "@/components/hr-recruitment/HrApplicationMeetingOutcomeBadge"
+import { HrApplicationMeetingTimeline } from "@/components/hr-recruitment/HrApplicationMeetingTimeline"
+import type { HrApplicationMeetingOutcome } from "@prisma/client"
 import {
   HR_STATUS_COLORS,
   HR_STATUS_LABELS,
@@ -59,6 +63,8 @@ interface HrApplication {
   cvFileName: string
   status: HrApplicationStatus
   internalNote: string | null
+  lastMeetingAt: string | null
+  lastMeetingOutcome: HrApplicationMeetingOutcome | null
   createdAt: string
 }
 
@@ -114,6 +120,7 @@ export default function IkBasvurularPage() {
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
+  const [meetingModalApp, setMeetingModalApp] = useState<HrApplication | null>(null)
 
   useEffect(() => {
     fetchPermissionsMe().then((me) => {
@@ -356,6 +363,7 @@ export default function IkBasvurularPage() {
                     <th className="pb-3 pr-4 font-medium">Branş</th>
                     <th className="pb-3 pr-4 font-medium">Deneyim</th>
                     <th className="pb-3 pr-4 font-medium">Durum</th>
+                    <th className="pb-3 pr-4 font-medium">Son Görüşme</th>
                     <th className="pb-3 pr-4 font-medium">Tarih</th>
                     <th className="pb-3 font-medium text-right">İşlem</th>
                   </tr>
@@ -373,11 +381,36 @@ export default function IkBasvurularPage() {
                           {HR_STATUS_LABELS[app.status]}
                         </span>
                       </td>
+                      <td className="py-3 pr-4">
+                        {app.lastMeetingOutcome ? (
+                          <div className="space-y-1">
+                            <HrApplicationMeetingOutcomeBadge outcome={app.lastMeetingOutcome} />
+                            {app.lastMeetingAt && (
+                              <p className="text-xs text-gray-500">
+                                {new Date(app.lastMeetingAt).toLocaleDateString("tr-TR")}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
+                      </td>
                       <td className="py-3 pr-4 text-gray-600">
                         {new Date(app.createdAt).toLocaleDateString("tr-TR")}
                       </td>
                       <td className="py-3 text-right">
                         <div className="flex justify-end gap-1">
+                          {canEdit && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs"
+                              onClick={() => setMeetingModalApp(app)}
+                            >
+                              <MessageSquare className="h-3.5 w-3.5 mr-1" />
+                              Görüşme
+                            </Button>
+                          )}
                           <Button size="sm" variant="ghost" onClick={() => openDetail(app)}>
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -426,6 +459,41 @@ export default function IkBasvurularPage() {
           )}
         </CardContent>
       </Card>
+
+      {meetingModalApp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
+              <div>
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-indigo-600" />
+                  Görüşmeler
+                </h2>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  {meetingModalApp.fullName} — {meetingModalApp.appliedBranch}
+                </p>
+              </div>
+              <button
+                onClick={() => setMeetingModalApp(null)}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <HrApplicationMeetingTimeline
+                applicationId={meetingModalApp.id}
+                applicantName={meetingModalApp.fullName}
+                canEdit={canEdit}
+                onChanged={() => {
+                  void fetchApplications()
+                  void fetchStats()
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
