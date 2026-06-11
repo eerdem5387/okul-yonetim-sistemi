@@ -118,6 +118,7 @@ export async function POST(request: NextRequest) {
     const record = await prisma.hrJobApplication.create({
       data: {
         externalId: payload.id,
+        source: "WEBSITE",
         fullName: String(payload.fullName).trim(),
         residence: String(payload.residence).trim(),
         birthYear: Number(payload.birthYear),

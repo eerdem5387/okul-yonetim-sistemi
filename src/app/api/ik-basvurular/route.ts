@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireHrRecruitmentAccess } from "@/lib/hr-recruitment/access"
+import { createManualHrApplication } from "@/lib/hr-recruitment/manual-application"
 import type { HrApplicationStatus, Prisma } from "@prisma/client"
 
 export async function GET(request: NextRequest) {
@@ -72,5 +73,31 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("[ik-basvurular] GET error:", error)
     return NextResponse.json({ error: "Başvurular yüklenemedi" }, { status: 500 })
+  }
+}
+
+export async function POST(request: NextRequest) {
+  const gate = await requireHrRecruitmentAccess(request, "edit")
+  if (gate.response) return gate.response
+
+  try {
+    const body = await request.json().catch(() => null)
+    if (!body) {
+      return NextResponse.json({ error: "Geçersiz JSON" }, { status: 400 })
+    }
+
+    const { fullName, note } = body as { fullName?: string; note?: string | null }
+    if (!fullName?.trim()) {
+      return NextResponse.json({ error: "Ad Soyad zorunludur" }, { status: 400 })
+    }
+
+    const application = await createManualHrApplication({ fullName, note })
+    return NextResponse.json(application, { status: 201 })
+  } catch (error) {
+    console.error("[ik-basvurular] POST error:", error)
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Başvuru eklenemedi" },
+      { status: 400 }
+    )
   }
 }

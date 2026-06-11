@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireHrRecruitmentAccess } from "@/lib/hr-recruitment/access"
-import { HR_STATUS_LABELS } from "@/lib/hr-recruitment/constants"
+import { HR_SOURCE_LABELS, HR_STATUS_LABELS } from "@/lib/hr-recruitment/constants"
 import type { HrApplicationStatus, Prisma } from "@prisma/client"
 
 type ReferenceRow = {
@@ -59,6 +59,7 @@ export async function GET(request: NextRequest) {
     const XLSX = await import("xlsx")
     const rows = applications.map((a, index) => ({
       "Sıra": index + 1,
+      "Kaynak": HR_SOURCE_LABELS[a.source],
       "Ad Soyad": a.fullName,
       "Yaşadığı Yer": a.residence,
       "Doğum Yılı": a.birthYear,

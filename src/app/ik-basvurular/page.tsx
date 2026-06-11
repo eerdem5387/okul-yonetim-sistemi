@@ -19,11 +19,14 @@ import {
   ExternalLink,
   Loader2,
   MessageSquare,
+  Plus,
 } from "lucide-react"
 import { HrApplicationMeetingOutcomeBadge } from "@/components/hr-recruitment/HrApplicationMeetingOutcomeBadge"
 import { HrApplicationMeetingTimeline } from "@/components/hr-recruitment/HrApplicationMeetingTimeline"
-import type { HrApplicationMeetingOutcome } from "@prisma/client"
+import { HrApplicationSourceBadge } from "@/components/hr-recruitment/HrApplicationSourceBadge"
+import type { HrApplicationMeetingOutcome, HrApplicationSource } from "@prisma/client"
 import {
+  HR_SOURCE_ROW_CLASS,
   HR_STATUS_COLORS,
   HR_STATUS_LABELS,
   HR_STATUS_OPTIONS,
@@ -46,6 +49,7 @@ type ReferenceRow = {
 interface HrApplication {
   id: string
   externalId: string
+  source: HrApplicationSource
   fullName: string
   residence: string
   birthYear: number
@@ -121,6 +125,10 @@ export default function IkBasvurularPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
   const [meetingModalApp, setMeetingModalApp] = useState<HrApplication | null>(null)
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [addFullName, setAddFullName] = useState("")
+  const [addNote, setAddNote] = useState("")
+  const [adding, setAdding] = useState(false)
 
   useEffect(() => {
     fetchPermissionsMe().then((me) => {
@@ -218,6 +226,32 @@ export default function IkBasvurularPage() {
     }
   }
 
+  const handleAddApplication = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!canEdit || !addFullName.trim()) return
+    setAdding(true)
+    try {
+      const res = await fetch("/api/ik-basvurular", {
+        method: "POST",
+        headers: { ...staffAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ fullName: addFullName.trim(), note: addNote.trim() || null }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || "Başvuru eklenemedi")
+      }
+      setShowAddForm(false)
+      setAddFullName("")
+      setAddNote("")
+      await fetchApplications()
+      await fetchStats()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Başvuru eklenemedi")
+    } finally {
+      setAdding(false)
+    }
+  }
+
   const handleExport = async () => {
     if (!canExport) return
     setExporting(true)
@@ -263,15 +297,23 @@ export default function IkBasvurularPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">İK Öğretmen Başvuruları</h1>
           <p className="text-sm text-gray-500 mt-1">
-            ik.leventokullari.com üzerinden gelen başvurular
+            Web başvuruları ve görüşmeye alınan manuel aday kayıtları
           </p>
         </div>
-        {canExport && (
-          <Button variant="outline" onClick={handleExport} disabled={exporting}>
-            <Download className="h-4 w-4 mr-2" />
-            {exporting ? "İndiriliyor..." : "Excel İndir"}
-          </Button>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {canEdit && (
+            <Button onClick={() => setShowAddForm(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Başvuru Ekle
+            </Button>
+          )}
+          {canExport && (
+            <Button variant="outline" onClick={handleExport} disabled={exporting}>
+              <Download className="h-4 w-4 mr-2" />
+              {exporting ? "İndiriliyor..." : "Excel İndir"}
+            </Button>
+          )}
+        </div>
       </div>
 
       {stats && (
@@ -370,10 +412,30 @@ export default function IkBasvurularPage() {
                 </thead>
                 <tbody>
                   {applications.map((app) => (
-                    <tr key={app.id} className="border-b border-gray-100 hover:bg-gray-50/80">
-                      <td className="py-3 pr-4 font-medium text-gray-900">{app.fullName}</td>
-                      <td className="py-3 pr-4">{app.appliedBranch}</td>
-                      <td className="py-3 pr-4">{app.totalExperience}</td>
+                    <tr
+                      key={app.id}
+                      className={`border-b border-gray-100 hover:bg-gray-50/80 ${HR_SOURCE_ROW_CLASS[app.source ?? "WEBSITE"]}`}
+                    >
+                      <td className="py-3 pr-4">
+                        <div className="space-y-1.5">
+                          <p className="font-medium text-gray-900">{app.fullName}</p>
+                          <HrApplicationSourceBadge source={app.source ?? "WEBSITE"} />
+                        </div>
+                      </td>
+                      <td className="py-3 pr-4">
+                        {app.source === "MANUAL" ? (
+                          <span className="text-gray-400">—</span>
+                        ) : (
+                          app.appliedBranch
+                        )}
+                      </td>
+                      <td className="py-3 pr-4">
+                        {app.source === "MANUAL" ? (
+                          <span className="text-gray-400">—</span>
+                        ) : (
+                          app.totalExperience
+                        )}
+                      </td>
                       <td className="py-3 pr-4">
                         <span
                           className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${HR_STATUS_COLORS[app.status]}`}
@@ -460,6 +522,73 @@ export default function IkBasvurularPage() {
         </CardContent>
       </Card>
 
+      {showAddForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+            <div className="border-b px-6 py-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Plus className="h-5 w-5 text-indigo-600" />
+                Başvuru Ekle
+              </h2>
+              <button
+                onClick={() => {
+                  setShowAddForm(false)
+                  setAddFullName("")
+                  setAddNote("")
+                }}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <form onSubmit={handleAddApplication} className="p-6 space-y-4">
+              <p className="text-sm text-gray-500">
+                Siteden başvuru yapmayıp görüşmeye aldığınız adayları buradan kaydedebilirsiniz.
+              </p>
+              <div>
+                <Label htmlFor="addFullName">Ad - Soyad</Label>
+                <Input
+                  id="addFullName"
+                  value={addFullName}
+                  onChange={(e) => setAddFullName(e.target.value)}
+                  placeholder="Örn: Ayşe Yılmaz"
+                  required
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="addNote">Not</Label>
+                <textarea
+                  id="addNote"
+                  value={addNote}
+                  onChange={(e) => setAddNote(e.target.value)}
+                  placeholder="Görüşme öncesi notlar, referans bilgisi..."
+                  rows={4}
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <Button type="submit" disabled={adding || !addFullName.trim()} className="flex-1">
+                  {adding ? "Kaydediliyor..." : "Kaydet"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={adding}
+                  onClick={() => {
+                    setShowAddForm(false)
+                    setAddFullName("")
+                    setAddNote("")
+                  }}
+                >
+                  İptal
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {meetingModalApp && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -499,12 +628,29 @@ export default function IkBasvurularPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">{selected.fullName}</h2>
+              <div>
+                <h2 className="text-lg font-semibold">{selected.fullName}</h2>
+                <div className="mt-1">
+                  <HrApplicationSourceBadge source={selected.source ?? "WEBSITE"} />
+                </div>
+              </div>
               <button onClick={() => setSelected(null)} className="p-2 hover:bg-gray-100 rounded-lg">
                 <X className="h-5 w-5" />
               </button>
             </div>
             <div className="p-6 space-y-4 text-sm">
+              {selected.source === "MANUAL" ? (
+                <>
+                  {selected.internalNote && (
+                    <DetailRow label="Not" value={selected.internalNote} multiline />
+                  )}
+                  <p className="rounded-lg bg-violet-50 border border-violet-100 px-3 py-2 text-xs text-violet-800">
+                    Bu kayıt manuel olarak eklendi. Aday web formu doldurmamıştır; detayları
+                    görüşme kayıtlarından takip edebilirsiniz.
+                  </p>
+                </>
+              ) : (
+                <>
               <DetailRow label="Telefon" value={selected.phone} />
               <DetailRow label="Yaşadığı yer" value={selected.residence} />
               <DetailRow label="Doğum yılı" value={String(selected.birthYear)} />
@@ -531,18 +677,22 @@ export default function IkBasvurularPage() {
                   ))}
                 </ul>
               </div>
-              <div>
-                <a
-                  href={selected.cvUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-indigo-600 hover:underline"
-                >
-                  <FileText className="h-4 w-4" />
-                  {selected.cvFileName || "CV İndir"}
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-              </div>
+              {selected.cvUrl && (
+                <div>
+                  <a
+                    href={selected.cvUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-indigo-600 hover:underline"
+                  >
+                    <FileText className="h-4 w-4" />
+                    {selected.cvFileName || "CV İndir"}
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              )}
+                </>
+              )}
 
               {canEdit && (
                 <div className="border-t pt-4 space-y-3">

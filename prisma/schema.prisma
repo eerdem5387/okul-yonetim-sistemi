@@ -239,9 +239,15 @@ enum HrApplicationMeetingOutcome {
   RED
 }
 
+enum HrApplicationSource {
+  WEBSITE
+  MANUAL
+}
+
 model HrJobApplication {
   id                       String              @id @default(cuid())
   externalId               String              @unique
+  source                   HrApplicationSource @default(WEBSITE)
   fullName                 String
   residence                String
   birthYear                Int
@@ -270,6 +276,7 @@ model HrJobApplication {
   meetings HrJobApplicationMeeting[]
 
   @@index([externalId])
+  @@index([source])
   @@index([appliedBranch])
   @@index([status])
   @@index([createdAt])

@@ -1,4 +1,19 @@
-import type { HrApplicationStatus } from "@prisma/client"
+import type { HrApplicationSource, HrApplicationStatus } from "@prisma/client"
+
+export const HR_SOURCE_LABELS: Record<HrApplicationSource, string> = {
+  WEBSITE: "Web Başvurusu",
+  MANUAL: "Manuel Kayıt",
+}
+
+export const HR_SOURCE_COLORS: Record<HrApplicationSource, string> = {
+  WEBSITE: "bg-sky-100 text-sky-800 ring-1 ring-sky-200",
+  MANUAL: "bg-violet-100 text-violet-800 ring-1 ring-violet-200",
+}
+
+export const HR_SOURCE_ROW_CLASS: Record<HrApplicationSource, string> = {
+  WEBSITE: "border-l-4 border-l-sky-300",
+  MANUAL: "border-l-4 border-l-violet-400 bg-violet-50/40",
+}
 
 export const HR_STATUS_LABELS: Record<HrApplicationStatus, string> = {
   YENI: "Yeni",
