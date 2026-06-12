@@ -31,6 +31,7 @@ import {
   HR_STATUS_LABELS,
   HR_STATUS_OPTIONS,
 } from "@/lib/hr-recruitment/constants"
+import { formatDisplayPhone } from "@/lib/hr-recruitment/manual-application"
 import {
   canViewHrRecruitment,
   fetchPermissionsMe,
@@ -121,13 +122,17 @@ export default function IkBasvurularPage() {
   const [selected, setSelected] = useState<HrApplication | null>(null)
   const [editStatus, setEditStatus] = useState<HrApplicationStatus>("YENI")
   const [editNote, setEditNote] = useState("")
+  const [editPhone, setEditPhone] = useState("")
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
   const [meetingModalApp, setMeetingModalApp] = useState<HrApplication | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
   const [addFullName, setAddFullName] = useState("")
+  const [addPhone, setAddPhone] = useState("")
   const [addNote, setAddNote] = useState("")
+  const [meetingModalPhone, setMeetingModalPhone] = useState("")
+  const [savingMeetingPhone, setSavingMeetingPhone] = useState(false)
   const [adding, setAdding] = useState(false)
 
   useEffect(() => {
@@ -185,16 +190,55 @@ export default function IkBasvurularPage() {
     setSelected(app)
     setEditStatus(app.status)
     setEditNote(app.internalNote || "")
+    setEditPhone(formatDisplayPhone(app.phone))
+  }
+
+  const openMeetingModal = (app: HrApplication) => {
+    setMeetingModalApp(app)
+    setMeetingModalPhone(formatDisplayPhone(app.phone))
+  }
+
+  const handleSaveMeetingPhone = async () => {
+    if (!meetingModalApp || !canEdit || meetingModalApp.source !== "MANUAL") return
+    setSavingMeetingPhone(true)
+    try {
+      const res = await fetch(`/api/ik-basvurular/${meetingModalApp.id}`, {
+        method: "PATCH",
+        headers: { ...staffAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: meetingModalPhone.trim() || null }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || "Telefon kaydedilemedi")
+      }
+      const data = await res.json()
+      const updated = data.application as HrApplication
+      setMeetingModalApp(updated)
+      await fetchApplications()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Telefon kaydedilemedi")
+    } finally {
+      setSavingMeetingPhone(false)
+    }
   }
 
   const handleSave = async () => {
     if (!selected || !canEdit) return
     setSaving(true)
     try {
+      const payload: {
+        status: HrApplicationStatus
+        internalNote: string
+        phone?: string | null
+      } = { status: editStatus, internalNote: editNote }
+      if (selected.source === "MANUAL") {
+        payload.phone = editPhone.trim() || null
+      }
+
       const res = await fetch(`/api/ik-basvurular/${selected.id}`, {
         method: "PATCH",
         headers: { ...staffAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ status: editStatus, internalNote: editNote }),
+        body: JSON.stringify(payload),
       })
       if (!res.ok) throw new Error("Kaydedilemedi")
       await fetchApplications()
@@ -234,7 +278,11 @@ export default function IkBasvurularPage() {
       const res = await fetch("/api/ik-basvurular", {
         method: "POST",
         headers: { ...staffAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ fullName: addFullName.trim(), note: addNote.trim() || null }),
+        body: JSON.stringify({
+          fullName: addFullName.trim(),
+          phone: addPhone.trim() || null,
+          note: addNote.trim() || null,
+        }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
@@ -242,6 +290,7 @@ export default function IkBasvurularPage() {
       }
       setShowAddForm(false)
       setAddFullName("")
+      setAddPhone("")
       setAddNote("")
       await fetchApplications()
       await fetchStats()
@@ -419,6 +468,9 @@ export default function IkBasvurularPage() {
                       <td className="py-3 pr-4">
                         <div className="space-y-1.5">
                           <p className="font-medium text-gray-900">{app.fullName}</p>
+                          {app.source === "MANUAL" && formatDisplayPhone(app.phone) && (
+                            <p className="text-xs text-gray-500">{formatDisplayPhone(app.phone)}</p>
+                          )}
                           <HrApplicationSourceBadge source={app.source ?? "WEBSITE"} />
                         </div>
                       </td>
@@ -467,7 +519,7 @@ export default function IkBasvurularPage() {
                               size="sm"
                               variant="outline"
                               className="text-xs"
-                              onClick={() => setMeetingModalApp(app)}
+                              onClick={() => openMeetingModal(app)}
                             >
                               <MessageSquare className="h-3.5 w-3.5 mr-1" />
                               Görüşme
@@ -534,6 +586,7 @@ export default function IkBasvurularPage() {
                 onClick={() => {
                   setShowAddForm(false)
                   setAddFullName("")
+                  setAddPhone("")
                   setAddNote("")
                 }}
                 className="p-2 hover:bg-gray-100 rounded-lg"
@@ -553,6 +606,17 @@ export default function IkBasvurularPage() {
                   onChange={(e) => setAddFullName(e.target.value)}
                   placeholder="Örn: Ayşe Yılmaz"
                   required
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="addPhone">Telefon</Label>
+                <Input
+                  id="addPhone"
+                  type="tel"
+                  value={addPhone}
+                  onChange={(e) => setAddPhone(e.target.value)}
+                  placeholder="05xx xxx xx xx"
                   className="mt-1"
                 />
               </div>
@@ -578,6 +642,7 @@ export default function IkBasvurularPage() {
                   onClick={() => {
                     setShowAddForm(false)
                     setAddFullName("")
+                    setAddPhone("")
                     setAddNote("")
                   }}
                 >
@@ -599,17 +664,46 @@ export default function IkBasvurularPage() {
                   Görüşmeler
                 </h2>
                 <p className="text-sm text-gray-500 mt-0.5">
-                  {meetingModalApp.fullName} — {meetingModalApp.appliedBranch}
+                  {meetingModalApp.source === "MANUAL"
+                    ? meetingModalApp.fullName
+                    : `${meetingModalApp.fullName} — ${meetingModalApp.appliedBranch}`}
                 </p>
               </div>
               <button
-                onClick={() => setMeetingModalApp(null)}
+                onClick={() => {
+                  setMeetingModalApp(null)
+                  setMeetingModalPhone("")
+                }}
                 className="p-2 hover:bg-gray-100 rounded-lg"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="p-6">
+            <div className="p-6 space-y-4">
+              {meetingModalApp.source === "MANUAL" && canEdit && (
+                <div className="rounded-xl border border-violet-100 bg-violet-50/50 p-4 space-y-2">
+                  <Label htmlFor="meetingModalPhone">Telefon</Label>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Input
+                      id="meetingModalPhone"
+                      type="tel"
+                      value={meetingModalPhone}
+                      onChange={(e) => setMeetingModalPhone(e.target.value)}
+                      placeholder="05xx xxx xx xx"
+                      className="bg-white"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={savingMeetingPhone}
+                      onClick={() => void handleSaveMeetingPhone()}
+                      className="shrink-0"
+                    >
+                      {savingMeetingPhone ? "Kaydediliyor..." : "Telefonu Kaydet"}
+                    </Button>
+                  </div>
+                </div>
+              )}
               <HrApplicationMeetingTimeline
                 applicationId={meetingModalApp.id}
                 applicantName={meetingModalApp.fullName}
@@ -641,7 +735,10 @@ export default function IkBasvurularPage() {
             <div className="p-6 space-y-4 text-sm">
               {selected.source === "MANUAL" ? (
                 <>
-                  {selected.internalNote && (
+                  {!canEdit && formatDisplayPhone(selected.phone) && (
+                    <DetailRow label="Telefon" value={formatDisplayPhone(selected.phone)} />
+                  )}
+                  {selected.internalNote && !canEdit && (
                     <DetailRow label="Not" value={selected.internalNote} multiline />
                   )}
                   <p className="rounded-lg bg-violet-50 border border-violet-100 px-3 py-2 text-xs text-violet-800">
@@ -696,6 +793,19 @@ export default function IkBasvurularPage() {
 
               {canEdit && (
                 <div className="border-t pt-4 space-y-3">
+                  {selected.source === "MANUAL" && (
+                    <div>
+                      <Label htmlFor="editPhone">Telefon</Label>
+                      <Input
+                        id="editPhone"
+                        type="tel"
+                        value={editPhone}
+                        onChange={(e) => setEditPhone(e.target.value)}
+                        placeholder="05xx xxx xx xx"
+                        className="mt-1"
+                      />
+                    </div>
+                  )}
                   <div>
                     <Label>Durum</Label>
                     <select

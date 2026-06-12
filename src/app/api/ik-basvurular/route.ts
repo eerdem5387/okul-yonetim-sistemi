@@ -86,12 +86,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Geçersiz JSON" }, { status: 400 })
     }
 
-    const { fullName, note } = body as { fullName?: string; note?: string | null }
+    const { fullName, phone, note } = body as {
+      fullName?: string
+      phone?: string | null
+      note?: string | null
+    }
     if (!fullName?.trim()) {
       return NextResponse.json({ error: "Ad Soyad zorunludur" }, { status: 400 })
     }
 
-    const application = await createManualHrApplication({ fullName, note })
+    const application = await createManualHrApplication({ fullName, phone, note })
     return NextResponse.json(application, { status: 201 })
   } catch (error) {
     console.error("[ik-basvurular] POST error:", error)

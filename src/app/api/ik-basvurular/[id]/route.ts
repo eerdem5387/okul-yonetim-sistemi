@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireHrRecruitmentAccess } from "@/lib/hr-recruitment/access"
+import { normalizeManualPhone } from "@/lib/hr-recruitment/manual-application"
 import type { HrApplicationStatus } from "@prisma/client"
 
 const VALID_STATUSES: HrApplicationStatus[] = [
@@ -41,7 +42,36 @@ export async function PATCH(
   try {
     const { id } = await context.params
     const body = await request.json()
-    const data: { status?: HrApplicationStatus; internalNote?: string | null } = {}
+    const data: {
+      status?: HrApplicationStatus
+      internalNote?: string | null
+      phone?: string
+    } = {}
+
+    if (body.phone !== undefined) {
+      const existing = await prisma.hrJobApplication.findUnique({
+        where: { id },
+        select: { source: true },
+      })
+      if (!existing) {
+        return NextResponse.json({ error: "Başvuru bulunamadı" }, { status: 404 })
+      }
+      if (existing.source !== "MANUAL") {
+        return NextResponse.json(
+          { error: "Telefon yalnızca manuel kayıtlarda düzenlenebilir" },
+          { status: 400 }
+        )
+      }
+      try {
+        const raw = typeof body.phone === "string" ? body.phone : ""
+        data.phone = raw.trim() ? normalizeManualPhone(raw) : "—"
+      } catch (e) {
+        return NextResponse.json(
+          { error: e instanceof Error ? e.message : "Geçersiz telefon" },
+          { status: 400 }
+        )
+      }
+    }
 
     if (body.status !== undefined) {
       if (!VALID_STATUSES.includes(body.status)) {
