@@ -498,6 +498,14 @@ export default function StudentsPage() {
   }
 
   const handlePromoteAll = async () => {
+    const confirmed = window.confirm(
+      "Tüm öğrencilerin sınıfı bir üst düzeye alınır. Bu işlem kayıt yenileme değildir; geri alınamaz. Yıl devri için Ayarlar → Akademik Yıllar kullanılmalıdır.\n\nDevam edilsin mi?"
+    )
+    if (!confirmed) {
+      setConfirmPromote(false)
+      return
+    }
+
     try {
       const response = await fetch("/api/students/promote-all", {
         method: "POST",
@@ -908,6 +916,7 @@ export default function StudentsPage() {
                             <span className="font-normal text-sky-800/90">
                               {" "}
                               · kayıt yenileme {rf.renewed}/{rf.total} %{rf.percent}
+                              <span className="text-gray-500"> (mevcut sınıfa göre)</span>
                             </span>
                           ) : null}
                         </span>
@@ -996,6 +1005,11 @@ export default function StudentsPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+        {confirmPromote && !showGraduatesView ? (
+          <p className="w-full text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+            Tüm öğrencilerin sınıfı bir üst düzeye alınır. Bu işlem kayıt yenileme değildir; geri alınamaz. Yıl devri için Ayarlar → Akademik Yıllar kullanılmalıdır.
+          </p>
+        ) : null}
         <Button
           type="button"
           variant={showGraduatesView ? "default" : "outline"}
@@ -1187,7 +1201,7 @@ export default function StudentsPage() {
                 </div>
                 <div>
                   <Label htmlFor="grade" className="text-xs sm:text-sm">
-                    Sınıfı * &quot;Öğrencinin Aktif Olarak Eğitim Gördüğü Sınıf&quot;
+                    Mevcut sınıf (bu akademik yıl) *
                   </Label>
                   <select
                     id="grade"

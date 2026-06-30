@@ -7,6 +7,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Search, Filter, ArrowLeft, Eye, Download, Calendar, User, GraduationCap, Trash2, TrendingUp, Edit } from "lucide-react"
+import { CurrentAndTargetGrade } from "@/components/registration/CurrentAndTargetGrade"
+import { RenewalGradeExplainer } from "@/components/registration/RenewalGradeExplainer"
+import {
+  RENEWAL_STATS_FRACTION_HINT,
+  normalizeGradeLabel,
+  renewalMatchesCurrentGradeFilter,
+} from "@/lib/renewal-grade-display"
 
 const RENEWAL_LIST_SINIFLAR = [
   "5. Sınıf",
@@ -79,39 +86,6 @@ export default function RenewalsListPage() {
     if (typeof value === "number") return String(value)
     if (typeof value === "boolean") return String(value)
     return "Belirtilmemiş"
-  }
-
-  // Sözleşmedeki sınıfı "X. Sınıf" formatına çevir (filtre karşılaştırması için)
-  const normalizeContractGrade = (value: unknown): string => {
-    const s = String(value ?? "").trim()
-    if (!s) return ""
-    if (s.includes("Sınıf")) {
-      const num = s.replace(/\D/g, "").trim()
-      if (num) return `${num}. Sınıf`
-      return s
-    }
-    const num = s.replace(/\D/g, "")
-    if (num && !isNaN(parseInt(num, 10))) return `${num}. Sınıf`
-    return s
-  }
-
-  // Sınıf formatı helper - "5" -> "5. Sınıf"
-  const formatGrade = (value: unknown): string => {
-    const gradeStr = safeString(value)
-    if (gradeStr === "Belirtilmemiş") return gradeStr
-    
-    // Eğer zaten "X. Sınıf" formatındaysa olduğu gibi döndür
-    if (gradeStr.includes(". Sınıf") || gradeStr.includes("Sınıf")) {
-      return gradeStr
-    }
-    
-    // Sadece rakam ise "X. Sınıf" formatına çevir
-    const gradeNum = gradeStr.trim()
-    if (/^\d+$/.test(gradeNum)) {
-      return `${gradeNum}. Sınıf`
-    }
-    
-    return gradeStr
   }
 
   const fetchRenewals = useCallback(async () => {
@@ -249,14 +223,10 @@ export default function RenewalsListPage() {
       })
     }
 
-    // Sınıf filtresi: sözleşmedeki sınıf (studentClass) yoksa öğrenci sınıfı (student.grade) kullanılır – liste ile aynı mantık
+  // Sınıf filtresi: öğrencinin mevcut sınıfı (student.grade) — istatistiklerle aynı mantık
     if (filterGrade !== "all") {
-      const gradeMatch = (renewal: Renewal) => {
-        const contractData = renewal.contractData as Record<string, unknown>
-        const rawGrade = (contractData?.studentClass as string) || renewal.student?.grade || ""
-        const normalized = normalizeContractGrade(rawGrade)
-        return normalized === filterGrade
-      }
+      const gradeMatch = (renewal: Renewal) =>
+        renewalMatchesCurrentGradeFilter(renewal, filterGrade)
       filtered = filtered
         .filter(group => group.contracts.some(gradeMatch))
         .map(group => ({
@@ -437,8 +407,15 @@ export default function RenewalsListPage() {
                 <Card key={contract.id} className="shadow-md">
                   <CardHeader>
                     <CardTitle className="text-lg">
-                      {formatGrade(contractData.studentClass || contract.student?.grade || '')} - {String(contractData.academicYear || 'Belirtilmemiş')}
+                      {String(contractData.academicYear || "Belirtilmemiş")} — Kayıt yenileme
                     </CardTitle>
+                    <div className="mt-2">
+                      <CurrentAndTargetGrade
+                        currentGrade={contract.student?.grade}
+                        targetGrade={contractData.studentClass as string | undefined}
+                        layout="inline"
+                      />
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
@@ -558,9 +535,14 @@ export default function RenewalsListPage() {
                     <Label className="text-sm text-gray-600">TC Kimlik No</Label>
                     <p className="font-medium">{selectedContract.student?.tcNumber}</p>
                   </div>
-                  <div>
-                    <Label className="text-sm text-gray-600">Sınıf</Label>
-                    <p className="font-medium">{safeString(contractData.studentClass || selectedContract.student?.grade)}</p>
+                  <div className="sm:col-span-2">
+                    <Label className="text-sm text-gray-600">Sınıf bilgisi</Label>
+                    <div className="mt-1">
+                      <CurrentAndTargetGrade
+                        currentGrade={selectedContract.student?.grade}
+                        targetGrade={contractData.studentClass as string | undefined}
+                      />
+                    </div>
                   </div>
                   <div>
                     <Label className="text-sm text-gray-600">Doğum Tarihi</Label>
@@ -781,7 +763,7 @@ export default function RenewalsListPage() {
                 </div>
               </div>
               <div>
-                <Label htmlFor="grade">Sınıf</Label>
+                <Label htmlFor="grade">Mevcut sınıf</Label>
                 <select
                   id="grade"
                   value={filterGrade}
@@ -839,14 +821,12 @@ export default function RenewalsListPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <GraduationCap className="h-5 w-5 text-blue-600" />
-              Sınıf bazında kayıt yenileme
+              Sınıf bazında kayıt yenileme (mevcut sınıfa göre)
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xs text-gray-500 mb-3">
-              Pay: hedef akademik yıla uygun yenileme (benzersiz TC), payda: o düzeydeki toplam öğrenci
-              (öğrenci yönetimi ile aynı sayım). Kaynak düzey: öğrencinin güncel sınıfı.
-            </p>
+            <RenewalGradeExplainer compact className="mb-3" />
+            <p className="text-xs text-gray-500 mb-3">{RENEWAL_STATS_FRACTION_HINT}</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 sm:gap-3">
               {RENEWAL_LIST_SINIFLAR.map((sinif) => {
                 const b = stats.sinifBreakdown[sinif]
@@ -945,14 +925,13 @@ export default function RenewalsListPage() {
                             <span className="font-medium">TC:</span>
                             <span>{group.student.tcNumber}</span>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <GraduationCap className="h-4 w-4" />
-                            <span className="flex items-center gap-1 flex-wrap">
-                              <span>{safeString(contractData.studentClass || group.student.grade)}</span>
-                              <span className="text-[11px] text-gray-500">
-                                (Burada yazan sınıf düzeyi bir sonraki akademik yıl için geçerlidir. Öğrencinin mevcut eğitim gördüğü sınıf düzeyi değildir.)
-                              </span>
-                            </span>
+                          <div className="flex items-start gap-2 sm:col-span-2">
+                            <GraduationCap className="h-4 w-4 mt-0.5 shrink-0" />
+                            <CurrentAndTargetGrade
+                              currentGrade={group.student.grade}
+                              targetGrade={contractData.studentClass as string | undefined}
+                              layout="inline"
+                            />
                           </div>
                           <div className="flex items-center gap-2">
                             <Calendar className="h-4 w-4" />

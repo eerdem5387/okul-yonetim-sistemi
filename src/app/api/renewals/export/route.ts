@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { getRenewalGrades } from "@/lib/renewal-grade-display"
 
 export async function GET() {
   try {
@@ -28,10 +29,10 @@ export async function GET() {
         (contractData?.studentTC as string | undefined) ||
         ""
 
-      const gradeRaw =
-        (contractData?.studentClass as string | undefined) ||
-        student?.grade ||
-        ""
+      const { current: currentGrade, target: targetGrade } = getRenewalGrades({
+        student,
+        contractData,
+      })
 
       const academicYear =
         (contractData?.academicYear as string | undefined) || ""
@@ -57,7 +58,8 @@ export async function GET() {
         "Sıra No": index + 1,
         "Öğrenci Ad Soyad": fullName,
         TC: tc,
-        Sınıf: gradeRaw,
+        "Mevcut sınıf": currentGrade || "",
+        "Hedef sınıf": targetGrade || "",
         "Akademik Yıl": academicYear,
         "Sözleşme No": contractNo,
         "Kayıt Yenileme Tarihi": renewalDate,

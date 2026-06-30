@@ -225,6 +225,7 @@ export async function GET(request: NextRequest) {
     })
     
     const responseData = {
+      countBasis: "current_grade" as const,
       total: totalCount,
       today: todayCount,
       thisWeek: thisWeekCount,

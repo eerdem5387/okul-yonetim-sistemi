@@ -15,6 +15,8 @@ import {
   type AcademicYearListItem,
 } from "@/lib/academic-year-ui"
 import { renewalTargetClassLabel } from "@/lib/student-grade-level"
+import { RenewalGradeExplainer } from "@/components/registration/RenewalGradeExplainer"
+import { RENEWAL_STATS_FRACTION_HINT } from "@/lib/renewal-grade-display"
 
 interface Student {
   id: string
@@ -817,10 +819,12 @@ export default function RenewalPage() {
           <CardHeader className="pb-3 sm:pb-4">
             <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <GraduationCap className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
-              Sınıf Bazında Kayıtlar
+              Sınıf Bazında Kayıtlar (mevcut sınıfa göre)
             </CardTitle>
           </CardHeader>
           <CardContent>
+            <RenewalGradeExplainer compact className="mb-3" />
+            <p className="text-xs text-gray-500 mb-3">{RENEWAL_STATS_FRACTION_HINT}</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 sm:gap-3">
               {siniflar.map((sinif) => {
                 const b = stats.sinifBreakdown[sinif]
@@ -902,7 +906,10 @@ export default function RenewalPage() {
                 )}
                 <p><strong>Ad Soyad:</strong> {selectedStudent.firstName} {selectedStudent.lastName}</p>
                 <p><strong>TC Kimlik No:</strong> {selectedStudent.tcNumber}</p>
-                <p><strong>Sınıf:</strong> {selectedStudent.grade}</p>
+                <p><strong>Mevcut sınıf (bu yıl):</strong> {selectedStudent.grade}</p>
+                {mainContractData.studentClass && (
+                  <p><strong>Hedef sınıf (yenileme):</strong> {mainContractData.studentClass}</p>
+                )}
                 <p><strong>Adres:</strong> {selectedStudent.address}</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
                   <div>

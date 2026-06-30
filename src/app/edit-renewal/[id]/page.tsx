@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { ArrowLeft, Save, ExternalLink } from "lucide-react"
 import Link from "next/link"
 import { getRenewalTargetYearFromList, type AcademicYearListItem } from "@/lib/academic-year-ui"
+import { RenewalGradeExplainer } from "@/components/registration/RenewalGradeExplainer"
 
 interface ContractData {
   // Öğrenci ve Sözleşme Bilgileri
@@ -161,6 +162,7 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
   const [contractId, setContractId] = useState<string>("")
   const [studentId, setStudentId] = useState<string>("")
   const [studentAddress, setStudentAddress] = useState<string>("") // Öğrenci adresi için state
+  const [currentStudentGrade, setCurrentStudentGrade] = useState<string>("")
   const [renewalTarget, setRenewalTarget] = useState<{
     id: string
     name: string
@@ -307,6 +309,7 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
       
       // Öğrenci adresini sakla
       setStudentAddress(studentData.address || "")
+      setCurrentStudentGrade(studentData.grade || "")
       
       const contractData = data.contractData || {}
       const rawYearLabel = String((contractData as Record<string, unknown>).academicYear ?? "").trim()
@@ -549,6 +552,7 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
       </div>
 
       <div className="max-w-7xl mx-auto space-y-6">
+        <RenewalGradeExplainer compact />
         {/* Ana Sözleşme Formu */}
         <Card>
           <CardHeader>
@@ -565,6 +569,16 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
                     id="studentName"
                     value={contract.studentName}
                     onChange={(e) => setContract({ ...contract, studentName: e.target.value })}
+                  />
+                </div>
+                <div className="col-span-2 sm:col-span-1">
+                  <Label htmlFor="currentStudentGrade">Mevcut sınıf (bu yıl)</Label>
+                  <Input
+                    id="currentStudentGrade"
+                    readOnly
+                    tabIndex={-1}
+                    value={currentStudentGrade || "—"}
+                    className="mt-1.5 bg-muted/60 cursor-default"
                   />
                 </div>
                 <div className="col-span-2 sm:col-span-1">
