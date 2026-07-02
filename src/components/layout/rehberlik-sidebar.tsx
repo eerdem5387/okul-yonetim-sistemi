@@ -21,7 +21,7 @@ import {
 } from "lucide-react"
 import { useState, useEffect, useMemo } from "react"
 import { UnreadBadge } from "@/components/chat/UnreadBadge"
-import { fetchPermissionsMe, hasPermissionKey } from "@/lib/permissions/client"
+import { checkNavPermission, useStaffPermissions } from "@/hooks/use-staff-permissions"
 import type { LucideIcon } from "lucide-react"
 
 type NavDef = { name: string; href: string; icon: LucideIcon; module: string; action: string }
@@ -49,7 +49,7 @@ export function RehberlikSidebar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [staffName, setStaffName] = useState<string>("")
   const [isHeadCounselor, setIsHeadCounselor] = useState(false)
-  const [permissionKeys, setPermissionKeys] = useState<string[]>([])
+  const permState = useStaffPermissions()
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -57,22 +57,19 @@ export function RehberlikSidebar() {
       const role = localStorage.getItem("auth_role")
       setStaffName(name || "Rehberlik Uzmanı")
       setIsHeadCounselor(role === "head_counselor")
-      fetchPermissionsMe().then((data) => {
-        if (data?.permissions) setPermissionKeys(data.permissions)
-      })
     }
   }, [])
 
   const navigation = useMemo(() => {
     const base = baseNavigation.filter((item) =>
-      hasPermissionKey(permissionKeys, item.module, item.action)
+      checkNavPermission(permState, item.module, item.action, true)
     )
     if (!isHeadCounselor) return base
     const extra = headCounselorNavigation.filter((item) =>
-      hasPermissionKey(permissionKeys, item.module, item.action)
+      checkNavPermission(permState, item.module, item.action, true)
     )
     return [...base, ...extra]
-  }, [permissionKeys, isHeadCounselor])
+  }, [permState, isHeadCounselor])
 
   const handleLogout = () => {
     if (confirm("Çıkış yapmak istediğinizden emin misiniz?")) {

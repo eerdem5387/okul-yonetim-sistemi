@@ -384,6 +384,25 @@ export default function RootLayout({
       return
     }
 
+    // Öğretmen yalnızca kendi panel rotalarına erişebilir
+    if (normalizedRole === "teacher") {
+      const teacherPaths =
+        pathname?.startsWith("/ogretmen") ||
+        pathname === "/mesajlar" ||
+        pathname === "/faaliyet-ekle" ||
+        pathname?.startsWith("/faaliyet-yonetimi")
+      if (!teacherPaths && !isAllowedPath) {
+        if (!redirectingRef.current) {
+          redirectingRef.current = true
+          router.push("/ogretmen")
+          setTimeout(() => {
+            redirectingRef.current = false
+          }, 100)
+        }
+        return
+      }
+    }
+
     // Login sayfası değilse ve yetkili rol yoksa login'e yönlendir
     if (!isAllowedPath && !normalizedRole) {
       if (!redirectingRef.current) {
@@ -393,8 +412,7 @@ export default function RootLayout({
       }
       return
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- authRole session'dan geliyor, pathname/isLoading değişince yeterli
-  }, [pathname, router, isLoading])
+  }, [pathname, router, isLoading, authRole])
 
   // Loading durumu
   if (isLoading) {
@@ -599,6 +617,30 @@ export default function RootLayout({
             >
               {children}
             </main>
+          </div>
+        </LayoutBody>
+      </html>
+    )
+  }
+
+  // Öğretmen — beklenmeyen rotalarda yönlendirme ekranı (effect tetiklenene kadar)
+  if (
+    authRole === "teacher" &&
+    pathname !== "/login" &&
+    pathname !== "/change-password" &&
+    !pathname?.startsWith("/ogretmen") &&
+    pathname !== "/mesajlar" &&
+    pathname !== "/faaliyet-ekle" &&
+    !pathname?.startsWith("/faaliyet-yonetimi")
+  ) {
+    return (
+      <html lang="tr">
+        <LayoutBody className={inter.className}>
+          <div className="min-h-screen flex items-center justify-center">
+            <div className="text-center">
+              <div className="spinner mx-auto mb-4" />
+              <p className="text-gray-600">Öğretmen paneline yönlendiriliyor...</p>
+            </div>
           </div>
         </LayoutBody>
       </html>

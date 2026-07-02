@@ -30,10 +30,12 @@ import {
   Shield,
   UserSearch,
 } from "lucide-react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { UnreadBadge } from "@/components/chat/UnreadBadge"
-import { fetchPermissionsMe, hasPermissionKey } from "@/lib/permissions/client"
-import { isPrimarySystemAdminStaffId } from "@/lib/permissions/system-admin"
+import {
+  checkNavPermission,
+  useStaffPermissions,
+} from "@/hooks/use-staff-permissions"
 const allNavigation = [
   // 1. Dashboard
   { name: "Dashboard", href: "/", icon: LayoutDashboard, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
@@ -88,32 +90,15 @@ export function Sidebar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [currentRole, setCurrentRole] = useState<string | null>(null)
   const [staffName, setStaffName] = useState<string>("")
-  const [permissionKeys, setPermissionKeys] = useState<string[] | null>(null)
-  const [isSuperAdminUser, setIsSuperAdminUser] = useState(false)
+  const permState = useStaffPermissions()
 
   useEffect(() => {
     if (typeof window === "undefined") return
 
     const role = localStorage.getItem("auth_role")
     const name = localStorage.getItem("staff_name")
-    const dept = localStorage.getItem("staff_department")
-    const staffId = localStorage.getItem("staff_id")
     setCurrentRole(role)
     setStaffName(name || "Kullanıcı")
-
-    const localSuperAdmin =
-      dept === "SUPER_ADMIN" || isPrimarySystemAdminStaffId(staffId)
-    setIsSuperAdminUser(localSuperAdmin)
-
-    fetchPermissionsMe().then((data) => {
-      if (data?.permissions) setPermissionKeys(data.permissions)
-      setIsSuperAdminUser(
-        localSuperAdmin ||
-          data?.isSuperAdmin === true ||
-          data?.department === "SUPER_ADMIN" ||
-          isPrimarySystemAdminStaffId(data?.staffId)
-      )
-    })
   }, [])
 
   const hrefToPermission: Record<string, string> = {
@@ -150,7 +135,7 @@ export function Sidebar() {
     const teacherPortal = item.href.startsWith("/ogretmen")
     if (teacherPortal) return false
 
-    if (isSuperAdminUser) {
+    if (permState.isSuperAdmin) {
       if ((item as { superAdminOnly?: boolean }).superAdminOnly) return true
       return true
     }
@@ -162,10 +147,15 @@ export function Sidebar() {
     }
 
     const perm = (item as { permission?: string }).permission ?? hrefToPermission[item.href]
-    if (perm && permissionKeys) {
-      return hasPermissionKey(permissionKeys, perm.split(".")[0], perm.split(".")[1])
+    if (perm) {
+      const [module, action] = perm.split(".")
+      return checkNavPermission(
+        permState,
+        module,
+        action,
+        item.roles.includes(currentRole)
+      )
     }
-    if (perm && !permissionKeys) return item.roles.includes(currentRole)
 
     return true
   })

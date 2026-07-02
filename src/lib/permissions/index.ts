@@ -122,7 +122,7 @@ export async function getEffectivePermissionKeys(
         keys.add(permissionKey("activity_events", a))
       )
     }
-    ;["homework", "attendance", "messaging", "schedules"].forEach((mod) => {
+    ;["homework", "attendance", "messaging", "schedules", "neredeyiz", "student_comments", "students"].forEach((mod) => {
       ;["view", "create", "edit"].forEach((a) => keys.add(permissionKey(mod, a)))
     })
     stripNonSuperAdminKeys(keys)

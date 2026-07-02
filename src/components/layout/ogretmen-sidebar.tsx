@@ -26,7 +26,7 @@ import {
 import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { UnreadBadge } from "@/components/chat/UnreadBadge"
-import { fetchPermissionsMe, hasPermissionKey } from "@/lib/permissions/client"
+import { checkNavPermission, useStaffPermissions } from "@/hooks/use-staff-permissions"
 
 interface OgretmenSidebarProps {
   className?: string
@@ -62,24 +62,22 @@ export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const [staffName, setStaffName] = useState("")
   const [staffSubject, setStaffSubject] = useState("")
-  const [permissionKeys, setPermissionKeys] = useState<string[]>([])
+  const permState = useStaffPermissions()
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const name = localStorage.getItem("staff_name") || "Öğretmen"
       setStaffName(name)
-
-      fetchPermissionsMe().then((data) => {
-        if (data?.permissions) setPermissionKeys(data.permissions)
-        if (data?.subject) setStaffSubject(data.subject)
-      })
+      if (permState.me?.subject) setStaffSubject(permState.me.subject)
     }
-  }, [])
+  }, [permState.me?.subject])
 
   const navigation = useMemo(
     () =>
-      ALL_NAV.filter((item) => hasPermissionKey(permissionKeys, item.module, item.action)),
-    [permissionKeys]
+      ALL_NAV.filter((item) =>
+        checkNavPermission(permState, item.module, item.action, true)
+      ),
+    [permState]
   )
 
   const handleLogout = () => {

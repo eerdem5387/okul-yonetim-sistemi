@@ -1,5 +1,29 @@
 /** İstemci tarafı yetki API yardımcıları */
 
+const STAFF_SESSION_KEYS = [
+  "auth_role",
+  "auth_token",
+  "staff_id",
+  "staff_name",
+  "staff_department",
+  "ib_viewer_token",
+  "ib_viewer_id",
+  "ib_viewer_name",
+] as const
+
+export function clearStaffSession(): void {
+  if (typeof window === "undefined") return
+  for (const key of STAFF_SESSION_KEYS) {
+    localStorage.removeItem(key)
+  }
+}
+
+export function redirectToStaffLogin(): void {
+  if (typeof window === "undefined") return
+  clearStaffSession()
+  window.location.href = "/login"
+}
+
 export function staffAuthHeaders(): Record<string, string> {
   if (typeof window === "undefined") return {}
   const token = localStorage.getItem("auth_token")
@@ -21,9 +45,20 @@ export type PermissionsMeResponse = {
   isActive?: boolean
 }
 
-export async function fetchPermissionsMe(): Promise<PermissionsMeResponse | null> {
+export async function fetchPermissionsMe(options?: {
+  redirectOn401?: boolean
+}): Promise<PermissionsMeResponse | null> {
   try {
-    const res = await fetch("/api/permissions/me", { headers: staffAuthHeaders() })
+    const res = await fetch("/api/permissions/me", {
+      headers: staffAuthHeaders(),
+      cache: "no-store",
+    })
+    if (res.status === 401) {
+      if (options?.redirectOn401 !== false) {
+        redirectToStaffLogin()
+      }
+      return null
+    }
     if (!res.ok) return null
     return res.json()
   } catch {
