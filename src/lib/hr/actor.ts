@@ -1,11 +1,11 @@
 import type { NextRequest } from "next/server"
 import type { StaffDepartment } from "@prisma/client"
+import { getStaffTokenMaxAgeMs } from "@/lib/auth/token"
 import { prisma } from "@/lib/prisma"
 import { isHrAdmin } from "./constants"
 
-/** Okul oturumları için varsayılan 7 gün; `.env` ile `STAFF_TOKEN_MAX_AGE_MS` (milisaniye) verilebilir. */
-const TOKEN_MAX_AGE_MS =
-  Number.parseInt(process.env.STAFF_TOKEN_MAX_AGE_MS || "", 10) || 7 * 24 * 60 * 60 * 1000
+/** Okul oturumları için varsayılan 15 gün; `.env` ile `STAFF_TOKEN_MAX_AGE_MS` (milisaniye) verilebilir. */
+const TOKEN_MAX_AGE_MS = getStaffTokenMaxAgeMs()
 
 export interface StaffActor {
   staffId: string

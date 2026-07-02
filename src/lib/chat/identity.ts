@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server"
 import type { StaffDepartment } from "@prisma/client"
+import { getStaffTokenMaxAgeMs } from "@/lib/auth/token"
 import { prisma } from "@/lib/prisma"
 
 /**
@@ -27,7 +28,8 @@ export type ChatActor =
       displayName: string
     }
 
-const TOKEN_MAX_AGE_MS = 24 * 60 * 60 * 1000
+const PARENT_TOKEN_MAX_AGE_MS = 24 * 60 * 60 * 1000
+const STAFF_TOKEN_MAX_AGE_MS = getStaffTokenMaxAgeMs()
 
 const MANAGER_DEPARTMENTS: StaffDepartment[] = [
   "SUPER_ADMIN",
@@ -75,7 +77,7 @@ export async function resolveChatActor(request: NextRequest): Promise<ChatActor 
     const parentId = parts[1]
     const ts = Number(parts[2])
     if (!parentId || !Number.isFinite(ts)) return null
-    if (Date.now() - ts > TOKEN_MAX_AGE_MS) return null
+    if (Date.now() - ts > PARENT_TOKEN_MAX_AGE_MS) return null
 
     const parent = await prisma.parent.findUnique({
       where: { id: parentId },
@@ -103,7 +105,7 @@ export async function resolveChatActor(request: NextRequest): Promise<ChatActor 
   const ts = Number(parts[parts.length - 1])
   const staffId = parts[parts.length - 2]
   if (!staffId || !Number.isFinite(ts)) return null
-  if (Date.now() - ts > TOKEN_MAX_AGE_MS) return null
+  if (Date.now() - ts > STAFF_TOKEN_MAX_AGE_MS) return null
 
   const staff = await prisma.staff.findUnique({ where: { id: staffId } })
   if (!staff || !staff.isActive) return null

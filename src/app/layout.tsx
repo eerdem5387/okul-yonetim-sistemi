@@ -5,9 +5,15 @@ import "./globals.css"
 import { Sidebar } from "@/components/layout/sidebar"
 import OgretmenSidebar from "@/components/layout/ogretmen-sidebar"
 import VeliSidebar from "@/components/layout/veli-sidebar"
-import { usePathname, useRouter } from "next/navigation"
-import { useEffect, useState, useRef } from "react"
+import { usePathname } from "next/navigation"
+import { useEffect, useState, useRef, useCallback } from "react"
 import { ToastProvider } from "@/components/ui/toast"
+import { isStaffAuthRole, isStaffTokenExpired } from "@/lib/auth/token"
+import {
+  invalidateExpiredStaffSession,
+  installStaffSessionGuard,
+} from "@/lib/auth/session-guard"
+import { clearStaffSession, redirectToStaffLogin } from "@/lib/permissions/client"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -27,34 +33,69 @@ function LayoutBody({
 
 type AuthRole = "admin" | "principal" | "student_affairs" | "parent" | "teacher" | "counselor" | "head_counselor" | null
 
+const PUBLIC_AUTH_PATHS = ["/login", "/veli-login", "/ib-viewer/login", "/change-password"]
+
+function isPublicAuthPath(pathname: string | null): boolean {
+  if (!pathname) return false
+  return PUBLIC_AUTH_PATHS.some((p) => pathname === p || pathname.startsWith(p))
+}
+
+function normalizeStoredRole(storedRole: string | null): AuthRole {
+  if (
+    storedRole === "admin" ||
+    storedRole === "principal" ||
+    storedRole === "student_affairs" ||
+    storedRole === "parent" ||
+    storedRole === "teacher" ||
+    storedRole === "counselor" ||
+    storedRole === "head_counselor"
+  ) {
+    return storedRole
+  }
+  return null
+}
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   const pathname = usePathname()
-  const router = useRouter()
   const [authRole, setAuthRole] = useState<AuthRole>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const redirectingRef = useRef(false) // Yönlendirme yapılıyor mu kontrolü için
+  const redirectingRef = useRef(false)
+
+  const hardRedirect = useCallback((href: string) => {
+    if (redirectingRef.current) return
+    redirectingRef.current = true
+    window.location.href = href
+  }, [])
 
   // İlk yüklemede auth kontrolü
   useEffect(() => {
     if (typeof window === "undefined") return
 
+    const removeSessionGuard = installStaffSessionGuard()
+
     const checkAuth = () => {
       const storedRole = localStorage.getItem("auth_role")
-      let normalizedRole: AuthRole = null
+      const token = localStorage.getItem("auth_token")
+      const currentPath = window.location.pathname
 
-      if (storedRole === "admin" || storedRole === "principal" || storedRole === "student_affairs" || storedRole === "parent" || storedRole === "teacher" || storedRole === "counselor" || storedRole === "head_counselor") {
-        normalizedRole = storedRole
-      } else if (storedRole) {
-        // Geçersiz rol - temizle
-        localStorage.removeItem("auth_role")
-        localStorage.removeItem("auth_token")
-        localStorage.removeItem("staff_id")
-        localStorage.removeItem("staff_name")
-        localStorage.removeItem("staff_department")
+      if (isStaffAuthRole(storedRole) && token && isStaffTokenExpired(token)) {
+        clearStaffSession()
+        setAuthRole(null)
+        setIsLoading(false)
+        if (!isPublicAuthPath(currentPath)) {
+          redirectToStaffLogin("expired")
+        }
+        return
+      }
+
+      let normalizedRole = normalizeStoredRole(storedRole)
+
+      if (storedRole && !normalizedRole) {
+        clearStaffSession()
         localStorage.removeItem("parent_id")
         localStorage.removeItem("student_id")
         localStorage.removeItem("student_name")
@@ -66,31 +107,41 @@ export default function RootLayout({
 
     checkAuth()
 
-    // Storage değişikliklerini dinle (başka tab'da logout gibi durumlar için)
     const handleStorageChange = () => {
       checkAuth()
     }
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        invalidateExpiredStaffSession()
+      }
+    }
+    const handleUserInteraction = () => {
+      invalidateExpiredStaffSession()
+    }
+
     window.addEventListener("storage", handleStorageChange)
-    return () => window.removeEventListener("storage", handleStorageChange)
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    document.addEventListener("click", handleUserInteraction, true)
+    return () => {
+      removeSessionGuard()
+      window.removeEventListener("storage", handleStorageChange)
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+      document.removeEventListener("click", handleUserInteraction, true)
+    }
   }, [])
 
   // Pathname değiştiğinde auth kontrolü ve yönlendirme
   useEffect(() => {
     if (typeof window === "undefined") return
     if (isLoading) return
-    if (redirectingRef.current) return // Zaten yönlendirme yapılıyorsa tekrar çalışma
+    if (redirectingRef.current) return
+    if (invalidateExpiredStaffSession()) return
 
     const storedRole = localStorage.getItem("auth_role")
-    let normalizedRole: AuthRole = null
+    const normalizedRole = normalizeStoredRole(storedRole)
 
-    if (storedRole === "admin" || storedRole === "principal" || storedRole === "student_affairs" || storedRole === "parent" || storedRole === "teacher" || storedRole === "counselor" || storedRole === "head_counselor") {
-      normalizedRole = storedRole
-    }
-
-    // State'i güncelle (sadece gerçekten değiştiğinde)
     if (normalizedRole !== authRole) {
       setAuthRole(normalizedRole)
-      // State güncellendiğinde bu effect tekrar çalışacak, bu yüzden şimdi return et
       return
     }
 
@@ -99,56 +150,38 @@ export default function RootLayout({
       if (pathname === "/ib-viewer/login") return
       const ibToken = localStorage.getItem("ib_viewer_token")
       if (!ibToken) {
-        if (!redirectingRef.current) {
-          redirectingRef.current = true
-          router.push("/login")
-          setTimeout(() => { redirectingRef.current = false }, 100)
-        }
+        hardRedirect("/login")
         return
       }
       return
     }
 
-    // Login sayfalarına herkes erişebilir
-    const allowedPaths = ["/login", "/veli-login", "/ib-viewer/login", "/change-password"]
-    const isAllowedPath = allowedPaths.some((p) => pathname === p || pathname?.startsWith(p))
+    const isAllowedPath = isPublicAuthPath(pathname)
 
     // Login sayfasındaysa ve zaten giriş yapılmışsa, rolüne göre yönlendir
     if (pathname === "/login" && normalizedRole) {
-      if (!redirectingRef.current) {
-        redirectingRef.current = true
-        if (normalizedRole === "teacher") {
-          router.push("/ogretmen")
-        } else if (normalizedRole === "counselor" || normalizedRole === "head_counselor") {
-          router.push("/rehberlik")
-        } else if (normalizedRole === "parent") {
-          router.push("/veli/panel")
-        } else {
-          router.push("/")
-        }
-        setTimeout(() => { redirectingRef.current = false }, 100)
+      if (normalizedRole === "teacher") {
+        hardRedirect("/ogretmen")
+      } else if (normalizedRole === "counselor" || normalizedRole === "head_counselor") {
+        hardRedirect("/rehberlik")
+      } else if (normalizedRole === "parent") {
+        hardRedirect("/veli/panel")
+      } else {
+        hardRedirect("/")
       }
       return
     }
 
     // Veli login sayfasındaysa ve zaten parent rolü varsa, veli paneline yönlendir
     if (pathname === "/veli-login" && normalizedRole === "parent") {
-      if (!redirectingRef.current) {
-        redirectingRef.current = true
-        router.push("/veli/panel")
-        setTimeout(() => { redirectingRef.current = false }, 100)
-      }
+      hardRedirect("/veli/panel")
       return
     }
 
     // Öğretmen sayfaları için kontrol – sadece öğretmen erişir (Faaliyet Ekle admin vb. için /faaliyet-ekle)
     if (pathname?.startsWith("/ogretmen")) {
       if (normalizedRole !== "teacher") {
-        if (!redirectingRef.current) {
-          redirectingRef.current = true
-          router.push("/login")
-          setTimeout(() => { redirectingRef.current = false }, 100)
-        }
+        hardRedirect("/login")
         return
       }
       return
@@ -166,11 +199,7 @@ export default function RootLayout({
         normalizedRole !== "head_counselor" &&
         normalizedRole !== "admin"
       ) {
-        if (!redirectingRef.current) {
-          redirectingRef.current = true
-          router.push("/login")
-          setTimeout(() => { redirectingRef.current = false }, 100)
-        }
+        hardRedirect("/login")
         return
       }
       return
@@ -181,50 +210,30 @@ export default function RootLayout({
     // ÖNEMLİ: Bu kontrol /veli kontrolünden ÖNCE yapılmalı çünkü /veli-gorusmeleri /veli ile başlıyor
     if (pathname === "/veli-gorusmeleri") {
       if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "counselor" || normalizedRole === "head_counselor") {
-        // Bu roller için erişim izni var - YÖNLENDİRME YOK, direkt sayfaya erişebilirler
         return
       }
-      // Parent rolü için de erişim izni var
       if (normalizedRole === "parent") {
         return
       }
-      // Diğer roller için login'e yönlendir
-      if (!redirectingRef.current) {
-        redirectingRef.current = true
-        router.push("/login")
-        setTimeout(() => { redirectingRef.current = false }, 100)
-      }
+      hardRedirect("/login")
       return
     }
 
     // Admin Veli Görüşmeleri sayfası için kontrol (admin, principal, student_affairs erişebilir)
     if (pathname === "/admin/veli-gorusmeleri") {
       if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs") {
-        // Bu roller için erişim izni var - YÖNLENDİRME YOK
         return
       }
-      // Diğer roller için login'e yönlendir
-      if (!redirectingRef.current) {
-        redirectingRef.current = true
-        router.push("/login")
-        setTimeout(() => { redirectingRef.current = false }, 100)
-      }
+      hardRedirect("/login")
       return
     }
 
     // Yönetim Veli Görüşmeleri sayfası için kontrol (admin, principal, student_affairs erişebilir)
-    // BU SAYFA YÖNLENDİRME YAPMAZ - SADECE GÖRÜNTÜLEME MODUNDA
     if (pathname === "/yonetim/parent-meetings") {
       if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs") {
-        // Bu roller için erişim izni var - YÖNLENDİRME YOK
         return
       }
-      // Diğer roller için login'e yönlendir
-      if (!redirectingRef.current) {
-        redirectingRef.current = true
-        router.push("/login")
-        setTimeout(() => { redirectingRef.current = false }, 100)
-      }
+      hardRedirect("/login")
       return
     }
 
@@ -238,100 +247,67 @@ export default function RootLayout({
       ) {
         return
       }
-      if (!redirectingRef.current) {
-        redirectingRef.current = true
-        router.push("/login")
-        setTimeout(() => { redirectingRef.current = false }, 100)
-      }
+      hardRedirect("/login")
       return
     }
 
     if (pathname === "/yonetim/yetkilendirme") {
       if (normalizedRole === "admin") return
-      if (!redirectingRef.current) {
-        redirectingRef.current = true
-        router.push("/login")
-        setTimeout(() => { redirectingRef.current = false }, 100)
-      }
+      hardRedirect("/login")
       return
     }
 
     // Veli sayfaları için kontrol (/veli-gorusmeleri ve /admin/veli-gorusmeleri hariç)
-    // ÖNEMLİ: Bu kontrol /veli-gorusmeleri kontrolünden SONRA yapılmalı
     if ((pathname?.startsWith("/veli") && pathname !== "/veli-gorusmeleri") || pathname === "/parent") {
       if (normalizedRole !== "parent") {
-        if (!redirectingRef.current) {
-          redirectingRef.current = true
-          router.push("/veli-login")
-          setTimeout(() => { redirectingRef.current = false }, 100)
-        }
+        hardRedirect("/veli-login")
         return
       }
       return
     }
 
-    // Bursluluk Başvuruları sayfası için kontrol (admin, principal, student_affairs, head_counselor erişebilir)
+    // Bursluluk Başvuruları sayfası için kontrol
     if (pathname === "/basvurular") {
       if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "head_counselor") {
         return
       }
-      if (!redirectingRef.current) {
-        redirectingRef.current = true
-        router.push("/login")
-        setTimeout(() => { redirectingRef.current = false }, 100)
-      }
+      hardRedirect("/login")
       return
     }
 
-    // Yeni Kayıt sayfası için kontrol (admin, principal, student_affairs, head_counselor erişebilir)
+    // Yeni Kayıt sayfası için kontrol
     if (pathname === "/new-registration") {
       if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "head_counselor") {
         return
       }
-      if (!redirectingRef.current) {
-        redirectingRef.current = true
-        router.push("/login")
-        setTimeout(() => { redirectingRef.current = false }, 100)
-      }
+      hardRedirect("/login")
       return
     }
 
-    // Kayıt Yenileme sayfası için kontrol (admin, principal, student_affairs, head_counselor erişebilir)
+    // Kayıt Yenileme sayfası için kontrol
     if (pathname === "/renewal") {
       if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "head_counselor") {
         return
       }
-      if (!redirectingRef.current) {
-        redirectingRef.current = true
-        router.push("/login")
-        setTimeout(() => { redirectingRef.current = false }, 100)
-      }
+      hardRedirect("/login")
       return
     }
 
-    // Geçmiş Sözleşmeler sayfası için kontrol (admin, principal, student_affairs, head_counselor erişebilir)
+    // Geçmiş Sözleşmeler sayfası için kontrol
     if (pathname === "/history") {
       if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "head_counselor") {
         return
       }
-      if (!redirectingRef.current) {
-        redirectingRef.current = true
-        router.push("/login")
-        setTimeout(() => { redirectingRef.current = false }, 100)
-      }
+      hardRedirect("/login")
       return
     }
 
-    // Teklif Görüşmeleri sayfası için kontrol (admin, principal, student_affairs, head_counselor erişebilir)
+    // Teklif Görüşmeleri sayfası için kontrol
     if (pathname === "/teklif-gorusmeleri") {
       if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "head_counselor") {
         return
       }
-      if (!redirectingRef.current) {
-        redirectingRef.current = true
-        router.push("/login")
-        setTimeout(() => { redirectingRef.current = false }, 100)
-      }
+      hardRedirect("/login")
       return
     }
 
@@ -345,42 +321,24 @@ export default function RootLayout({
       ) {
         return
       }
-      if (!redirectingRef.current) {
-        redirectingRef.current = true
-        router.push("/login")
-        setTimeout(() => { redirectingRef.current = false }, 100)
-      }
+      hardRedirect("/login")
       return
     }
 
     // Ana sayfa (/) için kontrol
     if (pathname === "/") {
       if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "counselor" || normalizedRole === "head_counselor") {
-        // Ana sayfaya erişim izni var
         return
       }
       if (normalizedRole === "teacher") {
-        if (!redirectingRef.current) {
-          redirectingRef.current = true
-          router.push("/ogretmen")
-          setTimeout(() => { redirectingRef.current = false }, 100)
-        }
+        hardRedirect("/ogretmen")
         return
       }
       if (normalizedRole === "parent") {
-        if (!redirectingRef.current) {
-          redirectingRef.current = true
-          router.push("/veli/panel")
-          setTimeout(() => { redirectingRef.current = false }, 100)
-        }
+        hardRedirect("/veli/panel")
         return
       }
-      // Auth yoksa login'e yönlendir
-      if (!redirectingRef.current) {
-        redirectingRef.current = true
-        router.push("/login")
-        setTimeout(() => { redirectingRef.current = false }, 100)
-      }
+      hardRedirect("/login")
       return
     }
 
@@ -392,27 +350,17 @@ export default function RootLayout({
         pathname === "/faaliyet-ekle" ||
         pathname?.startsWith("/faaliyet-yonetimi")
       if (!teacherPaths && !isAllowedPath) {
-        if (!redirectingRef.current) {
-          redirectingRef.current = true
-          router.push("/ogretmen")
-          setTimeout(() => {
-            redirectingRef.current = false
-          }, 100)
-        }
+        hardRedirect("/ogretmen")
         return
       }
     }
 
     // Login sayfası değilse ve yetkili rol yoksa login'e yönlendir
     if (!isAllowedPath && !normalizedRole) {
-      if (!redirectingRef.current) {
-        redirectingRef.current = true
-        router.push("/login")
-        setTimeout(() => { redirectingRef.current = false }, 100)
-      }
+      hardRedirect("/login")
       return
     }
-  }, [pathname, router, isLoading, authRole])
+  }, [pathname, isLoading, authRole, hardRedirect])
 
   // Loading durumu
   if (isLoading) {
@@ -623,7 +571,7 @@ export default function RootLayout({
     )
   }
 
-  // Öğretmen — beklenmeyen rotalarda yönlendirme ekranı (effect tetiklenene kadar)
+  // Öğretmen — beklenmeyen rotalarda login veya panele yönlendir
   if (
     authRole === "teacher" &&
     pathname !== "/login" &&
@@ -633,6 +581,9 @@ export default function RootLayout({
     pathname !== "/faaliyet-ekle" &&
     !pathname?.startsWith("/faaliyet-yonetimi")
   ) {
+    if (typeof window !== "undefined") {
+      window.location.href = "/ogretmen"
+    }
     return (
       <html lang="tr">
         <LayoutBody className={inter.className}>
@@ -647,7 +598,25 @@ export default function RootLayout({
     )
   }
 
-  // Auth yoksa yönlendirme ekranı
+  // Auth yoksa login'e yönlendir
+  if (!authRole && pathname && !isPublicAuthPath(pathname) && !pathname.startsWith("/ib-viewer")) {
+    if (typeof window !== "undefined") {
+      window.location.href = "/login"
+    }
+    return (
+      <html lang="tr">
+        <LayoutBody className={inter.className}>
+          <div className="min-h-screen flex items-center justify-center">
+            <div className="text-center">
+              <div className="spinner mx-auto mb-4" />
+              <p className="text-gray-600">Giriş sayfasına yönlendiriliyor...</p>
+            </div>
+          </div>
+        </LayoutBody>
+      </html>
+    )
+  }
+
   return (
     <html lang="tr">
       <LayoutBody className={inter.className}>

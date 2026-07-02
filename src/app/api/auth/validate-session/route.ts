@@ -1,94 +1,63 @@
 import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
+import { resolveStaffActor, parseLoginRoleFromToken } from "@/lib/hr/actor"
+
+function requestWithToken(request: NextRequest, token: string | null): NextRequest {
+  if (!token) return request
+  const headers = new Headers(request.headers)
+  if (!headers.get("authorization") && !headers.get("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`)
+  }
+  return new NextRequest(request.url, { headers, method: request.method })
+}
+
+function readToken(request: NextRequest, bodyToken?: string | null): string | null {
+  if (bodyToken) return bodyToken
+  const { searchParams } = new URL(request.url)
+  const queryToken = searchParams.get("token")
+  if (queryToken) return queryToken
+
+  const authHeader = request.headers.get("Authorization") || request.headers.get("authorization")
+  if (authHeader?.toLowerCase().startsWith("bearer ")) {
+    return authHeader.slice(7).trim()
+  }
+  return null
+}
+
+async function validateStaffSession(request: NextRequest, token: string | null) {
+  if (!token) {
+    return NextResponse.json(
+      { error: "Token gereklidir (query param veya Authorization header)", valid: false },
+      { status: 400 }
+    )
+  }
+
+  const actor = await resolveStaffActor(requestWithToken(request, token))
+  if (!actor) {
+    return NextResponse.json(
+      { error: "Token süresi dolmuş veya geçersiz", valid: false, expired: true },
+      { status: 401 }
+    )
+  }
+
+  const role = parseLoginRoleFromToken(token) || "unknown"
+
+  return NextResponse.json({
+    valid: true,
+    staffId: actor.staffId,
+    role,
+    department: actor.department,
+    fullName: `${actor.firstName} ${actor.lastName}`,
+  })
+}
 
 /**
  * GET /api/auth/validate-session
- * Session token'ını doğrular ve kullanıcı bilgilerini döndürür
- * 
- * Query:
- * - token?: string (opsiyonel - Authorization header'dan da alınabilir)
- * 
- * Headers:
- * - Authorization?: string (Bearer token)
- * 
  * POST /api/auth/validate-session
- * Session token'ını doğrular ve kullanıcı bilgilerini döndürür
- * 
- * Body:
- * - token?: string (opsiyonel - Authorization header'dan da alınabilir)
  */
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    let token = searchParams.get("token")
-
-    // Authorization header'dan token al (test botu için)
-    if (!token) {
-      const authHeader = request.headers.get("Authorization")
-      if (authHeader && authHeader.startsWith("Bearer ")) {
-        token = authHeader.substring(7)
-      }
-    }
-
-    if (!token) {
-      return NextResponse.json(
-        { error: "Token gereklidir (query param veya Authorization header)", valid: false },
-        { status: 400 }
-      )
-    }
-
-    // Token formatı: {role}_{staffId}_{timestamp}
-    const tokenParts = token.split("_")
-    if (tokenParts.length < 2) {
-      return NextResponse.json(
-        { error: "Geçersiz token formatı", valid: false },
-        { status: 401 }
-      )
-    }
-
-    const role = tokenParts[0]
-    const staffId = tokenParts[1]
-    const timestamp = tokenParts[2] || "0"
-
-    // Token yaşını kontrol et (timestamp varsa)
-    if (timestamp && timestamp !== "0") {
-      const tokenAge = Date.now() - parseInt(timestamp)
-      const MAX_TOKEN_AGE = 24 * 60 * 60 * 1000 // 24 saat
-      
-      if (tokenAge > MAX_TOKEN_AGE) {
-        return NextResponse.json(
-          { error: "Token süresi dolmuş", valid: false, expired: true },
-          { status: 401 }
-        )
-      }
-    }
-
-    // Staff kaydını kontrol et
-    const staff = await prisma.staff.findUnique({
-      where: { id: staffId },
-    })
-
-    if (!staff) {
-      return NextResponse.json(
-        { error: "Kullanıcı bulunamadı", valid: false },
-        { status: 404 }
-      )
-    }
-
-    if (!staff.isActive) {
-      return NextResponse.json(
-        { error: "Hesap devre dışı", valid: false },
-        { status: 403 }
-      )
-    }
-
-    return NextResponse.json({
-      valid: true,
-      staffId: staff.id,
-      role,
-      department: staff.department,
-      fullName: `${staff.firstName} ${staff.lastName}`,
-    })
+    const token = readToken(request)
+    return validateStaffSession(request, token)
   } catch (error) {
     console.error("Error validating session:", error)
     return NextResponse.json(
@@ -100,64 +69,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { token } = body
-
-    if (!token) {
-      return NextResponse.json(
-        { error: "Token gereklidir", valid: false },
-        { status: 400 }
-      )
-    }
-
-    // Token formatı: {role}_{staffId}_{timestamp}
-    const tokenParts = token.split("_")
-    if (tokenParts.length !== 3) {
-      return NextResponse.json(
-        { error: "Geçersiz token formatı", valid: false },
-        { status: 401 }
-      )
-    }
-
-    const [role, staffId, timestamp] = tokenParts
-
-    // Token yaşını kontrol et (24 saat)
-    const tokenAge = Date.now() - parseInt(timestamp)
-    const MAX_TOKEN_AGE = 24 * 60 * 60 * 1000 // 24 saat
-    
-    if (tokenAge > MAX_TOKEN_AGE) {
-      return NextResponse.json(
-        { error: "Token süresi dolmuş", valid: false, expired: true },
-        { status: 401 }
-      )
-    }
-
-    // Staff kaydını kontrol et
-    const staff = await prisma.staff.findUnique({
-      where: { id: staffId },
-    })
-
-    if (!staff) {
-      return NextResponse.json(
-        { error: "Kullanıcı bulunamadı", valid: false },
-        { status: 404 }
-      )
-    }
-
-    if (!staff.isActive) {
-      return NextResponse.json(
-        { error: "Hesap devre dışı", valid: false },
-        { status: 403 }
-      )
-    }
-
-    return NextResponse.json({
-      valid: true,
-      staffId: staff.id,
-      role,
-      department: staff.department,
-      fullName: `${staff.firstName} ${staff.lastName}`,
-    })
+    const body = await request.json().catch(() => ({}))
+    const token = readToken(request, typeof body.token === "string" ? body.token : null)
+    return validateStaffSession(request, token)
   } catch (error) {
     console.error("Error validating session:", error)
     return NextResponse.json(
@@ -166,4 +80,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-

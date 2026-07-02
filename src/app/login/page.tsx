@@ -1,22 +1,46 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { LogIn, User, Award } from "lucide-react"
+import { REMEMBER_STAFF_TC_KEY } from "@/lib/auth/token"
 
 export default function LoginPage() {
   const router = useRouter()
   const [tcNumber, setTcNumber] = useState("")
   const [password, setPassword] = useState("")
+  const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState("")
+  const [info, setInfo] = useState("")
   const [loading, setLoading] = useState(false)
   const [showIBViewer, setShowIBViewer] = useState(false)
   const [ibUsername, setIbUsername] = useState("")
   const [ibPassword, setIbPassword] = useState("")
+
+  useEffect(() => {
+    const savedTc = localStorage.getItem(REMEMBER_STAFF_TC_KEY)
+    if (savedTc) {
+      setTcNumber(savedTc)
+      setRememberMe(true)
+    }
+
+    const params = new URLSearchParams(window.location.search)
+    if (params.get("expired") === "1") {
+      setInfo("Oturumunuz sona erdi. Lütfen tekrar giriş yapın.")
+    }
+  }, [])
+
+  const persistRememberMe = (tc: string) => {
+    if (rememberMe) {
+      localStorage.setItem(REMEMBER_STAFF_TC_KEY, tc)
+    } else {
+      localStorage.removeItem(REMEMBER_STAFF_TC_KEY)
+    }
+  }
 
   // Personel Girişi (Ana giriş)
   const handleLogin = async (e: React.FormEvent) => {
@@ -44,6 +68,7 @@ export default function LoginPage() {
           localStorage.setItem("staff_id", data.staffId)
           localStorage.setItem("staff_name", data.staffName)
           localStorage.setItem("staff_department", data.department)
+          persistRememberMe(tcNumber.trim())
           window.location.href = `/change-password?first=true&tc=${tcNumber.trim()}`
           return
         }
@@ -54,6 +79,7 @@ export default function LoginPage() {
         localStorage.setItem("staff_id", data.staffId)
         localStorage.setItem("staff_name", data.staffName)
         localStorage.setItem("staff_department", data.department)
+        persistRememberMe(tcNumber.trim())
         
         // Rol bazlı yönlendirme - window.location.href kullanarak tam sayfa yenileme
         if (data.role === "teacher") {
@@ -206,11 +232,15 @@ export default function LoginPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-6 pb-6 sm:pb-8">
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-4" autoComplete="on">
             <div className="space-y-2">
               <Label htmlFor="tcNumber">TC Kimlik Numarası</Label>
               <Input
                 id="tcNumber"
+                name="username"
+                type="text"
+                inputMode="numeric"
+                autoComplete="username"
                 value={tcNumber}
                 onChange={(e) => setTcNumber(e.target.value.replace(/\D/g, ""))}
                 placeholder="11 haneli TC numaranızı girin"
@@ -224,7 +254,9 @@ export default function LoginPage() {
               <Label htmlFor="password">Şifre</Label>
               <Input
                 id="password"
+                name="password"
                 type="password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Şifrenizi girin"
@@ -235,6 +267,21 @@ export default function LoginPage() {
                 İlk girişte şifreniz TC Kimlik numaranızdır
               </p>
             </div>
+            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                disabled={loading}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              Beni hatırla
+            </label>
+            {info && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-md text-sm text-amber-800">
+                {info}
+              </div>
+            )}
             {error && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-600">
                 {error}

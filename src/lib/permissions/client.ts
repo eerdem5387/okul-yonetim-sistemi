@@ -18,10 +18,10 @@ export function clearStaffSession(): void {
   }
 }
 
-export function redirectToStaffLogin(): void {
+export function redirectToStaffLogin(reason?: "expired"): void {
   if (typeof window === "undefined") return
   clearStaffSession()
-  window.location.href = "/login"
+  window.location.href = reason === "expired" ? "/login?expired=1" : "/login"
 }
 
 export function staffAuthHeaders(): Record<string, string> {
@@ -55,7 +55,7 @@ export async function fetchPermissionsMe(options?: {
     })
     if (res.status === 401) {
       if (options?.redirectOn401 !== false) {
-        redirectToStaffLogin()
+        redirectToStaffLogin("expired")
       }
       return null
     }
