@@ -92,7 +92,7 @@ export default function RootLayout({
         return
       }
 
-      let normalizedRole = normalizeStoredRole(storedRole)
+      const normalizedRole = normalizeStoredRole(storedRole)
 
       if (storedRole && !normalizedRole) {
         clearStaffSession()
