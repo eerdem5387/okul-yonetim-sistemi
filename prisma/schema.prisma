@@ -221,6 +221,28 @@ enum ContactStatus {
   ILETISIME_GECILMEDI
 }
 
+// Yaz okulu başvuruları (basvuru-sistemi webhook)
+model YazOkuluBasvuru {
+  id             String   @id @default(cuid())
+  externalId     String   @unique
+  studentId      String   @unique
+  ogrenciAdSoyad String
+  ogrenciSinifi  String?
+  createdAt      DateTime @default(now())
+  syncedAt       DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  contactStatus   ContactStatus @default(ILETISIME_GECILMEDI)
+  contactNote     String?
+  lastContactedAt DateTime?
+  lastContactedBy String?
+
+  @@index([externalId])
+  @@index([studentId])
+  @@index([createdAt])
+  @@map("yaz_okulu_basvurular")
+}
+
 // İK öğretmen başvuruları (ik-leventokullari webhook)
 enum HrApplicationStatus {
   YENI

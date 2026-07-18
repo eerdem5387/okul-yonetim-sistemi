@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { contractYearLabelFromAcademicYear } from "@/lib/academic-year-ui"
-import { generatePDF, generateContractHTML } from "@/lib/pdf-generator"
+import { generatePDF, generateContractHTML, resolveStudentAddress } from "@/lib/pdf-generator"
 
 export async function GET(
     request: Request,
@@ -43,6 +43,7 @@ export async function GET(
             studentName: `${registration.student.firstName} ${registration.student.lastName}`,
             tcNumber: registration.student.tcNumber,
             ...raw,
+            address: resolveStudentAddress(raw, registration.student),
             ...(academicYearLabel ? { academicYear: academicYearLabel } : {}),
         }
 

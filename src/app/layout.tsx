@@ -275,6 +275,15 @@ export default function RootLayout({
       return
     }
 
+    // Yaz Okulu Başvuruları sayfası için kontrol
+    if (pathname === "/yaz-okulu-basvurular") {
+      if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "head_counselor") {
+        return
+      }
+      hardRedirect("/login")
+      return
+    }
+
     // Yeni Kayıt sayfası için kontrol
     if (pathname === "/new-registration") {
       if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "head_counselor") {

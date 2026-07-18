@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { generatePDF, generateCombinedContractHTML } from "@/lib/pdf-generator"
+import { generatePDF, generateCombinedContractHTML, resolveStudentAddress } from "@/lib/pdf-generator"
 
 // GET handler for testing route availability
 export async function GET(
@@ -165,6 +165,11 @@ export async function POST(
         } else if (renewalContract) {
             const renewalContractDataFromDB = renewalContract.contractData as Record<string, unknown> || {}
             finalMainContractData = { ...renewalContractDataFromDB, ...finalMainContractData }
+        }
+
+        finalMainContractData = {
+            ...finalMainContractData,
+            address: resolveStudentAddress(finalMainContractData, safeStudent),
         }
 
         // Kulüp seçimlerini hazırla (frontend'den gelen veya veritabanından)

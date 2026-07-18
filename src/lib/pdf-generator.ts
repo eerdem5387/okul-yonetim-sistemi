@@ -52,6 +52,19 @@ function escapeHTML(text: string | null | undefined): string {
     .replace(/'/g, '&#39;')
 }
 
+/** Sözleşme PDF'lerinde öğrenci adresi — contractData veya öğrenci kaydından */
+export function resolveStudentAddress(
+  contractData: Record<string, unknown>,
+  student?: { address?: string | null }
+): string {
+  const fromContract = contractData.address ?? contractData.studentAddress
+  if (fromContract != null && String(fromContract).trim() !== "") {
+    return String(fromContract).trim()
+  }
+  if (student?.address?.trim()) return student.address.trim()
+  return ""
+}
+
 /** Sözleşme PDF'lerinde sabit varsayılan yıl yerine kayıtlı etiket; yoksa anlaşılır yer tutucu. */
 export function pdfAcademicYearLabel(contractData: Record<string, unknown>): string {
   const y = contractData.academicYear
@@ -335,6 +348,15 @@ export function generateContractHTML(contractData: Record<string, unknown>, cont
                 <div class="field-label">TC Kimlik No:</div>
                 <div class="field-value">${contractData.tcNumber || ''}</div>
             </div>
+            ${(() => {
+              const addr = resolveStudentAddress(contractData)
+              return addr
+                ? `<div class="field">
+                <div class="field-label">Adres:</div>
+                <div class="field-value">${addr}</div>
+            </div>`
+                : ''
+            })()}
         </div>
         
         <div class="section">
@@ -608,6 +630,7 @@ export function generateCombinedContractHTML(data: {
 
 function generateMainContractHTML(student: { firstName: string; lastName: string; tcNumber: string; grade: string; address: string; birthDate: string; motherName: string; motherTc: string; motherPhone: string; motherAddress: string; motherOccupation: string; fatherName: string; fatherTc: string; fatherPhone: string; fatherAddress: string; fatherOccupation: string }, contractData: Record<string, unknown>) {
   const ayLabel = pdfAcademicYearLabel(contractData)
+  const studentAddress = resolveStudentAddress(contractData, student)
   return `
     <div class="contract-header">
       <div class="contract-title">EĞİTİM ÖĞRETİM HİZMET SÖZLEŞMESİ</div>
@@ -638,6 +661,10 @@ function generateMainContractHTML(student: { firstName: string; lastName: string
       <div class="field-row">
         <div class="field-label">Doğum Tarihi:</div>
         <div class="field-value">${contractData.studentBirthDate || student.birthDate}</div>
+      </div>
+      <div class="field-row">
+        <div class="field-label">Adres:</div>
+        <div class="field-value-large">${studentAddress || '___________'}</div>
       </div>
     </div>
 
@@ -952,7 +979,7 @@ function generateMainContractHTML(student: { firstName: string; lastName: string
       </div>
       <div class="field-row" style="margin-top: 15px;">
         <div class="field-label" style="min-width: 200px;">Adresi:</div>
-        <div class="field-value" style="border-bottom: 1px solid #000; padding-bottom: 5px; min-width: 300px;">${contractData.address || student.address || '___________'}</div>
+        <div class="field-value" style="border-bottom: 1px solid #000; padding-bottom: 5px; min-width: 300px;">${studentAddress || '___________'}</div>
       </div>
     </div>
 
@@ -1003,7 +1030,7 @@ function generateOtherContractsHTML(student: { firstName: string; lastName: stri
   return html
 }
 
-function generateUniformContractHTML(student: { firstName: string; lastName: string; tcNumber: string; grade?: string }, contractData: Record<string, unknown>, standalone = true) {
+function generateUniformContractHTML(student: { firstName: string; lastName: string; tcNumber: string; grade?: string; address?: string }, contractData: Record<string, unknown>, standalone = true) {
   // Sınıf bazlı kitap ve forma ücret tablosu (TL)
   const bookAndUniformPrices: Record<string, Record<string, number>> = {
     "5. Sınıf": {
@@ -1103,6 +1130,7 @@ function generateUniformContractHTML(student: { firstName: string; lastName: str
   }
 
   const studentGrade = contractData.studentClass || student.grade || ""
+  const studentAddress = resolveStudentAddress(contractData, student)
   void getPriceTableForGrade(studentGrade as string) // ileride fiyat tablosu kullanılabilir
 
   // Ödeme durumu
@@ -1129,6 +1157,10 @@ function generateUniformContractHTML(student: { firstName: string; lastName: str
       <div class="field-row">
         <div class="field-label">Sınıf:</div>
         <div class="field-value">${studentGrade || '___________'}</div>
+      </div>
+      <div class="field-row">
+        <div class="field-label">Adres:</div>
+        <div class="field-value-large">${studentAddress || '___________'}</div>
       </div>
     </div>
 
