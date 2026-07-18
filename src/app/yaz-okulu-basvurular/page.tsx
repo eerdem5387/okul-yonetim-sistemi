@@ -14,14 +14,19 @@ import {
   PhoneCall,
   CheckCircle2,
   X,
+  School,
 } from "lucide-react"
 
 interface YazOkuluBasvuru {
   id: string
   externalId: string
-  studentId: string
-  ogrenciAdSoyad: string
-  ogrenciSinifi: string | null
+  ogrenciAd: string
+  ogrenciSoyad: string
+  okul: string
+  ogrenciSinifi: string
+  veliAd: string
+  veliSoyad: string
+  veliTelefon: string
   createdAt: string
   syncedAt: string
   contactStatus: "ILETISIME_GECILDI" | "ILETISIME_GECILMEDI"
@@ -38,6 +43,7 @@ interface Stats {
   contactedCount: number
   notContactedCount: number
   sinifBreakdown: Array<{ sinif: string; count: number }>
+  okulBreakdown: Array<{ okul: string; count: number }>
 }
 
 export default function YazOkuluBasvurularPage() {
@@ -66,6 +72,7 @@ export default function YazOkuluBasvurularPage() {
     contactedCount: 0,
     notContactedCount: 0,
     sinifBreakdown: [],
+    okulBreakdown: [],
   })
 
   const fetchStats = useCallback(async () => {
@@ -149,6 +156,11 @@ export default function YazOkuluBasvurularPage() {
       minute: "2-digit",
     })
 
+  const formatPhone = (phone: string) =>
+    phone.length === 10
+      ? `${phone.slice(0, 3)} ${phone.slice(3, 6)} ${phone.slice(6)}`
+      : phone
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
       <div className="mb-6">
@@ -160,7 +172,6 @@ export default function YazOkuluBasvurularPage() {
         </p>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4 mb-6">
         <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white">
           <CardContent className="pt-4 pb-4">
@@ -230,7 +241,6 @@ export default function YazOkuluBasvurularPage() {
         </Card>
       </div>
 
-      {/* Sınıf dağılımı */}
       {stats.sinifBreakdown.length > 0 && (
         <Card className="mb-6 border-0 shadow-md">
           <CardHeader className="pb-2">
@@ -255,17 +265,42 @@ export default function YazOkuluBasvurularPage() {
         </Card>
       )}
 
-      {/* Filters */}
+      {stats.okulBreakdown.length > 0 && (
+        <Card className="mb-6 border-0 shadow-md">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <School className="h-5 w-5" />
+              Okul Dağılımı (İlk 10)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+              {stats.okulBreakdown.map((item) => (
+                <div
+                  key={item.okul}
+                  className="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2"
+                >
+                  <p className="text-xs text-slate-500 truncate" title={item.okul}>
+                    {item.okul}
+                  </p>
+                  <p className="text-xl font-bold text-slate-800">{item.count}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="mb-6 border-0 shadow-md">
         <CardContent className="pt-6 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <Label className="mb-1.5 block">Öğrenci Ara</Label>
+              <Label className="mb-1.5 block">Ara</Label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   className="pl-9"
-                  placeholder="Ad soyad..."
+                  placeholder="Öğrenci, veli, telefon, okul..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -320,7 +355,6 @@ export default function YazOkuluBasvurularPage() {
         </CardContent>
       </Card>
 
-      {/* Table */}
       <Card className="border-0 shadow-md">
         <CardHeader className="pb-2">
           <CardTitle className="text-lg">
@@ -340,8 +374,11 @@ export default function YazOkuluBasvurularPage() {
                   <thead>
                     <tr className="border-b text-left text-gray-500">
                       <th className="py-3 pr-4 font-medium">Öğrenci</th>
+                      <th className="py-3 pr-4 font-medium">Okul</th>
                       <th className="py-3 pr-4 font-medium">Sınıf</th>
-                      <th className="py-3 pr-4 font-medium">Başvuru Tarihi</th>
+                      <th className="py-3 pr-4 font-medium">Veli</th>
+                      <th className="py-3 pr-4 font-medium">Telefon</th>
+                      <th className="py-3 pr-4 font-medium">Tarih</th>
                       <th className="py-3 pr-4 font-medium">İletişim</th>
                       <th className="py-3 font-medium">İşlem</th>
                     </tr>
@@ -349,13 +386,22 @@ export default function YazOkuluBasvurularPage() {
                   <tbody>
                     {basvurular.map((b) => (
                       <tr key={b.id} className="border-b last:border-0 hover:bg-slate-50">
-                        <td className="py-3 pr-4 font-medium text-gray-900">
-                          {b.ogrenciAdSoyad}
+                        <td className="py-3 pr-4 font-medium text-gray-900 whitespace-nowrap">
+                          {b.ogrenciAd} {b.ogrenciSoyad}
                         </td>
-                        <td className="py-3 pr-4 text-gray-700">
-                          {b.ogrenciSinifi || "—"}
+                        <td className="py-3 pr-4 text-gray-700 max-w-[180px] truncate" title={b.okul}>
+                          {b.okul}
                         </td>
-                        <td className="py-3 pr-4 text-gray-600">
+                        <td className="py-3 pr-4 text-gray-700 whitespace-nowrap">
+                          {b.ogrenciSinifi}
+                        </td>
+                        <td className="py-3 pr-4 text-gray-700 whitespace-nowrap">
+                          {b.veliAd} {b.veliSoyad}
+                        </td>
+                        <td className="py-3 pr-4 text-gray-700 whitespace-nowrap">
+                          {formatPhone(b.veliTelefon)}
+                        </td>
+                        <td className="py-3 pr-4 text-gray-600 whitespace-nowrap">
                           {formatDate(b.createdAt)}
                         </td>
                         <td className="py-3 pr-4">
@@ -449,7 +495,6 @@ export default function YazOkuluBasvurularPage() {
         </CardContent>
       </Card>
 
-      {/* Detail modal */}
       {selectedBasvuru && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <Card className="w-full max-w-lg relative">
@@ -465,11 +510,27 @@ export default function YazOkuluBasvurularPage() {
             <CardContent className="space-y-3 text-sm">
               <div>
                 <p className="text-gray-500">Öğrenci</p>
-                <p className="font-semibold">{selectedBasvuru.ogrenciAdSoyad}</p>
+                <p className="font-semibold">
+                  {selectedBasvuru.ogrenciAd} {selectedBasvuru.ogrenciSoyad}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-500">Okul</p>
+                <p className="font-semibold">{selectedBasvuru.okul}</p>
               </div>
               <div>
                 <p className="text-gray-500">Sınıf</p>
-                <p className="font-semibold">{selectedBasvuru.ogrenciSinifi || "—"}</p>
+                <p className="font-semibold">{selectedBasvuru.ogrenciSinifi}</p>
+              </div>
+              <div>
+                <p className="text-gray-500">Veli</p>
+                <p className="font-semibold">
+                  {selectedBasvuru.veliAd} {selectedBasvuru.veliSoyad}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-500">Veli Telefon</p>
+                <p className="font-semibold">{formatPhone(selectedBasvuru.veliTelefon)}</p>
               </div>
               <div>
                 <p className="text-gray-500">Başvuru Tarihi</p>
@@ -494,7 +555,6 @@ export default function YazOkuluBasvurularPage() {
         </div>
       )}
 
-      {/* Contact modal */}
       {contactModal && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <Card className="w-full max-w-md">
@@ -503,7 +563,7 @@ export default function YazOkuluBasvurularPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-gray-600">
-                {contactModal.basvuru.ogrenciAdSoyad}
+                {contactModal.basvuru.ogrenciAd} {contactModal.basvuru.ogrenciSoyad}
               </p>
               <div>
                 <Label className="mb-1.5 block">Durum</Label>

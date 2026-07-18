@@ -28,20 +28,24 @@ export async function POST(request: NextRequest) {
 
     const payload = await request.json()
 
-    if (!payload.id || !payload.studentId || !payload.ogrenciAdSoyad) {
+    if (
+      !payload.id ||
+      !payload.ogrenciAd ||
+      !payload.ogrenciSoyad ||
+      !payload.okul ||
+      !payload.ogrenciSinifi ||
+      !payload.veliAd ||
+      !payload.veliSoyad ||
+      !payload.veliTelefon
+    ) {
       return NextResponse.json(
         { error: "Invalid payload - missing required fields" },
         { status: 400 }
       )
     }
 
-    const existing = await prisma.yazOkuluBasvuru.findFirst({
-      where: {
-        OR: [
-          { externalId: payload.id },
-          { studentId: payload.studentId },
-        ],
-      },
+    const existing = await prisma.yazOkuluBasvuru.findUnique({
+      where: { externalId: payload.id },
     })
 
     if (existing) {
@@ -58,9 +62,13 @@ export async function POST(request: NextRequest) {
     const basvuru = await prisma.yazOkuluBasvuru.create({
       data: {
         externalId: payload.id,
-        studentId: payload.studentId,
-        ogrenciAdSoyad: payload.ogrenciAdSoyad,
-        ogrenciSinifi: payload.ogrenciSinifi || null,
+        ogrenciAd: payload.ogrenciAd,
+        ogrenciSoyad: payload.ogrenciSoyad,
+        okul: payload.okul,
+        ogrenciSinifi: payload.ogrenciSinifi,
+        veliAd: payload.veliAd,
+        veliSoyad: payload.veliSoyad,
+        veliTelefon: payload.veliTelefon,
         createdAt: payload.createdAt ? new Date(payload.createdAt) : new Date(),
         syncedAt: new Date(),
       },

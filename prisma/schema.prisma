@@ -225,9 +225,13 @@ enum ContactStatus {
 model YazOkuluBasvuru {
   id             String   @id @default(cuid())
   externalId     String   @unique
-  studentId      String   @unique
-  ogrenciAdSoyad String
-  ogrenciSinifi  String?
+  ogrenciAd      String
+  ogrenciSoyad   String
+  okul           String
+  ogrenciSinifi  String
+  veliAd         String
+  veliSoyad      String
+  veliTelefon    String
   createdAt      DateTime @default(now())
   syncedAt       DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -238,7 +242,7 @@ model YazOkuluBasvuru {
   lastContactedBy String?
 
   @@index([externalId])
-  @@index([studentId])
+  @@index([veliTelefon])
   @@index([createdAt])
   @@map("yaz_okulu_basvurular")
 }

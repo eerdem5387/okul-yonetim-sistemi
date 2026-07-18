@@ -22,15 +22,19 @@ export async function GET(request: NextRequest) {
       where,
       select: {
         ogrenciSinifi: true,
+        okul: true,
         createdAt: true,
         contactStatus: true,
       },
     })
 
     const sinifStats: Record<string, number> = {}
+    const okulStats: Record<string, number> = {}
     basvurular.forEach((b) => {
       const sinif = b.ogrenciSinifi || "Belirtilmemiş"
       sinifStats[sinif] = (sinifStats[sinif] || 0) + 1
+      const okul = b.okul || "Belirtilmemiş"
+      okulStats[okul] = (okulStats[okul] || 0) + 1
     })
 
     const today = new Date()
@@ -69,6 +73,10 @@ export async function GET(request: NextRequest) {
       sinifBreakdown: Object.entries(sinifStats)
         .sort(([, a], [, b]) => b - a)
         .map(([sinif, count]) => ({ sinif, count })),
+      okulBreakdown: Object.entries(okulStats)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 10)
+        .map(([okul, count]) => ({ okul, count })),
     })
   } catch (error) {
     console.error("[Yaz Okulu] Stats hatası:", error)

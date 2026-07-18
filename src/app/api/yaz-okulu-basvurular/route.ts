@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "20")
     const search = searchParams.get("search") || ""
     const sinif = searchParams.get("sinif") || ""
+    const okul = searchParams.get("okul") || ""
     const startDate = searchParams.get("startDate") || ""
     const endDate = searchParams.get("endDate") || ""
     const contactStatus = searchParams.get("contactStatus") || ""
@@ -17,13 +18,26 @@ export async function GET(request: NextRequest) {
 
     if (search) {
       whereConditions.push({
-        ogrenciAdSoyad: { contains: search, mode: "insensitive" as const },
+        OR: [
+          { ogrenciAd: { contains: search, mode: "insensitive" as const } },
+          { ogrenciSoyad: { contains: search, mode: "insensitive" as const } },
+          { veliAd: { contains: search, mode: "insensitive" as const } },
+          { veliSoyad: { contains: search, mode: "insensitive" as const } },
+          { veliTelefon: { contains: search } },
+          { okul: { contains: search, mode: "insensitive" as const } },
+        ],
       })
     }
 
     if (sinif) {
       whereConditions.push({
         ogrenciSinifi: { equals: sinif, mode: "insensitive" as const },
+      })
+    }
+
+    if (okul) {
+      whereConditions.push({
+        okul: { contains: okul, mode: "insensitive" as const },
       })
     }
 
