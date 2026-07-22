@@ -6,17 +6,26 @@ export async function POST(request: NextRequest) {
   try {
     const headersList = await headers()
     const webhookSecret = headersList.get("x-webhook-secret")
-    const expectedSecret = process.env.WEBHOOK_SECRET
+    const serviceSecret = headersList.get("x-service-secret")
+    const expectedWebhookSecret = process.env.WEBHOOK_SECRET
+    const expectedServiceSecret = process.env.SERVICE_API_SECRET
 
-    if (!expectedSecret) {
-      console.error("[Yaz Okulu Webhook] WEBHOOK_SECRET tanımlı değil")
+    const webhookOk =
+      !!expectedWebhookSecret && webhookSecret === expectedWebhookSecret
+    const serviceOk =
+      !!expectedServiceSecret && serviceSecret === expectedServiceSecret
+
+    if (!expectedWebhookSecret && !expectedServiceSecret) {
+      console.error(
+        "[Yaz Okulu Webhook] WEBHOOK_SECRET / SERVICE_API_SECRET tanımlı değil"
+      )
       return NextResponse.json(
         { error: "Server configuration error" },
         { status: 500 }
       )
     }
 
-    if (webhookSecret !== expectedSecret) {
+    if (!webhookOk && !serviceOk) {
       console.warn("[Yaz Okulu Webhook] Geçersiz secret")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
