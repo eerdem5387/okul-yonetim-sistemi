@@ -37,3 +37,37 @@ export async function PATCH(
     )
   }
 }
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+
+    await prisma.yazOkuluBasvuru.delete({
+      where: { id },
+    })
+
+    return NextResponse.json({
+      success: true,
+      message: "Başvuru silindi",
+    })
+  } catch (error) {
+    console.error("[Yaz Okulu] DELETE hatası:", error)
+
+    if (error && typeof error === "object" && "code" in error) {
+      if (error.code === "P2025") {
+        return NextResponse.json(
+          { error: "Başvuru bulunamadı" },
+          { status: 404 }
+        )
+      }
+    }
+
+    return NextResponse.json(
+      { error: "Başvuru silinirken bir hata oluştu" },
+      { status: 500 }
+    )
+  }
+}

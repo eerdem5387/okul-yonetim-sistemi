@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   X,
   School,
+  Trash2,
 } from "lucide-react"
 
 interface YazOkuluBasvuru {
@@ -64,6 +65,7 @@ export default function YazOkuluBasvurularPage() {
     note: string
   } | null>(null)
   const [isSavingContact, setIsSavingContact] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [stats, setStats] = useState<Stats>({
     total: 0,
     today: 0,
@@ -145,6 +147,40 @@ export default function YazOkuluBasvurularPage() {
     setEndDate("")
     fetchStats()
     fetchBasvurular(1, "", "", "", "", "")
+  }
+
+  const handleDelete = async (id: string, ogrenciAd: string, ogrenciSoyad: string) => {
+    if (
+      !confirm(
+        `"${ogrenciAd} ${ogrenciSoyad}" başvurusunu kalıcı olarak silmek istediğinize emin misiniz?`
+      )
+    ) {
+      return
+    }
+
+    try {
+      setDeletingId(id)
+      const response = await fetch(`/api/yaz-okulu-basvurular/${id}`, {
+        method: "DELETE",
+      })
+      if (!response.ok) {
+        throw new Error("Silme başarısız")
+      }
+      if (selectedBasvuru?.id === id) setSelectedBasvuru(null)
+      await fetchBasvurular(
+        currentPage,
+        searchTerm,
+        selectedSinif,
+        contactFilter,
+        startDate,
+        endDate
+      )
+      await fetchStats()
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Silme başarısız")
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   const formatDate = (date: string) =>
@@ -438,6 +474,24 @@ export default function YazOkuluBasvurularPage() {
                               }
                             >
                               İletişim
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              disabled={deletingId === b.id}
+                              onClick={() =>
+                                handleDelete(b.id, b.ogrenciAd, b.ogrenciSoyad)
+                              }
+                            >
+                              {deletingId === b.id ? (
+                                "..."
+                              ) : (
+                                <>
+                                  <Trash2 className="h-3.5 w-3.5 mr-1" />
+                                  Sil
+                                </>
+                              )}
                             </Button>
                           </div>
                         </td>
