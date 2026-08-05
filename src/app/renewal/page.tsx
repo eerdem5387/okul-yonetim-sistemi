@@ -9,11 +9,19 @@ import { Download, Users, Clock, TrendingUp, GraduationCap, List, Search, Extern
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
+  contractYearLabelFromAcademicYear,
   getRenewalTargetYearFromList,
   getRenewalYearSetupIssue,
   renewalSetupErrorMessage,
   type AcademicYearListItem,
 } from "@/lib/academic-year-ui"
+import {
+  formatPersonName,
+  formatTcInput,
+  formatValidationAlert,
+  validateContractFields,
+  validateUniformFields,
+} from "@/lib/registration-form-validation"
 import { renewalTargetClassLabel } from "@/lib/student-grade-level"
 import { RenewalGradeExplainer } from "@/components/registration/RenewalGradeExplainer"
 import { RENEWAL_STATS_FRACTION_HINT } from "@/lib/renewal-grade-display"
@@ -38,6 +46,21 @@ interface Student {
   fatherOccupation: string
   announcedTuitionFee?: string | null
   studentTuitionFee?: string | null
+}
+
+interface YearlyHistoryOverview {
+  totalStudents: number
+  renewedCount: number
+  notRenewedCount: number
+  newRegistrationCount: number
+  notNewRegistrationCount: number
+  notRenewedStudents: Array<{
+    id: string
+    firstName: string
+    lastName: string
+    tcNumber: string
+    grade: string
+  }>
 }
 
 const siniflar = [
@@ -79,6 +102,10 @@ export default function RenewalPage() {
     >,
     academicYearStats: {} as Record<string, number>,
   })
+  const [historyYearOptions, setHistoryYearOptions] = useState<string[]>([])
+  const [selectedHistoryYear, setSelectedHistoryYear] = useState("")
+  const [yearlyHistoryLoading, setYearlyHistoryLoading] = useState(false)
+  const [yearlyHistory, setYearlyHistory] = useState<YearlyHistoryOverview | null>(null)
 
   // Ana Sözleşme Form Verileri
   const [mainContractData, setMainContractData] = useState({
@@ -351,6 +378,8 @@ export default function RenewalPage() {
         const data = (await res.json()) as AcademicYearListItem[]
         if (cancelled) return
         const rows = Array.isArray(data) ? data : []
+        const yearLabels = rows.map((r) => contractYearLabelFromAcademicYear(r))
+        setHistoryYearOptions(yearLabels)
         const t = getRenewalTargetYearFromList(rows)
         setRenewalTarget(t)
         if (t) {
@@ -372,6 +401,27 @@ export default function RenewalPage() {
     })()
     return () => {
       cancelled = true
+    }
+  }, [])
+
+  const fetchYearlyHistory = useCallback(async (academicYear: string) => {
+    if (!academicYear) {
+      setYearlyHistory(null)
+      return
+    }
+    setYearlyHistoryLoading(true)
+    try {
+      const res = await fetch(
+        `/api/registration-history/yearly?academicYear=${encodeURIComponent(academicYear)}`
+      )
+      if (!res.ok) throw new Error("yearly-history")
+      const data = (await res.json()) as YearlyHistoryOverview
+      setYearlyHistory(data)
+    } catch (error) {
+      console.error("Error fetching yearly renewal history:", error)
+      setYearlyHistory(null)
+    } finally {
+      setYearlyHistoryLoading(false)
     }
   }, [])
 
@@ -398,6 +448,24 @@ export default function RenewalPage() {
     fetchStudents()
     fetchStats()
   }, [fetchStudents, fetchStats])
+
+  useEffect(() => {
+    const mergedOptions = [
+      ...new Set([
+        ...historyYearOptions,
+        ...Object.keys(stats.academicYearStats || {}),
+        renewalTarget?.label || "",
+      ].filter(Boolean)),
+    ]
+    if (!selectedHistoryYear && mergedOptions.length > 0) {
+      setSelectedHistoryYear(renewalTarget?.label || mergedOptions[0] || "")
+    }
+  }, [historyYearOptions, renewalTarget, selectedHistoryYear, stats.academicYearStats])
+
+  useEffect(() => {
+    if (!selectedHistoryYear) return
+    fetchYearlyHistory(selectedHistoryYear)
+  }, [selectedHistoryYear, fetchYearlyHistory])
 
   // Sözleşme numarasını otomatik oluştur
   const generateContractNumber = async (date: string) => {
@@ -443,10 +511,11 @@ export default function RenewalPage() {
     
     const updateData = async () => {
       if (staffName) {
+        const formattedStaffName = formatPersonName(staffName)
         setMainContractData(prev => ({
           ...prev,
-          registrationResponsible: prev.registrationResponsible || staffName,
-          registrarName: prev.registrarName || staffName,
+          registrationResponsible: prev.registrationResponsible || formattedStaffName,
+          registrarName: prev.registrarName || formattedStaffName,
           contractDate: prev.contractDate || today,
           registrationDate: prev.registrationDate || today
         }))
@@ -506,16 +575,6 @@ export default function RenewalPage() {
       return
     }
 
-    if (!mainContractData.schoolLicenseNo) {
-      alert("⚠️ Okul ruhsat no seçmelisiniz!")
-      return
-    }
-
-    if (!mainContractData.academicYear) {
-      alert("⚠️ Eğitim öğretim yılı seçmelisiniz!")
-      return
-    }
-
     // Mevcut kayıt yenileme kontrolü
     if (hasExistingRenewal) {
       alert(`⚠️ ${existingRenewalInfo}\n\nBu öğrenci için seçilen akademik yılda zaten kayıt yenileme yapılmış. Tekrar kayıt yenileme yapılamaz!`)
@@ -527,6 +586,19 @@ export default function RenewalPage() {
       alert(
         "⚠️ Öğrencinin sınıfı kayıt yenileme için uygun değil (5–12. sınıf olmalıdır)."
       )
+      return
+    }
+
+    const contractPayload = {
+      ...mainContractData,
+      academicYear: renewalTarget.label,
+      studentClass: renewalClass,
+    }
+    const contractErrors = validateContractFields(contractPayload)
+    const uniformErrors = validateUniformFields(otherContractData)
+    const allErrors = [...contractErrors, ...uniformErrors]
+    if (allErrors.length > 0) {
+      alert(formatValidationAlert(allErrors))
       return
     }
 
@@ -669,13 +741,14 @@ export default function RenewalPage() {
     
     const formattedBirthDate = formatDate(student.birthDate)
     const nextClass = renewalTargetClassLabel(student.grade) ?? ""
+    const fullName = formatPersonName(`${student.firstName} ${student.lastName}`)
     setMainContractData(prev => ({
       ...prev,
-      studentName: `${student.firstName} ${student.lastName}`,
-      studentTC: student.tcNumber,
+      studentName: fullName,
+      studentTC: formatTcInput(student.tcNumber || ""),
       studentClass: nextClass,
       studentBirthDate: formattedBirthDate, // ISO formatında sakla (YYYY-MM-DD)
-      contractStudentName: `${student.firstName} ${student.lastName}`,
+      contractStudentName: fullName,
       contractParentName: ""
     }))
     
@@ -702,6 +775,19 @@ export default function RenewalPage() {
       }
     } catch (err) {
       console.error("Error fetching student details:", err)
+    }
+  }
+
+  const handleSelectFromHistory = async (studentId: string) => {
+    try {
+      const response = await fetch(`/api/students/${studentId}?format=legacy`)
+      if (!response.ok) throw new Error("student-not-found")
+      const studentDetails = (await response.json()) as Student
+      await handleStudentSelect(studentDetails)
+      window.scrollTo({ top: 0, behavior: "smooth" })
+    } catch (error) {
+      console.error("Error selecting student from history:", error)
+      alert("Öğrenci bilgileri yüklenemedi.")
     }
   }
 
@@ -848,6 +934,90 @@ export default function RenewalPage() {
           </CardContent>
         </Card>
 
+        <Card className="border-0 shadow-lg">
+          <CardHeader className="pb-3 sm:pb-4">
+            <CardTitle className="text-base sm:text-lg">Akademik Yıl Geçmişi (Kayıt Yenileme)</CardTitle>
+            <CardDescription>
+              Geçmiş yıllara göre yenileyen/yenilemeyen öğrencileri inceleyin, isterseniz öğrenciyi doğrudan forma aktarın.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="max-w-md">
+              <Label htmlFor="historyAcademicYear">Akademik Yıl Seçimi</Label>
+              <select
+                id="historyAcademicYear"
+                value={selectedHistoryYear}
+                onChange={(e) => setSelectedHistoryYear(e.target.value)}
+                className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="">Yıl seçiniz</option>
+                {[...new Set([...historyYearOptions, ...Object.keys(stats.academicYearStats || {})])]
+                  .filter(Boolean)
+                  .map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            {yearlyHistoryLoading ? (
+              <p className="text-sm text-gray-500">Yıl verileri yükleniyor...</p>
+            ) : yearlyHistory ? (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-gray-500">Toplam Öğrenci</p>
+                    <p className="text-xl font-semibold">{yearlyHistory.totalStudents}</p>
+                  </div>
+                  <div className="rounded-lg border p-3 bg-green-50">
+                    <p className="text-xs text-gray-500">Kayıt Yenileyen</p>
+                    <p className="text-xl font-semibold text-green-700">{yearlyHistory.renewedCount}</p>
+                  </div>
+                  <div className="rounded-lg border p-3 bg-amber-50">
+                    <p className="text-xs text-gray-500">Kayıt Yenilemeyen</p>
+                    <p className="text-xl font-semibold text-amber-700">{yearlyHistory.notRenewedCount}</p>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border">
+                  <div className="px-4 py-3 border-b bg-gray-50">
+                    <p className="text-sm font-medium">Kayıt Yenilemeyen Öğrenciler</p>
+                  </div>
+                  <div className="max-h-72 overflow-y-auto divide-y">
+                    {yearlyHistory.notRenewedStudents.length === 0 ? (
+                      <p className="p-4 text-sm text-gray-500">Bu yıl için yenilemeyen öğrenci bulunamadı.</p>
+                    ) : (
+                      yearlyHistory.notRenewedStudents.slice(0, 100).map((student) => (
+                        <div key={student.id} className="p-3 flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {student.firstName} {student.lastName}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {student.grade} • {student.tcNumber}
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleSelectFromHistory(student.id)}
+                          >
+                            Yenileme Başlat
+                          </Button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-gray-500">Seçilen yıl için veri bulunamadı.</p>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Öğrenci Seçimi */}
         <Card>
           <CardHeader>
@@ -945,15 +1115,15 @@ export default function RenewalPage() {
                   {/* Öğrenci ve Sözleşme Bilgileri */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="studentName">Öğrenci Adı</Label>
+                      <Label htmlFor="studentName">Öğrenci Adı *</Label>
                       <Input
                         id="studentName"
                         value={mainContractData.studentName}
-                        onChange={(e) => setMainContractData({ ...mainContractData, studentName: e.target.value })}
+                        onChange={(e) => setMainContractData({ ...mainContractData, studentName: formatPersonName(e.target.value) })}
                       />
                     </div>
                     <div className="col-span-2 sm:col-span-1">
-                      <Label htmlFor="studentClass">Kayıt yenileme hedef sınıfı</Label>
+                      <Label htmlFor="studentClass">Kayıt yenileme hedef sınıfı *</Label>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         Mevcut kayıtlı sınıf:{" "}
                         <span className="font-medium text-foreground">
@@ -971,15 +1141,18 @@ export default function RenewalPage() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="studentTC">TC</Label>
+                      <Label htmlFor="studentTC">TC *</Label>
                       <Input
                         id="studentTC"
                         value={mainContractData.studentTC}
-                        onChange={(e) => setMainContractData({ ...mainContractData, studentTC: e.target.value })}
+                        onChange={(e) => setMainContractData({ ...mainContractData, studentTC: formatTcInput(e.target.value) })}
+                        maxLength={11}
+                        inputMode="numeric"
+                        placeholder="11 haneli TC"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="studentBirthDate">Doğum Tarihi (GG.AA.YYYY)</Label>
+                      <Label htmlFor="studentBirthDate">Doğum Tarihi * (GG.AA.YYYY)</Label>
                       <Input
                         id="studentBirthDate"
                         type="text"
@@ -1014,7 +1187,7 @@ export default function RenewalPage() {
                       />
                     </div>
                     <div>
-                      <Label>Okul Ruhsat No</Label>
+                      <Label>Okul Ruhsat No *</Label>
                       <div className="flex gap-2 mt-1">
                         <Button
                           type="button"
@@ -1048,7 +1221,7 @@ export default function RenewalPage() {
                       )}
                     </div>
                     <div>
-                      <Label htmlFor="contractNo">Sözleşme No</Label>
+                      <Label htmlFor="contractNo">Sözleşme No *</Label>
                       <Input
                         id="contractNo"
                         value={mainContractData.contractNo}
@@ -1057,16 +1230,16 @@ export default function RenewalPage() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="registrationResponsible">Kayıt/Kayıt Yenileme Sorumlusu</Label>
+                      <Label htmlFor="registrationResponsible">Kayıt/Kayıt Yenileme Sorumlusu *</Label>
                       <Input
                         id="registrationResponsible"
                         value={mainContractData.registrationResponsible}
-                        onChange={(e) => setMainContractData(prev => ({ ...prev, registrationResponsible: e.target.value }))}
+                        onChange={(e) => setMainContractData(prev => ({ ...prev, registrationResponsible: formatPersonName(e.target.value) }))}
                         placeholder="Kayıt sorumlusunun adı soyadı"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="registrationDate">Kayıt/Kayıt Yenileme Tarihi</Label>
+                      <Label htmlFor="registrationDate">Kayıt/Kayıt Yenileme Tarihi *</Label>
                       <Input
                         id="registrationDate"
                         type="date"
@@ -1149,25 +1322,21 @@ export default function RenewalPage() {
                     </div>
 
                     <div className="grid grid-cols-3 gap-4">
-                      <div>Öğrenim Ücreti</div>
+                      <div>Öğrenim Ücreti *</div>
                       <Input
                         value={mainContractData.announcedTuitionFee}
                         onChange={(e) => setMainContractData({ ...mainContractData, announcedTuitionFee: e.target.value })}
                         placeholder="0"
-                        readOnly
-                        className="bg-gray-100 cursor-not-allowed"
                       />
                       <Input
                         value={mainContractData.studentTuitionFee}
                         onChange={(e) => setMainContractData({ ...mainContractData, studentTuitionFee: e.target.value })}
                         placeholder="0"
-                        readOnly
-                        className="bg-gray-100 cursor-not-allowed"
                       />
                     </div>
 
                     <div className="grid grid-cols-3 gap-4">
-                      <div>KIYAFET ÜCRETİ</div>
+                      <div>KIYAFET ÜCRETİ *</div>
                       <Input
                         value={mainContractData.announcedClothingFee}
                         onChange={(e) => setMainContractData({ ...mainContractData, announcedClothingFee: e.target.value })}
@@ -1181,7 +1350,7 @@ export default function RenewalPage() {
                     </div>
 
                     <div className="grid grid-cols-3 gap-4">
-                      <div className="pl-4">Takviye Kursu Ücreti</div>
+                      <div className="pl-4">Takviye Kursu Ücreti *</div>
                       <Input
                         value={mainContractData.announcedCourseFee}
                         onChange={(e) => setMainContractData({ ...mainContractData, announcedCourseFee: e.target.value })}
@@ -1196,7 +1365,7 @@ export default function RenewalPage() {
 
 
                     <div className="grid grid-cols-3 gap-4">
-                      <div className="pl-4">Etüt Ücreti</div>
+                      <div className="pl-4">Etüt Ücreti *</div>
                       <Input
                         value={mainContractData.announcedStudyHallFee}
                         onChange={(e) => setMainContractData({ ...mainContractData, announcedStudyHallFee: e.target.value })}
@@ -1210,7 +1379,7 @@ export default function RenewalPage() {
                     </div>
 
                     <div className="grid grid-cols-3 gap-4 font-semibold">
-                      <div>ÜCRETLER TOPLAMI</div>
+                      <div>ÜCRETLER TOPLAMI *</div>
                       <Input
                         value={mainContractData.announcedTotal}
                         onChange={(e) => setMainContractData({ ...mainContractData, announcedTotal: e.target.value })}
@@ -1268,7 +1437,7 @@ export default function RenewalPage() {
 
                   {/* Ödeme Planı */}
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Ödeme Planı</h3>
+                    <h3 className="text-lg font-semibold">Ödeme Planı *</h3>
                     <div className="grid grid-cols-4 gap-3">
                       {[
                         "İŞBANK KREDİ KARTI 2+4 TAKSİT",
@@ -1304,7 +1473,7 @@ export default function RenewalPage() {
                     <h3 className="text-lg font-semibold">İmza ve Tarih</h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="contractDate">Tarih</Label>
+                        <Label htmlFor="contractDate">Tarih *</Label>
                         <Input
                           id="contractDate"
                           type="date"
@@ -1314,11 +1483,11 @@ export default function RenewalPage() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="registrarName">Kaydı Yapan</Label>
+                        <Label htmlFor="registrarName">Kaydı Yapan *</Label>
                         <Input
                           id="registrarName"
                           value={mainContractData.registrarName}
-                          onChange={(e) => setMainContractData(prev => ({ ...prev, registrarName: e.target.value }))}
+                          onChange={(e) => setMainContractData(prev => ({ ...prev, registrarName: formatPersonName(e.target.value) }))}
                           placeholder="Kaydı yapan kişinin adı soyadı"
                         />
                       </div>
@@ -1379,7 +1548,7 @@ export default function RenewalPage() {
 
                   {/* Ödeme Durumu Checkboxları */}
                   <div className="space-y-2">
-                    <Label>Ödeme Durumu</Label>
+                    <Label>Ödeme Durumu *</Label>
                     <div className="flex gap-4">
                       <label className="flex items-center space-x-2 cursor-pointer">
                         <input
@@ -1417,7 +1586,7 @@ export default function RenewalPage() {
                   {/* Eski Forma Alanları (Opsiyonel) */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="uniformSize">Forma Bedeni</Label>
+                      <Label htmlFor="uniformSize">Forma Bedeni *</Label>
                       <Input
                         id="uniformSize"
                         value={otherContractData.uniformSize}
@@ -1426,7 +1595,7 @@ export default function RenewalPage() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="uniformDeliveryDate">Teslimat Tarihi</Label>
+                      <Label htmlFor="uniformDeliveryDate">Teslimat Tarihi *</Label>
                       <Input
                         id="uniformDeliveryDate"
                         type="date"
@@ -1436,7 +1605,7 @@ export default function RenewalPage() {
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="uniformItems">Teslim Edilecek Formalar</Label>
+                    <Label htmlFor="uniformItems">Teslim Edilecek Formalar *</Label>
                     <div className="space-y-2 mt-2">
                       {['eşofman takımı', 'eşofman takımı + 2 tişört', 'tişört 2 adet'].map((item) => (
                         <label key={item} className="flex items-center">

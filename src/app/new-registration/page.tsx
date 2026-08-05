@@ -12,6 +12,15 @@ import {
   resolveActiveAndNextAcademicYear,
   type AcademicYearListItem,
 } from "@/lib/academic-year-ui"
+import {
+  formatPersonName,
+  formatPhoneInput,
+  formatTcInput,
+  formatValidationAlert,
+  validateContractFields,
+  validateStudentIdentityFields,
+  validateUniformFields,
+} from "@/lib/registration-form-validation"
 
 const siniflar = [
   "5. Sınıf",
@@ -50,6 +59,21 @@ export default function NewRegistrationPage() {
     >,
     academicYearStats: {} as Record<string, number>,
   })
+  const [historyYearOptions, setHistoryYearOptions] = useState<string[]>([])
+  const [selectedHistoryYear, setSelectedHistoryYear] = useState("")
+  const [yearlyHistoryLoading, setYearlyHistoryLoading] = useState(false)
+  const [yearlyHistory, setYearlyHistory] = useState<{
+    totalStudents: number
+    newRegistrationCount: number
+    notNewRegistrationCount: number
+    notNewRegisteredStudents: Array<{
+      id: string
+      firstName: string
+      lastName: string
+      tcNumber: string
+      grade: string
+    }>
+  } | null>(null)
   
   // Öğrenci Bilgileri Formu
   const [studentFormData, setStudentFormData] = useState({
@@ -326,7 +350,9 @@ export default function NewRegistrationPage() {
         if (!res.ok) throw new Error("academic-years")
         const data = (await res.json()) as AcademicYearListItem[]
         if (cancelled) return
-        const { active, next } = resolveActiveAndNextAcademicYear(Array.isArray(data) ? data : [])
+        const allRows = Array.isArray(data) ? data : []
+        setHistoryYearOptions(allRows.map((r) => contractYearLabelFromAcademicYear(r)))
+        const { active, next } = resolveActiveAndNextAcademicYear(allRows)
         setAcademicYearChoices({ active, next })
         setMainContractData((prev) => {
           if (prev.academicYear) return prev
@@ -347,6 +373,44 @@ export default function NewRegistrationPage() {
       cancelled = true
     }
   }, [])
+
+  const fetchYearlyHistory = useCallback(async (academicYear: string) => {
+    if (!academicYear) {
+      setYearlyHistory(null)
+      return
+    }
+    setYearlyHistoryLoading(true)
+    try {
+      const res = await fetch(
+        `/api/registration-history/yearly?academicYear=${encodeURIComponent(academicYear)}`
+      )
+      if (!res.ok) throw new Error("yearly-history")
+      setYearlyHistory(await res.json())
+    } catch (error) {
+      console.error("Error fetching yearly new registration history:", error)
+      setYearlyHistory(null)
+    } finally {
+      setYearlyHistoryLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    const mergedOptions = [
+      ...new Set([
+        ...historyYearOptions,
+        ...Object.keys(stats.academicYearStats || {}),
+        mainContractData.academicYear,
+      ].filter(Boolean)),
+    ]
+    if (!selectedHistoryYear && mergedOptions.length > 0) {
+      setSelectedHistoryYear(mainContractData.academicYear || mergedOptions[0] || "")
+    }
+  }, [historyYearOptions, mainContractData.academicYear, selectedHistoryYear, stats.academicYearStats])
+
+  useEffect(() => {
+    if (!selectedHistoryYear) return
+    fetchYearlyHistory(selectedHistoryYear)
+  }, [selectedHistoryYear, fetchYearlyHistory])
 
   // Sözleşme numarasını otomatik oluştur
   const generateContractNumber = async (date: string) => {
@@ -392,10 +456,11 @@ export default function NewRegistrationPage() {
     
     const updateData = async () => {
       if (staffName) {
+        const formattedStaffName = formatPersonName(staffName)
         setMainContractData(prev => ({
           ...prev,
-          registrationResponsible: prev.registrationResponsible || staffName,
-          registrarName: prev.registrarName || staffName,
+          registrationResponsible: prev.registrationResponsible || formattedStaffName,
+          registrarName: prev.registrarName || formattedStaffName,
           contractDate: prev.contractDate || today,
           registrationDate: prev.registrationDate || today
         }))
@@ -427,25 +492,15 @@ export default function NewRegistrationPage() {
       return
     }
 
-    // Öğrenci bilgilerini kontrol et - zorunlu alanlar
-    if (!studentFormData.firstName || !studentFormData.lastName || !studentFormData.tcNumber || !studentFormData.grade || !studentFormData.birthDate) {
-      alert("⚠️ Lütfen öğrenci bilgilerini eksiksiz doldurun!\n\nZorunlu alanlar:\n- Ad\n- Soyad\n- TC Kimlik No\n- Doğum Tarihi\n- Sınıf")
-      return
-    }
-
-    if (!mainContractData.schoolLicenseNo) {
-      alert("⚠️ Okul ruhsat no seçmelisiniz!")
-      return
-    }
-
-    if (!mainContractData.academicYear || !contractAcademicYearId) {
-      alert("⚠️ Eğitim öğretim yılı seçmelisiniz!")
-      return
-    }
-
-    // TC numarası kontrolü
-    if (studentFormData.tcNumber.length !== 11 || !/^\d+$/.test(studentFormData.tcNumber)) {
-      alert("⚠️ TC Kimlik Numarası 11 haneli olmalı ve sadece rakamlardan oluşmalıdır!")
+    const identityErrors = validateStudentIdentityFields(studentFormData)
+    const contractErrors = validateContractFields(mainContractData, {
+      requireAcademicYearId: true,
+      academicYearId: contractAcademicYearId,
+    })
+    const uniformErrors = validateUniformFields(otherContractData)
+    const allErrors = [...identityErrors, ...contractErrors, ...uniformErrors]
+    if (allErrors.length > 0) {
+      alert(formatValidationAlert(allErrors))
       return
     }
 
@@ -679,6 +734,52 @@ export default function NewRegistrationPage() {
     }
   }
 
+  const handleUseExistingStudent = async (studentId: string) => {
+    try {
+      const response = await fetch(`/api/students/${studentId}?format=legacy`)
+      if (!response.ok) throw new Error("student-not-found")
+      const student = await response.json()
+      setCreatedStudentId(student.id)
+      const firstName = formatPersonName(student.firstName || "")
+      const lastName = formatPersonName(student.lastName || "")
+      const fullName = formatPersonName(`${firstName} ${lastName}`.trim())
+      setStudentFormData({
+        firstName,
+        lastName,
+        tcNumber: formatTcInput(student.tcNumber || ""),
+        birthDate: student.birthDate
+          ? new Date(student.birthDate).toLocaleDateString("tr-TR")
+          : "",
+        grade: student.grade || "",
+        address: student.address || "",
+        motherName: formatPersonName(student.motherName || ""),
+        motherTc: formatTcInput(student.motherTc || ""),
+        motherPhone: formatPhoneInput(student.motherPhone || ""),
+        motherAddress: student.motherAddress || "",
+        motherOccupation: student.motherOccupation || "",
+        fatherName: formatPersonName(student.fatherName || ""),
+        fatherTc: formatTcInput(student.fatherTc || ""),
+        fatherPhone: formatPhoneInput(student.fatherPhone || ""),
+        fatherAddress: student.fatherAddress || "",
+        fatherOccupation: student.fatherOccupation || "",
+      })
+      setMainContractData((prev) => ({
+        ...prev,
+        studentName: fullName,
+        contractStudentName: fullName,
+        studentTC: formatTcInput(student.tcNumber || ""),
+        studentClass: student.grade || "",
+        studentBirthDate: student.birthDate
+          ? new Date(student.birthDate).toISOString().split("T")[0]
+          : "",
+      }))
+      window.scrollTo({ top: 0, behavior: "smooth" })
+    } catch (error) {
+      console.error("Error loading existing student:", error)
+      alert("Öğrenci bilgileri yüklenemedi.")
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-3 sm:p-4 md:p-6 lg:p-8">
       {/* Page Header */}
@@ -779,6 +880,89 @@ export default function NewRegistrationPage() {
             </div>
           </CardContent>
         </Card>
+        <Card className="border-0 shadow-lg">
+          <CardHeader className="pb-3 sm:pb-4">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              Geçmiş Akademik Yıl Görünümü
+            </CardTitle>
+            <CardDescription>
+              Seçilen yıldaki yeni kayıt sayılarını ve yeni kaydı olmayan öğrencileri izleyin.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="max-w-md">
+              <Label htmlFor="newRegHistoryYear">Akademik Yıl Seçimi</Label>
+              <select
+                id="newRegHistoryYear"
+                value={selectedHistoryYear}
+                onChange={(e) => setSelectedHistoryYear(e.target.value)}
+                className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="">Yıl seçiniz</option>
+                {[...new Set([...historyYearOptions, ...Object.keys(stats.academicYearStats || {})])]
+                  .filter(Boolean)
+                  .map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+              </select>
+            </div>
+            {yearlyHistoryLoading ? (
+              <p className="text-sm text-gray-500">Yıl verileri yükleniyor...</p>
+            ) : yearlyHistory ? (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-gray-500">Toplam Öğrenci</p>
+                    <p className="text-xl font-semibold">{yearlyHistory.totalStudents}</p>
+                  </div>
+                  <div className="rounded-lg border p-3 bg-blue-50">
+                    <p className="text-xs text-gray-500">Yeni Kayıtlı</p>
+                    <p className="text-xl font-semibold text-blue-700">{yearlyHistory.newRegistrationCount}</p>
+                  </div>
+                  <div className="rounded-lg border p-3 bg-amber-50">
+                    <p className="text-xs text-gray-500">Yeni Kaydı Olmayan</p>
+                    <p className="text-xl font-semibold text-amber-700">{yearlyHistory.notNewRegistrationCount}</p>
+                  </div>
+                </div>
+                <div className="rounded-lg border">
+                  <div className="px-4 py-3 border-b bg-gray-50">
+                    <p className="text-sm font-medium">Bu Yılda Yeni Kaydı Olmayan Öğrenciler</p>
+                  </div>
+                  <div className="max-h-72 overflow-y-auto divide-y">
+                    {yearlyHistory.notNewRegisteredStudents.length === 0 ? (
+                      <p className="p-4 text-sm text-gray-500">Liste boş.</p>
+                    ) : (
+                      yearlyHistory.notNewRegisteredStudents.slice(0, 100).map((student) => (
+                        <div key={student.id} className="p-3 flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {student.firstName} {student.lastName}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {student.grade} • {student.tcNumber}
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleUseExistingStudent(student.id)}
+                          >
+                            Forma Aktar
+                          </Button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-gray-500">Seçilen yıl için veri bulunamadı.</p>
+            )}
+          </CardContent>
+        </Card>
         {/* Öğrenci Bilgileri Formu */}
         <Card className="border-2 border-blue-500 shadow-lg">
           <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
@@ -802,11 +986,13 @@ export default function NewRegistrationPage() {
                       id="firstName"
                       value={studentFormData.firstName}
                       onChange={(e) => {
-                        setStudentFormData({ ...studentFormData, firstName: e.target.value })
+                        const firstName = formatPersonName(e.target.value)
+                        setStudentFormData({ ...studentFormData, firstName })
+                        const fullName = formatPersonName(`${firstName} ${studentFormData.lastName}`)
                         setMainContractData(prev => ({
                           ...prev,
-                          studentName: `${e.target.value} ${studentFormData.lastName}`,
-                          contractStudentName: `${e.target.value} ${studentFormData.lastName}`
+                          studentName: fullName,
+                          contractStudentName: fullName
                         }))
                       }}
                       required
@@ -818,11 +1004,13 @@ export default function NewRegistrationPage() {
                       id="lastName"
                       value={studentFormData.lastName}
                       onChange={(e) => {
-                        setStudentFormData({ ...studentFormData, lastName: e.target.value })
+                        const lastName = formatPersonName(e.target.value)
+                        setStudentFormData({ ...studentFormData, lastName })
+                        const fullName = formatPersonName(`${studentFormData.firstName} ${lastName}`)
                         setMainContractData(prev => ({
                           ...prev,
-                          studentName: `${studentFormData.firstName} ${e.target.value}`,
-                          contractStudentName: `${studentFormData.firstName} ${e.target.value}`
+                          studentName: fullName,
+                          contractStudentName: fullName
                         }))
                       }}
                       required
@@ -834,10 +1022,13 @@ export default function NewRegistrationPage() {
                       id="tcNumber"
                       value={studentFormData.tcNumber}
                       onChange={(e) => {
-                        setStudentFormData({ ...studentFormData, tcNumber: e.target.value })
-                        setMainContractData(prev => ({ ...prev, studentTC: e.target.value }))
+                        const tcNumber = formatTcInput(e.target.value)
+                        setStudentFormData({ ...studentFormData, tcNumber })
+                        setMainContractData(prev => ({ ...prev, studentTC: tcNumber }))
                       }}
                       maxLength={11}
+                      inputMode="numeric"
+                      placeholder="11 haneli TC"
                       required
                     />
                   </div>
@@ -898,7 +1089,7 @@ export default function NewRegistrationPage() {
                     </select>
                   </div>
                   <div>
-                    <Label htmlFor="address">Adres</Label>
+                    <Label htmlFor="address">Adres *</Label>
                     <Input
                       id="address"
                       value={studentFormData.address}
@@ -913,32 +1104,37 @@ export default function NewRegistrationPage() {
                 <h3 className="text-lg font-semibold mb-4">Anne Bilgileri</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="motherName">Anne Adı Soyadı</Label>
+                    <Label htmlFor="motherName">Anne Adı Soyadı *</Label>
                     <Input
                       id="motherName"
                       value={studentFormData.motherName}
-                      onChange={(e) => setStudentFormData({ ...studentFormData, motherName: e.target.value })}
+                      onChange={(e) => setStudentFormData({ ...studentFormData, motherName: formatPersonName(e.target.value) })}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="motherTc">Anne TC Kimlik No</Label>
+                    <Label htmlFor="motherTc">Anne TC Kimlik No *</Label>
                     <Input
                       id="motherTc"
                       value={studentFormData.motherTc}
-                      onChange={(e) => setStudentFormData({ ...studentFormData, motherTc: e.target.value })}
+                      onChange={(e) => setStudentFormData({ ...studentFormData, motherTc: formatTcInput(e.target.value) })}
                       maxLength={11}
+                      inputMode="numeric"
+                      placeholder="11 haneli TC"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="motherPhone">Anne Telefon</Label>
+                    <Label htmlFor="motherPhone">Anne Telefon *</Label>
                     <Input
                       id="motherPhone"
                       value={studentFormData.motherPhone}
-                      onChange={(e) => setStudentFormData({ ...studentFormData, motherPhone: e.target.value })}
+                      onChange={(e) => setStudentFormData({ ...studentFormData, motherPhone: formatPhoneInput(e.target.value) })}
+                      maxLength={10}
+                      inputMode="numeric"
+                      placeholder="5XXXXXXXXX (başında 0 olmadan)"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="motherAddress">Anne Adres</Label>
+                    <Label htmlFor="motherAddress">Anne Adres *</Label>
                     <Input
                       id="motherAddress"
                       value={studentFormData.motherAddress}
@@ -946,7 +1142,7 @@ export default function NewRegistrationPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="motherOccupation">Anne Meslek</Label>
+                    <Label htmlFor="motherOccupation">Anne Meslek *</Label>
                     <Input
                       id="motherOccupation"
                       value={studentFormData.motherOccupation}
@@ -961,32 +1157,37 @@ export default function NewRegistrationPage() {
                 <h3 className="text-lg font-semibold mb-4">Baba Bilgileri</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="fatherName">Baba Adı Soyadı</Label>
+                    <Label htmlFor="fatherName">Baba Adı Soyadı *</Label>
                     <Input
                       id="fatherName"
                       value={studentFormData.fatherName}
-                      onChange={(e) => setStudentFormData({ ...studentFormData, fatherName: e.target.value })}
+                      onChange={(e) => setStudentFormData({ ...studentFormData, fatherName: formatPersonName(e.target.value) })}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="fatherTc">Baba TC Kimlik No</Label>
+                    <Label htmlFor="fatherTc">Baba TC Kimlik No *</Label>
                     <Input
                       id="fatherTc"
                       value={studentFormData.fatherTc}
-                      onChange={(e) => setStudentFormData({ ...studentFormData, fatherTc: e.target.value })}
+                      onChange={(e) => setStudentFormData({ ...studentFormData, fatherTc: formatTcInput(e.target.value) })}
                       maxLength={11}
+                      inputMode="numeric"
+                      placeholder="11 haneli TC"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="fatherPhone">Baba Telefon</Label>
+                    <Label htmlFor="fatherPhone">Baba Telefon *</Label>
                     <Input
                       id="fatherPhone"
                       value={studentFormData.fatherPhone}
-                      onChange={(e) => setStudentFormData({ ...studentFormData, fatherPhone: e.target.value })}
+                      onChange={(e) => setStudentFormData({ ...studentFormData, fatherPhone: formatPhoneInput(e.target.value) })}
+                      maxLength={10}
+                      inputMode="numeric"
+                      placeholder="5XXXXXXXXX (başında 0 olmadan)"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="fatherAddress">Baba Adres</Label>
+                    <Label htmlFor="fatherAddress">Baba Adres *</Label>
                     <Input
                       id="fatherAddress"
                       value={studentFormData.fatherAddress}
@@ -994,7 +1195,7 @@ export default function NewRegistrationPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="fatherOccupation">Baba Meslek</Label>
+                    <Label htmlFor="fatherOccupation">Baba Meslek *</Label>
                     <Input
                       id="fatherOccupation"
                       value={studentFormData.fatherOccupation}
@@ -1020,15 +1221,15 @@ export default function NewRegistrationPage() {
                   {/* Öğrenci ve Sözleşme Bilgileri */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="studentName">Öğrenci Adı Soyadı</Label>
+                      <Label htmlFor="studentName">Öğrenci Adı Soyadı *</Label>
                       <Input
                         id="studentName"
                         value={mainContractData.studentName}
-                        onChange={(e) => setMainContractData({ ...mainContractData, studentName: e.target.value })}
+                        onChange={(e) => setMainContractData({ ...mainContractData, studentName: formatPersonName(e.target.value) })}
                       />
                     </div>
                     <div>
-                      <Label htmlFor="studentClass">Sınıfı</Label>
+                      <Label htmlFor="studentClass">Sınıfı *</Label>
                       <select
                         id="studentClass"
                         value={(() => {
@@ -1047,15 +1248,18 @@ export default function NewRegistrationPage() {
                       </select>
                     </div>
                     <div>
-                      <Label htmlFor="studentTC">TC</Label>
+                      <Label htmlFor="studentTC">TC *</Label>
                       <Input
                         id="studentTC"
                         value={mainContractData.studentTC}
-                        onChange={(e) => setMainContractData({ ...mainContractData, studentTC: e.target.value })}
+                        onChange={(e) => setMainContractData({ ...mainContractData, studentTC: formatTcInput(e.target.value) })}
+                        maxLength={11}
+                        inputMode="numeric"
+                        placeholder="11 haneli TC"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="studentBirthDate">Doğum Tarihi</Label>
+                      <Label htmlFor="studentBirthDate">Doğum Tarihi *</Label>
                       <Input
                         id="studentBirthDate"
                         type="date"
@@ -1064,7 +1268,7 @@ export default function NewRegistrationPage() {
                       />
                     </div>
                     <div>
-                      <Label>Okul Ruhsat No</Label>
+                      <Label>Okul Ruhsat No *</Label>
                       <div className="flex gap-2 mt-1">
                         <Button
                           type="button"
@@ -1098,7 +1302,7 @@ export default function NewRegistrationPage() {
                       )}
                     </div>
                     <div>
-                      <Label htmlFor="contractNo">Sözleşme No</Label>
+                      <Label htmlFor="contractNo">Sözleşme No *</Label>
                       <Input
                         id="contractNo"
                         value={mainContractData.contractNo}
@@ -1107,16 +1311,16 @@ export default function NewRegistrationPage() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="registrationResponsible">Kayıt/Kayıt Yenileme Sorumlusu</Label>
+                      <Label htmlFor="registrationResponsible">Kayıt/Kayıt Yenileme Sorumlusu *</Label>
                       <Input
                         id="registrationResponsible"
                         value={mainContractData.registrationResponsible}
-                        onChange={(e) => setMainContractData(prev => ({ ...prev, registrationResponsible: e.target.value }))}
+                        onChange={(e) => setMainContractData(prev => ({ ...prev, registrationResponsible: formatPersonName(e.target.value) }))}
                         placeholder="Kayıt sorumlusunun adı soyadı"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="registrationDate">Kayıt/Kayıt Yenileme Tarihi</Label>
+                      <Label htmlFor="registrationDate">Kayıt/Kayıt Yenileme Tarihi *</Label>
                       <Input
                         id="registrationDate"
                         type="date"
@@ -1259,7 +1463,7 @@ export default function NewRegistrationPage() {
                     </div>
 
                     <div className="grid grid-cols-3 gap-4">
-                      <div>Öğrenim Ücreti</div>
+                      <div>Öğrenim Ücreti *</div>
                       <Input
                         value={mainContractData.announcedTuitionFee}
                         onChange={(e) => setMainContractData({ ...mainContractData, announcedTuitionFee: e.target.value })}
@@ -1273,7 +1477,7 @@ export default function NewRegistrationPage() {
                     </div>
 
                     <div className="grid grid-cols-3 gap-4">
-                      <div>KIYAFET ÜCRETİ</div>
+                      <div>KIYAFET ÜCRETİ *</div>
                       <Input
                         value={mainContractData.announcedClothingFee}
                         onChange={(e) => setMainContractData({ ...mainContractData, announcedClothingFee: e.target.value })}
@@ -1287,7 +1491,7 @@ export default function NewRegistrationPage() {
                     </div>
 
                     <div className="grid grid-cols-3 gap-4">
-                      <div className="pl-4">Takviye Kursu Ücreti</div>
+                      <div className="pl-4">Takviye Kursu Ücreti *</div>
                       <Input
                         value={mainContractData.announcedCourseFee}
                         onChange={(e) => setMainContractData({ ...mainContractData, announcedCourseFee: e.target.value })}
@@ -1302,7 +1506,7 @@ export default function NewRegistrationPage() {
 
 
                     <div className="grid grid-cols-3 gap-4">
-                      <div className="pl-4">Etüt Ücreti</div>
+                      <div className="pl-4">Etüt Ücreti *</div>
                       <Input
                         value={mainContractData.announcedStudyHallFee}
                         onChange={(e) => setMainContractData({ ...mainContractData, announcedStudyHallFee: e.target.value })}
@@ -1316,7 +1520,7 @@ export default function NewRegistrationPage() {
                     </div>
 
                     <div className="grid grid-cols-3 gap-4 font-semibold">
-                      <div>ÜCRETLER TOPLAMI</div>
+                      <div>ÜCRETLER TOPLAMI *</div>
                       <Input
                         value={mainContractData.announcedTotal}
                         onChange={(e) => setMainContractData({ ...mainContractData, announcedTotal: e.target.value })}
@@ -1374,7 +1578,7 @@ export default function NewRegistrationPage() {
 
                   {/* Ödeme Planı */}
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Ödeme Planı</h3>
+                    <h3 className="text-lg font-semibold">Ödeme Planı *</h3>
                     <div className="grid grid-cols-4 gap-3">
                       {[
                         "İŞBANK KREDİ KARTI 2+4 TAKSİT",
@@ -1408,7 +1612,7 @@ export default function NewRegistrationPage() {
                     <h3 className="text-lg font-semibold">İmza ve Tarih</h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="contractDate">Tarih</Label>
+                        <Label htmlFor="contractDate">Tarih *</Label>
                         <Input
                           id="contractDate"
                           type="date"
@@ -1418,11 +1622,11 @@ export default function NewRegistrationPage() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="registrarName">Kaydı Yapan</Label>
+                        <Label htmlFor="registrarName">Kaydı Yapan *</Label>
                         <Input
                           id="registrarName"
                           value={mainContractData.registrarName}
-                          onChange={(e) => setMainContractData(prev => ({ ...prev, registrarName: e.target.value }))}
+                          onChange={(e) => setMainContractData(prev => ({ ...prev, registrarName: formatPersonName(e.target.value) }))}
                           placeholder="Kaydı yapan kişinin adı soyadı"
                         />
                       </div>
@@ -1483,7 +1687,7 @@ export default function NewRegistrationPage() {
 
                   {/* Ödeme Durumu Checkboxları */}
                   <div className="space-y-2">
-                    <Label>Ödeme Durumu</Label>
+                    <Label>Ödeme Durumu *</Label>
                     <div className="flex gap-4">
                       <label className="flex items-center space-x-2 cursor-pointer">
                         <input
@@ -1521,7 +1725,7 @@ export default function NewRegistrationPage() {
                   {/* Eski Forma Alanları (Opsiyonel) */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="uniformSize">Forma Bedeni</Label>
+                      <Label htmlFor="uniformSize">Forma Bedeni *</Label>
                       <Input
                         id="uniformSize"
                         value={otherContractData.uniformSize}
@@ -1530,7 +1734,7 @@ export default function NewRegistrationPage() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="uniformDeliveryDate">Teslimat Tarihi</Label>
+                      <Label htmlFor="uniformDeliveryDate">Teslimat Tarihi *</Label>
                       <Input
                         id="uniformDeliveryDate"
                         type="date"
@@ -1540,7 +1744,7 @@ export default function NewRegistrationPage() {
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="uniformItems">Teslim Edilecek Formalar</Label>
+                    <Label htmlFor="uniformItems">Teslim Edilecek Formalar *</Label>
                     <div className="space-y-2 mt-2">
                       {['eşofman takımı', 'eşofman takımı + 2 tişört', 'tişört 2 adet'].map((item) => (
                         <label key={item} className="flex items-center">
