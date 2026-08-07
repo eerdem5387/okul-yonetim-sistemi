@@ -10,6 +10,7 @@ function mapYearJson(r: {
   startDate: Date | null
   endDate: Date | null
   isActive: boolean
+  isRenewalPeriod: boolean
   weekendDays: string[]
   term1Start: Date | null
   term1End: Date | null
@@ -23,6 +24,7 @@ function mapYearJson(r: {
     startDate: r.startDate?.toISOString() ?? null,
     endDate: r.endDate?.toISOString() ?? null,
     isActive: r.isActive,
+    isRenewalPeriod: r.isRenewalPeriod,
     weekendDays: r.weekendDays,
     term1Start: r.term1Start?.toISOString() ?? null,
     term1End: r.term1End?.toISOString() ?? null,

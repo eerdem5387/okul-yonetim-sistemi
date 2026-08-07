@@ -40,6 +40,8 @@ export type AcademicYearListItem = {
   startDate: string | null
   endDate: string | null
   isActive: boolean
+  /** Kayıt yenileme kampanya dönemi (aktif öğretim yılından bağımsız). */
+  isRenewalPeriod?: boolean
   parentActiveYearId?: string | null
   term1Start?: string | null
   term1End?: string | null
@@ -47,11 +49,27 @@ export type AcademicYearListItem = {
   term2End?: string | null
 }
 
-/** Aktif yıl (bayrak) veya takvim aralığına göre "içinde olduğumuz" yıl; sonra startDate sırasıyla bir sonrakı. */
-/** Kayıt yenileme hedefi: aktif yıl satırının kimliği + bir sonraki sözleşme yılı etiketi. */
+/**
+ * Kayıt yenileme hedefi:
+ * 1) Ayarlar’da «Kayıt Yenileme Dönemi» açık olan yıl (isRenewalPeriod)
+ * 2) Yoksa geriye dönük: aktif yıl + bir sonraki etiket
+ */
 export function getRenewalTargetYearFromList(
   rows: AcademicYearListItem[]
 ): { id: string; name: string; label: string } | null {
+  const primaries = rows.filter((y) => !y.parentActiveYearId)
+  const period = primaries.find((y) => y.isRenewalPeriod)
+  if (period) {
+    const label = contractYearLabelFromAcademicYear(period)
+    if (!label) return null
+    return {
+      id: period.id,
+      name: `${period.name} (kayıt yenileme dönemi)`,
+      label,
+    }
+  }
+
+  // Geriye dönük uyumluluk (dönem henüz set edilmemiş ortamlar)
   const { active } = resolveActiveAndNextAcademicYear(rows)
   if (!active) return null
   const label = followingContractYearLabelFromRow(active)
@@ -64,13 +82,22 @@ export function getRenewalTargetYearFromList(
 }
 
 /** Kayıt yenileme hedefi neden yok? */
-export type RenewalYearSetupIssue = "no_years" | "no_active" | "renewal_label_unknown"
+export type RenewalYearSetupIssue =
+  | "no_years"
+  | "no_active"
+  | "no_renewal_period"
+  | "renewal_label_unknown"
 
 export function getRenewalYearSetupIssue(years: AcademicYearListItem[]): RenewalYearSetupIssue | null {
   if (getRenewalTargetYearFromList(years)) return null
   if (!years.length) return "no_years"
-  const { active } = resolveActiveAndNextAcademicYear(years)
-  if (!active) return "no_active"
+  const primaries = years.filter((y) => !y.parentActiveYearId)
+  const hasPeriodFlag = primaries.some((y) => y.isRenewalPeriod)
+  if (!hasPeriodFlag) {
+    const { active } = resolveActiveAndNextAcademicYear(years)
+    if (!active) return "no_renewal_period"
+    return "renewal_label_unknown"
+  }
   return "renewal_label_unknown"
 }
 
@@ -85,11 +112,13 @@ export function renewalSetupErrorMessage(
       return "Sistemde hiç akademik yıl kaydı yok. Ayarlar → Akademik Yıllar sekmesinden öğretim yılını oluşturup aktif yapın."
     case "no_active":
       return "Aktif öğretim yılı seçilemedi. Ayarlar’dan bir akademik yılı «Aktif» olarak işaretleyin veya takvimde içinde bulunduğumuz tarih aralığına denk gelen bir yıl tanımlayın."
+    case "no_renewal_period":
+      return "Kayıt yenileme dönemi açık değil. Ayarlar → Akademik Yıllar bölümünden «Kayıt Yenileme Dönemi» switch’ini açın."
     case "renewal_label_unknown": {
       const activePart = active ? ` Aktif kayıtlı yıl: «${active.name}».` : ""
       return (
         `${activePart} Kayıt yenileme yılı etiketi çıkarılamadı. Yıl adında «2024-2025» biçiminde iki yıl içeren bir ifade kullanın ` +
-        `veya geçerli bir öğretim yılı başlangıç tarihi girin (etiket başlangıç yılından türetilir).`
+        `veya Ayarlar’dan geçerli bir kayıt yenileme dönemi seçin.`
       )
     }
     default:

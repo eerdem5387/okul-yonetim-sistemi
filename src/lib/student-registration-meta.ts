@@ -19,6 +19,8 @@ export type YearRowDb = {
   startDate: Date | null
   endDate: Date | null
   isActive: boolean
+  isRenewalPeriod?: boolean
+  parentActiveYearId?: string | null
 }
 
 /** Sözleşme metnindeki yıl ifadelerini kıyaslamak için (boşluk, tire, slash varyantları). */
@@ -48,6 +50,8 @@ function toListItems(yearRows: YearRowDb[]): AcademicYearListItem[] {
     startDate: r.startDate?.toISOString() ?? null,
     endDate: r.endDate?.toISOString() ?? null,
     isActive: r.isActive,
+    isRenewalPeriod: Boolean(r.isRenewalPeriod),
+    parentActiveYearId: r.parentActiveYearId ?? null,
   }))
 }
 

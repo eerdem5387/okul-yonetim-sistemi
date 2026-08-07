@@ -746,7 +746,9 @@ model AcademicYear {
   name                String // Örn: "2024-2025 Eğitim Öğretim Yılı"
   startDate           DateTime? // Başlangıç (taslak yılda boş; aktif yapılırken zorunlu)
   endDate             DateTime? // Bitiş (taslak yılda boş; aktif yapılırken zorunlu)
-  isActive            Boolean        @default(false) // Aktif akademik yıl
+  isActive            Boolean        @default(false) // Aktif akademik yıl (öğretim)
+  /// Kayıt yenileme kampanya dönemi; aktif öğretim yılından bağımsız. Aynı anda en fazla bir yıl true.
+  isRenewalPeriod     Boolean        @default(false)
   weekendDays         String[]       @default([]) // Hafta tatili günleri: ["SATURDAY", "SUNDAY"]
   term1Start          DateTime? // 1. dönem başlangıcı
   term1End            DateTime? // 1. dönem bitişi
@@ -766,6 +768,7 @@ model AcademicYear {
   classes     Class[] // Akademik yıla ait sınıflar (FAZ 2)
 
   @@index([isActive])
+  @@index([isRenewalPeriod])
   @@index([startDate, endDate])
   @@index([parentActiveYearId])
   @@map("academic_years")

@@ -19,6 +19,7 @@ export async function listAcademicYearsForContract(): Promise<AcademicYearListIt
     startDate: r.startDate?.toISOString() ?? null,
     endDate: r.endDate?.toISOString() ?? null,
     isActive: r.isActive,
+    isRenewalPeriod: r.isRenewalPeriod,
     parentActiveYearId: r.parentActiveYearId,
     term1Start: r.term1Start?.toISOString() ?? null,
     term1End: r.term1End?.toISOString() ?? null,
@@ -93,14 +94,14 @@ export async function validateRenewalAcademicYear(contractData: Record<string, u
   if (!label || label !== target.label) {
     return {
       ok: false,
-      error: `Kayıt yenileme yalnızca aktif yıldan türetilen hedef etiket ile yapılabilir: ${target.label} (${target.name}).`,
+      error: `Kayıt yenileme yalnızca açık kayıt yenileme dönemi ile yapılabilir: ${target.label} (${target.name}).`,
     }
   }
   if (!id || id !== target.id) {
     return {
       ok: false,
       error:
-        "Sözleşmedeki akademik yıl kimliği (academicYearId), aktif akademik yıl kaydı ile eşleşmelidir.",
+        "Sözleşmedeki akademik yıl kimliği (academicYearId), açık kayıt yenileme dönemi ile eşleşmelidir. Ayarlar → Kayıt Yenileme Dönemi’ni kontrol edin.",
     }
   }
   return { ok: true }

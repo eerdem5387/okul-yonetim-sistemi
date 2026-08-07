@@ -45,6 +45,7 @@ interface AcademicYear {
   startDate: string | null
   endDate: string | null
   isActive: boolean
+  isRenewalPeriod?: boolean
   weekendDays: string[]
   term1Start?: string | null
   term1End?: string | null
@@ -319,6 +320,40 @@ export default function YonetimPage() {
     } catch (e) {
       console.error(e)
       error("İşlem sırasında hata oluştu.")
+    }
+  }
+
+  const handleToggleRenewalPeriod = async (year: AcademicYear, enabled: boolean) => {
+    if (year.parentActiveYearId) return
+    if (enabled && !year.isRenewalPeriod) {
+      const ok = window.confirm(
+        `«${year.name}» için kayıt yenileme dönemini açmak istiyor musunuz?\n\n` +
+          `Sayaçlar ve «yeniledi / yenilemedi» listeleri bu döneme göre hesaplanır. ` +
+          `Başka bir dönem açıksa otomatik kapanır. Eski dönem verisi silinmez.\n\n` +
+          `Not: Aktif öğretim yılı bundan bağımsızdır.`
+      )
+      if (!ok) return
+    }
+    try {
+      const res = await fetch(`/api/neredeyiz/academic-years/${year.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "setRenewalPeriod", enabled }),
+      })
+      if (res.ok) {
+        success(
+          enabled
+            ? `Kayıt yenileme dönemi açıldı: ${year.name}`
+            : `Kayıt yenileme dönemi kapatıldı: ${year.name}`
+        )
+        await fetchAcademicYears()
+      } else {
+        const d = await res.json().catch(() => ({}))
+        error((d as { error?: string }).error || "İşlem başarısız.")
+      }
+    } catch (e) {
+      console.error(e)
+      error("Kayıt yenileme dönemi güncellenirken hata oluştu.")
     }
   }
 
@@ -908,6 +943,7 @@ export default function YonetimPage() {
 
       {/* Akademik Yıllar Tab */}
       {activeTab === "years" && (
+        <>
         <Card>
           <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -955,6 +991,11 @@ export default function YonetimPage() {
                         {year.isActive && (
                           <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs font-medium">
                             Aktif
+                          </span>
+                        )}
+                        {year.isRenewalPeriod && (
+                          <span className="px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded-full text-xs font-medium">
+                            Kayıt yenileme dönemi
                           </span>
                         )}
                       </div>
@@ -1037,6 +1078,63 @@ export default function YonetimPage() {
             )}
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
+            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <Settings className="h-4 w-4 sm:h-5 sm:w-5" />
+              Kayıt Yenileme Dönemi
+            </CardTitle>
+            <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+              Aktif öğretim yılı ile kayıt yenileme dönemi farklı kavramlardır. Örneğin öğretim yılı
+              2026-2027 aktifken, kayıt yenileme dönemi de 2026-2027 olabilir (önceki yılda yapılan
+              yenilemeler dahil). Yeni bir dönemi açtığınızda sayaçlar o döneme göre sıfırlanmış gibi
+              görünür; eski dönem verisi silinmez.
+            </p>
+          </CardHeader>
+          <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6 space-y-3">
+            {academicYears.filter((y) => !y.parentActiveYearId).length === 0 ? (
+              <p className="text-sm text-gray-500">Önce akademik yıl tanımlayın.</p>
+            ) : (
+              academicYears
+                .filter((y) => !y.parentActiveYearId)
+                .map((year) => {
+                  const on = Boolean(year.isRenewalPeriod)
+                  return (
+                    <div
+                      key={`renewal-period-${year.id}`}
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 border border-gray-200 rounded-lg"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm sm:text-base text-gray-900">{year.name}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {on
+                            ? "Bu dönem açık — yenileme sayaçları ve listeler buna göre hesaplanır."
+                            : "Kapalı"}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={on}
+                        onClick={() => void handleToggleRenewalPeriod(year, !on)}
+                        className={`relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                          on ? "bg-indigo-600" : "bg-gray-300"
+                        }`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow transition ${
+                            on ? "translate-x-5" : "translate-x-0"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  )
+                })
+            )}
+          </CardContent>
+        </Card>
+        </>
       )}
 
       {/* Dersler Tab */}

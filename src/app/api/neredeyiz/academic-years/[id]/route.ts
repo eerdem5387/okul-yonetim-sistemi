@@ -159,16 +159,16 @@ export async function PUT(
   }
 }
 
-/** Yalnızca aktif bayrağını kaldırır; takvim ve tatiller korunur (boş PUT gövdesiyle alan silinmez). */
+/** Yalnızca aktif bayrağını kaldırır veya kayıt yenileme dönemini ayarlar. */
 export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
     const params = await context.params
-    const body = (await request.json()) as { action?: string }
-    if (body.action !== "deactivate") {
-      return NextResponse.json({ error: "Geçersiz işlem" }, { status: 400 })
+    const body = (await request.json()) as {
+      action?: string
+      enabled?: boolean
     }
 
     const row = await prisma.academicYear.findUnique({ where: { id: params.id } })
@@ -184,6 +184,37 @@ export async function PATCH(
         { status: 400 }
       )
     }
+
+    if (body.action === "setRenewalPeriod") {
+      const enabled = Boolean(body.enabled)
+      const academicYear = await prisma.$transaction(async (tx) => {
+        if (enabled) {
+          await tx.academicYear.updateMany({
+            where: { isRenewalPeriod: true, id: { not: params.id } },
+            data: { isRenewalPeriod: false },
+          })
+        }
+        return tx.academicYear.update({
+          where: { id: params.id },
+          data: { isRenewalPeriod: enabled },
+        })
+      })
+
+      return NextResponse.json({
+        ...academicYear,
+        startDate: academicYear.startDate?.toISOString() ?? null,
+        endDate: academicYear.endDate?.toISOString() ?? null,
+        term1Start: academicYear.term1Start?.toISOString() ?? null,
+        term1End: academicYear.term1End?.toISOString() ?? null,
+        term2Start: academicYear.term2Start?.toISOString() ?? null,
+        term2End: academicYear.term2End?.toISOString() ?? null,
+      })
+    }
+
+    if (body.action !== "deactivate") {
+      return NextResponse.json({ error: "Geçersiz işlem" }, { status: 400 })
+    }
+
     if (!row.isActive) {
       return NextResponse.json({ error: "Bu yıl zaten aktif değil." }, { status: 400 })
     }
@@ -205,9 +236,9 @@ export async function PATCH(
       term2End: academicYear.term2End?.toISOString() ?? null,
     })
   } catch (error) {
-    console.error("Error deactivating academic year:", error)
+    console.error("Error patching academic year:", error)
     return NextResponse.json(
-      { error: "Akademik yıl sonlandırılırken hata oluştu" },
+      { error: "Akademik yıl güncellenirken hata oluştu" },
       { status: 500 }
     )
   }

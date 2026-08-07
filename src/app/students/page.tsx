@@ -777,11 +777,11 @@ export default function StudentsPage() {
                 <p className="text-[10px] sm:text-xs text-gray-500 mt-1">9–12. sınıf</p>
               </div>
               <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-3 sm:p-4 shadow-sm col-span-2 lg:col-span-1">
-                <p className="text-xs font-medium text-indigo-900">Kayıt dönemi</p>
+                <p className="text-xs font-medium text-indigo-900">Kayıt yenileme dönemi</p>
                 <p className="text-sm font-semibold text-indigo-950 mt-0.5">
                   {overview.renewalTargetYear
                     ? `${overview.renewalTargetYear.name} (${overview.renewalTargetYear.label})`
-                    : "Tanımlı değil"}
+                    : "Ayarlar’da açık değil"}
                 </p>
                 {overview.activeAcademicYear && (
                   <p className="text-[10px] text-indigo-800/80 mt-1">
@@ -1564,8 +1564,8 @@ export default function StudentsPage() {
             <DialogDescription className="text-xs sm:text-sm">
               {regBrowseModal === "renewed" &&
                 (overview?.renewalTargetYear?.label
-                  ? `Hedef yıla (${overview.renewalTargetYear.label}) kayıt yenilemesi olan öğrenciler. Arama, kademe ve sınıf filtreleri uygulanır.`
-                  : "Kayıt yenilemesi tanımlı hedef yıla göre eşleşen öğrenciler.")}
+                  ? `Kayıt yenileme dönemi (${overview.renewalTargetYear.label}) için yenilemesi olan öğrenciler. Arama, kademe ve sınıf filtreleri uygulanır.`
+                  : "Açık kayıt yenileme dönemine göre eşleşen öğrenciler.")}
               {regBrowseModal === "new_registration" &&
                 "Aktif veya sonraki öğretim yılı için yeni kayıt sözleşmesi olan öğrenciler. Aşağıdan akademik yıla göre daraltabilirsiniz; gelecek yıl kayıtlı olanlar ana listede görünmez. Arama, kademe ve sınıf filtreleri uygulanır."}
             </DialogDescription>
@@ -1972,7 +1972,7 @@ export default function StudentsPage() {
             <DialogTitle>Kayıt yenilemeyen öğrenciler</DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
               {overview?.renewalTargetYear?.label
-                ? `Hedef yıl (${overview.renewalTargetYear.label}) için kayıt yenilemesi veya ilgili yeni kayıt kaydı olmayan öğrenciler (5–12. sınıf).`
+                ? `Kayıt yenileme dönemi (${overview.renewalTargetYear.label}) için kayıt yenilemesi veya ilgili yeni kayıt kaydı olmayan öğrenciler (5–12. sınıf).`
                 : "Kayıt yenilemesi veya ilgili yeni kayıt kaydı olmayan öğrenciler (5–12. sınıf)."}
             </DialogDescription>
           </DialogHeader>

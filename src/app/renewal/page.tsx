@@ -1255,15 +1255,15 @@ export default function RenewalPage() {
                       <div className="flex flex-col gap-2 flex-1 min-w-[240px]">
                         <h3 className="text-lg font-semibold">ÖDEME BİLGİLERİ — Öğretim yılı</h3>
                         <p className="text-xs text-gray-600">
-                          Kayıt yenileme <strong>yalnızca aktif öğretim yılından türetilen hedef etiket</strong> ile
-                          yapılır; başka yıllar seçilemez. Sözleşmedeki akademik yıl kimliği aktif yıl kaydı ile aynıdır;
-                          etiket ise bu yılın adı veya başlangıç tarihinden hesaplanan bir sonraki sözleşme yılıdır.
+                          Kayıt yenileme <strong>yalnızca Ayarlar’da açık olan kayıt yenileme dönemi</strong> ile
+                          yapılır; aktif öğretim yılından otomatik kaymaz. Sözleşme etiketi ve kimliği açık
+                          döneme aittir.
                         </p>
                         {renewalYearLoading ? (
-                          <p className="text-sm text-gray-500">Hedef akademik yıl yükleniyor…</p>
+                          <p className="text-sm text-gray-500">Kayıt yenileme dönemi yükleniyor…</p>
                         ) : renewalTarget ? (
                           <div className="rounded-xl border border-indigo-200 bg-indigo-50/80 px-4 py-3 text-sm">
-                            <p className="font-semibold text-indigo-900">Hedef yıl (sabit)</p>
+                            <p className="font-semibold text-indigo-900">Açık kayıt yenileme dönemi</p>
                             <p className="text-indigo-800 mt-1">
                               {renewalTarget.name}{" "}
                               <span className="text-indigo-600">({renewalTarget.label})</span>
@@ -1273,13 +1273,13 @@ export default function RenewalPage() {
                           <div className="rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-950 space-y-3">
                             <p className="leading-relaxed">
                               {renewalSetupMessage ??
-                                "Kayıt yenileme için hedef akademik yıl belirlenemedi. Ayarlar’dan akademik yılları kontrol edin."}
+                                "Kayıt yenileme dönemi açık değil. Ayarlar’dan «Kayıt Yenileme Dönemi» switch’ini açın."}
                             </p>
                             <Link
                               href="/yonetim/ayarlar"
                               className="inline-flex h-9 items-center justify-center rounded-md border border-amber-300 bg-background px-3 text-sm font-medium shadow-sm hover:bg-amber-100/60"
                             >
-                              Ayarlar — Akademik yıllar
+                              Ayarlar — Kayıt Yenileme Dönemi
                             </Link>
                           </div>
                         )}
