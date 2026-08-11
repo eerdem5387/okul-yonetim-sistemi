@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import { gradeLevelLabel } from "@/lib/student-grade-level"
+import { registrationStatusTextToOverride } from "@/lib/student-registration-meta"
 import {
   Save,
   Plus,
@@ -150,7 +151,7 @@ export default function StudentsPage() {
   const [regBrowseTotal, setRegBrowseTotal] = useState(0)
   const prevRegBrowseSearchRef = useRef<string | null>(null)
 
-  const [formData, setFormData] = useState({
+  const emptyFormData = {
     firstName: "",
     lastName: "",
     tcNumber: "",
@@ -168,8 +169,14 @@ export default function StudentsPage() {
     fatherAddress: "",
     fatherOccupation: "",
     announcedTuitionFee: "",
-    studentTuitionFee: ""
-  })
+    studentTuitionFee: "",
+    registrationStatusOverride: "new_registration" as
+      | "new_registration"
+      | "renewed"
+      | "not_renewed",
+  }
+
+  const [formData, setFormData] = useState({ ...emptyFormData })
 
   const gradeOptions = [
     "5. Sınıf",
@@ -442,26 +449,7 @@ export default function StudentsPage() {
         fetchOverview()
         setShowForm(false)
         setEditingStudent(null)
-        setFormData({
-          firstName: "",
-          lastName: "",
-          tcNumber: "",
-          birthDate: "",
-          grade: "",
-          address: "",
-          motherName: "",
-          motherTc: "",
-          motherPhone: "",
-          motherAddress: "",
-          motherOccupation: "",
-          fatherName: "",
-          fatherTc: "",
-          fatherPhone: "",
-          fatherAddress: "",
-          fatherOccupation: "",
-          announcedTuitionFee: "",
-          studentTuitionFee: ""
-        })
+        setFormData({ ...emptyFormData })
         alert(editingStudent ? "Öğrenci başarıyla güncellendi!" : "Öğrenci başarıyla eklendi!")
         // Listeyi yenile
         fetchStudents(currentPage, searchTerm, selectedGrade, showGraduatesView)
@@ -511,7 +499,8 @@ export default function StudentsPage() {
       fatherAddress: student.fatherAddress,
       fatherOccupation: student.fatherOccupation,
       announcedTuitionFee: student.announcedTuitionFee || "",
-      studentTuitionFee: student.studentTuitionFee || ""
+      studentTuitionFee: student.studentTuitionFee || "",
+      registrationStatusOverride: registrationStatusTextToOverride(student.registrationStatusText),
     })
     setShowForm(true)
   }
@@ -1107,7 +1096,15 @@ export default function StudentsPage() {
           <span className="hidden sm:inline">Excel&apos;e Aktar</span>
           <span className="sm:hidden">Excel</span>
         </Button>
-        <Button onClick={() => setShowForm(true)} size="sm" className="flex-1 sm:flex-initial text-xs sm:text-sm">
+        <Button
+          onClick={() => {
+            setEditingStudent(null)
+            setFormData({ ...emptyFormData })
+            setShowForm(true)
+          }}
+          size="sm"
+          className="flex-1 sm:flex-initial text-xs sm:text-sm"
+        >
           <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
           <span className="hidden sm:inline">Yeni Öğrenci Ekle</span>
           <span className="sm:hidden">Yeni Ekle</span>
@@ -1129,26 +1126,7 @@ export default function StudentsPage() {
           onClick={() => {
             setShowForm(false)
             setEditingStudent(null)
-            setFormData({
-              firstName: "",
-              lastName: "",
-              tcNumber: "",
-              birthDate: "",
-              grade: "",
-              address: "",
-              motherName: "",
-              motherTc: "",
-              motherPhone: "",
-              motherAddress: "",
-              motherOccupation: "",
-              fatherName: "",
-              fatherTc: "",
-              fatherPhone: "",
-              fatherAddress: "",
-              fatherOccupation: "",
-              announcedTuitionFee: "",
-              studentTuitionFee: ""
-            })
+            setFormData({ ...emptyFormData })
           }}
         >
           <Card 
@@ -1170,26 +1148,7 @@ export default function StudentsPage() {
                   onClick={() => {
                     setShowForm(false)
                     setEditingStudent(null)
-                    setFormData({
-                      firstName: "",
-                      lastName: "",
-                      tcNumber: "",
-                      birthDate: "",
-                      grade: "",
-                      address: "",
-                      motherName: "",
-                      motherTc: "",
-                      motherPhone: "",
-                      motherAddress: "",
-                      motherOccupation: "",
-                      fatherName: "",
-                      fatherTc: "",
-                      fatherPhone: "",
-                      fatherAddress: "",
-                      fatherOccupation: "",
-                      announcedTuitionFee: "",
-                      studentTuitionFee: ""
-                    })
+                    setFormData({ ...emptyFormData })
                   }}
                   className="flex-shrink-0"
                 >
@@ -1255,6 +1214,34 @@ export default function StudentsPage() {
                     ))}
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <Label htmlFor="registrationStatusOverride" className="text-xs sm:text-sm">
+                  Kayıt durumu (açık yenileme dönemi) *
+                </Label>
+                <select
+                  id="registrationStatusOverride"
+                  value={formData.registrationStatusOverride}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      registrationStatusOverride: e.target.value as
+                        | "new_registration"
+                        | "renewed"
+                        | "not_renewed",
+                    })
+                  }
+                  className="w-full h-9 sm:h-10 px-2 sm:px-3 py-1.5 sm:py-2 border border-input bg-background rounded-md text-xs sm:text-sm focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="new_registration">Yeni kayıt</option>
+                  <option value="renewed">Kayıt yenilendi</option>
+                  <option value="not_renewed">Kayıt yenilenmedi</option>
+                </select>
+                <p className="mt-1 text-[10px] sm:text-xs text-muted-foreground">
+                  Bu seçim açık kayıt yenileme dönemine yazılır; mevcut sözleşmeleri silmez.
+                </p>
               </div>
 
               <div>
@@ -1463,26 +1450,7 @@ export default function StudentsPage() {
                 <Button type="button" variant="outline" size="sm" onClick={() => {
                   setShowForm(false)
                   setEditingStudent(null)
-                  setFormData({
-                    firstName: "",
-                    lastName: "",
-                    tcNumber: "",
-                    birthDate: "",
-                    grade: "",
-                    address: "",
-                    motherName: "",
-                    motherTc: "",
-                    motherPhone: "",
-                    motherAddress: "",
-                    motherOccupation: "",
-                    fatherName: "",
-                    fatherTc: "",
-                    fatherPhone: "",
-                    fatherAddress: "",
-                    fatherOccupation: "",
-                    announcedTuitionFee: "",
-                    studentTuitionFee: ""
-                  })
+                  setFormData({ ...emptyFormData })
                 }} className="w-full sm:w-auto text-xs sm:text-sm">
                   İptal
                 </Button>

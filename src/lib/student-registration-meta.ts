@@ -272,6 +272,90 @@ export function contractMatchesAcademicYearTargets(
 
 export type RenewalTargetInfo = RegistrationYearTarget
 
+export type RegistrationStatusOverrideValue =
+  | "new_registration"
+  | "renewed"
+  | "not_renewed"
+
+export function normalizeRegistrationStatusOverride(
+  value: unknown
+): RegistrationStatusOverrideValue | null {
+  const v = String(value ?? "").trim()
+  if (v === "new_registration" || v === "renewed" || v === "not_renewed") return v
+  return null
+}
+
+/** Liste/badge metninden form seçim değerine. */
+export function registrationStatusTextToOverride(
+  text: string | null | undefined
+): RegistrationStatusOverrideValue {
+  const t = String(text ?? "")
+  if (t === "Yeni Kayıt") return "new_registration"
+  if (t.includes("kaydı yenilendi")) return "renewed"
+  return "not_renewed"
+}
+
+function applyManualRegistrationOverrides(params: {
+  periodLabel: string | null
+  activeLabel: string | null
+  overrides: Array<{
+    id: string
+    registrationStatusOverride: string | null
+    registrationStatusPeriodLabel: string | null
+  }>
+  renewedStudentIds: Set<string>
+  newRegistrationStudentIds: Set<string>
+  newRegistrationActiveYearStudentIds: Set<string>
+  futureYearOnlyNewRegistrationStudentIds: Set<string>
+}) {
+  const {
+    periodLabel,
+    activeLabel,
+    overrides,
+    renewedStudentIds,
+    newRegistrationStudentIds,
+    newRegistrationActiveYearStudentIds,
+    futureYearOnlyNewRegistrationStudentIds,
+  } = params
+
+  if (!periodLabel) return
+
+  const periodNorm = normalizeAcademicYearLabel(periodLabel)
+  const activeNorm = activeLabel ? normalizeAcademicYearLabel(activeLabel) : ""
+
+  for (const row of overrides) {
+    const status = normalizeRegistrationStatusOverride(row.registrationStatusOverride)
+    const rowPeriod = String(row.registrationStatusPeriodLabel ?? "").trim()
+    if (!status || !rowPeriod) continue
+    if (normalizeAcademicYearLabel(rowPeriod) !== periodNorm) continue
+
+    const id = row.id
+    // Önce tüm otomatik kümelerden çıkar
+    renewedStudentIds.delete(id)
+    newRegistrationStudentIds.delete(id)
+    newRegistrationActiveYearStudentIds.delete(id)
+    futureYearOnlyNewRegistrationStudentIds.delete(id)
+
+    if (status === "not_renewed") continue
+
+    if (status === "renewed") {
+      renewedStudentIds.add(id)
+      continue
+    }
+
+    // new_registration
+    newRegistrationStudentIds.add(id)
+    if (activeNorm && periodNorm === activeNorm) {
+      newRegistrationActiveYearStudentIds.add(id)
+    } else if (activeNorm && periodNorm !== activeNorm) {
+      // Kampanya aktif yıldan farklıysa (genelde gelecek yıl) ön kayıt gibi
+      futureYearOnlyNewRegistrationStudentIds.add(id)
+    } else {
+      newRegistrationActiveYearStudentIds.add(id)
+    }
+  }
+}
+
 export async function getRenewalTargetContext(client: PrismaClient): Promise<{
   target: RenewalTargetInfo | null
   renewedStudentIds: Set<string>
@@ -288,9 +372,20 @@ export async function getRenewalTargetContext(client: PrismaClient): Promise<{
     orderBy: [{ startDate: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
   })
 
-  const [renewals, newRegs] = await Promise.all([
+  const [renewals, newRegs, statusOverrides] = await Promise.all([
     client.renewal.findMany({ select: { studentId: true, contractData: true } }),
     client.newRegistration.findMany({ select: { studentId: true, contractData: true } }),
+    client.student.findMany({
+      where: {
+        registrationStatusOverride: { not: null },
+        registrationStatusPeriodLabel: { not: null },
+      },
+      select: {
+        id: true,
+        registrationStatusOverride: true,
+        registrationStatusPeriodLabel: true,
+      },
+    }),
   ])
 
   const renewalTarget = resolveRenewalYearTargetForStats(yearRows, renewals)
@@ -301,6 +396,7 @@ export async function getRenewalTargetContext(client: PrismaClient): Promise<{
   const newRegTargets = buildNewRegistrationMatchTargets(yearRows, newRegs)
   const list = toListItems(yearRows)
   const { active } = resolveActiveAndNextAcademicYear(list)
+  const activeLabel = active ? contractYearLabelFromAcademicYear(active) : null
 
   const renewedStudentIds = new Set<string>()
   for (const r of renewals) {
@@ -335,6 +431,16 @@ export async function getRenewalTargetContext(client: PrismaClient): Promise<{
       }
     }
   }
+
+  applyManualRegistrationOverrides({
+    periodLabel: renewalTarget?.label ?? null,
+    activeLabel,
+    overrides: statusOverrides,
+    renewedStudentIds,
+    newRegistrationStudentIds,
+    newRegistrationActiveYearStudentIds,
+    futureYearOnlyNewRegistrationStudentIds,
+  })
 
   return {
     target: renewalTarget,

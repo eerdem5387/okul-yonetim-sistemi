@@ -37,6 +37,10 @@ model Student {
   // Öğrenim Ücreti (Sadece Admin tarafından düzenlenebilir)
   announcedTuitionFee String? // Kurumun ilan ettiği ücret
   studentTuitionFee   String? // Öğrenci için belirlenen ücret
+  /// Manuel kayıt durumu: new_registration | renewed | not_renewed (açık dönem etiketi ile birlikte)
+  registrationStatusOverride      String?
+  /// Override'ın geçerli olduğu kayıt yenileme dönemi etiketi (örn. 2026-2027)
+  registrationStatusPeriodLabel   String?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @default(now())
 

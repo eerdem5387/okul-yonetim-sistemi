@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { getRenewalTargetContext, registrationStatusText } from "@/lib/student-registration-meta"
+import { getRenewalTargetYear } from "@/lib/academic-year-contract-server"
+import {
+  getRenewalTargetContext,
+  normalizeRegistrationStatusOverride,
+  registrationStatusText,
+} from "@/lib/student-registration-meta"
 import { graduatesWhereClause, k12GradeWhereClause } from "@/lib/student-grade-level"
 import { buildStudentSearchWhere } from "@/lib/turkish-search"
 
@@ -145,6 +150,7 @@ export async function POST(request: NextRequest) {
             motherName, motherTc, motherPhone, motherAddress, motherOccupation,
             fatherName, fatherTc, fatherPhone, fatherAddress, fatherOccupation,
             announcedTuitionFee, studentTuitionFee,
+            registrationStatusOverride,
         } = body
 
         // Validasyon - Prisma schema'da zorunlu alanlar
@@ -197,6 +203,33 @@ export async function POST(request: NextRequest) {
         const frontendRole = request.headers.get("x-user-role")
         const canSetTuition = frontendRole === "admin"
 
+        let statusOverride: string | null = null
+        let statusPeriodLabel: string | null = null
+        if (registrationStatusOverride !== undefined && registrationStatusOverride !== null && registrationStatusOverride !== "") {
+            const status = normalizeRegistrationStatusOverride(registrationStatusOverride)
+            if (!status) {
+                return NextResponse.json(
+                    {
+                        error:
+                            "Geçersiz kayıt durumu. new_registration, renewed veya not_renewed olmalı.",
+                    },
+                    { status: 400 }
+                )
+            }
+            const target = await getRenewalTargetYear()
+            if (!target) {
+                return NextResponse.json(
+                    {
+                        error:
+                            "Kayıt yenileme dönemi açık değil. Ayarlar’dan dönemi açmadan kayıt durumu güncellenemez.",
+                    },
+                    { status: 400 }
+                )
+            }
+            statusOverride = status
+            statusPeriodLabel = target.label
+        }
+
         const student = await prisma.student.create({
             data: {
                 firstName: firstName.trim(),
@@ -218,6 +251,8 @@ export async function POST(request: NextRequest) {
                 // Opsiyonel alanlar
                 phone: body.phone?.trim() || null,
                 email: body.email?.trim() || null,
+                registrationStatusOverride: statusOverride,
+                registrationStatusPeriodLabel: statusPeriodLabel,
                 ...(canSetTuition
                     ? {
                           announcedTuitionFee: announcedTuitionFee?.trim() || null,

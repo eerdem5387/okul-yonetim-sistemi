@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
+import { getRenewalTargetYear } from "@/lib/academic-year-contract-server"
+import { normalizeRegistrationStatusOverride } from "@/lib/student-registration-meta"
 
 export async function GET(
     request: NextRequest,
@@ -45,7 +47,8 @@ export async function PUT(
             firstName, lastName, tcNumber, birthDate, grade, address,
             motherName, motherTc, motherPhone, motherAddress, motherOccupation,
             fatherName, fatherTc, fatherPhone, fatherAddress, fatherOccupation,
-            announcedTuitionFee, studentTuitionFee
+            announcedTuitionFee, studentTuitionFee,
+            registrationStatusOverride,
         } = body
 
         // Kullanıcı rolünü kontrol et (sadece admin öğrenim ücreti alanlarını güncelleyebilir)
@@ -100,6 +103,31 @@ export async function PUT(
             updateData.birthDate = new Date(birthDate)
         }
 
+        if (registrationStatusOverride !== undefined) {
+            const status = normalizeRegistrationStatusOverride(registrationStatusOverride)
+            if (!status) {
+                return NextResponse.json(
+                    {
+                        error:
+                            "Geçersiz kayıt durumu. new_registration, renewed veya not_renewed olmalı.",
+                    },
+                    { status: 400 }
+                )
+            }
+            const target = await getRenewalTargetYear()
+            if (!target) {
+                return NextResponse.json(
+                    {
+                        error:
+                            "Kayıt yenileme dönemi açık değil. Ayarlar’dan dönemi açmadan kayıt durumu güncellenemez.",
+                    },
+                    { status: 400 }
+                )
+            }
+            updateData.registrationStatusOverride = status
+            updateData.registrationStatusPeriodLabel = target.label
+        }
+
         // En az bir alan güncellenecek olmalı
         if (Object.keys(updateData).length === 0) {
             return NextResponse.json({ error: "Güncellenecek alan bulunamadı." }, { status: 400 })
@@ -137,6 +165,12 @@ export async function PUT(
                     if (fatherAddress !== undefined) targetUpdateData.fatherAddress = fatherAddress
                     if (fatherOccupation !== undefined) targetUpdateData.fatherOccupation = fatherOccupation
                     if (birthDate) targetUpdateData.birthDate = new Date(birthDate)
+                    if (registrationStatusOverride !== undefined) {
+                        targetUpdateData.registrationStatusOverride =
+                            updateData.registrationStatusOverride
+                        targetUpdateData.registrationStatusPeriodLabel =
+                            updateData.registrationStatusPeriodLabel
+                    }
                     if (Object.keys(targetUpdateData).length > 0) {
                         await tx.student.update({ where: { id: targetId }, data: targetUpdateData as object })
                     }

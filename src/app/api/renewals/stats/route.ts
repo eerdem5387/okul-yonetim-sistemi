@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import {
-  contractMatchesAcademicYearTargets,
   getRenewalTargetContext,
   normalizeAcademicYearLabel,
 } from "@/lib/student-registration-meta"
@@ -10,10 +9,6 @@ import {
   k12GradeWhereClause,
   parseStudentGradeLevel,
 } from "@/lib/student-grade-level"
-import {
-  buildGradeFractionRows,
-  enrolledCountsFromStudentRows,
-} from "@/lib/enrolled-grade-counts"
 
 export async function GET(request: NextRequest) {
   try {
@@ -134,58 +129,84 @@ export async function GET(request: NextRequest) {
     })
 
     const renewalCtx = await getRenewalTargetContext(prisma)
-    const renewalMatchTargets = renewalCtx.target
-      ? [{ id: renewalCtx.target.id, label: renewalCtx.target.label }]
-      : []
+    const {
+      renewedStudentIds,
+      newRegistrationStudentIds,
+      newRegistrationActiveYearStudentIds,
+      futureYearOnlyNewRegistrationStudentIds,
+    } = renewalCtx
 
     const allStudents = await prisma.student.findMany({
       where: k12GradeWhereClause(),
       select: { id: true, grade: true },
     })
-    const gradeTotals = enrolledCountsFromStudentRows(
-      allStudents,
-      renewalCtx.futureYearOnlyNewRegistrationStudentIds
+
+    const enrolledStudents = allStudents.filter(
+      (s) => !futureYearOnlyNewRegistrationStudentIds.has(s.id)
     )
 
-    const renewedTcByGrade = new Map<string, Set<string>>()
-    for (let g = 5; g <= 12; g++) {
-      renewedTcByGrade.set(gradeLevelLabel(g), new Set())
+    type GradeBreakdown = {
+      mevcut: number
+      newRegistration: number
+      renewed: number
+      notRenewed: number
+      /** Geriye uyumluluk: toplam kayıtlı (mevcut + yeni kayıt) */
+      total: number
+      percent: number
     }
 
-    for (const r of renewals) {
-      if (!r.student) continue
-      if (!contractMatchesAcademicYearTargets(r.contractData, renewalMatchTargets)) {
-        continue
-      }
-      const tcNumber = getTcNumber(r)
-      if (!tcNumber) continue
-      const level = parseStudentGradeLevel(r.student.grade)
-      if (level == null) continue
-      const sinif = gradeLevelLabel(level)
-      renewedTcByGrade.get(sinif)?.add(tcNumber)
-    }
-
-    const renewedNumerators: Record<string, number> = {}
-    for (let g = 5; g <= 12; g++) {
-      const lab = gradeLevelLabel(g)
-      renewedNumerators[lab] = renewedTcByGrade.get(lab)?.size ?? 0
-    }
-    const fractionRows = buildGradeFractionRows(renewedNumerators, gradeTotals)
-    const sinifBreakdown: Record<
-      string,
-      { renewed: number; total: number; percent: number }
-    > = {}
+    const sinifBreakdown: Record<string, GradeBreakdown> = {}
     const sinifStats: Record<string, number> = {}
+
     for (let g = 5; g <= 12; g++) {
       const lab = gradeLevelLabel(g)
-      const row = fractionRows[lab]
       sinifBreakdown[lab] = {
-        renewed: row.numerator,
-        total: row.total,
-        percent: row.percent,
+        mevcut: 0,
+        newRegistration: 0,
+        renewed: 0,
+        notRenewed: 0,
+        total: 0,
+        percent: 0,
       }
-      sinifStats[lab] = row.numerator
     }
+
+    for (const s of enrolledStudents) {
+      const level = parseStudentGradeLevel(s.grade)
+      if (level == null) continue
+      const lab = gradeLevelLabel(level)
+      const row = sinifBreakdown[lab]
+      if (!row) continue
+
+      const isNewReg =
+        newRegistrationActiveYearStudentIds.has(s.id) ||
+        (newRegistrationStudentIds.has(s.id) && !renewedStudentIds.has(s.id))
+      const isRenewed =
+        renewedStudentIds.has(s.id) && !newRegistrationStudentIds.has(s.id)
+
+      if (isNewReg) {
+        row.newRegistration += 1
+      } else {
+        row.mevcut += 1
+        if (isRenewed) {
+          row.renewed += 1
+        } else {
+          row.notRenewed += 1
+        }
+      }
+      row.total += 1
+    }
+
+    for (let g = 5; g <= 12; g++) {
+      const lab = gradeLevelLabel(g)
+      const row = sinifBreakdown[lab]
+      row.percent =
+        row.mevcut > 0
+          ? Math.round((row.renewed / row.mevcut) * 1000) / 10
+          : 0
+      sinifStats[lab] = row.renewed
+    }
+
+    // Tarih filtresine bağlı sözleşme eşleşmeleri (eski percent hesabı artık breakdown'ta)
 
     const todayCount = todayStudents.size
     const thisWeekCount = thisWeekStudents.size

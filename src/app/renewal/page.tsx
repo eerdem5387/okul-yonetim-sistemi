@@ -98,7 +98,14 @@ export default function RenewalPage() {
     sinifStats: {} as Record<string, number>,
     sinifBreakdown: {} as Record<
       string,
-      { renewed: number; total: number; percent: number }
+      {
+        mevcut: number
+        newRegistration: number
+        renewed: number
+        notRenewed: number
+        total: number
+        percent: number
+      }
     >,
     academicYearStats: {} as Record<string, number>,
   })
@@ -913,17 +920,22 @@ export default function RenewalPage() {
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 sm:gap-3">
               {siniflar.map((sinif) => {
                 const b = stats.sinifBreakdown[sinif]
+                const mevcut = b?.mevcut ?? 0
+                const newRegistration = b?.newRegistration ?? 0
                 const renewed = b?.renewed ?? stats.sinifStats[sinif] ?? 0
-                const total = b?.total ?? 0
+                const notRenewed = b?.notRenewed ?? 0
                 const pct = b?.percent ?? 0
                 return (
                   <GradeStatCard
                     key={sinif}
                     gradeLabel={sinif}
-                    total={total}
-                    count={renewed}
                     percent={pct}
-                    countLabel="Kayıt yenileyen"
+                    breakdown={{
+                      mevcut,
+                      newRegistration,
+                      renewed,
+                      notRenewed,
+                    }}
                   />
                 )
               })}
