@@ -7,8 +7,8 @@ import {
 import {
   gradeLevelLabel,
   k12GradeWhereClause,
-  parseStudentGradeLevel,
 } from "@/lib/student-grade-level"
+import { buildEnrollmentRegistrationGradeBreakdown } from "@/lib/enrolled-grade-counts"
 
 export async function GET(request: NextRequest) {
   try {
@@ -141,69 +141,17 @@ export async function GET(request: NextRequest) {
       select: { id: true, grade: true },
     })
 
-    const enrolledStudents = allStudents.filter(
-      (s) => !futureYearOnlyNewRegistrationStudentIds.has(s.id)
-    )
-
-    type GradeBreakdown = {
-      mevcut: number
-      newRegistration: number
-      renewed: number
-      notRenewed: number
-      /** Geriye uyumluluk: toplam kayıtlı (mevcut + yeni kayıt) */
-      total: number
-      percent: number
-    }
-
-    const sinifBreakdown: Record<string, GradeBreakdown> = {}
+    const sinifBreakdown = buildEnrollmentRegistrationGradeBreakdown({
+      students: allStudents,
+      renewedStudentIds,
+      newRegistrationStudentIds,
+      newRegistrationActiveYearStudentIds,
+      futureYearOnlyNewRegistrationStudentIds,
+    })
     const sinifStats: Record<string, number> = {}
-
     for (let g = 5; g <= 12; g++) {
       const lab = gradeLevelLabel(g)
-      sinifBreakdown[lab] = {
-        mevcut: 0,
-        newRegistration: 0,
-        renewed: 0,
-        notRenewed: 0,
-        total: 0,
-        percent: 0,
-      }
-    }
-
-    for (const s of enrolledStudents) {
-      const level = parseStudentGradeLevel(s.grade)
-      if (level == null) continue
-      const lab = gradeLevelLabel(level)
-      const row = sinifBreakdown[lab]
-      if (!row) continue
-
-      const isNewReg =
-        newRegistrationActiveYearStudentIds.has(s.id) ||
-        (newRegistrationStudentIds.has(s.id) && !renewedStudentIds.has(s.id))
-      const isRenewed =
-        renewedStudentIds.has(s.id) && !newRegistrationStudentIds.has(s.id)
-
-      if (isNewReg) {
-        row.newRegistration += 1
-      } else {
-        row.mevcut += 1
-        if (isRenewed) {
-          row.renewed += 1
-        } else {
-          row.notRenewed += 1
-        }
-      }
-      row.total += 1
-    }
-
-    for (let g = 5; g <= 12; g++) {
-      const lab = gradeLevelLabel(g)
-      const row = sinifBreakdown[lab]
-      row.percent =
-        row.mevcut > 0
-          ? Math.round((row.renewed / row.mevcut) * 1000) / 10
-          : 0
-      sinifStats[lab] = row.renewed
+      sinifStats[lab] = sinifBreakdown[lab]?.renewed ?? 0
     }
 
     // Tarih filtresine bağlı sözleşme eşleşmeleri (eski percent hesabı artık breakdown'ta)

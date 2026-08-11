@@ -56,7 +56,15 @@ export default function NewRegistrationPage() {
     sinifStats: {} as Record<string, number>,
     sinifBreakdown: {} as Record<
       string,
-      { newRegistrations: number; total: number; percent: number }
+      {
+        mevcut: number
+        newRegistration: number
+        newRegistrations?: number
+        renewed: number
+        notRenewed: number
+        total: number
+        percent: number
+      }
     >,
     academicYearStats: {} as Record<string, number>,
   })
@@ -862,17 +870,19 @@ export default function NewRegistrationPage() {
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 sm:gap-3">
               {siniflar.map((sinif) => {
                 const b = stats.sinifBreakdown[sinif]
-                const n = b?.newRegistrations ?? stats.sinifStats[sinif] ?? 0
-                const total = b?.total ?? 0
                 const pct = b?.percent ?? 0
                 return (
                   <GradeStatCard
                     key={sinif}
                     gradeLabel={sinif}
-                    total={total}
-                    count={n}
                     percent={pct}
-                    countLabel="Yeni kayıt"
+                    breakdown={{
+                      mevcut: b?.mevcut ?? b?.total ?? 0,
+                      newRegistration:
+                        b?.newRegistration ?? b?.newRegistrations ?? stats.sinifStats[sinif] ?? 0,
+                      renewed: b?.renewed ?? 0,
+                      notRenewed: b?.notRenewed ?? 0,
+                    }}
                   />
                 )
               })}
