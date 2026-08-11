@@ -191,13 +191,15 @@ export default function StudentsPage() {
     }
   }, [])
 
-  // Her kelimenin ilk harfini büyük, diğerlerini küçük yapan fonksiyon
+  // Her kelimenin ilk harfini büyük, diğerlerini küçük yapan fonksiyon (Türkçe)
   const capitalizeWords = (text: string): string => {
     return text
-      .toLowerCase()
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ')
+      .split(/(\s+)/)
+      .map((part) => {
+        if (/^\s+$/.test(part) || !part) return part
+        return part.charAt(0).toLocaleUpperCase("tr-TR") + part.slice(1).toLocaleLowerCase("tr-TR")
+      })
+      .join("")
   }
 
   // Sınıf formatı helper - "5" -> "5. Sınıf"
@@ -391,6 +393,32 @@ export default function StudentsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    const firstName = formData.firstName.trim()
+    const lastName = formData.lastName.trim()
+    const tcNumber = formData.tcNumber.trim()
+
+    if (!firstName || !lastName) {
+      alert("⚠️ Ad ve soyad zorunludur.")
+      return
+    }
+    if (!/^\d{11}$/.test(tcNumber)) {
+      alert("⚠️ TC Kimlik No 11 haneli olmalı ve yalnızca rakamlardan oluşmalıdır.")
+      return
+    }
+    if (!formData.grade?.trim()) {
+      alert("⚠️ Sınıf seçimi zorunludur.")
+      return
+    }
+    if (!formData.birthDate?.trim()) {
+      alert("⚠️ Doğum tarihi zorunludur.")
+      return
+    }
+    if (!formData.address?.trim()) {
+      alert("⚠️ Adres zorunludur.")
+      return
+    }
+
     try {
       const url = editingStudent ? `/api/students/${editingStudent.id}` : "/api/students"
       const method = editingStudent ? "PUT" : "POST"
@@ -401,7 +429,12 @@ export default function StudentsPage() {
           "Content-Type": "application/json",
           "x-user-role": userRole || "",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          firstName,
+          lastName,
+          tcNumber,
+        }),
       })
 
       if (response.ok) {
@@ -433,10 +466,16 @@ export default function StudentsPage() {
         // Listeyi yenile
         fetchStudents(currentPage, searchTerm, selectedGrade, showGraduatesView)
       } else {
-        alert(editingStudent ? "Öğrenci güncellenirken hata oluştu!" : "Öğrenci eklenirken hata oluştu!")
+        const errorData = await response.json().catch(() => ({} as { error?: string; details?: string }))
+        const message =
+          errorData.error ||
+          errorData.details ||
+          (editingStudent ? "Öğrenci güncellenirken hata oluştu!" : "Öğrenci eklenirken hata oluştu!")
+        alert(`⚠️ ${message}`)
       }
     } catch (error) {
       console.error("Error saving student:", error)
+      alert("⚠️ Öğrenci kaydedilirken beklenmeyen bir hata oluştu.")
     }
   }
 
@@ -982,7 +1021,7 @@ export default function StudentsPage() {
           <div className="relative flex-1 w-full sm:max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-3 w-3 sm:h-4 sm:w-4" />
             <Input
-              placeholder="Öğrenci ara (ad, soyad, TC, sınıf)..."
+              placeholder="Öğrenci ara (ad, soyad veya TC — Türkçe karakter duyarsız)..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9 sm:pl-10 h-9 sm:h-10 text-xs sm:text-sm"

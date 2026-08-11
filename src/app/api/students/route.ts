@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getRenewalTargetContext, registrationStatusText } from "@/lib/student-registration-meta"
 import { graduatesWhereClause, k12GradeWhereClause } from "@/lib/student-grade-level"
+import { buildStudentSearchWhere } from "@/lib/turkish-search"
 
 export async function GET(request: NextRequest) {
     try {
@@ -28,16 +29,10 @@ export async function GET(request: NextRequest) {
         // Arama ve sınıf filtresi
         const whereConditions: Array<Record<string, unknown>> = []
         
-        // Arama filtresi
-        if (search) {
-            whereConditions.push({
-                OR: [
-                    { firstName: { contains: search, mode: 'insensitive' as const } },
-                    { lastName: { contains: search, mode: 'insensitive' as const } },
-                    { tcNumber: { contains: search } },
-                    { grade: { contains: search, mode: 'insensitive' as const } }
-                ]
-            })
+        // Arama filtresi (Türkçe karakter + ad soyad birleşik arama)
+        const searchWhere = buildStudentSearchWhere(search)
+        if (searchWhere) {
+            whereConditions.push(searchWhere)
         }
         
         // Sınıf / kademe filtresi (gradeBand: ortaokul 5–8, lise 9–12; "5" ve "5. Sınıf" varyantları)
@@ -148,21 +143,34 @@ export async function POST(request: NextRequest) {
         const { 
             firstName, lastName, tcNumber, birthDate, grade, address,
             motherName, motherTc, motherPhone, motherAddress, motherOccupation,
-            fatherName, fatherTc, fatherPhone, fatherAddress, fatherOccupation
+            fatherName, fatherTc, fatherPhone, fatherAddress, fatherOccupation,
+            announcedTuitionFee, studentTuitionFee,
         } = body
 
         // Validasyon - Prisma schema'da zorunlu alanlar
         // Boş string kontrolü (trim ile)
         if (!firstName?.trim() || !lastName?.trim() || !tcNumber?.trim()) {
             return NextResponse.json({ 
-                error: "firstName, lastName, and tcNumber are required" 
+                error: "Ad, soyad ve TC Kimlik No zorunludur." 
             }, { status: 400 })
         }
 
         // TC Number format kontrolü
-        if (tcNumber.length !== 11 || !/^\d+$/.test(tcNumber)) {
+        const normalizedTc = String(tcNumber).replace(/\D/g, "")
+        if (normalizedTc.length !== 11) {
             return NextResponse.json({ 
-                error: "TC Number must be 11 digits" 
+                error: "TC Kimlik No 11 haneli olmalı ve yalnızca rakamlardan oluşmalıdır." 
+            }, { status: 400 })
+        }
+
+        const existingByTc = await prisma.student.findUnique({
+            where: { tcNumber: normalizedTc },
+            select: { id: true, firstName: true, lastName: true },
+        })
+        if (existingByTc) {
+            return NextResponse.json({
+                error: `Bu TC Kimlik No ile kayıtlı öğrenci zaten var: ${existingByTc.firstName} ${existingByTc.lastName}`,
+                code: "DUPLICATE_TC",
             }, { status: 400 })
         }
 
@@ -186,11 +194,14 @@ export async function POST(request: NextRequest) {
             parsedBirthDate = new Date()
         }
 
+        const frontendRole = request.headers.get("x-user-role")
+        const canSetTuition = frontendRole === "admin"
+
         const student = await prisma.student.create({
             data: {
                 firstName: firstName.trim(),
                 lastName: lastName.trim(),
-                tcNumber: tcNumber.trim(),
+                tcNumber: normalizedTc,
                 birthDate: parsedBirthDate,
                 grade: grade?.trim() || "",
                 address: address?.trim() || "",
@@ -206,11 +217,17 @@ export async function POST(request: NextRequest) {
                 fatherOccupation: fatherOccupation?.trim() || "",
                 // Opsiyonel alanlar
                 phone: body.phone?.trim() || null,
-                email: body.email?.trim() || null
+                email: body.email?.trim() || null,
+                ...(canSetTuition
+                    ? {
+                          announcedTuitionFee: announcedTuitionFee?.trim() || null,
+                          studentTuitionFee: studentTuitionFee?.trim() || null,
+                      }
+                    : {}),
             }
         })
 
-        // Öğrenci oluşturulduktan sonra otomatik olarak veli hesabı oluştur
+        // Öğrenciyi oluşturduktan sonra otomatik olarak veli hesabı oluştur
         try {
             // Her öğrenci için bir Parent hesabı oluştur (öğrenci TC bazlı)
             const parentAccount = await prisma.parent.upsert({
@@ -299,7 +316,7 @@ export async function POST(request: NextRequest) {
             error.message.includes("P2002")
         )) {
             return NextResponse.json({ 
-                error: "A student with this TC Number already exists",
+                error: "Bu TC Kimlik No ile kayıtlı bir öğrenci zaten mevcut.",
                 details: errorMessage
             }, { status: 400 })
         }
@@ -311,13 +328,13 @@ export async function POST(request: NextRequest) {
             error.message.includes("Foreign key constraint")
         )) {
             return NextResponse.json({ 
-                error: "Invalid data provided",
+                error: "Geçersiz veri gönderildi. Lütfen alanları kontrol edin.",
                 details: errorMessage
             }, { status: 400 })
         }
         
         return NextResponse.json({ 
-            error: "Failed to create student",
+            error: "Öğrenci oluşturulurken bir hata oluştu.",
             details: errorMessage
         }, { status: 500 })
     }
