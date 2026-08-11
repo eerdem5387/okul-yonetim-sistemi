@@ -48,21 +48,6 @@ interface Student {
   studentTuitionFee?: string | null
 }
 
-interface YearlyHistoryOverview {
-  totalStudents: number
-  renewedCount: number
-  notRenewedCount: number
-  newRegistrationCount: number
-  notNewRegistrationCount: number
-  notRenewedStudents: Array<{
-    id: string
-    firstName: string
-    lastName: string
-    tcNumber: string
-    grade: string
-  }>
-}
-
 const siniflar = [
   "5. Sınıf",
   "6. Sınıf",
@@ -107,12 +92,7 @@ export default function RenewalPage() {
         percent: number
       }
     >,
-    academicYearStats: {} as Record<string, number>,
   })
-  const [historyYearOptions, setHistoryYearOptions] = useState<string[]>([])
-  const [selectedHistoryYear, setSelectedHistoryYear] = useState("")
-  const [yearlyHistoryLoading, setYearlyHistoryLoading] = useState(false)
-  const [yearlyHistory, setYearlyHistory] = useState<YearlyHistoryOverview | null>(null)
 
   // Ana Sözleşme Form Verileri
   const [mainContractData, setMainContractData] = useState({
@@ -361,7 +341,6 @@ export default function RenewalPage() {
             thisMonth: data.thisMonth || 0,
             sinifStats: data.sinifStats || {},
             sinifBreakdown: data.sinifBreakdown || {},
-            academicYearStats: data.academicYearStats || {}
           })
         } else {
           console.error("[Renewal] Invalid stats data format:", data)
@@ -385,8 +364,6 @@ export default function RenewalPage() {
         const data = (await res.json()) as AcademicYearListItem[]
         if (cancelled) return
         const rows = Array.isArray(data) ? data : []
-        const yearLabels = rows.map((r) => contractYearLabelFromAcademicYear(r))
-        setHistoryYearOptions(yearLabels)
         const t = getRenewalTargetYearFromList(rows)
         setRenewalTarget(t)
         if (t) {
@@ -408,27 +385,6 @@ export default function RenewalPage() {
     })()
     return () => {
       cancelled = true
-    }
-  }, [])
-
-  const fetchYearlyHistory = useCallback(async (academicYear: string) => {
-    if (!academicYear) {
-      setYearlyHistory(null)
-      return
-    }
-    setYearlyHistoryLoading(true)
-    try {
-      const res = await fetch(
-        `/api/registration-history/yearly?academicYear=${encodeURIComponent(academicYear)}`
-      )
-      if (!res.ok) throw new Error("yearly-history")
-      const data = (await res.json()) as YearlyHistoryOverview
-      setYearlyHistory(data)
-    } catch (error) {
-      console.error("Error fetching yearly renewal history:", error)
-      setYearlyHistory(null)
-    } finally {
-      setYearlyHistoryLoading(false)
     }
   }, [])
 
@@ -455,24 +411,6 @@ export default function RenewalPage() {
     fetchStudents()
     fetchStats()
   }, [fetchStudents, fetchStats])
-
-  useEffect(() => {
-    const mergedOptions = [
-      ...new Set([
-        ...historyYearOptions,
-        ...Object.keys(stats.academicYearStats || {}),
-        renewalTarget?.label || "",
-      ].filter(Boolean)),
-    ]
-    if (!selectedHistoryYear && mergedOptions.length > 0) {
-      setSelectedHistoryYear(renewalTarget?.label || mergedOptions[0] || "")
-    }
-  }, [historyYearOptions, renewalTarget, selectedHistoryYear, stats.academicYearStats])
-
-  useEffect(() => {
-    if (!selectedHistoryYear) return
-    fetchYearlyHistory(selectedHistoryYear)
-  }, [selectedHistoryYear, fetchYearlyHistory])
 
   // Sözleşme numarasını otomatik oluştur
   const generateContractNumber = async (date: string) => {
@@ -785,19 +723,6 @@ export default function RenewalPage() {
     }
   }
 
-  const handleSelectFromHistory = async (studentId: string) => {
-    try {
-      const response = await fetch(`/api/students/${studentId}?format=legacy`)
-      if (!response.ok) throw new Error("student-not-found")
-      const studentDetails = (await response.json()) as Student
-      await handleStudentSelect(studentDetails)
-      window.scrollTo({ top: 0, behavior: "smooth" })
-    } catch (error) {
-      console.error("Error selecting student from history:", error)
-      alert("Öğrenci bilgileri yüklenemedi.")
-    }
-  }
-
   // Akademik yıl değiştiğinde veya öğrenci seçildiğinde mevcut kayıt yenilemeyi kontrol et
   useEffect(() => {
     const checkExistingRenewal = async () => {
@@ -940,90 +865,6 @@ export default function RenewalPage() {
                 )
               })}
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-lg">
-          <CardHeader className="pb-3 sm:pb-4">
-            <CardTitle className="text-base sm:text-lg">Akademik Yıl Geçmişi (Kayıt Yenileme)</CardTitle>
-            <CardDescription>
-              Geçmiş yıllara göre yenileyen/yenilemeyen öğrencileri inceleyin, isterseniz öğrenciyi doğrudan forma aktarın.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="max-w-md">
-              <Label htmlFor="historyAcademicYear">Akademik Yıl Seçimi</Label>
-              <select
-                id="historyAcademicYear"
-                value={selectedHistoryYear}
-                onChange={(e) => setSelectedHistoryYear(e.target.value)}
-                className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value="">Yıl seçiniz</option>
-                {[...new Set([...historyYearOptions, ...Object.keys(stats.academicYearStats || {})])]
-                  .filter(Boolean)
-                  .map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
-              </select>
-            </div>
-
-            {yearlyHistoryLoading ? (
-              <p className="text-sm text-gray-500">Yıl verileri yükleniyor...</p>
-            ) : yearlyHistory ? (
-              <>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="rounded-lg border p-3">
-                    <p className="text-xs text-gray-500">Toplam Öğrenci</p>
-                    <p className="text-xl font-semibold">{yearlyHistory.totalStudents}</p>
-                  </div>
-                  <div className="rounded-lg border p-3 bg-green-50">
-                    <p className="text-xs text-gray-500">Kayıt Yenileyen</p>
-                    <p className="text-xl font-semibold text-green-700">{yearlyHistory.renewedCount}</p>
-                  </div>
-                  <div className="rounded-lg border p-3 bg-amber-50">
-                    <p className="text-xs text-gray-500">Kayıt Yenilemeyen</p>
-                    <p className="text-xl font-semibold text-amber-700">{yearlyHistory.notRenewedCount}</p>
-                  </div>
-                </div>
-
-                <div className="rounded-lg border">
-                  <div className="px-4 py-3 border-b bg-gray-50">
-                    <p className="text-sm font-medium">Kayıt Yenilemeyen Öğrenciler</p>
-                  </div>
-                  <div className="max-h-72 overflow-y-auto divide-y">
-                    {yearlyHistory.notRenewedStudents.length === 0 ? (
-                      <p className="p-4 text-sm text-gray-500">Bu yıl için yenilemeyen öğrenci bulunamadı.</p>
-                    ) : (
-                      yearlyHistory.notRenewedStudents.slice(0, 100).map((student) => (
-                        <div key={student.id} className="p-3 flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {student.firstName} {student.lastName}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {student.grade} • {student.tcNumber}
-                            </p>
-                          </div>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleSelectFromHistory(student.id)}
-                          >
-                            Yenileme Başlat
-                          </Button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </>
-            ) : (
-              <p className="text-sm text-gray-500">Seçilen yıl için veri bulunamadı.</p>
-            )}
           </CardContent>
         </Card>
 

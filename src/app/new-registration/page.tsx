@@ -66,23 +66,7 @@ export default function NewRegistrationPage() {
         percent: number
       }
     >,
-    academicYearStats: {} as Record<string, number>,
   })
-  const [historyYearOptions, setHistoryYearOptions] = useState<string[]>([])
-  const [selectedHistoryYear, setSelectedHistoryYear] = useState("")
-  const [yearlyHistoryLoading, setYearlyHistoryLoading] = useState(false)
-  const [yearlyHistory, setYearlyHistory] = useState<{
-    totalStudents: number
-    newRegistrationCount: number
-    notNewRegistrationCount: number
-    notNewRegisteredStudents: Array<{
-      id: string
-      firstName: string
-      lastName: string
-      tcNumber: string
-      grade: string
-    }>
-  } | null>(null)
   
   // Öğrenci Bilgileri Formu
   const [studentFormData, setStudentFormData] = useState({
@@ -318,7 +302,6 @@ export default function NewRegistrationPage() {
             thisMonth: data.thisMonth || 0,
             sinifStats: data.sinifStats || {},
             sinifBreakdown: data.sinifBreakdown || {},
-            academicYearStats: data.academicYearStats || {}
           })
         } else {
           console.error("[New Registration] Invalid stats data format:", data)
@@ -360,7 +343,6 @@ export default function NewRegistrationPage() {
         const data = (await res.json()) as AcademicYearListItem[]
         if (cancelled) return
         const allRows = Array.isArray(data) ? data : []
-        setHistoryYearOptions(allRows.map((r) => contractYearLabelFromAcademicYear(r)))
         const { active, next } = resolveActiveAndNextAcademicYear(allRows)
         setAcademicYearChoices({ active, next })
         setMainContractData((prev) => {
@@ -382,44 +364,6 @@ export default function NewRegistrationPage() {
       cancelled = true
     }
   }, [])
-
-  const fetchYearlyHistory = useCallback(async (academicYear: string) => {
-    if (!academicYear) {
-      setYearlyHistory(null)
-      return
-    }
-    setYearlyHistoryLoading(true)
-    try {
-      const res = await fetch(
-        `/api/registration-history/yearly?academicYear=${encodeURIComponent(academicYear)}`
-      )
-      if (!res.ok) throw new Error("yearly-history")
-      setYearlyHistory(await res.json())
-    } catch (error) {
-      console.error("Error fetching yearly new registration history:", error)
-      setYearlyHistory(null)
-    } finally {
-      setYearlyHistoryLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    const mergedOptions = [
-      ...new Set([
-        ...historyYearOptions,
-        ...Object.keys(stats.academicYearStats || {}),
-        mainContractData.academicYear,
-      ].filter(Boolean)),
-    ]
-    if (!selectedHistoryYear && mergedOptions.length > 0) {
-      setSelectedHistoryYear(mainContractData.academicYear || mergedOptions[0] || "")
-    }
-  }, [historyYearOptions, mainContractData.academicYear, selectedHistoryYear, stats.academicYearStats])
-
-  useEffect(() => {
-    if (!selectedHistoryYear) return
-    fetchYearlyHistory(selectedHistoryYear)
-  }, [selectedHistoryYear, fetchYearlyHistory])
 
   // Sözleşme numarasını otomatik oluştur
   const generateContractNumber = async (date: string) => {
@@ -743,52 +687,6 @@ export default function NewRegistrationPage() {
     }
   }
 
-  const handleUseExistingStudent = async (studentId: string) => {
-    try {
-      const response = await fetch(`/api/students/${studentId}?format=legacy`)
-      if (!response.ok) throw new Error("student-not-found")
-      const student = await response.json()
-      setCreatedStudentId(student.id)
-      const firstName = formatPersonName(student.firstName || "")
-      const lastName = formatPersonName(student.lastName || "")
-      const fullName = formatPersonName(`${firstName} ${lastName}`.trim())
-      setStudentFormData({
-        firstName,
-        lastName,
-        tcNumber: formatTcInput(student.tcNumber || ""),
-        birthDate: student.birthDate
-          ? new Date(student.birthDate).toLocaleDateString("tr-TR")
-          : "",
-        grade: student.grade || "",
-        address: student.address || "",
-        motherName: formatPersonName(student.motherName || ""),
-        motherTc: formatTcInput(student.motherTc || ""),
-        motherPhone: formatPhoneInput(student.motherPhone || ""),
-        motherAddress: student.motherAddress || "",
-        motherOccupation: student.motherOccupation || "",
-        fatherName: formatPersonName(student.fatherName || ""),
-        fatherTc: formatTcInput(student.fatherTc || ""),
-        fatherPhone: formatPhoneInput(student.fatherPhone || ""),
-        fatherAddress: student.fatherAddress || "",
-        fatherOccupation: student.fatherOccupation || "",
-      })
-      setMainContractData((prev) => ({
-        ...prev,
-        studentName: fullName,
-        contractStudentName: fullName,
-        studentTC: formatTcInput(student.tcNumber || ""),
-        studentClass: student.grade || "",
-        studentBirthDate: student.birthDate
-          ? new Date(student.birthDate).toISOString().split("T")[0]
-          : "",
-      }))
-      window.scrollTo({ top: 0, behavior: "smooth" })
-    } catch (error) {
-      console.error("Error loading existing student:", error)
-      alert("Öğrenci bilgileri yüklenemedi.")
-    }
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-3 sm:p-4 md:p-6 lg:p-8">
       {/* Page Header */}
@@ -887,89 +785,6 @@ export default function NewRegistrationPage() {
                 )
               })}
             </div>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-lg">
-          <CardHeader className="pb-3 sm:pb-4">
-            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-              Geçmiş Akademik Yıl Görünümü
-            </CardTitle>
-            <CardDescription>
-              Seçilen yıldaki yeni kayıt sayılarını ve yeni kaydı olmayan öğrencileri izleyin.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="max-w-md">
-              <Label htmlFor="newRegHistoryYear">Akademik Yıl Seçimi</Label>
-              <select
-                id="newRegHistoryYear"
-                value={selectedHistoryYear}
-                onChange={(e) => setSelectedHistoryYear(e.target.value)}
-                className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value="">Yıl seçiniz</option>
-                {[...new Set([...historyYearOptions, ...Object.keys(stats.academicYearStats || {})])]
-                  .filter(Boolean)
-                  .map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
-              </select>
-            </div>
-            {yearlyHistoryLoading ? (
-              <p className="text-sm text-gray-500">Yıl verileri yükleniyor...</p>
-            ) : yearlyHistory ? (
-              <>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="rounded-lg border p-3">
-                    <p className="text-xs text-gray-500">Toplam Öğrenci</p>
-                    <p className="text-xl font-semibold">{yearlyHistory.totalStudents}</p>
-                  </div>
-                  <div className="rounded-lg border p-3 bg-blue-50">
-                    <p className="text-xs text-gray-500">Yeni Kayıtlı</p>
-                    <p className="text-xl font-semibold text-blue-700">{yearlyHistory.newRegistrationCount}</p>
-                  </div>
-                  <div className="rounded-lg border p-3 bg-amber-50">
-                    <p className="text-xs text-gray-500">Yeni Kaydı Olmayan</p>
-                    <p className="text-xl font-semibold text-amber-700">{yearlyHistory.notNewRegistrationCount}</p>
-                  </div>
-                </div>
-                <div className="rounded-lg border">
-                  <div className="px-4 py-3 border-b bg-gray-50">
-                    <p className="text-sm font-medium">Bu Yılda Yeni Kaydı Olmayan Öğrenciler</p>
-                  </div>
-                  <div className="max-h-72 overflow-y-auto divide-y">
-                    {yearlyHistory.notNewRegisteredStudents.length === 0 ? (
-                      <p className="p-4 text-sm text-gray-500">Liste boş.</p>
-                    ) : (
-                      yearlyHistory.notNewRegisteredStudents.slice(0, 100).map((student) => (
-                        <div key={student.id} className="p-3 flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {student.firstName} {student.lastName}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {student.grade} • {student.tcNumber}
-                            </p>
-                          </div>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleUseExistingStudent(student.id)}
-                          >
-                            Forma Aktar
-                          </Button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </>
-            ) : (
-              <p className="text-sm text-gray-500">Seçilen yıl için veri bulunamadı.</p>
-            )}
           </CardContent>
         </Card>
         {/* Öğrenci Bilgileri Formu */}
