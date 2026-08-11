@@ -9,8 +9,8 @@ import { Label } from "@/components/ui/label"
 import { Search, Filter, ArrowLeft, Eye, Download, Calendar, User, GraduationCap, Trash2, TrendingUp, Edit } from "lucide-react"
 import { CurrentAndTargetGrade } from "@/components/registration/CurrentAndTargetGrade"
 import { RenewalGradeExplainer } from "@/components/registration/RenewalGradeExplainer"
+import { GradeStatCard } from "@/components/registration/GradeStatCard"
 import {
-  RENEWAL_STATS_FRACTION_HINT,
   normalizeGradeLabel,
   renewalMatchesCurrentGradeFilter,
 } from "@/lib/renewal-grade-display"
@@ -826,7 +826,6 @@ export default function RenewalsListPage() {
           </CardHeader>
           <CardContent>
             <RenewalGradeExplainer compact className="mb-3" />
-            <p className="text-xs text-gray-500 mb-3">{RENEWAL_STATS_FRACTION_HINT}</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 sm:gap-3">
               {RENEWAL_LIST_SINIFLAR.map((sinif) => {
                 const b = stats.sinifBreakdown[sinif]
@@ -834,16 +833,15 @@ export default function RenewalsListPage() {
                 const total = b?.total ?? 0
                 const pct = b?.percent ?? 0
                 return (
-                  <div
+                  <GradeStatCard
                     key={sinif}
-                    className="p-2 sm:p-3 rounded-lg border-2 border-gray-200 bg-white"
-                  >
-                    <p className="text-xs text-gray-600 mb-1 truncate">{sinif}</p>
-                    <p className="text-base sm:text-lg font-bold text-gray-900 tabular-nums">
-                      {renewed}/{total}
-                    </p>
-                    <p className="text-[11px] sm:text-xs text-gray-500 tabular-nums">%{pct}</p>
-                  </div>
+                    gradeLabel={sinif}
+                    total={total}
+                    count={renewed}
+                    percent={pct}
+                    countLabel="Kayıt yenileyen"
+                    className="hover:border-gray-200 hover:bg-white"
+                  />
                 )
               })}
             </div>

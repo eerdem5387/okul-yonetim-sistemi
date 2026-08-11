@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Download, Users, Clock, TrendingUp, GraduationCap, List, ExternalLink } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { GradeStatCard } from "@/components/registration/GradeStatCard"
 import {
   contractYearLabelFromAcademicYear,
   resolveActiveAndNextAcademicYear,
@@ -865,16 +866,14 @@ export default function NewRegistrationPage() {
                 const total = b?.total ?? 0
                 const pct = b?.percent ?? 0
                 return (
-                  <div
+                  <GradeStatCard
                     key={sinif}
-                    className="p-2 sm:p-3 rounded-lg border-2 border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all"
-                  >
-                    <p className="text-xs text-gray-600 mb-1 truncate">{sinif}</p>
-                    <p className="text-base sm:text-lg lg:text-xl font-bold text-gray-900 tabular-nums">
-                      {n}/{total}
-                    </p>
-                    <p className="text-[11px] sm:text-xs text-gray-500 tabular-nums">%{pct}</p>
-                  </div>
+                    gradeLabel={sinif}
+                    total={total}
+                    count={n}
+                    percent={pct}
+                    countLabel="Yeni kayıt"
+                  />
                 )
               })}
             </div>

@@ -24,7 +24,7 @@ import {
 } from "@/lib/registration-form-validation"
 import { renewalTargetClassLabel } from "@/lib/student-grade-level"
 import { RenewalGradeExplainer } from "@/components/registration/RenewalGradeExplainer"
-import { RENEWAL_STATS_FRACTION_HINT } from "@/lib/renewal-grade-display"
+import { GradeStatCard } from "@/components/registration/GradeStatCard"
 
 interface Student {
   id: string
@@ -910,7 +910,6 @@ export default function RenewalPage() {
           </CardHeader>
           <CardContent>
             <RenewalGradeExplainer compact className="mb-3" />
-            <p className="text-xs text-gray-500 mb-3">{RENEWAL_STATS_FRACTION_HINT}</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 sm:gap-3">
               {siniflar.map((sinif) => {
                 const b = stats.sinifBreakdown[sinif]
@@ -918,16 +917,14 @@ export default function RenewalPage() {
                 const total = b?.total ?? 0
                 const pct = b?.percent ?? 0
                 return (
-                  <div
+                  <GradeStatCard
                     key={sinif}
-                    className="p-2 sm:p-3 rounded-lg border-2 border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all"
-                  >
-                    <p className="text-xs text-gray-600 mb-1 truncate">{sinif}</p>
-                    <p className="text-base sm:text-lg lg:text-xl font-bold text-gray-900 tabular-nums">
-                      {renewed}/{total}
-                    </p>
-                    <p className="text-[11px] sm:text-xs text-gray-500 tabular-nums">%{pct}</p>
-                  </div>
+                    gradeLabel={sinif}
+                    total={total}
+                    count={renewed}
+                    percent={pct}
+                    countLabel="Kayıt yenileyen"
+                  />
                 )
               })}
             </div>
