@@ -151,12 +151,10 @@ export function validateContractFields(
     [data.announcedClothingFee, "İlan edilen kıyafet ücreti"],
     [data.announcedCourseFee, "İlan edilen takviye kursu ücreti"],
     [data.announcedStudyHallFee, "İlan edilen etüt ücreti"],
-    [data.announcedTotal, "İlan edilen ücretler toplamı"],
     [data.studentTuitionFee, "Öğrenci öğrenim ücreti"],
     [data.studentClothingFee, "Öğrenci kıyafet ücreti"],
     [data.studentCourseFee, "Öğrenci takviye kursu ücreti"],
     [data.studentStudyHallFee, "Öğrenci etüt ücreti"],
-    [data.studentTotal, "Öğrenci ücretleri toplamı"],
   ]
   for (const [value, label] of feePairs) {
     if (!isValidFeeAmount(value)) {

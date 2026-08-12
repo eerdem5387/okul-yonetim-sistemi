@@ -207,6 +207,51 @@ function formatTL(value: unknown): string {
   return new Intl.NumberFormat('tr-TR').format(num)
 }
 
+function parseFeeAmount(value: unknown): number | null {
+  const s = String(value ?? '').trim().replace(',', '.')
+  if (!s) return null
+  const n = Number(s)
+  return Number.isFinite(n) ? n : null
+}
+
+/** Ödeme tablosunda 0 veya boş satırları göstermez; geçmiş sözleşmelerde kayıtlı değerler korunur. */
+function renderMainContractPaymentRows(contractData: Record<string, unknown>): string {
+  const rows: Array<{ label: string; announced: unknown; student: unknown; indent?: boolean }> = [
+    { label: 'Öğrenim Ücreti', announced: contractData.announcedTuitionFee, student: contractData.studentTuitionFee },
+    { label: 'Kıyafet Ücreti', announced: contractData.announcedClothingFee, student: contractData.studentClothingFee },
+    { label: 'Takviye Kursu', announced: contractData.announcedCourseFee, student: contractData.studentCourseFee, indent: true },
+    { label: 'Kırtasiye', announced: contractData.announcedStationeryFee, student: contractData.studentStationeryFee, indent: true },
+    { label: 'Etüt', announced: contractData.announcedStudyHallFee, student: contractData.studentStudyHallFee, indent: true },
+  ]
+
+  return rows
+    .filter((row) => {
+      const announced = parseFeeAmount(row.announced)
+      const student = parseFeeAmount(row.student)
+      return (announced !== null && announced !== 0) || (student !== null && student !== 0)
+    })
+    .map((row) => {
+      const announced = parseFeeAmount(row.announced)
+      const student = parseFeeAmount(row.student)
+      const indentStyle = row.indent ? ' style="padding-left: 15px;"' : ''
+      return `
+          <tr>
+            <td${indentStyle}>${row.label}</td>
+            <td>${announced !== null && announced !== 0 ? formatTL(announced) : '___________'}</td>
+            <td>${student !== null && student !== 0 ? formatTL(student) : '___________'}</td>
+          </tr>`
+    })
+    .join('')
+}
+
+function studentContractFeeLabel(contractData: Record<string, unknown>): string {
+  const total = parseFeeAmount(contractData.studentTotal)
+  if (total !== null && total !== 0) return formatTL(total)
+  const tuition = parseFeeAmount(contractData.studentTuitionFee)
+  if (tuition !== null && tuition !== 0) return formatTL(tuition)
+  return '___________'
+}
+
 // YYYY-MM → Türkçe "Ay YYYY"
 function monthLabelTR(yyyyMm: string): string {
   if (!/^\d{4}-\d{2}$/.test(yyyyMm)) return yyyyMm || ''
@@ -679,36 +724,7 @@ function generateMainContractHTML(student: { firstName: string; lastName: string
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td>Öğrenim Ücreti</td>
-            <td>${contractData.announcedTuitionFee || '0'}</td>
-            <td>${contractData.studentTuitionFee || '0'}</td>
-          </tr>
-          <tr>
-            <td>Kıyafet Ücreti</td>
-            <td>${contractData.announcedClothingFee || '0'}</td>
-            <td>${contractData.studentClothingFee || '0'}</td>
-          </tr>
-          <tr>
-            <td style="padding-left: 15px;">Takviye Kursu</td>
-            <td>${contractData.announcedCourseFee || '0'}</td>
-            <td>${contractData.studentCourseFee || '0'}</td>
-          </tr>
-          <tr>
-            <td style="padding-left: 15px;">Kırtasiye</td>
-            <td>${contractData.announcedStationeryFee || '0'}</td>
-            <td>${contractData.studentStationeryFee || '0'}</td>
-          </tr>
-          <tr>
-            <td style="padding-left: 15px;">Etüt</td>
-            <td>${contractData.announcedStudyHallFee || '0'}</td>
-            <td>${contractData.studentStudyHallFee || '0'}</td>
-          </tr>
-          <tr style="font-weight: bold;">
-            <td>TOPLAM</td>
-            <td>${contractData.announcedTotal || '0'}</td>
-            <td>${contractData.studentTotal || '0'}</td>
-          </tr>
+          ${renderMainContractPaymentRows(contractData)}
         </tbody>
       </table>
     </div>
@@ -822,7 +838,7 @@ function generateMainContractHTML(student: { firstName: string; lastName: string
       </div>
       <div class="field-row">
         <div class="field-label">Öğrenci için belirlenen ücret:</div>
-        <div class="field-value">${formatTL(contractData.studentTotal ?? contractData.studentTuitionFee)} TL</div>
+        <div class="field-value">${studentContractFeeLabel(contractData)} TL</div>
       </div>
       <div style="display:flex; gap: 20px;">
         <div style="flex:1;">
@@ -896,7 +912,7 @@ function generateMainContractHTML(student: { firstName: string; lastName: string
         <div class="terms-title">ÖDEME PLANI DETAYLARI:</div>
         <div class="field-row">
           <div class="field-label">Toplam Ücret:</div>
-          <div class="field-value">${formatTL(contractData.studentTotal)} TL</div>
+          <div class="field-value">${studentContractFeeLabel(contractData)} TL</div>
         </div>
         <div class="field-row">
           <div class="field-label">Peşinat:</div>

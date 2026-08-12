@@ -16,6 +16,13 @@ import {
   type AcademicYearListItem,
 } from "@/lib/academic-year-ui"
 import {
+  applyFixedContractFees,
+  formatFixedFeeDisplay,
+  FIXED_CLOTHING_FEE,
+  FIXED_COURSE_FEE,
+  FIXED_STUDY_HALL_FEE,
+} from "@/lib/contract-fixed-fees"
+import {
   formatPersonName,
   formatTcInput,
   formatValidationAlert,
@@ -112,16 +119,16 @@ export default function RenewalPage() {
     
     // Ödeme Bilgileri - Kurumun İlan Ettiği Ücretler
     announcedTuitionFee: "",
-    announcedClothingFee: "",
-    announcedCourseFee: "",
-    announcedStudyHallFee: "",
+    announcedClothingFee: FIXED_CLOTHING_FEE,
+    announcedCourseFee: FIXED_COURSE_FEE,
+    announcedStudyHallFee: FIXED_STUDY_HALL_FEE,
     announcedTotal: "",
     
     // Ödeme Bilgileri - Öğrenci İçin Belirlenen Ücretler
     studentTuitionFee: "",
-    studentClothingFee: "",
-    studentCourseFee: "",
-    studentStudyHallFee: "",
+    studentClothingFee: FIXED_CLOTHING_FEE,
+    studentCourseFee: FIXED_COURSE_FEE,
+    studentStudyHallFee: FIXED_STUDY_HALL_FEE,
     studentTotal: "",
     
     // Ödeme Planı ve Muacceliyet
@@ -534,11 +541,11 @@ export default function RenewalPage() {
       return
     }
 
-    const contractPayload = {
+    const contractPayload = applyFixedContractFees({
       ...mainContractData,
       academicYear: renewalTarget.label,
       studentClass: renewalClass,
-    }
+    })
     const contractErrors = validateContractFields(contractPayload)
     const uniformErrors = validateUniformFields(otherContractData)
     const allErrors = [...contractErrors, ...uniformErrors]
@@ -555,7 +562,7 @@ export default function RenewalPage() {
           data: {
             studentId: selectedStudent.id,
             contractData: {
-              ...mainContractData,
+              ...contractPayload,
               academicYear: renewalTarget.label,
               academicYearId: renewalTarget.id,
               studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
@@ -637,7 +644,7 @@ export default function RenewalPage() {
             "renewal",
             "uniform",
           ],
-          mainContractData: { ...mainContractData, studentClass: renewalClass },
+          mainContractData: { ...contractPayload, studentClass: renewalClass },
           otherContractData: otherContractData
         })
       })
@@ -1134,35 +1141,6 @@ export default function RenewalPage() {
                           </div>
                         )}
                       </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const announced = [
-                            parseFloat(mainContractData.announcedTuitionFee) || 0,
-                            parseFloat(mainContractData.announcedClothingFee) || 0,
-                            parseFloat(mainContractData.announcedCourseFee) || 0,
-                            parseFloat(mainContractData.announcedStudyHallFee) || 0
-                          ]
-                          const student = [
-                            parseFloat(mainContractData.studentTuitionFee) || 0,
-                            parseFloat(mainContractData.studentClothingFee) || 0,
-                            parseFloat(mainContractData.studentCourseFee) || 0,
-                            parseFloat(mainContractData.studentStudyHallFee) || 0
-                          ]
-                          const announcedTotal = announced.reduce((a, b) => a + b, 0)
-                          const studentTotal = student.reduce((a, b) => a + b, 0)
-                          setMainContractData({
-                            ...mainContractData,
-                            announcedTotal: announcedTotal.toString(),
-                            studentTotal: studentTotal.toString()
-                          })
-                        }}
-                        className="text-xs"
-                      >
-                        Toplamı Hesapla
-                      </Button>
                     </div>
                     
                     <div className="grid grid-cols-3 gap-4">
@@ -1188,59 +1166,42 @@ export default function RenewalPage() {
                     <div className="grid grid-cols-3 gap-4">
                       <div>KIYAFET ÜCRETİ *</div>
                       <Input
-                        value={mainContractData.announcedClothingFee}
-                        onChange={(e) => setMainContractData({ ...mainContractData, announcedClothingFee: e.target.value })}
-                        placeholder="0"
+                        value={formatFixedFeeDisplay(FIXED_CLOTHING_FEE)}
+                        readOnly
+                        className="bg-gray-100 cursor-not-allowed"
                       />
                       <Input
-                        value={mainContractData.studentClothingFee}
-                        onChange={(e) => setMainContractData({ ...mainContractData, studentClothingFee: e.target.value })}
-                        placeholder="0"
+                        value={formatFixedFeeDisplay(FIXED_CLOTHING_FEE)}
+                        readOnly
+                        className="bg-gray-100 cursor-not-allowed"
                       />
                     </div>
 
                     <div className="grid grid-cols-3 gap-4">
                       <div className="pl-4">Takviye Kursu Ücreti *</div>
                       <Input
-                        value={mainContractData.announcedCourseFee}
-                        onChange={(e) => setMainContractData({ ...mainContractData, announcedCourseFee: e.target.value })}
-                        placeholder="0"
+                        value={formatFixedFeeDisplay(FIXED_COURSE_FEE)}
+                        readOnly
+                        className="bg-gray-100 cursor-not-allowed"
                       />
                       <Input
-                        value={mainContractData.studentCourseFee}
-                        onChange={(e) => setMainContractData({ ...mainContractData, studentCourseFee: e.target.value })}
-                        placeholder="0"
+                        value={formatFixedFeeDisplay(FIXED_COURSE_FEE)}
+                        readOnly
+                        className="bg-gray-100 cursor-not-allowed"
                       />
                     </div>
-
 
                     <div className="grid grid-cols-3 gap-4">
                       <div className="pl-4">Etüt Ücreti *</div>
                       <Input
-                        value={mainContractData.announcedStudyHallFee}
-                        onChange={(e) => setMainContractData({ ...mainContractData, announcedStudyHallFee: e.target.value })}
-                        placeholder="0"
+                        value={formatFixedFeeDisplay(FIXED_STUDY_HALL_FEE)}
+                        readOnly
+                        className="bg-gray-100 cursor-not-allowed"
                       />
                       <Input
-                        value={mainContractData.studentStudyHallFee}
-                        onChange={(e) => setMainContractData({ ...mainContractData, studentStudyHallFee: e.target.value })}
-                        placeholder="0"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4 font-semibold">
-                      <div>ÜCRETLER TOPLAMI *</div>
-                      <Input
-                        value={mainContractData.announcedTotal}
-                        onChange={(e) => setMainContractData({ ...mainContractData, announcedTotal: e.target.value })}
-                        placeholder="0"
-                        className="font-semibold"
-                      />
-                      <Input
-                        value={mainContractData.studentTotal}
-                        onChange={(e) => setMainContractData({ ...mainContractData, studentTotal: e.target.value })}
-                        placeholder="0"
-                        className="font-semibold"
+                        value={formatFixedFeeDisplay(FIXED_STUDY_HALL_FEE)}
+                        readOnly
+                        className="bg-gray-100 cursor-not-allowed"
                       />
                     </div>
                   </div>
