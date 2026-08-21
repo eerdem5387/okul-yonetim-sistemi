@@ -80,6 +80,12 @@ export default function RenewalsListPage() {
         notRenewed: number
         total: number
         percent: number
+        notRenewedStudents?: Array<{
+          id: string
+          firstName: string
+          lastName: string
+          tcNumber: string
+        }>
       }
     >,
   })
@@ -847,6 +853,7 @@ export default function RenewalsListPage() {
                       newRegistration: b?.newRegistration ?? 0,
                       renewed: b?.renewed ?? 0,
                       notRenewed: b?.notRenewed ?? 0,
+                      notRenewedStudents: b?.notRenewedStudents ?? [],
                     }}
                     className="hover:border-gray-200 hover:bg-white"
                   />

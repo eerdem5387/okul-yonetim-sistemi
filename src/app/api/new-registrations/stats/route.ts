@@ -114,7 +114,13 @@ export async function GET(request: NextRequest) {
     const renewalCtx = await getRenewalTargetContext(prisma)
     const allStudents = await prisma.student.findMany({
       where: k12GradeWhereClause(),
-      select: { id: true, grade: true },
+      select: {
+        id: true,
+        grade: true,
+        firstName: true,
+        lastName: true,
+        tcNumber: true,
+      },
     })
     const sinifBreakdownRaw = buildEnrollmentRegistrationGradeBreakdown({
       students: allStudents,

@@ -71,6 +71,12 @@ export default function NewRegistrationPage() {
         notRenewed: number
         total: number
         percent: number
+        notRenewedStudents?: Array<{
+          id: string
+          firstName: string
+          lastName: string
+          tcNumber: string
+        }>
       }
     >,
   })
@@ -788,6 +794,7 @@ export default function NewRegistrationPage() {
                         b?.newRegistration ?? b?.newRegistrations ?? stats.sinifStats[sinif] ?? 0,
                       renewed: b?.renewed ?? 0,
                       notRenewed: b?.notRenewed ?? 0,
+                      notRenewedStudents: b?.notRenewedStudents ?? [],
                     }}
                   />
                 )

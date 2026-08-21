@@ -97,6 +97,12 @@ export default function RenewalPage() {
         notRenewed: number
         total: number
         percent: number
+        notRenewedStudents?: Array<{
+          id: string
+          firstName: string
+          lastName: string
+          tcNumber: string
+        }>
       }
     >,
   })
@@ -867,6 +873,7 @@ export default function RenewalPage() {
                       newRegistration,
                       renewed,
                       notRenewed,
+                      notRenewedStudents: b?.notRenewedStudents ?? [],
                     }}
                   />
                 )

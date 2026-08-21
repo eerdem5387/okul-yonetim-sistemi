@@ -51,17 +51,27 @@ export function buildGradeFractionRows(
   return out
 }
 
+export type NotRenewedStudentBrief = {
+  id: string
+  firstName: string
+  lastName: string
+  tcNumber: string
+}
+
 /** Kayıt yenileme / yeni kayıt sayfalarında ortak sınıf kartı kırılımı. */
 export type EnrollmentRegistrationGradeBreakdown = {
+  /** Yeni kayıt + kayıt yenileyen (kayıt yenilemeyen dahil değil) */
   mevcut: number
   newRegistration: number
   renewed: number
   notRenewed: number
+  /** Geriye uyumluluk: mevcut ile aynı */
   total: number
   /** Yenileme oranı: renewed / (renewed + notRenewed) */
   percent: number
   /** Yeni kayıt oranı: newRegistration / mevcut */
   newRegistrationPercent: number
+  notRenewedStudents: NotRenewedStudentBrief[]
 }
 
 /**
@@ -69,7 +79,13 @@ export type EnrollmentRegistrationGradeBreakdown = {
  * Kayıt yenileme ve yeni kayıt istatistikleri aynı fonksiyonu kullanmalı.
  */
 export function buildEnrollmentRegistrationGradeBreakdown(params: {
-  students: Array<{ id: string; grade: string }>
+  students: Array<{
+    id: string
+    grade: string
+    firstName?: string
+    lastName?: string
+    tcNumber?: string
+  }>
   renewedStudentIds: Set<string>
   newRegistrationStudentIds: Set<string>
   newRegistrationActiveYearStudentIds: Set<string>
@@ -94,6 +110,7 @@ export function buildEnrollmentRegistrationGradeBreakdown(params: {
       total: 0,
       percent: 0,
       newRegistrationPercent: 0,
+      notRenewedStudents: [],
     }
   }
 
@@ -111,15 +128,22 @@ export function buildEnrollmentRegistrationGradeBreakdown(params: {
     const isRenewed =
       renewedStudentIds.has(s.id) && !newRegistrationStudentIds.has(s.id)
 
-    row.mevcut += 1
-    row.total += 1
-
     if (isNewReg) {
       row.newRegistration += 1
+      row.mevcut += 1
+      row.total += 1
     } else if (isRenewed) {
       row.renewed += 1
+      row.mevcut += 1
+      row.total += 1
     } else {
       row.notRenewed += 1
+      row.notRenewedStudents.push({
+        id: s.id,
+        firstName: s.firstName ?? "",
+        lastName: s.lastName ?? "",
+        tcNumber: s.tcNumber ?? "",
+      })
     }
   }
 
@@ -133,6 +157,13 @@ export function buildEnrollmentRegistrationGradeBreakdown(params: {
       row.mevcut > 0
         ? Math.round((row.newRegistration / row.mevcut) * 1000) / 10
         : 0
+    row.notRenewedStudents.sort((a, b) => {
+      const an = `${a.lastName} ${a.firstName}`.localeCompare(
+        `${b.lastName} ${b.firstName}`,
+        "tr"
+      )
+      return an
+    })
   }
 
   return out

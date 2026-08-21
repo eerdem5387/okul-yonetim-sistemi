@@ -138,7 +138,13 @@ export async function GET(request: NextRequest) {
 
     const allStudents = await prisma.student.findMany({
       where: k12GradeWhereClause(),
-      select: { id: true, grade: true },
+      select: {
+        id: true,
+        grade: true,
+        firstName: true,
+        lastName: true,
+        tcNumber: true,
+      },
     })
 
     const sinifBreakdown = buildEnrollmentRegistrationGradeBreakdown({
