@@ -11,6 +11,7 @@ const ACTIVE_ROLES = [
   "OGRENCI_ISLERI",
   "MUDUR",
   "MUDUR_YARDIMCISI",
+  "KURUCU",
 ]
 
 /**
@@ -106,7 +107,7 @@ export async function POST(request: NextRequest) {
       
       if (staff.department === "SUPER_ADMIN") {
         userRole = "admin"
-      } else if (staff.department === "MUDUR") {
+      } else if (staff.department === "MUDUR" || staff.department === "KURUCU") {
         userRole = "principal"
       } else if (staff.department === "MUDUR_YARDIMCISI") {
         userRole = "student_affairs"
@@ -156,7 +157,7 @@ export async function POST(request: NextRequest) {
     
     if (staff.department === "SUPER_ADMIN") {
       userRole = "admin"
-    } else if (staff.department === "MUDUR") {
+    } else if (staff.department === "MUDUR" || staff.department === "KURUCU") {
       userRole = "principal"
     } else if (staff.department === "MUDUR_YARDIMCISI") {
       userRole = "student_affairs"

@@ -29,6 +29,7 @@ import {
   Settings,
   Shield,
   UserSearch,
+  Contact,
 } from "lucide-react"
 import { useState, useEffect, useMemo } from "react"
 import { UnreadBadge } from "@/components/chat/UnreadBadge"
@@ -46,6 +47,8 @@ const allNavigation = [
   { name: "Kayıt Yenileme", href: "/renewal", icon: FileText, roles: ["admin", "principal", "student_affairs", "head_counselor"] },
   // 4. Teklif Görüşmeleri
   { name: "Teklif Görüşmeleri", href: "/teklif-gorusmeleri", icon: Handshake, roles: ["admin", "principal", "student_affairs", "head_counselor"] },
+  // 4b. Aday Öğrenci Tespiti
+  { name: "Aday Öğrenci Tespiti", href: "/aday-ogrenci-tespiti", icon: Contact, roles: ["admin", "principal", "student_affairs", "head_counselor"] },
   // 5. Veli Görüşmeleri
   { name: "Veli Görüşmeleri", href: "/yonetim/parent-meetings", icon: MessageSquare, roles: ["admin", "principal", "student_affairs"] },
   // 6. Öğrenci Yönetimi
@@ -91,6 +94,7 @@ export function Sidebar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [currentRole, setCurrentRole] = useState<string | null>(null)
   const [staffName, setStaffName] = useState<string>("")
+  const [staffDepartment, setStaffDepartment] = useState<string | null>(null)
   const permState = useStaffPermissions()
 
   useEffect(() => {
@@ -98,8 +102,10 @@ export function Sidebar() {
 
     const role = localStorage.getItem("auth_role")
     const name = localStorage.getItem("staff_name")
+    const department = localStorage.getItem("staff_department")
     setCurrentRole(role)
     setStaffName(name || "Kullanıcı")
+    setStaffDepartment(department)
   }, [])
 
   const hrefToPermission: Record<string, string> = {
@@ -108,6 +114,7 @@ export function Sidebar() {
     "/new-registration": "registrations.create",
     "/renewal": "registrations.view",
     "/teklif-gorusmeleri": "applications.view",
+    "/aday-ogrenci-tespiti": "aday_tespit.view",
     "/yonetim/parent-meetings": "parent_meetings.view",
     "/students": "students.view",
     "/ogrenci-dashboard": "students.view",
@@ -275,7 +282,7 @@ export function Sidebar() {
               </p>
               <p className="text-xs text-gray-500">
                 {currentRole === "admin" && "Yönetici"}
-                {currentRole === "principal" && "Müdür"}
+                {currentRole === "principal" && (staffDepartment === "KURUCU" ? "Kurucu" : "Müdür")}
                 {currentRole === "student_affairs" && "Öğrenci İşleri"}
                 {currentRole === "counselor" && "Rehberlik"}
                 {currentRole === "teacher" && "Öğretmen"}

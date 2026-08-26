@@ -18,6 +18,7 @@ import {
   ClipboardList,
   FileText,
   Handshake,
+  Contact,
 } from "lucide-react"
 import { useState, useEffect, useMemo } from "react"
 import { UnreadBadge } from "@/components/chat/UnreadBadge"
@@ -41,6 +42,7 @@ const headCounselorNavigation: NavDef[] = [
   { name: "Bursluluk Başvuruları", href: "/basvurular", icon: ClipboardList, module: "applications", action: "view" },
   { name: "Yaz Okulu Başvuruları", href: "/yaz-okulu-basvurular", icon: ClipboardList, module: "applications", action: "view" },
   { name: "Teklif Görüşmeleri", href: "/teklif-gorusmeleri", icon: Handshake, module: "applications", action: "view" },
+  { name: "Aday Öğrenci Tespiti", href: "/aday-ogrenci-tespiti", icon: Contact, module: "aday_tespit", action: "view" },
   { name: "Yeni Kayıt", href: "/new-registration", icon: FileText, module: "registrations", action: "create" },
   { name: "Kayıt Yenileme", href: "/renewal", icon: FileText, module: "registrations", action: "view" },
 ]

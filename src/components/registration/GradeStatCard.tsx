@@ -141,7 +141,7 @@ export function GradeStatCard(props: GradeStatCardProps) {
           id={listId}
           role="dialog"
           aria-label={`${gradeLabel} kayıt yenilemeyen öğrenciler`}
-          className="absolute left-0 right-0 top-full z-30 mt-1 max-h-48 overflow-y-auto rounded-lg border border-amber-200 bg-white p-2 shadow-lg"
+          className="absolute left-1/2 top-full z-30 mt-1 w-[min(18rem,calc(100vw-1.5rem))] max-h-56 -translate-x-1/2 overflow-y-auto rounded-lg border border-amber-200 bg-white p-2.5 shadow-lg"
         >
           <div className="mb-1.5 flex items-center justify-between gap-2">
             <p className="text-[11px] font-semibold text-amber-900">

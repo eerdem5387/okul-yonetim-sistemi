@@ -58,6 +58,7 @@ const DEPARTMENTS: StaffDepartment[] = [
   "OGRENCI_ISLERI",
   "MUDUR",
   "MUDUR_YARDIMCISI",
+  "KURUCU",
   "REHBERLIK",
   "BAS_REHBERLIK",
   "MUHASEBE",

@@ -21,6 +21,7 @@ export const STAFF_DEPARTMENT_LABELS: Record<StaffDepartment, string> = {
   OGRENCI_ISLERI: "Öğrenci İşleri",
   MUDUR: "Müdür",
   MUDUR_YARDIMCISI: "Müdür Yardımcısı",
+  KURUCU: "Kurucu",
   REHBERLIK: "Rehberlik",
   BAS_REHBERLIK: "Baş Rehberlik",
   MUHASEBE: "Muhasebe",

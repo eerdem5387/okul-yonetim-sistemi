@@ -41,6 +41,12 @@ export const PERMISSION_MODULES: PermissionModuleDef[] = [
   { id: "classes", label: "Sınıf Yönetimi", group: "Öğrenci", actions: ["view", "create", "edit", "delete"] },
   { id: "registrations", label: "Kayıt / Yenileme / Sözleşmeler", group: "Kayıt", actions: ["view", "create", "edit", "delete", "export"] },
   { id: "applications", label: "Bursluluk Başvuruları", group: "Kayıt", actions: ["view", "create", "edit", "delete", "export"] },
+  {
+    id: "aday_tespit",
+    label: "Aday Öğrenci Tespiti",
+    group: "Kayıt",
+    actions: ["view", "create", "edit", "delete", "export"],
+  },
   { id: "parent_meetings", label: "Veli Görüşmeleri", group: "Kayıt", actions: ["view", "create", "edit", "delete"] },
   { id: "approval_panel", label: "Onay Paneli", group: "Kayıt", actions: ["view", "approve"] },
   { id: "gezi", label: "Gezi Yönetimi", group: "Faaliyet", actions: ["view", "create", "edit", "delete", "export"] },

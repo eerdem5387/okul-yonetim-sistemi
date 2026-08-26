@@ -6,7 +6,8 @@ import {
   getRenewalTargetContext,
   resolveRenewalYearTargetForStats,
 } from "@/lib/student-registration-meta"
-import { k12GradeWhereClause, parseStudentGradeLevel } from "@/lib/student-grade-level"
+import { gradeLevelLabel, k12GradeWhereClause, parseStudentGradeLevel } from "@/lib/student-grade-level"
+import { buildEnrollmentRegistrationGradeBreakdown } from "@/lib/enrolled-grade-counts"
 
 export const dynamic = "force-dynamic"
 
@@ -86,7 +87,7 @@ export async function GET() {
       }
     }
 
-    const [allStudentsForRenewal, allRenewals, allNewRegs] = await Promise.all([
+    const [allStudentsForRenewal, allRenewals, allNewRegs, k12Students] = await Promise.all([
       prisma.student.findMany({
         select: { id: true, firstName: true, lastName: true, grade: true },
         orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
@@ -96,6 +97,10 @@ export async function GET() {
       }),
       prisma.newRegistration.findMany({
         select: { studentId: true, contractData: true },
+      }),
+      prisma.student.findMany({
+        where: k12GradeWhereClause(),
+        select: { id: true, grade: true },
       }),
     ])
 
@@ -138,8 +143,21 @@ export async function GET() {
       }))
     }
 
-    const [totalStudents, newRegCount, renewalCount, classCount] = await Promise.all([
-      prisma.student.count({ where: enrollmentWhere }),
+    // Toplam öğrenci = sınıf kartlarındaki "Mevcut" ile aynı (yeni kayıt + yenileyen; yenilemeyen hariç)
+    const gradeBreakdown = buildEnrollmentRegistrationGradeBreakdown({
+      students: k12Students,
+      renewedStudentIds: regCtx.renewedStudentIds,
+      newRegistrationStudentIds: regCtx.newRegistrationStudentIds,
+      newRegistrationActiveYearStudentIds: regCtx.newRegistrationActiveYearStudentIds,
+      futureYearOnlyNewRegistrationStudentIds:
+        regCtx.futureYearOnlyNewRegistrationStudentIds,
+    })
+    let totalStudents = 0
+    for (let g = 5; g <= 12; g++) {
+      totalStudents += gradeBreakdown[gradeLevelLabel(g)]?.mevcut ?? 0
+    }
+
+    const [newRegCount, renewalCount, classCount] = await Promise.all([
       prisma.newRegistration.count(),
       prisma.renewal.count(),
       prisma.class.count(),

@@ -11,6 +11,7 @@ const ACTIVE_ROLES = [
   "OGRENCI_ISLERI",
   "MUDUR",
   "MUDUR_YARDIMCISI",
+  "KURUCU",
 ]
 
 export async function POST(request: NextRequest) {
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
       
       if (staff.department === "SUPER_ADMIN") {
         role = "admin"
-      } else if (staff.department === "MUDUR") {
+      } else if (staff.department === "MUDUR" || staff.department === "KURUCU") {
         role = "principal"
       } else if (staff.department === "MUDUR_YARDIMCISI") {
         role = "student_affairs"
@@ -121,8 +122,8 @@ export async function POST(request: NextRequest) {
     
     if (staff.department === "SUPER_ADMIN") {
       role = "admin" // Süper Admin
-    } else if (staff.department === "MUDUR") {
-      role = "principal" // Müdür
+    } else if (staff.department === "MUDUR" || staff.department === "KURUCU") {
+      role = "principal"
     } else if (staff.department === "MUDUR_YARDIMCISI") {
       role = "student_affairs" // Müdür Yardımcısı → Öğrenci İşleri yetkisi
     } else if (staff.department === "BAS_REHBERLIK") {

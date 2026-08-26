@@ -532,6 +532,7 @@ enum StaffDepartment {
   OGRENCI_ISLERI // Öğrenci İşleri
   MUDUR // Müdür
   MUDUR_YARDIMCISI // Müdür Yardımcısı
+  KURUCU // Kurucu
   REHBERLIK // Rehberlik
   BAS_REHBERLIK // Baş Rehberlik
   MUHASEBE // Muhasebe
@@ -1067,6 +1068,67 @@ model TeklifGorusmeKaydi {
   @@index([gorusmeTarihi])
   @@index([durum])
   @@map("teklif_gorusme_kayitlari")
+}
+
+// Aday Öğrenci Tespiti
+enum AdayOgrenciTespitDurumu {
+  OLUMLU
+  OLUMSUZ
+  BELIRSIZ
+}
+
+model AdayOgrenciTespiti {
+  id             String  @id @default(cuid())
+  // Öğrenci Bilgileri
+  ogrenciAdSoyad String
+  okul           String
+  sinif          String
+  // Veli Bilgileri
+  veliAdSoyad    String
+  veliTelefon    String
+  veliMeslek     String?
+  // Referans Olan Kişi
+  referansAdSoyad  String
+  referansTelefon  String
+  referansKanali   String
+  referansNot      String?
+  // Görüşmeyi Sonlandır ile işaretlenene kadar tamamlanmış sayılmaz
+  sonlandirildi Boolean @default(false)
+  // Sistem Bilgileri
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+
+  // Relations
+  kayitlar AdayOgrenciTespitKaydi[]
+
+  @@index([ogrenciAdSoyad])
+  @@index([okul])
+  @@index([sinif])
+  @@index([createdAt])
+  @@index([sonlandirildi])
+  @@map("aday_ogrenci_tespitleri")
+}
+
+model AdayOgrenciTespitKaydi {
+  id                   String                 @id @default(cuid())
+  adayOgrenciTespitiId String
+  // Görüşme Bilgileri
+  gorusmeTarihi  DateTime
+  gorusmeyiYapan String
+  durum          AdayOgrenciTespitDurumu
+  durumNotu      String?
+  genelNot       String? // Açıklama
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  adayOgrenciTespiti AdayOgrenciTespiti @relation(fields: [adayOgrenciTespitiId], references: [id], onDelete: Cascade)
+
+  @@index([adayOgrenciTespitiId])
+  @@index([gorusmeTarihi])
+  @@index([durum])
+  @@map("aday_ogrenci_tespit_kayitlari")
 }
 
 // ============================================

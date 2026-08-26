@@ -320,6 +320,15 @@ export default function RootLayout({
       return
     }
 
+    // Aday Öğrenci Tespiti sayfası için kontrol
+    if (pathname === "/aday-ogrenci-tespiti") {
+      if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "head_counselor") {
+        return
+      }
+      hardRedirect("/login")
+      return
+    }
+
     // Faaliyet Ekle – yetkili roller (öğretmen dahil; layout aşağıda OgretmenSidebar ile)
     if (pathname === "/faaliyet-ekle") {
       if (
