@@ -35,6 +35,19 @@ type AuthRole = "admin" | "principal" | "student_affairs" | "parent" | "teacher"
 
 const PUBLIC_AUTH_PATHS = ["/login", "/veli-login", "/ib-viewer/login", "/change-password"]
 
+/** Staff roles that use the main Sidebar; permission grants can expand their route access. */
+const MAIN_SIDEBAR_STAFF_ROLES: readonly NonNullable<AuthRole>[] = [
+  "admin",
+  "principal",
+  "student_affairs",
+  "counselor",
+  "head_counselor",
+]
+
+function isMainSidebarStaff(role: AuthRole): boolean {
+  return role != null && MAIN_SIDEBAR_STAFF_ROLES.includes(role)
+}
+
 function isPublicAuthPath(pathname: string | null): boolean {
   if (!pathname) return false
   return PUBLIC_AUTH_PATHS.some((p) => pathname === p || pathname.startsWith(p))
@@ -219,18 +232,18 @@ export default function RootLayout({
       return
     }
 
-    // Admin Veli Görüşmeleri sayfası için kontrol (admin, principal, student_affairs erişebilir)
+    // Admin Veli Görüşmeleri sayfası için kontrol (main-sidebar staff; permission filter applies in UI)
     if (pathname === "/admin/veli-gorusmeleri") {
-      if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs") {
+      if (isMainSidebarStaff(normalizedRole)) {
         return
       }
       hardRedirect("/login")
       return
     }
 
-    // Yönetim Veli Görüşmeleri sayfası için kontrol (admin, principal, student_affairs erişebilir)
+    // Yönetim Veli Görüşmeleri sayfası için kontrol (main-sidebar staff; permission filter applies in UI)
     if (pathname === "/yonetim/parent-meetings") {
-      if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs") {
+      if (isMainSidebarStaff(normalizedRole)) {
         return
       }
       hardRedirect("/login")
@@ -238,13 +251,7 @@ export default function RootLayout({
     }
 
     if (pathname === "/yonetim/ayarlar") {
-      if (
-        normalizedRole === "admin" ||
-        normalizedRole === "principal" ||
-        normalizedRole === "student_affairs" ||
-        normalizedRole === "counselor" ||
-        normalizedRole === "head_counselor"
-      ) {
+      if (isMainSidebarStaff(normalizedRole)) {
         return
       }
       hardRedirect("/login")
@@ -268,7 +275,7 @@ export default function RootLayout({
 
     // Bursluluk Başvuruları sayfası için kontrol
     if (pathname === "/basvurular") {
-      if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "head_counselor") {
+      if (isMainSidebarStaff(normalizedRole)) {
         return
       }
       hardRedirect("/login")
@@ -277,7 +284,7 @@ export default function RootLayout({
 
     // Yaz Okulu Başvuruları sayfası için kontrol
     if (pathname === "/yaz-okulu-basvurular") {
-      if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "head_counselor") {
+      if (isMainSidebarStaff(normalizedRole)) {
         return
       }
       hardRedirect("/login")
@@ -286,7 +293,7 @@ export default function RootLayout({
 
     // Yeni Kayıt sayfası için kontrol
     if (pathname === "/new-registration") {
-      if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "head_counselor") {
+      if (isMainSidebarStaff(normalizedRole)) {
         return
       }
       hardRedirect("/login")
@@ -295,7 +302,7 @@ export default function RootLayout({
 
     // Kayıt Yenileme sayfası için kontrol
     if (pathname === "/renewal") {
-      if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "head_counselor") {
+      if (isMainSidebarStaff(normalizedRole)) {
         return
       }
       hardRedirect("/login")
@@ -304,7 +311,7 @@ export default function RootLayout({
 
     // Geçmiş Sözleşmeler sayfası için kontrol
     if (pathname === "/history") {
-      if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "head_counselor") {
+      if (isMainSidebarStaff(normalizedRole)) {
         return
       }
       hardRedirect("/login")
@@ -313,7 +320,7 @@ export default function RootLayout({
 
     // Teklif Görüşmeleri sayfası için kontrol
     if (pathname === "/teklif-gorusmeleri") {
-      if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "head_counselor") {
+      if (isMainSidebarStaff(normalizedRole)) {
         return
       }
       hardRedirect("/login")
@@ -322,7 +329,7 @@ export default function RootLayout({
 
     // Aday Öğrenci Tespiti sayfası için kontrol
     if (pathname === "/aday-ogrenci-tespiti") {
-      if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "head_counselor") {
+      if (isMainSidebarStaff(normalizedRole)) {
         return
       }
       hardRedirect("/login")
@@ -345,7 +352,7 @@ export default function RootLayout({
 
     // Ana sayfa (/) için kontrol
     if (pathname === "/") {
-      if (normalizedRole === "admin" || normalizedRole === "principal" || normalizedRole === "student_affairs" || normalizedRole === "counselor" || normalizedRole === "head_counselor") {
+      if (isMainSidebarStaff(normalizedRole)) {
         return
       }
       if (normalizedRole === "teacher") {

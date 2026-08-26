@@ -48,8 +48,10 @@ export function checkNavPermission(
   roleAllowed: boolean
 ): boolean {
   if (state.isSuperAdmin) return true
-  if (!shouldApplyPermissionFilter(state)) return roleAllowed
-  return state.permissionKeys!.includes(`${module}.${action}`)
+  const key = `${module}.${action}`
+  if (state.permissionsLoaded && state.permissionKeys?.includes(key)) return true
+  if (shouldApplyPermissionFilter(state)) return false
+  return roleAllowed
 }
 
 export function useStaffPermissions(options?: { redirectOn401?: boolean }) {

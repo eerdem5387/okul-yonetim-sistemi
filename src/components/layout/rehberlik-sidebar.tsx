@@ -67,9 +67,8 @@ export function RehberlikSidebar() {
     const base = baseNavigation.filter((item) =>
       checkNavPermission(permState, item.module, item.action, true)
     )
-    if (!isHeadCounselor) return base
     const extra = headCounselorNavigation.filter((item) =>
-      checkNavPermission(permState, item.module, item.action, true)
+      checkNavPermission(permState, item.module, item.action, isHeadCounselor)
     )
     return [...base, ...extra]
   }, [permState, isHeadCounselor])

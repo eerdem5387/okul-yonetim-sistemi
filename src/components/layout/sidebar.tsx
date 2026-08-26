@@ -149,24 +149,18 @@ export function Sidebar() {
       return true
     }
 
-    if (!item.roles.includes(currentRole)) return false
-
     if ((item as { superAdminOnly?: boolean }).superAdminOnly) {
       return false
     }
 
+    const roleAllowed = item.roles.includes(currentRole)
     const perm = (item as { permission?: string }).permission ?? hrefToPermission[item.href]
     if (perm) {
       const [module, action] = perm.split(".")
-      return checkNavPermission(
-        permState,
-        module,
-        action,
-        item.roles.includes(currentRole)
-      )
+      return checkNavPermission(permState, module, action, roleAllowed)
     }
 
-    return true
+    return roleAllowed
   })
 
   const handleLogout = () => {
