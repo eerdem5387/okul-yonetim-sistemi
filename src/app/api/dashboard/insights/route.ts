@@ -34,7 +34,7 @@ export async function GET() {
       }) ??
       null
 
-    let studentsWithoutRenewalCount = 0
+    const [allStudentsForRenewal, allRenewals, allNewRegs, k12Students] = await Promise.all([
       prisma.student.findMany({
         select: { id: true, firstName: true, lastName: true, grade: true },
         orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
@@ -51,12 +51,6 @@ export async function GET() {
       }),
     ])
 
-    const renewalTarget = resolveRenewalYearTargetForStats(yearRows, allRenewals)
-    const renewalMatchTargets = renewalTarget
-      ? [{ id: renewalTarget.id, label: renewalTarget.label }]
-      : []
-    const newRegTargets = buildNewRegistrationMatchTargets(yearRows, allNewRegs)
-
     let studentsWithoutRenewalCount = 0
     let studentsWithoutRenewalSample: Array<{
       id: string
@@ -64,6 +58,12 @@ export async function GET() {
       lastName: string
       grade: string | null
     }> = []
+
+    const renewalTarget = resolveRenewalYearTargetForStats(yearRows, allRenewals)
+    const renewalMatchTargets = renewalTarget
+      ? [{ id: renewalTarget.id, label: renewalTarget.label }]
+      : []
+    const newRegTargets = buildNewRegistrationMatchTargets(yearRows, allNewRegs)
 
     if (renewalMatchTargets.length > 0 || newRegTargets.length > 0) {
       const hasRenewalForTarget = (studentId: string) =>
