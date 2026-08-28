@@ -14,11 +14,11 @@ import {
   Target,
   Handshake,
   Briefcase,
-  AlertCircle,
   School,
   LayoutGrid,
   MessageSquare,
   Award,
+  BookOpen,
 } from "lucide-react"
 import Link from "next/link"
 import { getAuthHeaders } from "@/components/hr/hr-utils"
@@ -76,10 +76,6 @@ interface DashboardInsights {
     newRegistrations: number
     renewals: number
     classes: number
-  }
-  studentsWithoutClassInActiveYear: {
-    total: number
-    sample: Array<{ id: string; firstName: string; lastName: string }>
   }
   studentsWithoutRenewalForTargetYear: {
     total: number
@@ -366,58 +362,8 @@ export default function HomePage() {
         </Card>
       </div>
 
-      {/* Eksik işlemler: sınıf ataması */}
-      {insights &&
-        insights.studentsWithoutClassInActiveYear.total > 0 &&
-        insights.activeAcademicYear && (
-          <Card className="shadow-md border-l-4 border-l-amber-500 mb-4 sm:mb-6 bg-amber-50/60 border border-amber-100">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-amber-700" />
-                <CardTitle className="text-base text-amber-950">
-                  Dikkat: Sınıf ataması eksik öğrenciler
-                </CardTitle>
-              </div>
-              <CardDescription className="text-amber-900/80 text-sm">
-                Aktif akademik yıl ({insights.activeAcademicYear.name}) için bu öğrenciler henüz bir sınıfa
-                eklenmemiş. Toplam{" "}
-                <strong>{insights.studentsWithoutClassInActiveYear.total}</strong> kayıt.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {insights.studentsWithoutClassInActiveYear.sample.map((s) => (
-                <Link
-                  key={s.id}
-                  href="/sinif-yonetimi"
-                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-xl border border-amber-200 bg-white px-4 py-3 text-sm hover:border-amber-400 hover:shadow-sm transition-all"
-                >
-                  <p className="text-gray-900">
-                    <span className="font-semibold">
-                      {s.firstName} {s.lastName}
-                    </span>{" "}
-                    isimli öğrencinin sınıf ataması yapılmamıştır.
-                  </p>
-                  <span className="shrink-0 inline-flex items-center justify-center rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white">
-                    Hemen atama yapmak için tıklayın
-                  </span>
-                </Link>
-              ))}
-              {insights.studentsWithoutClassInActiveYear.total >
-                insights.studentsWithoutClassInActiveYear.sample.length && (
-                <p className="text-xs text-amber-900 pt-1">
-                  ve{" "}
-                  {insights.studentsWithoutClassInActiveYear.total -
-                    insights.studentsWithoutClassInActiveYear.sample.length}{" "}
-                  öğrenci daha… Tümünü görmek için{" "}
-                  <Link href="/sinif-yonetimi" className="underline font-medium">
-                    Sınıf Yönetimi
-                  </Link>
-                  .
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        )}
+      {/* Kitap almayan öğrenciler */}
+      <StudentsWithoutBookPaymentSection />
 
       {insights &&
         insights.renewalTargetYear &&
@@ -967,5 +913,228 @@ export default function HomePage() {
         )}
       </div>
     </div>
+  )
+}
+
+type BookPaymentStudent = {
+  id: string
+  firstName: string
+  lastName: string
+  grade: string
+  bookPaymentPaid: boolean | null
+}
+
+const BOOK_PAYMENT_GRADE_OPTIONS = [
+  "5. Sınıf",
+  "6. Sınıf",
+  "7. Sınıf",
+  "8. Sınıf",
+  "9. Sınıf",
+  "10. Sınıf",
+  "11. Sınıf",
+  "12. Sınıf",
+]
+
+function StudentsWithoutBookPaymentSection() {
+  const [grade, setGrade] = useState("")
+  const [gradeBand, setGradeBand] = useState<"" | "ortaokul" | "lise">("")
+  const [status, setStatus] = useState<"all" | "unpaid" | "unknown">("all")
+  const [searchInput, setSearchInput] = useState("")
+  const [searchDebounced, setSearchDebounced] = useState("")
+  const [page, setPage] = useState(1)
+  const [students, setStudents] = useState<BookPaymentStudent[]>([])
+  const [total, setTotal] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setSearchDebounced(searchInput.trim()), 300)
+    return () => clearTimeout(timer)
+  }, [searchInput])
+
+  useEffect(() => {
+    setPage(1)
+  }, [grade, gradeBand, status, searchDebounced])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      setLoading(true)
+      try {
+        const params = new URLSearchParams({ page: String(page), limit: "12" })
+        if (grade) params.set("grade", grade)
+        if (gradeBand) params.set("gradeBand", gradeBand)
+        if (status !== "all") params.set("status", status)
+        if (searchDebounced) params.set("search", searchDebounced)
+
+        const res = await fetch(`/api/students/book-payment?${params.toString()}`)
+        if (!res.ok) throw new Error("fetch failed")
+        const data = await res.json()
+        if (cancelled) return
+        setStudents(Array.isArray(data.students) ? data.students : [])
+        setTotal(data.pagination?.total ?? 0)
+        setTotalPages(data.pagination?.totalPages ?? 1)
+      } catch {
+        if (!cancelled) {
+          setStudents([])
+          setTotal(0)
+          setTotalPages(1)
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [grade, gradeBand, status, searchDebounced, page])
+
+  return (
+    <Card className="shadow-md border-l-4 border-l-rose-500 mb-4 sm:mb-6 bg-rose-50/50 border border-rose-100">
+      <CardHeader className="pb-2">
+        <div className="flex items-center gap-2">
+          <BookOpen className="h-5 w-5 text-rose-700" />
+          <CardTitle className="text-base text-rose-950">Kitap almayan öğrenciler</CardTitle>
+        </div>
+        <CardDescription className="text-rose-900/80 text-sm">
+          Kitap ödemesi alınmamış veya henüz işaretlenmemiş öğrenciler. Toplam{" "}
+          <strong>{loading ? "…" : total}</strong> kayıt.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+          <div>
+            <label className="text-xs font-medium text-rose-900/80 mb-1 block">Arama</label>
+            <input
+              type="search"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Ad, soyad veya TC..."
+              className="w-full h-9 px-3 text-sm border border-rose-200 rounded-lg bg-white focus:ring-2 focus:ring-rose-400 focus:border-rose-400"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-rose-900/80 mb-1 block">Sınıf</label>
+            <select
+              value={grade}
+              onChange={(e) => {
+                setGrade(e.target.value)
+                if (e.target.value) setGradeBand("")
+              }}
+              className="w-full h-9 px-3 text-sm border border-rose-200 rounded-lg bg-white focus:ring-2 focus:ring-rose-400"
+            >
+              <option value="">Tüm sınıflar</option>
+              {BOOK_PAYMENT_GRADE_OPTIONS.map((g) => (
+                <option key={g} value={g}>
+                  {g}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-rose-900/80 mb-1 block">Kademe</label>
+            <select
+              value={gradeBand}
+              onChange={(e) => {
+                setGradeBand(e.target.value as "" | "ortaokul" | "lise")
+                if (e.target.value) setGrade("")
+              }}
+              className="w-full h-9 px-3 text-sm border border-rose-200 rounded-lg bg-white focus:ring-2 focus:ring-rose-400"
+            >
+              <option value="">Tümü</option>
+              <option value="ortaokul">Ortaokul (5–8)</option>
+              <option value="lise">Lise (9–12)</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-rose-900/80 mb-1 block">Ödeme durumu</label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as "all" | "unpaid" | "unknown")}
+              className="w-full h-9 px-3 text-sm border border-rose-200 rounded-lg bg-white focus:ring-2 focus:ring-rose-400"
+            >
+              <option value="all">Tüm kitap almayanlar</option>
+              <option value="unpaid">Ödeme alınmadı</option>
+              <option value="unknown">Belirtilmemiş</option>
+            </select>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <div className="spinner" />
+          </div>
+        ) : students.length === 0 ? (
+          <p className="text-sm text-rose-900/70 text-center py-6 bg-white/60 rounded-xl border border-rose-100">
+            Seçilen filtrelere uygun öğrenci bulunamadı.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {students.map((s) => (
+              <Link
+                key={s.id}
+                href="/students"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm hover:border-rose-400 hover:shadow-sm transition-all"
+              >
+                <div className="min-w-0">
+                  <p className="text-gray-900">
+                    <span className="font-semibold">
+                      {s.firstName} {s.lastName}
+                    </span>
+                    <span className="text-gray-600"> — {s.grade}</span>
+                  </p>
+                  <span
+                    className={`inline-block mt-1 text-[10px] font-medium px-2 py-0.5 rounded-md ${
+                      s.bookPaymentPaid === false
+                        ? "bg-red-100 text-red-800"
+                        : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    {s.bookPaymentPaid === false ? "Ödeme alınmadı" : "Belirtilmemiş"}
+                  </span>
+                </div>
+                <span className="shrink-0 inline-flex items-center justify-center rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white">
+                  Öğrenciyi düzenle
+                </span>
+              </Link>
+            ))}
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between pt-2 text-xs text-rose-900">
+            <span>
+              Sayfa {page} / {totalPages}
+            </span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={page <= 1 || loading}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="px-3 py-1 rounded-lg border border-rose-200 bg-white disabled:opacity-50 hover:bg-rose-50"
+              >
+                Önceki
+              </button>
+              <button
+                type="button"
+                disabled={page >= totalPages || loading}
+                onClick={() => setPage((p) => p + 1)}
+                className="px-3 py-1 rounded-lg border border-rose-200 bg-white disabled:opacity-50 hover:bg-rose-50"
+              >
+                Sonraki
+              </button>
+            </div>
+          </div>
+        )}
+
+        <p className="text-xs text-rose-900/80 pt-1">
+          Kitap ödemesini kaydetmek için{" "}
+          <Link href="/students" className="underline font-medium">
+            Öğrenci Yönetimi
+          </Link>{" "}
+          ekranında öğrenciyi düzenleyin.
+        </p>
+      </CardContent>
+    </Card>
   )
 }
