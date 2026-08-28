@@ -972,10 +972,20 @@ function AdayFormModal({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            ...formData,
-            gorusmeTarihi: formData.gorusmeTarihi,
+            ogrenciAdSoyad: formData.ogrenciAdSoyad,
+            okul: formData.okul,
+            sinif: formData.sinif,
+            veliAdSoyad: formData.veliAdSoyad,
+            veliTelefon: formData.veliTelefon,
+            veliMeslek: formData.veliMeslek,
+            referansAdSoyad: formData.referansAdSoyad,
+            referansTelefon: formData.referansTelefon,
+            referansKanali: formData.referansKanali,
+            referansNot: formData.referansNot,
+            durum: formData.durum,
+            durumNotu: formData.durumNotu,
+            genelNot: formData.genelNot,
             createdBy: staffName || "Sistem",
-            // ✅ Yeni görüşme kaydı için otomatik kullanıcı adı
             gorusmeyiYapan: formData.durum ? gorusmeyiYapan : undefined,
           }),
         })
@@ -1135,17 +1145,19 @@ function AdayFormModal({
                 {aday ? "Yeni Görüşme Kaydı" : "Görüşme Bilgileri"}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="gorusmeTarihi">Görüşme Tarihi *</Label>
-                  <Input
-                    id="gorusmeTarihi"
-                    type="date"
-                    value={formData.gorusmeTarihi}
-                    onChange={(e) => setFormData({ ...formData, gorusmeTarihi: e.target.value })}
-                    required
-                  />
-                </div>
-                <div>
+                {aday && (
+                  <div>
+                    <Label htmlFor="gorusmeTarihi">Görüşme Tarihi *</Label>
+                    <Input
+                      id="gorusmeTarihi"
+                      type="date"
+                      value={formData.gorusmeTarihi}
+                      onChange={(e) => setFormData({ ...formData, gorusmeTarihi: e.target.value })}
+                      required
+                    />
+                  </div>
+                )}
+                <div className={aday ? "" : "md:col-span-2"}>
                   <Label htmlFor="durum">Durum *</Label>
                   <select
                     id="durum"

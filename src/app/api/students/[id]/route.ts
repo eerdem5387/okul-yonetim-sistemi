@@ -49,6 +49,7 @@ export async function PUT(
             fatherName, fatherTc, fatherPhone, fatherAddress, fatherOccupation,
             announcedTuitionFee, studentTuitionFee,
             registrationStatusOverride,
+            bookPaymentPaid,
         } = body
 
         // Kullanıcı rolünü kontrol et (sadece admin öğrenim ücreti alanlarını güncelleyebilir)
@@ -101,6 +102,14 @@ export async function PUT(
         // birthDate sadece varsa ekle
         if (birthDate) {
             updateData.birthDate = new Date(birthDate)
+        }
+
+        if (bookPaymentPaid !== undefined) {
+            if (bookPaymentPaid === null || bookPaymentPaid === "") {
+                updateData.bookPaymentPaid = null
+            } else {
+                updateData.bookPaymentPaid = bookPaymentPaid === true || bookPaymentPaid === "true"
+            }
         }
 
         if (registrationStatusOverride !== undefined) {
@@ -170,6 +179,9 @@ export async function PUT(
                             updateData.registrationStatusOverride
                         targetUpdateData.registrationStatusPeriodLabel =
                             updateData.registrationStatusPeriodLabel
+                    }
+                    if (bookPaymentPaid !== undefined) {
+                        targetUpdateData.bookPaymentPaid = updateData.bookPaymentPaid
                     }
                     if (Object.keys(targetUpdateData).length > 0) {
                         await tx.student.update({ where: { id: targetId }, data: targetUpdateData as object })

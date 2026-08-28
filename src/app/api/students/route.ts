@@ -151,6 +151,7 @@ export async function POST(request: NextRequest) {
             fatherName, fatherTc, fatherPhone, fatherAddress, fatherOccupation,
             announcedTuitionFee, studentTuitionFee,
             registrationStatusOverride,
+            bookPaymentPaid,
         } = body
 
         // Validasyon - Prisma schema'da zorunlu alanlar
@@ -253,6 +254,12 @@ export async function POST(request: NextRequest) {
                 email: body.email?.trim() || null,
                 registrationStatusOverride: statusOverride,
                 registrationStatusPeriodLabel: statusPeriodLabel,
+                ...(bookPaymentPaid !== undefined && bookPaymentPaid !== null && bookPaymentPaid !== ""
+                    ? {
+                          bookPaymentPaid:
+                              bookPaymentPaid === true || bookPaymentPaid === "true",
+                      }
+                    : {}),
                 ...(canSetTuition
                     ? {
                           announcedTuitionFee: announcedTuitionFee?.trim() || null,

@@ -55,6 +55,7 @@ interface Student {
   announcedTuitionFee?: string | null
   studentTuitionFee?: string | null
   registrationStatusText?: string
+  bookPaymentPaid?: boolean | null
 }
 
 type RegistrationBrowseKind = "renewed" | "new_registration"
@@ -174,6 +175,7 @@ export default function StudentsPage() {
       | "new_registration"
       | "renewed"
       | "not_renewed",
+    bookPaymentPaid: "" as "" | "true" | "false",
   }
 
   const [formData, setFormData] = useState({ ...emptyFormData })
@@ -441,6 +443,10 @@ export default function StudentsPage() {
           firstName,
           lastName,
           tcNumber,
+          bookPaymentPaid:
+            formData.bookPaymentPaid === ""
+              ? null
+              : formData.bookPaymentPaid === "true",
         }),
       })
 
@@ -501,6 +507,12 @@ export default function StudentsPage() {
       announcedTuitionFee: student.announcedTuitionFee || "",
       studentTuitionFee: student.studentTuitionFee || "",
       registrationStatusOverride: registrationStatusTextToOverride(student.registrationStatusText),
+      bookPaymentPaid:
+        student.bookPaymentPaid === true
+          ? "true"
+          : student.bookPaymentPaid === false
+            ? "false"
+            : "",
     })
     setShowForm(true)
   }
@@ -1442,6 +1454,35 @@ export default function StudentsPage() {
                 </div>
               )}
 
+              {editingStudent && (
+                <div className="border-t pt-3 sm:pt-4">
+                  <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Kitap Ödemesi</h3>
+                  <div>
+                    <Label htmlFor="bookPaymentPaid" className="text-xs sm:text-sm">
+                      Kitap ödemesi durumu
+                    </Label>
+                    <select
+                      id="bookPaymentPaid"
+                      value={formData.bookPaymentPaid}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          bookPaymentPaid: e.target.value as "" | "true" | "false",
+                        })
+                      }
+                      className="w-full h-9 sm:h-10 px-2 sm:px-3 py-1.5 sm:py-2 border border-input bg-background rounded-md text-xs sm:text-sm focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Belirtilmemiş</option>
+                      <option value="true">Ödeme alındı</option>
+                      <option value="false">Ödeme alınmadı</option>
+                    </select>
+                    <p className="mt-1 text-[10px] sm:text-xs text-muted-foreground">
+                      Öğrencinin kitap ödemesinin alınıp alınmadığını kaydeder.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="flex flex-col sm:flex-row gap-2 pt-2">
                 <Button type="submit" size="sm" className="w-full sm:w-auto text-xs sm:text-sm">
                   <Save className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
@@ -1472,6 +1513,9 @@ export default function StudentsPage() {
                   <th className="px-2 sm:px-3 lg:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">Sınıf</th>
                   <th className="px-2 sm:px-3 lg:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[140px]">
                     Kayıt
+                  </th>
+                  <th className="hidden xl:table-cell px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Kitap
                   </th>
                   <th className="hidden md:table-cell px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Adres</th>
                   <th className="hidden lg:table-cell px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Anne</th>
@@ -1509,6 +1553,24 @@ export default function StudentsPage() {
                         )}
                       >
                         {student.registrationStatusText ?? "—"}
+                      </span>
+                    </td>
+                    <td className="hidden xl:table-cell px-6 py-2 sm:py-4 whitespace-nowrap">
+                      <span
+                        className={cn(
+                          "inline-block text-[10px] sm:text-xs font-medium px-2 py-1 rounded-md",
+                          student.bookPaymentPaid === true
+                            ? "bg-green-100 text-green-800"
+                            : student.bookPaymentPaid === false
+                              ? "bg-red-100 text-red-800"
+                              : "bg-gray-100 text-gray-600"
+                        )}
+                      >
+                        {student.bookPaymentPaid === true
+                          ? "Alındı"
+                          : student.bookPaymentPaid === false
+                            ? "Alınmadı"
+                            : "—"}
                       </span>
                     </td>
                     <td className="hidden md:table-cell px-6 py-2 sm:py-4 text-xs sm:text-sm text-gray-500 max-w-xs truncate">

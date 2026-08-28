@@ -41,6 +41,8 @@ model Student {
   registrationStatusOverride      String?
   /// Override'ın geçerli olduğu kayıt yenileme dönemi etiketi (örn. 2026-2027)
   registrationStatusPeriodLabel   String?
+  /// Kitap ödemesi alındı mı? (null = belirtilmemiş)
+  bookPaymentPaid                 Boolean?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @default(now())
 

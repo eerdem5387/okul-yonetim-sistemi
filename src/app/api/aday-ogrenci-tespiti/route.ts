@@ -137,11 +137,10 @@ export async function POST(request: NextRequest) {
       !referansAdSoyad ||
       !referansTelefon ||
       !referansKanali ||
-      !durum ||
-      !gorusmeTarihi
+      !durum
     ) {
       return NextResponse.json(
-        { error: "Tüm zorunlu alanlar doldurulmalıdır (Görüşme tarihi zorunludur)" },
+        { error: "Tüm zorunlu alanlar doldurulmalıdır" },
         { status: 400 }
       )
     }
@@ -152,7 +151,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Geçersiz görüşme durumu" }, { status: 400 })
     }
 
-    const gorusmeTarihiDate = new Date(gorusmeTarihi)
+    const gorusmeTarihiDate = gorusmeTarihi ? new Date(gorusmeTarihi) : new Date()
     if (isNaN(gorusmeTarihiDate.getTime())) {
       return NextResponse.json(
         { error: "Geçersiz görüşme tarihi formatı" },
