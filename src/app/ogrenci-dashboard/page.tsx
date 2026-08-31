@@ -129,6 +129,13 @@ export default function OgrenciDashboardPage() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search)
+      const directStudentId = params.get("studentId")
+      if (directStudentId) {
+        router.replace(`/students/${directStudentId}`)
+        return
+      }
+
       const role = localStorage.getItem("auth_role")
       // Admin, Principal, Student Affairs için erişim
       if (role !== "admin" && role !== "principal" && role !== "student_affairs") {

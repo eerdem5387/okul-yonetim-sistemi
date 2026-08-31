@@ -150,9 +150,9 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  /** Öğrenci ekle modalı: yalnızca bu sınıfın düzeyindeki öğrenciler */
+  /** Öğrenci ekle modalı: yalnızca bu sınıf düzeyinde, henüz şubeye atanmamış öğrenciler */
   useEffect(() => {
-    if (!showAddStudentModal || !classData?.grade) return;
+    if (!showAddStudentModal || !classData?.grade || !classData.academicYear?.id) return;
 
     const ac = new AbortController();
     const q = studentSearch.trim();
@@ -162,10 +162,10 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
       setStudentsPickerLoading(true);
       try {
         const params = new URLSearchParams();
-        params.set("limit", q ? "500" : "5000");
         params.set("grade", String(classData.grade));
+        params.set("academicYearId", classData.academicYear.id);
         if (q) params.set("search", q);
-        const res = await fetch(`/api/students?${params.toString()}`, {
+        const res = await fetch(`/api/students/unassigned-by-grade?${params.toString()}`, {
           signal: ac.signal,
         });
         if (res.ok) {
@@ -184,7 +184,7 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
       clearTimeout(timer);
       ac.abort();
     };
-  }, [showAddStudentModal, studentSearch, classData?.grade]);
+  }, [showAddStudentModal, studentSearch, classData?.grade, classData?.academicYear?.id]);
 
   const fetchClassData = async (role: string | null, staffId: string | null) => {
     try {
@@ -765,9 +765,10 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
                 autoFocus
               />
               <p className="text-[11px] text-muted-foreground">
-                Yalnızca {classData.grade}. sınıf düzeyindeki öğrenciler listelenir. Listeden birden çok öğrenci
-                işaretleyip tek seferde ekleyebilirsiniz. «Listelenenlerin tümünü seç» yalnızca şu an ekrandaki
-                (aranan) listeyi kapsar.
+                Yalnızca {classData.grade}. sınıf düzeyinde ve bu akademik yılda henüz bir şubeye
+                atanmamış öğrenciler listelenir. Listeden birden çok öğrenci işaretleyip tek seferde
+                ekleyebilirsiniz. «Listelenenlerin tümünü seç» yalnızca şu an ekrandaki (aranan)
+                listeyi kapsar.
               </p>
             </div>
             <div className="space-y-2 min-h-0 flex flex-col flex-1">
@@ -794,6 +795,9 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
                       <>
                         <Users className="h-12 w-12 text-gray-300 mx-auto mb-2" />
                         <p className="text-sm">Eklenebilecek öğrenci yok</p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          Tüm {classData.grade}. sınıf öğrencileri zaten bir şubeye atanmış olabilir
+                        </p>
                       </>
                     )}
                   </div>

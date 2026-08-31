@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -32,6 +32,7 @@ import {
   FileCheck,
   UserPlus,
   AlertCircle,
+  LayoutDashboard,
 } from "lucide-react"
 
 interface Student {
@@ -98,6 +99,7 @@ interface StudentsOverview {
 
 export default function StudentsPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [students, setStudents] = useState<Student[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -199,6 +201,23 @@ export default function StudentsPage() {
       setUserRole(role)
     }
   }, [])
+
+  useEffect(() => {
+    const editId = searchParams.get("editStudentId")
+    if (!editId) return
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/students/${editId}`)
+        if (res.ok) {
+          const data = await res.json()
+          if (data.student) handleEdit(data.student)
+        }
+      } catch (e) {
+        console.error(e)
+      }
+    })()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   // Her kelimenin ilk harfini büyük, diğerlerini küçük yapan fonksiyon (Türkçe)
   const capitalizeWords = (text: string): string => {
@@ -1527,7 +1546,11 @@ export default function StudentsPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {students.map((student) => (
-                  <tr key={student.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleEdit(student)}>
+                  <tr
+                    key={student.id}
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => router.push(`/students/${student.id}`)}
+                  >
                     <td className="px-2 sm:px-3 lg:px-6 py-2 sm:py-4 whitespace-nowrap">
                       <div className="text-xs sm:text-sm font-medium text-gray-900">
                         {student.firstName} {student.lastName}
@@ -1594,6 +1617,15 @@ export default function StudentsPage() {
                     </td>
                     <td className="px-2 sm:px-3 lg:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
                       <div className="flex gap-1 sm:gap-2" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          title="Dashboard"
+                          onClick={() => router.push(`/students/${student.id}`)}
+                          className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                        >
+                          <LayoutDashboard className="h-3 w-3 sm:h-4 sm:w-4" />
+                        </Button>
                         <Button size="sm" variant="outline" onClick={() => handleEdit(student)} className="h-7 w-7 sm:h-8 sm:w-8 p-0">
                           <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
                         </Button>

@@ -1,13 +1,39 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getRenewalTargetContext } from "@/lib/student-registration-meta"
-import { k12GradeWhereClause, parseStudentGradeLevel } from "@/lib/student-grade-level"
+import {
+  gradeLevelWhereClause,
+  parseStudentGradeLevel,
+} from "@/lib/student-grade-level"
+import { buildStudentSearchWhere } from "@/lib/turkish-search"
 
 export const dynamic = "force-dynamic"
 
+async function resolveAcademicYear(academicYearId: string | null) {
+  if (academicYearId) {
+    return prisma.academicYear.findUnique({ where: { id: academicYearId } })
+  }
+
+  const yearRows = await prisma.academicYear.findMany({
+    orderBy: [{ startDate: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
+  })
+
+  return (
+    yearRows.find((y) => y.isActive) ??
+    yearRows.find((y) => {
+      if (!y.startDate || !y.endDate) return false
+      const now = Date.now()
+      return now >= y.startDate.getTime() && now <= y.endDate.getTime()
+    }) ??
+    null
+  )
+}
+
 /**
- * Aktif akademik yılda, kart sınıf düzeyi G olan fakat G düzeyinde hiçbir şubeye atanmamış öğrenciler
- * + bu düzeydeki şubeler (atama seçimi için).
+ * Aktif (veya verilen) akademik yılda, sınıf düzeyi G olan fakat G düzeyinde
+ * hiçbir şubeye atanmamış öğrenciler.
+ *
+ * Query: grade (zorunlu), academicYearId?, search?
  */
 export async function GET(request: NextRequest) {
   try {
@@ -17,26 +43,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "grade 5–12 arası olmalıdır" }, { status: 400 })
     }
 
-    const yearRows = await prisma.academicYear.findMany({
-      orderBy: [{ startDate: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
-    })
+    const academicYearId = request.nextUrl.searchParams.get("academicYearId")
+    const search = request.nextUrl.searchParams.get("search") || ""
 
-    const activeYear =
-      yearRows.find((y) => y.isActive) ??
-      yearRows.find((y) => {
-        if (!y.startDate || !y.endDate) return false
-        const now = Date.now()
-        const s = y.startDate.getTime()
-        const e = y.endDate.getTime()
-        return now >= s && now <= e
-      }) ??
-      null
+    const activeYear = await resolveAcademicYear(academicYearId)
 
     if (!activeYear) {
       return NextResponse.json({
         students: [],
         classes: [],
-        error: "Aktif akademik yıl tanımlı değil",
+        error: "Akademik yıl tanımlı değil",
       })
     }
 
@@ -64,27 +80,41 @@ export async function GET(request: NextRequest) {
       assignedInGrade.add(a.studentId)
     }
 
-    const allK12 = await prisma.student.findMany({
-      where: k12GradeWhereClause(),
+    const whereConditions: Record<string, unknown>[] = [gradeLevelWhereClause(grade)]
+
+    const assignedIds = [...assignedInGrade]
+    if (assignedIds.length > 0) {
+      whereConditions.push({ NOT: { id: { in: assignedIds } } })
+    }
+
+    if (excludePre.size > 0) {
+      whereConditions.push({ NOT: { id: { in: [...excludePre] } } })
+    }
+
+    const searchWhere = buildStudentSearchWhere(search)
+    if (searchWhere) {
+      whereConditions.push(searchWhere)
+    }
+
+    const students = await prisma.student.findMany({
+      where: { AND: whereConditions },
       select: { id: true, firstName: true, lastName: true, tcNumber: true, grade: true },
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      take: search ? 500 : 5000,
     })
 
-    const students = allK12.filter((s) => {
-      if (excludePre.has(s.id)) return false
-      const level = parseStudentGradeLevel(s.grade)
-      if (level !== grade) return false
-      return !assignedInGrade.has(s.id)
-    })
+    // Ek güvenlik: kart sınıf düzeyi eşleşmesi
+    const filtered = students.filter((s) => parseStudentGradeLevel(s.grade) === grade)
 
     return NextResponse.json({
-      students,
+      students: filtered,
       classes: classes.map((c) => ({
         id: c.id,
         name: c.name,
         grade: c.grade,
         section: c.section,
       })),
+      academicYear: { id: activeYear.id, name: activeYear.name },
     })
   } catch (e) {
     console.error("GET /api/students/unassigned-by-grade", e)
