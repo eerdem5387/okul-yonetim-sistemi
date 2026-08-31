@@ -1,83 +1,86 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { requireExamEdit, requireExamView } from "@/lib/exams/auth"
+import { evaluateExamReadiness } from "@/lib/exams/validation"
 
-/**
- * GET /api/exams/[id]
- * Sınav detayını getirir
- */
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await context.params
+    const actor = await requireExamView(request)
+    if (!actor) return NextResponse.json({ error: "Yetkisiz" }, { status: 403 })
 
     const exam = await prisma.exam.findUnique({
       where: { id },
       include: {
         createdBy: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            department: true,
+          select: { id: true, firstName: true, lastName: true, department: true },
+        },
+        class: { select: { id: true, name: true, grade: true, section: true } },
+        scanTemplate: true,
+        sections: { orderBy: { sortOrder: "asc" } },
+        outcomes: { orderBy: { sortOrder: "asc" } },
+        questions: {
+          include: { outcome: true, section: true },
+          orderBy: { questionNo: "asc" },
+        },
+        scanBatches: {
+          orderBy: { createdAt: "desc" },
+          include: {
+            operator: { select: { firstName: true, lastName: true } },
+            _count: { select: { items: true } },
           },
         },
         results: {
           include: {
             student: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                grade: true,
-                tcNumber: true,
-              },
-            },
-            enteredBy: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-              },
+              select: { id: true, firstName: true, lastName: true, grade: true, tcNumber: true },
             },
           },
-          orderBy: {
-            ranking: "asc",
-          },
+          orderBy: { netScore: "desc" },
         },
       },
     })
 
-    if (!exam) {
-      return NextResponse.json(
-        { error: "Sınav bulunamadı" },
-        { status: 404 }
-      )
-    }
+    if (!exam) return NextResponse.json({ error: "Sınav bulunamadı" }, { status: 404 })
 
-    return NextResponse.json({ exam })
+    const readiness = evaluateExamReadiness(exam)
+
+    return NextResponse.json({ exam, readiness })
   } catch (error) {
     console.error("Error fetching exam:", error)
-    return NextResponse.json(
-      { error: "Sınav alınırken bir hata oluştu" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Sınav alınırken bir hata oluştu" }, { status: 500 })
   }
 }
 
-/**
- * PUT /api/exams/[id]
- * Sınavı günceller
- */
 export async function PUT(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await context.params
+    const actor = await requireExamEdit(request)
+    if (!actor) return NextResponse.json({ error: "Yetkisiz" }, { status: 403 })
+
+    const existing = await prisma.exam.findUnique({ where: { id } })
+    if (!existing) return NextResponse.json({ error: "Sınav bulunamadı" }, { status: 404 })
+
     const body = await request.json()
-    const { name, examType, examDate, grade, description, subjects, isActive } = body
+    const {
+      name,
+      examType,
+      examDate,
+      grade,
+      description,
+      isActive,
+      scanTemplateId,
+      expectedParticipantCount,
+      status,
+    } = body
+
+    const locked = existing.status === "READY_FOR_SCAN" || existing.status === "PUBLISHED"
 
     const exam = await prisma.exam.update({
       where: { id },
@@ -85,72 +88,50 @@ export async function PUT(
         ...(name && { name }),
         ...(examType && { examType }),
         ...(examDate && { examDate: new Date(examDate) }),
-        ...(grade !== undefined && { grade: parseInt(grade) }),
+        ...(grade !== undefined && !locked && { grade: grade ? parseInt(String(grade)) : null }),
         ...(description !== undefined && { description }),
-        ...(subjects !== undefined && { subjects }),
         ...(isActive !== undefined && { isActive }),
+        ...(scanTemplateId !== undefined && !locked && { scanTemplateId }),
+        ...(expectedParticipantCount !== undefined && {
+          expectedParticipantCount: expectedParticipantCount ? Number(expectedParticipantCount) : null,
+        }),
+        ...(status === "CONFIGURED" && existing.status === "DRAFT" && { status: "CONFIGURED" }),
       },
       include: {
-        createdBy: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+        scanTemplate: true,
+        sections: true,
+        questions: true,
       },
     })
 
-    return NextResponse.json({
-      success: true,
-      exam,
-    })
+    return NextResponse.json({ success: true, exam })
   } catch (error) {
     console.error("Error updating exam:", error)
-    return NextResponse.json(
-      { error: "Sınav güncellenirken bir hata oluştu" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Sınav güncellenirken bir hata oluştu" }, { status: 500 })
   }
 }
 
-/**
- * DELETE /api/exams/[id]
- * Sınavı siler
- */
 export async function DELETE(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await context.params
+    const actor = await requireExamEdit(request)
+    if (!actor) return NextResponse.json({ error: "Yetkisiz" }, { status: 403 })
 
-    // Önce sınav sonuçlarını sil (cascade delete çalışmazsa)
-    await prisma.examResult.deleteMany({
-      where: { examId: id },
-    })
+    const exam = await prisma.exam.findUnique({ where: { id } })
+    if (!exam) return NextResponse.json({ error: "Sınav bulunamadı" }, { status: 404 })
+    if (exam.status === "PUBLISHED") {
+      return NextResponse.json({ error: "Yayınlanmış sınav silinemez" }, { status: 409 })
+    }
 
-    // Sonra sınavı sil
-    await prisma.exam.delete({
-      where: { id },
-    })
+    await prisma.exam.delete({ where: { id } })
 
-    return NextResponse.json({
-      success: true,
-      message: "Sınav başarıyla silindi",
-    })
+    return NextResponse.json({ success: true, message: "Sınav başarıyla silindi" })
   } catch (error) {
     console.error("Error deleting exam:", error)
-    if (error instanceof Error && error.message.includes("Record to delete does not exist")) {
-      return NextResponse.json(
-        { error: "Sınav bulunamadı" },
-        { status: 404 }
-      )
-    }
-    return NextResponse.json(
-      { error: "Sınav silinirken bir hata oluştu" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Sınav silinirken bir hata oluştu" }, { status: 500 })
   }
 }
-

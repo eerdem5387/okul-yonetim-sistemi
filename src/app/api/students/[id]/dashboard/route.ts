@@ -109,10 +109,11 @@ export async function GET(
       take: 20,
     })
 
-    // Sınavlar (son 30 gün veya seçilen period)
+    // Sınavlar (yalnızca yayınlanmış)
     const examResults = await prisma.examResult.findMany({
       where: {
         studentId: id,
+        exam: { status: "PUBLISHED" },
         ...(startDate && {
           createdAt: {
             gte: startDate,
@@ -127,10 +128,18 @@ export async function GET(
             examType: true,
             examDate: true,
             grade: true,
+            status: true,
             class: {
               select: {
                 name: true,
               },
+            },
+          },
+        },
+        answers: {
+          include: {
+            question: {
+              include: { outcome: true },
             },
           },
         },

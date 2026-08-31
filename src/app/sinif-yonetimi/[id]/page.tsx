@@ -17,6 +17,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { getAuthHeaders } from "@/components/hr/hr-utils";
 
 interface ClassData {
   id: string;
@@ -200,7 +201,9 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
 
   const fetchTeachers = async () => {
     try {
-      const response = await fetch("/api/staff?department=OGRETMEN");
+      const response = await fetch("/api/staff/pickers?type=teachers", {
+        headers: getAuthHeaders(),
+      });
       if (response.ok) {
         const data = await response.json();
         setTeachers(data.staff || []);

@@ -924,6 +924,27 @@ type BookPaymentStudent = {
   bookPaymentPaid: boolean | null
 }
 
+type GradeBookPaymentStat = {
+  grade: number
+  label: string
+  paid: number
+  unpaid: number
+  unknown: number
+  notPaid: number
+  total: number
+}
+
+type BookPaymentStats = {
+  grades: GradeBookPaymentStat[]
+  totals: {
+    paid: number
+    unpaid: number
+    unknown: number
+    notPaid: number
+    total: number
+  }
+}
+
 const BOOK_PAYMENT_GRADE_OPTIONS = [
   "5. Sınıf",
   "6. Sınıf",
@@ -946,6 +967,28 @@ function StudentsWithoutBookPaymentSection() {
   const [total, setTotal] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState<BookPaymentStats | null>(null)
+  const [statsLoading, setStatsLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      setStatsLoading(true)
+      try {
+        const res = await fetch("/api/students/book-payment/stats")
+        if (!res.ok) throw new Error("stats fetch failed")
+        const data = await res.json()
+        if (!cancelled) setStats(data)
+      } catch {
+        if (!cancelled) setStats(null)
+      } finally {
+        if (!cancelled) setStatsLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     const timer = setTimeout(() => setSearchDebounced(searchInput.trim()), 300)
@@ -1058,6 +1101,60 @@ function StudentsWithoutBookPaymentSection() {
               <option value="unknown">Belirtilmemiş</option>
             </select>
           </div>
+        </div>
+
+        <div className="rounded-xl border border-rose-200 bg-white/80 p-3 sm:p-4">
+          <p className="text-xs font-semibold text-rose-950 mb-3">Sınıf bazında kitap ödemesi özeti</p>
+          {statsLoading ? (
+            <div className="flex justify-center py-4">
+              <div className="spinner" />
+            </div>
+          ) : !stats ? (
+            <p className="text-xs text-rose-900/70 text-center py-2">Özet yüklenemedi.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[520px] text-xs sm:text-sm">
+                <thead>
+                  <tr className="border-b border-rose-100 text-left text-rose-900/80">
+                    <th className="py-2 pr-3 font-medium">Sınıf</th>
+                    <th className="py-2 px-2 font-medium text-green-700">Ödendi</th>
+                    <th className="py-2 px-2 font-medium text-red-700">Ödenmedi</th>
+                    <th className="py-2 px-2 font-medium text-gray-600">Belirtilmemiş</th>
+                    <th className="py-2 pl-2 font-medium">Toplam</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.grades.map((row) => (
+                    <tr
+                      key={row.grade}
+                      className="border-b border-rose-50 last:border-0 hover:bg-rose-50/50 cursor-pointer"
+                      onClick={() => {
+                        setGrade(row.label)
+                        setGradeBand("")
+                      }}
+                      title={`${row.label} listesini filtrele`}
+                    >
+                      <td className="py-2 pr-3 font-medium text-gray-900">{row.label}</td>
+                      <td className="py-2 px-2 text-green-700 font-semibold">{row.paid}</td>
+                      <td className="py-2 px-2 text-red-700 font-semibold">{row.unpaid}</td>
+                      <td className="py-2 px-2 text-gray-600">{row.unknown}</td>
+                      <td className="py-2 pl-2 text-gray-800">{row.total}</td>
+                    </tr>
+                  ))}
+                  <tr className="bg-rose-50/60 font-semibold text-gray-900">
+                    <td className="py-2 pr-3">Toplam</td>
+                    <td className="py-2 px-2 text-green-700">{stats.totals.paid}</td>
+                    <td className="py-2 px-2 text-red-700">{stats.totals.unpaid}</td>
+                    <td className="py-2 px-2 text-gray-600">{stats.totals.unknown}</td>
+                    <td className="py-2 pl-2">{stats.totals.total}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <p className="text-[10px] sm:text-xs text-rose-900/60 mt-2">
+                Bir satıra tıklayarak o sınıfın listesini filtreleyebilirsiniz.
+              </p>
+            </div>
+          )}
         </div>
 
         {loading ? (

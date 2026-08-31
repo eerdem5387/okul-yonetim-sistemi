@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/toast"
+import { getAuthHeaders } from "@/components/hr/hr-utils"
 import {
   Plus,
   Edit,
@@ -144,7 +145,9 @@ export default function DersDetayPage() {
   const fetchAvailableTeachers = async () => {
     try {
       setLoadingTeachers(true)
-      const response = await fetch("/api/staff?department=OGRETMEN&isActive=true")
+      const response = await fetch("/api/staff/pickers?type=teachers", {
+        headers: getAuthHeaders(),
+      })
       if (response.ok) {
         const data = await response.json()
         setAvailableTeachers(data.staff || [])

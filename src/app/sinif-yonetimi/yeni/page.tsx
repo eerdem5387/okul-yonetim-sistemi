@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, Save, Loader2, School } from "lucide-react";
+import { getAuthHeaders } from "@/components/hr/hr-utils";
 
 interface AcademicYear {
   id: string;
@@ -56,9 +57,9 @@ export default function CreateClassPage() {
 
   const fetchCounselors = async () => {
     try {
-      const response = await fetch(
-        "/api/staff?department=REHBERLIK,BAS_REHBERLIK&limit=500&isActive=true"
-      );
+      const response = await fetch("/api/staff/pickers?type=counselors", {
+        headers: getAuthHeaders(),
+      });
       if (response.ok) {
         const data = await response.json();
         setCounselors(data.staff || []);

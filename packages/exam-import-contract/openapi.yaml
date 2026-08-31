@@ -1,0 +1,318 @@
+openapi: 3.0.3
+info:
+  title: Okul Yönetim Sistemi — Optik Sınav Import API
+  version: 1.0.0
+  description: Masaüstü okul-optik-reader uygulaması ile web projesi arası sözleşme.
+
+servers:
+  - url: https://okul-yonetim-sistemi.vercel.app
+    description: Production
+  - url: http://localhost:3000
+    description: Local
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/exams:
+    get:
+      summary: Sınav listesi
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ready_for_scan, scanning, in_review, published]
+      responses:
+        "200":
+          description: Sınav listesi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  exams:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ExamSummary"
+
+  /api/exams/{examId}/scan-manifest:
+    get:
+      summary: Okutma manifestosu (şablon, soru sayısı, sürüm)
+      parameters:
+        - $ref: "#/components/parameters/examId"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScanManifest"
+
+  /api/students/lookup:
+    get:
+      summary: TC ile öğrenci arama
+      parameters:
+        - name: tc
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: "^\\d{11}$"
+        - name: examId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentLookup"
+
+  /api/exams/{examId}/scan-batches:
+    post:
+      summary: Optik okuma batch gönderimi (idempotent)
+      parameters:
+        - $ref: "#/components/parameters/examId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScanBatchSubmit"
+      responses:
+        "200":
+          description: Batch kabul edildi veya zaten işlendi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScanBatchResponse"
+        "409":
+          description: Çakışma (sürüm, duplicate item)
+
+  /api/exams/{examId}/scan-batches/{batchId}:
+    get:
+      summary: Batch durumu
+      parameters:
+        - $ref: "#/components/parameters/examId"
+        - $ref: "#/components/parameters/batchId"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScanBatchResponse"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+
+  parameters:
+    examId:
+      name: examId
+      in: path
+      required: true
+      schema:
+        type: string
+    batchId:
+      name: batchId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    ExamSummary:
+      type: object
+      required: [id, name, status, templateId, definitionVersion, examDate]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: "#/components/schemas/ExamStatus"
+        templateId:
+          type: string
+        definitionVersion:
+          type: integer
+        examDate:
+          type: string
+          format: date-time
+        grade:
+          type: integer
+          nullable: true
+        questionCount:
+          type: integer
+
+    ExamStatus:
+      type: string
+      enum:
+        - DRAFT
+        - CONFIGURED
+        - READY_FOR_SCAN
+        - SCANNING
+        - IN_REVIEW
+        - PUBLISHED
+        - ARCHIVED
+
+    ScanManifest:
+      type: object
+      required: [examId, templateId, definitionVersion, questionCount, sections]
+      properties:
+        examId:
+          type: string
+        templateId:
+          type: string
+        definitionVersion:
+          type: integer
+        questionCount:
+          type: integer
+        bookletVariants:
+          type: array
+          items:
+            type: string
+        sections:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              questionStart:
+                type: integer
+              questionEnd:
+                type: integer
+
+    StudentLookup:
+      type: object
+      properties:
+        found:
+          type: boolean
+        student:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+            firstName:
+              type: string
+            lastName:
+              type: string
+            grade:
+              type: string
+            tcNumber:
+              type: string
+        inExamScope:
+          type: boolean
+        nameSimilarity:
+          type: number
+          description: 0-1 arası isim benzerlik skoru
+
+    ScanBatchSubmit:
+      type: object
+      required: [batchId, definitionVersion, templateId, items]
+      properties:
+        batchId:
+          type: string
+          format: uuid
+        definitionVersion:
+          type: integer
+        templateId:
+          type: string
+        operatorNote:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScanBatchItem"
+
+    ScanBatchItem:
+      type: object
+      required: [itemIndex, tcNumber, answers, matchStatus]
+      properties:
+        itemIndex:
+          type: integer
+        tcNumber:
+          type: string
+          nullable: true
+        studentNameRaw:
+          type: string
+          nullable: true
+        studentId:
+          type: string
+          nullable: true
+          description: Masaüstü eşleştirdiyse; sunucu tekrar doğrular
+        bookletVariant:
+          type: string
+          nullable: true
+        answers:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuestionAnswer"
+        matchStatus:
+          type: string
+          enum: [matched, unmatched, manual, low_confidence]
+        confidenceScore:
+          type: number
+          minimum: 0
+          maximum: 1
+        errorCodes:
+          type: array
+          items:
+            type: string
+
+    QuestionAnswer:
+      type: object
+      required: [questionNo, givenAnswer, isBlank, isAmbiguous]
+      properties:
+        questionNo:
+          type: integer
+        givenAnswer:
+          type: string
+          nullable: true
+          enum: [A, B, C, D, E, null]
+        isBlank:
+          type: boolean
+        isAmbiguous:
+          type: boolean
+
+    ScanBatchResponse:
+      type: object
+      properties:
+        batchId:
+          type: string
+        status:
+          type: string
+          enum: [accepted, duplicate, rejected]
+        examStatus:
+          $ref: "#/components/schemas/ExamStatus"
+        summary:
+          type: object
+          properties:
+            total:
+              type: integer
+            matched:
+              type: integer
+            unmatched:
+              type: integer
+            lowConfidence:
+              type: integer
+            duplicateTc:
+              type: integer
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              itemIndex:
+                type: integer
+              code:
+                type: string
+              message:
+                type: string

@@ -1,0 +1,39 @@
+{
+  "id": "generic-v1",
+  "publisher": "Generic",
+  "version": "1.0.0",
+  "label": "Genel optik form (placeholder)",
+  "pageSize": { "widthMm": 210, "heightMm": 297 },
+  "alignmentMarks": {
+    "topLeft": { "x": 10, "y": 10 },
+    "topRight": { "x": 200, "y": 10 },
+    "bottomLeft": { "x": 10, "y": 287 },
+    "bottomRight": { "x": 200, "y": 287 }
+  },
+  "fields": {
+    "tcNumber": {
+      "type": "digit_boxes",
+      "digits": 11,
+      "region": { "x": 30, "y": 25, "width": 80, "height": 8 }
+    },
+    "studentName": {
+      "type": "text",
+      "region": { "x": 30, "y": 35, "width": 120, "height": 10 }
+    },
+    "bookletVariant": {
+      "type": "bubble_row",
+      "options": ["A", "B", "C", "D"],
+      "region": { "x": 150, "y": 25, "width": 40, "height": 6 }
+    }
+  },
+  "questionGrid": {
+    "startQuestion": 1,
+    "endQuestion": 20,
+    "options": ["A", "B", "C", "D", "E"],
+    "origin": { "x": 20, "y": 50 },
+    "rowHeight": 6,
+    "bubbleSpacing": 5,
+    "columns": 5
+  },
+  "confidenceThreshold": 0.75
+}

@@ -231,7 +231,7 @@ export function Sidebar() {
             const isActive = pathname === item.href
             return (
               <Link
-                key={item.name}
+                key={item.href}
                 href={item.href}
                 onClick={() => setMobileMenuOpen(false)}
                 className={cn(

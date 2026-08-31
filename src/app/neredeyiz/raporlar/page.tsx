@@ -24,6 +24,7 @@ import TimelineView from "@/components/neredeyiz/timeline-view"
 import CalendarView from "@/components/neredeyiz/calendar-view"
 import KanbanView from "@/components/neredeyiz/kanban-view"
 import { CLASS_COUNSELOR_DEPARTMENTS } from "@/lib/staff-counseling"
+import { getAuthHeaders } from "@/components/hr/hr-utils"
 
 interface AcademicYear {
   id: string
@@ -289,16 +290,20 @@ export default function RaporlarPage() {
 
   const fetchStaff = async () => {
     try {
-      const response = await fetch("/api/staff")
+      const response = await fetch("/api/staff/pickers?type=teachers-and-counselors", {
+        headers: getAuthHeaders(),
+      })
       if (response.ok) {
-        const data = await response.json() as Array<{
-          id: string
-          firstName: string
-          lastName: string
-          department: string
-        }>
-        const teachersList = data.filter((s) => s.department === "OGRETMEN")
-        const counselorsList = data.filter((s) =>
+        const data = await response.json() as {
+          staff: Array<{
+            id: string
+            firstName: string
+            lastName: string
+            department: string
+          }>
+        }
+        const teachersList = data.staff.filter((s) => s.department === "OGRETMEN")
+        const counselorsList = data.staff.filter((s) =>
           (CLASS_COUNSELOR_DEPARTMENTS as readonly string[]).includes(s.department)
         )
         setTeachers(teachersList)

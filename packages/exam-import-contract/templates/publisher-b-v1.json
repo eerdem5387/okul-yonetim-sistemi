@@ -1,0 +1,17 @@
+{
+  "id": "publisher-b-v1",
+  "publisher": "PublisherB",
+  "version": "1.0.0",
+  "label": "Yayınevi B deneme formu (placeholder)",
+  "extends": "generic-v1",
+  "questionGrid": {
+    "startQuestion": 1,
+    "endQuestion": 40,
+    "options": ["A", "B", "C", "D", "E"],
+    "origin": { "x": 15, "y": 45 },
+    "rowHeight": 5.5,
+    "bubbleSpacing": 4.5,
+    "columns": 5
+  },
+  "confidenceThreshold": 0.72
+}

@@ -62,6 +62,7 @@ model Student {
   homeworkAssignments  HomeworkAssignment[] // Ödev atamaları (FAZ 2)
   attendances          Attendance[] // Yoklamalar (FAZ 2)
   examResults          ExamResult[] // Sınav sonuçları (FAZ 3)
+  examScanBatchItems   ExamScanBatchItem[]
   comments             StudentComment[] // Öğretmen/Rehberlik görüşleri (FAZ 4)
 
   @@map("students")
@@ -587,6 +588,7 @@ model Staff {
   attendances           Attendance[]        @relation("TeacherAttendances")
   createdExams          Exam[]              @relation("ExamCreator")
   enteredExamResults    ExamResult[]        @relation("ExamResultEntry")
+  examScanBatches       ExamScanBatch[]     @relation("ExamScanBatchOperator")
   studentComments       StudentComment[]    @relation("StaffComments")
   teacherActivityEvents ActivityEvent[]     @relation("TeacherActivityEvents")
 
@@ -1454,6 +1456,17 @@ model Exam {
   // Sınav detayları (JSON olarak saklanabilir veya ayrı alanlar)
   subjects Json? // Dersler ve puan türleri örn: {"TYT": {...}, "AYT": {...}}
 
+  // Optik okuma / yaşam döngüsü
+  status                 ExamStatus @default(DRAFT)
+  templateId             String? // ExamScanTemplate.id veya masaüstü şablon kodu
+  definitionVersion      Int        @default(1)
+  lockedAt               DateTime?
+  publishedAt            DateTime?
+  expectedParticipantCount Int?
+
+  scanTemplateId String?
+  scanTemplate   ExamScanTemplate? @relation(fields: [scanTemplateId], references: [id], onDelete: SetNull)
+
   // Oluşturan
   createdById String // Rehberlik uzmanı Staff ID
   createdBy   Staff  @relation("ExamCreator", fields: [createdById], references: [id], onDelete: Cascade)
@@ -1461,7 +1474,11 @@ model Exam {
   isActive Boolean @default(true)
 
   // İlişkiler
-  results ExamResult[] // Sınav sonuçları
+  results   ExamResult[]
+  outcomes  ExamOutcome[]
+  sections  ExamSection[]
+  questions ExamQuestion[]
+  scanBatches ExamScanBatch[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1471,7 +1488,137 @@ model Exam {
   @@index([classId])
   @@index([examType])
   @@index([examDate])
+  @@index([status])
+  @@index([scanTemplateId])
   @@map("exams")
+}
+
+// Bağımsız kazanım kataloğu (sınav modülü)
+model ExamOutcome {
+  id              String @id @default(cuid())
+  examId          String
+  exam            Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
+  code            String?
+  subject         String
+  topic           String
+  learningOutcome String @db.Text
+  sortOrder       Int    @default(0)
+  questions       ExamQuestion[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([examId])
+  @@index([examId, code])
+  @@map("exam_outcomes")
+}
+
+model ExamSection {
+  id            String @id @default(cuid())
+  examId        String
+  exam          Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
+  name          String
+  questionStart Int
+  questionEnd   Int
+  sortOrder     Int    @default(0)
+  questions     ExamQuestion[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([examId])
+  @@map("exam_sections")
+}
+
+model ExamQuestion {
+  id              String @id @default(cuid())
+  examId          String
+  exam            Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
+  sectionId       String?
+  section         ExamSection? @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  outcomeId       String?
+  outcome         ExamOutcome? @relation(fields: [outcomeId], references: [id], onDelete: SetNull)
+  questionNo      Int
+  correctAnswer   String?
+  bookletVariant  String?
+  sortOrder       Int    @default(0)
+  resultAnswers   ExamResultAnswer[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([examId, questionNo, bookletVariant])
+  @@index([examId])
+  @@index([sectionId])
+  @@index([outcomeId])
+  @@map("exam_questions")
+}
+
+model ExamScanTemplate {
+  id            String @id @default(cuid())
+  templateKey   String @unique // generic-v1, publisher-b-v1
+  publisher     String
+  version       String
+  label         String
+  questionCount Int
+  layoutJson    Json
+  isActive      Boolean @default(true)
+  exams         Exam[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("exam_scan_templates")
+}
+
+model ExamScanBatch {
+  id                String @id @default(cuid())
+  externalBatchId   String @unique // masaüstü UUID
+  examId            String
+  exam              Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
+  definitionVersion Int
+  templateId        String
+  status            ExamScanBatchStatus @default(PENDING)
+  operatorId          String
+  operator            Staff  @relation("ExamScanBatchOperator", fields: [operatorId], references: [id], onDelete: Cascade)
+  operatorNote        String? @db.Text
+  summaryJson         Json?
+  items               ExamScanBatchItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([examId])
+  @@index([operatorId])
+  @@index([status])
+  @@map("exam_scan_batches")
+}
+
+model ExamScanBatchItem {
+  id              String @id @default(cuid())
+  batchId         String
+  batch           ExamScanBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  itemIndex       Int
+  tcNumber        String?
+  studentNameRaw  String?
+  studentId       String?
+  student         Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  bookletVariant  String?
+  matchStatus     ExamScanMatchStatus
+  confidenceScore Float?
+  errorCodes      String[] @default([])
+  answersJson     Json
+  examResultId    String? @unique
+  examResult      ExamResult? @relation(fields: [examResultId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([batchId, itemIndex])
+  @@index([batchId])
+  @@index([studentId])
+  @@index([tcNumber])
+  @@map("exam_scan_batch_items")
 }
 
 // Sınav Sonucu (Öğrenci Bazlı)
@@ -1484,19 +1631,20 @@ model ExamResult {
   studentId String
   student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
+  definitionVersion Int @default(1)
+  bookletVariant    String?
+
   // Sonuç bilgileri (JSON olarak saklanır - esneklik için)
-  // Örnek: {
-  //   "TYT": {"turkce": 35, "matematik": 30, "toplam": 120, "net": 98.5},
-  //   "AYT": {"matematik": 25, "fizik": 20, ...},
-  //   "totalScore": 450,
-  //   "ranking": 1250
-  // }
   scores Json // Sınav sonuçları (ders bazlı)
 
   // Genel bilgiler
   totalScore Float? // Toplam puan
   ranking    Int? // Sıralama
   percentile Float? // Yüzdelik dilim
+  correctCount Int?
+  wrongCount   Int?
+  blankCount   Int?
+  netScore     Float?
 
   // Notlar
   notes String? @db.Text // Rehberlik notları
@@ -1504,6 +1652,9 @@ model ExamResult {
   // Kim girdi
   enteredById String // Rehberlik uzmanı Staff ID
   enteredBy   Staff  @relation("ExamResultEntry", fields: [enteredById], references: [id], onDelete: Cascade)
+
+  answers     ExamResultAnswer[]
+  batchItem   ExamScanBatchItem?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1514,6 +1665,50 @@ model ExamResult {
   @@index([totalScore])
   @@index([ranking])
   @@map("exam_results")
+}
+
+model ExamResultAnswer {
+  id           String @id @default(cuid())
+  examResultId String
+  examResult   ExamResult @relation(fields: [examResultId], references: [id], onDelete: Cascade)
+  questionId   String?
+  question     ExamQuestion? @relation(fields: [questionId], references: [id], onDelete: SetNull)
+  questionNo   Int
+  givenAnswer  String?
+  isCorrect    Boolean?
+  isBlank      Boolean @default(false)
+  isAmbiguous  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@unique([examResultId, questionNo])
+  @@index([examResultId])
+  @@index([questionId])
+  @@map("exam_result_answers")
+}
+
+enum ExamStatus {
+  DRAFT
+  CONFIGURED
+  READY_FOR_SCAN
+  SCANNING
+  IN_REVIEW
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ExamScanBatchStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  PROCESSED
+}
+
+enum ExamScanMatchStatus {
+  MATCHED
+  UNMATCHED
+  MANUAL
+  LOW_CONFIDENCE
 }
 
 // Sınav Tipi

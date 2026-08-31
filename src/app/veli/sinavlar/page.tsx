@@ -8,10 +8,15 @@ import { FileText, Calendar, TrendingUp, Loader2, Award } from "lucide-react"
 interface ExamResult {
   id: string
   totalScore: number | null
+  netScore: number | null
+  correctCount: number | null
+  wrongCount: number | null
+  blankCount: number | null
   ranking: number | null
   percentile: number | null
   scores: Record<string, unknown>
   notes: string | null
+  weakOutcomes?: Array<{ subject: string; topic: string; learningOutcome: string; rate: number }>
   exam: {
     name: string
     examType: string
@@ -55,28 +60,12 @@ export default function VeliSinavlarPage() {
       if (studentsResponse.ok) {
         const studentsData = await studentsResponse.json()
         const student = studentsData.students[0]
-        
+
         if (student) {
-          // Tüm sınavları getir ve öğrenci sonuçlarını filtrele
-          const examsResponse = await fetch("/api/exams")
-          if (examsResponse.ok) {
-            const examsData = await examsResponse.json()
-            
-            // Her sınav için öğrenci sonucunu kontrol et
-            const studentResults: ExamResult[] = []
-            for (const exam of examsData.exams) {
-              const resultsResponse = await fetch(
-                `/api/exams/${exam.id}/results?studentId=${student.id}`
-              )
-              if (resultsResponse.ok) {
-                const resultsData = await resultsResponse.json()
-                if (resultsData.results.length > 0) {
-                  studentResults.push(resultsData.results[0])
-                }
-              }
-            }
-            
-            setResults(studentResults)
+          const resultsResponse = await fetch(`/api/students/${student.id}/published-exam-results`)
+          if (resultsResponse.ok) {
+            const resultsData = await resultsResponse.json()
+            setResults(resultsData.results || [])
           }
         }
       }
@@ -142,13 +131,23 @@ export default function VeliSinavlarPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {result.totalScore !== null && (
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      {result.netScore != null && (
                         <div className="p-4 bg-blue-50 rounded-lg">
-                          <div className="text-sm text-gray-600 mb-1">Toplam Puan</div>
-                          <div className="text-2xl font-bold text-blue-600">
-                            {result.totalScore}
-                          </div>
+                          <div className="text-sm text-gray-600 mb-1">Net</div>
+                          <div className="text-2xl font-bold text-blue-600">{result.netScore.toFixed(2)}</div>
+                        </div>
+                      )}
+                      {result.correctCount != null && (
+                        <div className="p-4 bg-green-50 rounded-lg">
+                          <div className="text-sm text-gray-600 mb-1">Doğru</div>
+                          <div className="text-2xl font-bold text-green-600">{result.correctCount}</div>
+                        </div>
+                      )}
+                      {result.wrongCount != null && (
+                        <div className="p-4 bg-red-50 rounded-lg">
+                          <div className="text-sm text-gray-600 mb-1">Yanlış</div>
+                          <div className="text-2xl font-bold text-red-600">{result.wrongCount}</div>
                         </div>
                       )}
                       {result.ranking !== null && (
@@ -179,6 +178,17 @@ export default function VeliSinavlarPage() {
                         {result.exam.examType}
                       </span>
                     </div>
+
+                    {result.weakOutcomes && result.weakOutcomes.length > 0 && (
+                      <div className="p-4 bg-amber-50 rounded-lg">
+                        <p className="text-sm font-medium text-amber-900 mb-2">Geliştirilmesi gereken kazanımlar</p>
+                        <ul className="text-sm text-amber-800 space-y-1">
+                          {result.weakOutcomes.slice(0, 5).map((w, i) => (
+                            <li key={i}>{w.subject} / {w.topic}: %{(w.rate * 100).toFixed(0)}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
 
                     {result.notes && (
                       <div className="p-4 bg-gray-50 rounded-lg">
