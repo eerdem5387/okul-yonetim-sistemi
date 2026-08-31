@@ -12,6 +12,16 @@ export function gradeLevelLabel(n: number): string {
   return `${n}. Sınıf`
 }
 
+/** Belirli bir sınıf düzeyi (5–12) için Prisma `where` parçası. */
+export function gradeLevelWhereClause(n: number): Record<string, unknown> {
+  return {
+    OR: [
+      { grade: { equals: `${n}. Sınıf`, mode: "insensitive" as const } },
+      { grade: { equals: String(n), mode: "insensitive" as const } },
+    ],
+  }
+}
+
 /** Prisma `where`: yalnızca 5–12. sınıf etiketleri (liste ve özet sayımları için). */
 export function k12GradeWhereClause(): Record<string, unknown> {
   const orParts: Record<string, unknown>[] = []

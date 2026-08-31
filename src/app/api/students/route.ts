@@ -6,7 +6,7 @@ import {
   normalizeRegistrationStatusOverride,
   registrationStatusText,
 } from "@/lib/student-registration-meta"
-import { graduatesWhereClause, k12GradeWhereClause } from "@/lib/student-grade-level"
+import { graduatesWhereClause, gradeLevelWhereClause, k12GradeWhereClause } from "@/lib/student-grade-level"
 import { buildStudentSearchWhere } from "@/lib/turkish-search"
 
 export async function GET(request: NextRequest) {
@@ -44,7 +44,12 @@ export async function GET(request: NextRequest) {
         if (graduates) {
             whereConditions.push(graduatesWhereClause())
         } else if (grade) {
-            whereConditions.push({ grade: { equals: grade, mode: 'insensitive' as const } })
+            const level = parseInt(grade, 10)
+            if (!Number.isNaN(level) && level >= 5 && level <= 12) {
+                whereConditions.push(gradeLevelWhereClause(level))
+            } else {
+                whereConditions.push({ grade: { equals: grade, mode: 'insensitive' as const } })
+            }
         } else if (gradeBand === "ortaokul" || gradeBand === "lise") {
             const nums = gradeBand === "ortaokul" ? [5, 6, 7, 8] : [9, 10, 11, 12]
             const orParts: Record<string, unknown>[] = []

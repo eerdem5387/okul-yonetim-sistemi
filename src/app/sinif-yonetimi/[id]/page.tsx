@@ -15,6 +15,7 @@ import {
   Trash2,
   User,
   BookOpen,
+  Pencil,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getAuthHeaders } from "@/components/hr/hr-utils";
@@ -72,6 +73,12 @@ interface Teacher {
   lastName: string;
 }
 
+interface Counselor {
+  id: string;
+  firstName: string;
+  lastName: string;
+}
+
 interface Schedule {
   id: string;
   subjectName: string;
@@ -109,6 +116,9 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
   const [showAddScheduleModal, setShowAddScheduleModal] = useState(false);
   const [students, setStudents] = useState<Student[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [counselors, setCounselors] = useState<Counselor[]>([]);
+  const [showAssignCounselorModal, setShowAssignCounselorModal] = useState(false);
+  const [selectedCounselorId, setSelectedCounselorId] = useState("");
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [scheduleForm, setScheduleForm] = useState({
     subjectName: "",
@@ -135,13 +145,14 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
       
       fetchClassData(role, sid);
       fetchTeachers();
+      fetchCounselors();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  /** Öğrenci ekle modalı: API sayfalaması (varsayılan limit=10) yüzünden tüm okul yerine arama/sunucu tarafı kullanılmalı */
+  /** Öğrenci ekle modalı: yalnızca bu sınıfın düzeyindeki öğrenciler */
   useEffect(() => {
-    if (!showAddStudentModal) return;
+    if (!showAddStudentModal || !classData?.grade) return;
 
     const ac = new AbortController();
     const q = studentSearch.trim();
@@ -152,6 +163,7 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
       try {
         const params = new URLSearchParams();
         params.set("limit", q ? "500" : "5000");
+        params.set("grade", String(classData.grade));
         if (q) params.set("search", q);
         const res = await fetch(`/api/students?${params.toString()}`, {
           signal: ac.signal,
@@ -172,7 +184,7 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
       clearTimeout(timer);
       ac.abort();
     };
-  }, [showAddStudentModal, studentSearch]);
+  }, [showAddStudentModal, studentSearch, classData?.grade]);
 
   const fetchClassData = async (role: string | null, staffId: string | null) => {
     try {
@@ -210,6 +222,56 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
       }
     } catch (error) {
       console.error("Error fetching teachers:", error);
+    }
+  };
+
+  const fetchCounselors = async () => {
+    try {
+      const response = await fetch("/api/staff/pickers?type=counselors", {
+        headers: getAuthHeaders(),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCounselors(data.staff || []);
+      }
+    } catch (error) {
+      console.error("Error fetching counselors:", error);
+    }
+  };
+
+  const canManageCounselor =
+    userRole === "admin" ||
+    userRole === "principal" ||
+    userRole === "student_affairs" ||
+    userRole === "head_counselor";
+
+  const openAssignCounselorModal = () => {
+    setSelectedCounselorId(classData?.counselorId ?? "");
+    setShowAssignCounselorModal(true);
+  };
+
+  const handleAssignCounselor = async () => {
+    setActionLoading(true);
+    try {
+      const response = await fetch(`/api/classes/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          counselorId: selectedCounselorId || null,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok) {
+        setShowAssignCounselorModal(false);
+        fetchClassData(userRole, staffId);
+      } else {
+        alert(data.error || "Rehberlik ataması güncellenirken bir hata oluştu.");
+      }
+    } catch (error) {
+      console.error("Error assigning counselor:", error);
+      alert("Rehberlik ataması güncellenirken bir hata oluştu.");
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -509,16 +571,28 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
         </Card>
         <Card>
           <CardContent className="p-4 sm:p-6">
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
                 <p className="text-sm text-gray-600">Rehberlik</p>
-                <p className="text-sm font-medium text-purple-600">
+                <p className="text-sm font-medium text-purple-600 truncate">
                   {classData.counselor
                     ? `${classData.counselor.firstName} ${classData.counselor.lastName}`
                     : "Atanmadı"}
                 </p>
+                {canManageCounselor && (
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    className="h-auto p-0 mt-1 text-purple-700"
+                    onClick={openAssignCounselorModal}
+                  >
+                    <Pencil className="h-3 w-3 mr-1" />
+                    {classData.counselor ? "Değiştir" : "Rehberlik Ata"}
+                  </Button>
+                )}
               </div>
-              <User className="h-10 w-10 text-purple-500" />
+              <User className="h-10 w-10 text-purple-500 shrink-0" />
             </div>
           </CardContent>
         </Card>
@@ -691,8 +765,9 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
                 autoFocus
               />
               <p className="text-[11px] text-muted-foreground">
-                Listeden birden çok öğrenci işaretleyip tek seferde ekleyebilirsiniz. «Listelenenlerin tümünü seç»
-                yalnızca şu an ekrandaki (aranan) listeyi kapsar.
+                Yalnızca {classData.grade}. sınıf düzeyindeki öğrenciler listelenir. Listeden birden çok öğrenci
+                işaretleyip tek seferde ekleyebilirsiniz. «Listelenenlerin tümünü seç» yalnızca şu an ekrandaki
+                (aranan) listeyi kapsar.
               </p>
             </div>
             <div className="space-y-2 min-h-0 flex flex-col flex-1">
@@ -791,6 +866,55 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
                 ) : (
                   `Seçilenleri ekle (${selectedStudentIds.length})`
                 )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Counselor Modal */}
+      <Dialog
+        open={showAssignCounselorModal}
+        onOpenChange={(open) => {
+          setShowAssignCounselorModal(open);
+          if (!open) setSelectedCounselorId("");
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Rehberlik Uzmanı Ata</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="counselor-select">Rehberlik Uzmanı</Label>
+              <select
+                id="counselor-select"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm"
+                value={selectedCounselorId}
+                onChange={(e) => setSelectedCounselorId(e.target.value)}
+              >
+                <option value="">Atanmadı</option>
+                {counselors.map((counselor) => (
+                  <option key={counselor.id} value={counselor.id}>
+                    {counselor.firstName} {counselor.lastName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowAssignCounselorModal(false)}
+                className="flex-1"
+              >
+                İptal
+              </Button>
+              <Button
+                onClick={handleAssignCounselor}
+                disabled={actionLoading}
+                className="flex-1"
+              >
+                {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Kaydet"}
               </Button>
             </div>
           </div>
