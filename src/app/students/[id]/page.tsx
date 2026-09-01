@@ -8,7 +8,6 @@ import {
   Award,
   BarChart3,
   BookOpen,
-  Calendar,
   CheckCircle,
   Clock,
   ExternalLink,

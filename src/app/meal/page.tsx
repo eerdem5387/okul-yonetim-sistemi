@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -148,7 +149,7 @@ export default function MealPage() {
                 </select>
                 {!students.length && (
                   <p className="text-sm text-gray-500 mt-1">
-                    Önce <a href="/students" className="text-blue-600 hover:underline">Öğrenci Yönetimi</a> sayfasından öğrenci ekleyin.
+                    Önce <Link href="/students" className="text-blue-600 hover:underline">Öğrenci Yönetimi</Link> sayfasından öğrenci ekleyin.
                   </p>
                 )}
               </div>
