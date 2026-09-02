@@ -964,6 +964,31 @@ function StudentsWithoutBookPaymentSection() {
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<BookPaymentStats | null>(null)
   const [statsLoading, setStatsLoading] = useState(true)
+  const [markingId, setMarkingId] = useState<string | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  const refreshData = () => setRefreshKey((k) => k + 1)
+
+  const handleMarkBookReceived = async (studentId: string) => {
+    setMarkingId(studentId)
+    try {
+      const res = await fetch(`/api/students/${studentId}/book-payment`, {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || "İşaretleme başarısız")
+      }
+      setStudents((prev) => prev.filter((s) => s.id !== studentId))
+      setTotal((prev) => Math.max(0, prev - 1))
+      refreshData()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Kitap durumu güncellenemedi.")
+    } finally {
+      setMarkingId(null)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -983,7 +1008,7 @@ function StudentsWithoutBookPaymentSection() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [refreshKey])
 
   useEffect(() => {
     const timer = setTimeout(() => setSearchDebounced(searchInput.trim()), 300)
@@ -1024,7 +1049,7 @@ function StudentsWithoutBookPaymentSection() {
     return () => {
       cancelled = true
     }
-  }, [grade, gradeBand, searchDebounced, page])
+  }, [grade, gradeBand, searchDebounced, page, refreshKey])
 
   return (
     <Card className="shadow-md border-l-4 border-l-rose-500 mb-4 sm:mb-6 bg-rose-50/50 border border-rose-100">
@@ -1147,10 +1172,9 @@ function StudentsWithoutBookPaymentSection() {
         ) : (
           <div className="space-y-2">
             {students.map((s) => (
-              <Link
+              <div
                 key={s.id}
-                href={`/students/${s.id}?tab=profile`}
-                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm hover:border-rose-400 hover:shadow-sm transition-all"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm"
               >
                 <div className="min-w-0">
                   <p className="text-gray-900">
@@ -1163,10 +1187,15 @@ function StudentsWithoutBookPaymentSection() {
                     Almadı
                   </span>
                 </div>
-                <span className="shrink-0 inline-flex items-center justify-center rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white">
-                  Öğrenci detayı
-                </span>
-              </Link>
+                <button
+                  type="button"
+                  disabled={markingId === s.id}
+                  onClick={() => handleMarkBookReceived(s.id)}
+                  className="shrink-0 inline-flex items-center justify-center rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                >
+                  {markingId === s.id ? "İşleniyor…" : "Alındı Olarak İşaretle"}
+                </button>
+              </div>
             ))}
           </div>
         )}
@@ -1198,11 +1227,11 @@ function StudentsWithoutBookPaymentSection() {
         )}
 
         <p className="text-xs text-rose-900/80 pt-1">
-          Kitap durumunu güncellemek için{" "}
+          Yanlışlıkla işaretlenirse{" "}
           <Link href="/students" className="underline font-medium">
             Öğrenci Yönetimi
           </Link>{" "}
-          ekranında öğrenciyi düzenleyin.
+          ekranından durumu güncelleyebilirsiniz.
         </p>
       </CardContent>
     </Card>
