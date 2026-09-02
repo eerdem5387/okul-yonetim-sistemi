@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getRenewalTargetContext } from "@/lib/student-registration-meta"
 import { k12GradeWhereClause } from "@/lib/student-grade-level"
+import { studentBookNotReceivedWhere } from "@/lib/student-book-payment"
 import { buildStudentSearchWhere } from "@/lib/turkish-search"
 
 export const dynamic = "force-dynamic"
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
 
     const whereConditions: Array<Record<string, unknown>> = [
       k12GradeWhereClause(),
-      { NOT: { bookPaymentPaid: true } },
+      studentBookNotReceivedWhere(),
     ]
 
     const regCtx = await getRenewalTargetContext(prisma)

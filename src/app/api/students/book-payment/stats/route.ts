@@ -6,6 +6,7 @@ import {
   k12GradeWhereClause,
   parseStudentGradeLevel,
 } from "@/lib/student-grade-level"
+import { isStudentBookReceived } from "@/lib/student-book-payment"
 
 export const dynamic = "force-dynamic"
 
@@ -34,7 +35,7 @@ export async function GET() {
     for (const s of students) {
       const level = parseStudentGradeLevel(s.grade)
       if (level == null || level < 5 || level > 12) continue
-      if (s.bookPaymentPaid === true) byGrade[level].received++
+      if (isStudentBookReceived(s.bookPaymentPaid)) byGrade[level].received++
       else byGrade[level].notReceived++
     }
 

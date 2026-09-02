@@ -1034,7 +1034,7 @@ function StudentsWithoutBookPaymentSection() {
           <CardTitle className="text-base text-rose-950">Kitap almayan öğrenciler</CardTitle>
         </div>
         <CardDescription className="text-rose-900/80 text-sm">
-          Kitabı almadı olarak işaretlenmemiş öğrenciler. Toplam{" "}
+          Kitabı almayan öğrenciler (Aldı olarak işaretlenmemiş). Toplam{" "}
           <strong>{loading ? "…" : total}</strong> kayıt.
         </CardDescription>
       </CardHeader>
@@ -1149,7 +1149,7 @@ function StudentsWithoutBookPaymentSection() {
             {students.map((s) => (
               <Link
                 key={s.id}
-                href="/students"
+                href={`/students/${s.id}?tab=profile`}
                 className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm hover:border-rose-400 hover:shadow-sm transition-all"
               >
                 <div className="min-w-0">
@@ -1164,7 +1164,7 @@ function StudentsWithoutBookPaymentSection() {
                   </span>
                 </div>
                 <span className="shrink-0 inline-flex items-center justify-center rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white">
-                  Öğrenciyi düzenle
+                  Öğrenci detayı
                 </span>
               </Link>
             ))}
