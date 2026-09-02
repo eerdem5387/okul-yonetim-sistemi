@@ -177,7 +177,7 @@ export default function StudentsPage() {
       | "new_registration"
       | "renewed"
       | "not_renewed",
-    bookPaymentPaid: "" as "" | "true" | "false",
+    bookPaymentPaid: "false" as "true" | "false",
   }
 
   const [formData, setFormData] = useState({ ...emptyFormData })
@@ -462,10 +462,7 @@ export default function StudentsPage() {
           firstName,
           lastName,
           tcNumber,
-          bookPaymentPaid:
-            formData.bookPaymentPaid === ""
-              ? null
-              : formData.bookPaymentPaid === "true",
+          bookPaymentPaid: formData.bookPaymentPaid === "true",
         }),
       })
 
@@ -526,12 +523,7 @@ export default function StudentsPage() {
       announcedTuitionFee: student.announcedTuitionFee || "",
       studentTuitionFee: student.studentTuitionFee || "",
       registrationStatusOverride: registrationStatusTextToOverride(student.registrationStatusText),
-      bookPaymentPaid:
-        student.bookPaymentPaid === true
-          ? "true"
-          : student.bookPaymentPaid === false
-            ? "false"
-            : "",
+      bookPaymentPaid: student.bookPaymentPaid === true ? "true" : "false",
     })
     setShowForm(true)
   }
@@ -1475,10 +1467,10 @@ export default function StudentsPage() {
 
               {editingStudent && (
                 <div className="border-t pt-3 sm:pt-4">
-                  <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Kitap Ödemesi</h3>
+                  <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Kitap Durumu</h3>
                   <div>
                     <Label htmlFor="bookPaymentPaid" className="text-xs sm:text-sm">
-                      Kitap ödemesi durumu
+                      Kitap durumu
                     </Label>
                     <select
                       id="bookPaymentPaid"
@@ -1486,17 +1478,16 @@ export default function StudentsPage() {
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          bookPaymentPaid: e.target.value as "" | "true" | "false",
+                          bookPaymentPaid: e.target.value as "true" | "false",
                         })
                       }
                       className="w-full h-9 sm:h-10 px-2 sm:px-3 py-1.5 sm:py-2 border border-input bg-background rounded-md text-xs sm:text-sm focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="">Belirtilmemiş</option>
-                      <option value="true">Ödeme alındı</option>
-                      <option value="false">Ödeme alınmadı</option>
+                      <option value="true">Aldı</option>
+                      <option value="false">Almadı</option>
                     </select>
                     <p className="mt-1 text-[10px] sm:text-xs text-muted-foreground">
-                      Öğrencinin kitap ödemesinin alınıp alınmadığını kaydeder.
+                      Öğrencinin kitabı alıp almadığını kaydeder.
                     </p>
                   </div>
                 </div>
@@ -1584,16 +1575,10 @@ export default function StudentsPage() {
                           "inline-block text-[10px] sm:text-xs font-medium px-2 py-1 rounded-md",
                           student.bookPaymentPaid === true
                             ? "bg-green-100 text-green-800"
-                            : student.bookPaymentPaid === false
-                              ? "bg-red-100 text-red-800"
-                              : "bg-gray-100 text-gray-600"
+                            : "bg-red-100 text-red-800"
                         )}
                       >
-                        {student.bookPaymentPaid === true
-                          ? "Alındı"
-                          : student.bookPaymentPaid === false
-                            ? "Alınmadı"
-                            : "—"}
+                        {student.bookPaymentPaid === true ? "Aldı" : "Almadı"}
                       </span>
                     </td>
                     <td className="hidden md:table-cell px-6 py-2 sm:py-4 text-xs sm:text-sm text-gray-500 max-w-xs truncate">

@@ -297,8 +297,7 @@ export default function StudentDetailDashboardPage() {
           fatherOccupation: s.fatherOccupation,
           announcedTuitionFee: s.announcedTuitionFee || "",
           studentTuitionFee: s.studentTuitionFee || "",
-          bookPaymentPaid:
-            s.bookPaymentPaid === true ? "true" : s.bookPaymentPaid === false ? "false" : "",
+          bookPaymentPaid: s.bookPaymentPaid === true ? "true" : "false",
         })
       }
     } catch (e) {
@@ -330,10 +329,7 @@ export default function StudentDetailDashboardPage() {
         },
         body: JSON.stringify({
           ...editForm,
-          bookPaymentPaid:
-            editForm.bookPaymentPaid === ""
-              ? null
-              : editForm.bookPaymentPaid === "true",
+          bookPaymentPaid: editForm.bookPaymentPaid === "true",
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -626,16 +622,15 @@ export default function StudentDetailDashboardPage() {
                     </div>
                   ))}
                   <div className="space-y-1">
-                    <Label htmlFor="bookPaymentPaid">Kitap ödemesi</Label>
+                    <Label htmlFor="bookPaymentPaid">Kitap durumu</Label>
                     <select
                       id="bookPaymentPaid"
                       className="w-full rounded-md border px-3 py-2 text-sm"
                       value={editForm.bookPaymentPaid}
                       onChange={(e) => setEditForm((f) => ({ ...f, bookPaymentPaid: e.target.value }))}
                     >
-                      <option value="">Belirtilmemiş</option>
-                      <option value="true">Alındı</option>
-                      <option value="false">Alınmadı</option>
+                      <option value="true">Aldı</option>
+                      <option value="false">Almadı</option>
                     </select>
                   </div>
                   <div className="md:col-span-2 flex gap-2 pt-2">
@@ -664,14 +659,8 @@ export default function StudentDetailDashboardPage() {
                     <InfoRow label="E-posta" value={student.email} />
                     <InfoRow label="Adres" value={student.address} />
                     <InfoRow
-                      label="Kitap ödemesi"
-                      value={
-                        student.bookPaymentPaid === true
-                          ? "Alındı"
-                          : student.bookPaymentPaid === false
-                            ? "Alınmadı"
-                            : "Belirtilmemiş"
-                      }
+                      label="Kitap durumu"
+                      value={student.bookPaymentPaid === true ? "Aldı" : "Almadı"}
                     />
                   </CardContent>
                 </Card>
@@ -789,13 +778,9 @@ export default function StudentDetailDashboardPage() {
               </Card>
               <Card>
                 <CardContent className="p-5">
-                  <p className="text-sm text-gray-600">Kitap ödemesi</p>
+                  <p className="text-sm text-gray-600">Kitap durumu</p>
                   <p className="mt-1 font-semibold">
-                    {student.bookPaymentPaid === true
-                      ? "Alındı"
-                      : student.bookPaymentPaid === false
-                        ? "Alınmadı"
-                        : "Belirtilmemiş"}
+                    {student.bookPaymentPaid === true ? "Aldı" : "Almadı"}
                   </p>
                 </CardContent>
               </Card>

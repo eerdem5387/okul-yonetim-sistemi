@@ -6,7 +6,7 @@ import { buildStudentSearchWhere } from "@/lib/turkish-search"
 
 export const dynamic = "force-dynamic"
 
-/** Kitap ödemesi alınmamış / belirtilmemiş öğrenciler (dashboard listesi). */
+/** Kitap almadı olarak işaretlenmemiş öğrenciler (bookPaymentPaid !== true). */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -15,24 +15,16 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search") || ""
     const grade = searchParams.get("grade") || ""
     const gradeBand = searchParams.get("gradeBand") || ""
-    const status = searchParams.get("status") || "all"
 
-    const whereConditions: Array<Record<string, unknown>> = [k12GradeWhereClause()]
+    const whereConditions: Array<Record<string, unknown>> = [
+      k12GradeWhereClause(),
+      { NOT: { bookPaymentPaid: true } },
+    ]
 
     const regCtx = await getRenewalTargetContext(prisma)
     if (regCtx.futureYearOnlyNewRegistrationStudentIds.size > 0) {
       whereConditions.push({
         NOT: { id: { in: [...regCtx.futureYearOnlyNewRegistrationStudentIds] } },
-      })
-    }
-
-    if (status === "unpaid") {
-      whereConditions.push({ bookPaymentPaid: false })
-    } else if (status === "unknown") {
-      whereConditions.push({ bookPaymentPaid: null })
-    } else {
-      whereConditions.push({
-        OR: [{ bookPaymentPaid: false }, { bookPaymentPaid: null }],
       })
     }
 
@@ -82,6 +74,6 @@ export async function GET(request: NextRequest) {
     })
   } catch (e) {
     console.error("GET /api/students/book-payment", e)
-    return NextResponse.json({ error: "Kitap ödemesi listesi yüklenemedi" }, { status: 500 })
+    return NextResponse.json({ error: "Kitap listesi yüklenemedi" }, { status: 500 })
   }
 }

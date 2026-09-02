@@ -9,7 +9,7 @@ import {
 
 export const dynamic = "force-dynamic"
 
-/** Sınıf bazında kitap ödemesi özeti (5–12). */
+/** Sınıf bazında kitap durumu özeti (5–12): Aldı / Almadı. */
 export async function GET() {
   try {
     const whereConditions: Array<Record<string, unknown>> = [k12GradeWhereClause()]
@@ -26,37 +26,32 @@ export async function GET() {
       select: { grade: true, bookPaymentPaid: true },
     })
 
-    const byGrade: Record<number, { paid: number; unpaid: number; unknown: number }> = {}
+    const byGrade: Record<number, { received: number; notReceived: number }> = {}
     for (let g = 5; g <= 12; g++) {
-      byGrade[g] = { paid: 0, unpaid: 0, unknown: 0 }
+      byGrade[g] = { received: 0, notReceived: 0 }
     }
 
     for (const s of students) {
       const level = parseStudentGradeLevel(s.grade)
       if (level == null || level < 5 || level > 12) continue
-      if (s.bookPaymentPaid === true) byGrade[level].paid++
-      else if (s.bookPaymentPaid === false) byGrade[level].unpaid++
-      else byGrade[level].unknown++
+      if (s.bookPaymentPaid === true) byGrade[level].received++
+      else byGrade[level].notReceived++
     }
 
     const grades = []
-    let totalsPaid = 0
-    let totalsUnpaid = 0
-    let totalsUnknown = 0
+    let totalsReceived = 0
+    let totalsNotReceived = 0
 
     for (let g = 5; g <= 12; g++) {
       const row = byGrade[g]
-      const total = row.paid + row.unpaid + row.unknown
-      totalsPaid += row.paid
-      totalsUnpaid += row.unpaid
-      totalsUnknown += row.unknown
+      const total = row.received + row.notReceived
+      totalsReceived += row.received
+      totalsNotReceived += row.notReceived
       grades.push({
         grade: g,
         label: gradeLevelLabel(g),
-        paid: row.paid,
-        unpaid: row.unpaid,
-        unknown: row.unknown,
-        notPaid: row.unpaid + row.unknown,
+        received: row.received,
+        notReceived: row.notReceived,
         total,
       })
     }
@@ -64,15 +59,13 @@ export async function GET() {
     return NextResponse.json({
       grades,
       totals: {
-        paid: totalsPaid,
-        unpaid: totalsUnpaid,
-        unknown: totalsUnknown,
-        notPaid: totalsUnpaid + totalsUnknown,
-        total: totalsPaid + totalsUnpaid + totalsUnknown,
+        received: totalsReceived,
+        notReceived: totalsNotReceived,
+        total: totalsReceived + totalsNotReceived,
       },
     })
   } catch (e) {
     console.error("GET /api/students/book-payment/stats", e)
-    return NextResponse.json({ error: "Kitap ödemesi özeti yüklenemedi" }, { status: 500 })
+    return NextResponse.json({ error: "Kitap özeti yüklenemedi" }, { status: 500 })
   }
 }

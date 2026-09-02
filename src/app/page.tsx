@@ -927,20 +927,16 @@ type BookPaymentStudent = {
 type GradeBookPaymentStat = {
   grade: number
   label: string
-  paid: number
-  unpaid: number
-  unknown: number
-  notPaid: number
+  received: number
+  notReceived: number
   total: number
 }
 
 type BookPaymentStats = {
   grades: GradeBookPaymentStat[]
   totals: {
-    paid: number
-    unpaid: number
-    unknown: number
-    notPaid: number
+    received: number
+    notReceived: number
     total: number
   }
 }
@@ -959,7 +955,6 @@ const BOOK_PAYMENT_GRADE_OPTIONS = [
 function StudentsWithoutBookPaymentSection() {
   const [grade, setGrade] = useState("")
   const [gradeBand, setGradeBand] = useState<"" | "ortaokul" | "lise">("")
-  const [status, setStatus] = useState<"all" | "unpaid" | "unknown">("all")
   const [searchInput, setSearchInput] = useState("")
   const [searchDebounced, setSearchDebounced] = useState("")
   const [page, setPage] = useState(1)
@@ -997,7 +992,7 @@ function StudentsWithoutBookPaymentSection() {
 
   useEffect(() => {
     setPage(1)
-  }, [grade, gradeBand, status, searchDebounced])
+  }, [grade, gradeBand, searchDebounced])
 
   useEffect(() => {
     let cancelled = false
@@ -1007,7 +1002,6 @@ function StudentsWithoutBookPaymentSection() {
         const params = new URLSearchParams({ page: String(page), limit: "12" })
         if (grade) params.set("grade", grade)
         if (gradeBand) params.set("gradeBand", gradeBand)
-        if (status !== "all") params.set("status", status)
         if (searchDebounced) params.set("search", searchDebounced)
 
         const res = await fetch(`/api/students/book-payment?${params.toString()}`)
@@ -1030,7 +1024,7 @@ function StudentsWithoutBookPaymentSection() {
     return () => {
       cancelled = true
     }
-  }, [grade, gradeBand, status, searchDebounced, page])
+  }, [grade, gradeBand, searchDebounced, page])
 
   return (
     <Card className="shadow-md border-l-4 border-l-rose-500 mb-4 sm:mb-6 bg-rose-50/50 border border-rose-100">
@@ -1040,12 +1034,12 @@ function StudentsWithoutBookPaymentSection() {
           <CardTitle className="text-base text-rose-950">Kitap almayan öğrenciler</CardTitle>
         </div>
         <CardDescription className="text-rose-900/80 text-sm">
-          Kitap ödemesi alınmamış veya henüz işaretlenmemiş öğrenciler. Toplam{" "}
+          Kitabı almadı olarak işaretlenmemiş öğrenciler. Toplam{" "}
           <strong>{loading ? "…" : total}</strong> kayıt.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
           <div>
             <label className="text-xs font-medium text-rose-900/80 mb-1 block">Arama</label>
             <input
@@ -1089,22 +1083,10 @@ function StudentsWithoutBookPaymentSection() {
               <option value="lise">Lise (9–12)</option>
             </select>
           </div>
-          <div>
-            <label className="text-xs font-medium text-rose-900/80 mb-1 block">Ödeme durumu</label>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value as "all" | "unpaid" | "unknown")}
-              className="w-full h-9 px-3 text-sm border border-rose-200 rounded-lg bg-white focus:ring-2 focus:ring-rose-400"
-            >
-              <option value="all">Tüm kitap almayanlar</option>
-              <option value="unpaid">Ödeme alınmadı</option>
-              <option value="unknown">Belirtilmemiş</option>
-            </select>
-          </div>
         </div>
 
         <div className="rounded-xl border border-rose-200 bg-white/80 p-3 sm:p-4">
-          <p className="text-xs font-semibold text-rose-950 mb-3">Sınıf bazında kitap ödemesi özeti</p>
+          <p className="text-xs font-semibold text-rose-950 mb-3">Sınıf bazında kitap durumu özeti</p>
           {statsLoading ? (
             <div className="flex justify-center py-4">
               <div className="spinner" />
@@ -1113,13 +1095,12 @@ function StudentsWithoutBookPaymentSection() {
             <p className="text-xs text-rose-900/70 text-center py-2">Özet yüklenemedi.</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[520px] text-xs sm:text-sm">
+              <table className="w-full min-w-[400px] text-xs sm:text-sm">
                 <thead>
                   <tr className="border-b border-rose-100 text-left text-rose-900/80">
                     <th className="py-2 pr-3 font-medium">Sınıf</th>
-                    <th className="py-2 px-2 font-medium text-green-700">Ödendi</th>
-                    <th className="py-2 px-2 font-medium text-red-700">Ödenmedi</th>
-                    <th className="py-2 px-2 font-medium text-gray-600">Belirtilmemiş</th>
+                    <th className="py-2 px-2 font-medium text-green-700">Aldı</th>
+                    <th className="py-2 px-2 font-medium text-red-700">Almadı</th>
                     <th className="py-2 pl-2 font-medium">Toplam</th>
                   </tr>
                 </thead>
@@ -1135,17 +1116,15 @@ function StudentsWithoutBookPaymentSection() {
                       title={`${row.label} listesini filtrele`}
                     >
                       <td className="py-2 pr-3 font-medium text-gray-900">{row.label}</td>
-                      <td className="py-2 px-2 text-green-700 font-semibold">{row.paid}</td>
-                      <td className="py-2 px-2 text-red-700 font-semibold">{row.unpaid}</td>
-                      <td className="py-2 px-2 text-gray-600">{row.unknown}</td>
+                      <td className="py-2 px-2 text-green-700 font-semibold">{row.received}</td>
+                      <td className="py-2 px-2 text-red-700 font-semibold">{row.notReceived}</td>
                       <td className="py-2 pl-2 text-gray-800">{row.total}</td>
                     </tr>
                   ))}
                   <tr className="bg-rose-50/60 font-semibold text-gray-900">
                     <td className="py-2 pr-3">Toplam</td>
-                    <td className="py-2 px-2 text-green-700">{stats.totals.paid}</td>
-                    <td className="py-2 px-2 text-red-700">{stats.totals.unpaid}</td>
-                    <td className="py-2 px-2 text-gray-600">{stats.totals.unknown}</td>
+                    <td className="py-2 px-2 text-green-700">{stats.totals.received}</td>
+                    <td className="py-2 px-2 text-red-700">{stats.totals.notReceived}</td>
                     <td className="py-2 pl-2">{stats.totals.total}</td>
                   </tr>
                 </tbody>
@@ -1180,14 +1159,8 @@ function StudentsWithoutBookPaymentSection() {
                     </span>
                     <span className="text-gray-600"> — {s.grade}</span>
                   </p>
-                  <span
-                    className={`inline-block mt-1 text-[10px] font-medium px-2 py-0.5 rounded-md ${
-                      s.bookPaymentPaid === false
-                        ? "bg-red-100 text-red-800"
-                        : "bg-gray-100 text-gray-600"
-                    }`}
-                  >
-                    {s.bookPaymentPaid === false ? "Ödeme alınmadı" : "Belirtilmemiş"}
+                  <span className="inline-block mt-1 text-[10px] font-medium px-2 py-0.5 rounded-md bg-red-100 text-red-800">
+                    Almadı
                   </span>
                 </div>
                 <span className="shrink-0 inline-flex items-center justify-center rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white">
@@ -1225,7 +1198,7 @@ function StudentsWithoutBookPaymentSection() {
         )}
 
         <p className="text-xs text-rose-900/80 pt-1">
-          Kitap ödemesini kaydetmek için{" "}
+          Kitap durumunu güncellemek için{" "}
           <Link href="/students" className="underline font-medium">
             Öğrenci Yönetimi
           </Link>{" "}
