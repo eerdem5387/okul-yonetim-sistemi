@@ -23,6 +23,7 @@ export async function POST(request: NextRequest) {
   if (body.seed === true) {
     const templatesDir = path.join(process.cwd(), "packages/exam-import-contract/templates")
     const defs = [
+      { file: "device-txt-v1.json", questionCount: 120 },
       { file: "generic-v1.json", questionCount: 20 },
       { file: "publisher-b-v1.json", questionCount: 40 },
     ]
@@ -30,6 +31,7 @@ export async function POST(request: NextRequest) {
     for (const def of defs) {
       const raw = readFileSync(path.join(templatesDir, def.file), "utf-8")
       const layout = JSON.parse(raw)
+      const questionCount = Number(layout.questionCount) || def.questionCount
       const t = await prisma.examScanTemplate.upsert({
         where: { templateKey: layout.id },
         create: {
@@ -37,14 +39,14 @@ export async function POST(request: NextRequest) {
           publisher: layout.publisher,
           version: layout.version,
           label: layout.label,
-          questionCount: def.questionCount,
+          questionCount,
           layoutJson: layout,
         },
         update: {
           publisher: layout.publisher,
           version: layout.version,
           label: layout.label,
-          questionCount: def.questionCount,
+          questionCount,
           layoutJson: layout,
         },
       })

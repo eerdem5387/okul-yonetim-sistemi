@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { scoreAnswers } from "./scoring"
 import { nameSimilarity, normalizeTc } from "./validation"
 import type { ScanBatchSubmitInput } from "./types"
-import { parseStudentGradeLevel } from "@/lib/student-grade-level"
+import { gradeLevelWhereClause, parseStudentGradeLevel } from "@/lib/student-grade-level"
 
 const LOW_CONFIDENCE = 0.75
 
@@ -52,6 +52,7 @@ export async function processScanBatch(
   }
 
   const seenTc = new Set<string>()
+  const seenStudentIds = new Set<string>()
   const summary = {
     total: input.items.length,
     matched: 0,
@@ -59,7 +60,21 @@ export async function processScanBatch(
     lowConfidence: 0,
     duplicateTc: 0,
     outOfScope: 0,
+    nameMatched: 0,
   }
+
+  // Ad-soyad yedek eşleştirme için kapsam adayları (TC yoksa)
+  const scopeCandidates = await prisma.student.findMany({
+    where: exam.grade != null ? gradeLevelWhereClause(exam.grade) : undefined,
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      grade: true,
+      tcNumber: true,
+      classAssignments: { select: { classId: true } },
+    },
+  })
 
   const processedItems: Array<{
     item: (typeof input.items)[0]
@@ -69,7 +84,9 @@ export async function processScanBatch(
   }> = []
 
   for (const item of input.items) {
-    const errorCodes = [...(item.errorCodes ?? [])]
+    const errorCodes = [...(item.errorCodes ?? [])].filter(
+      (c) => c !== "TC_MISSING" // yeniden değerlendireceğiz
+    )
     const tc = normalizeTc(item.tcNumber)
     if (!tc) errorCodes.push("TC_MISSING")
     else if (seenTc.has(tc)) {
@@ -81,7 +98,9 @@ export async function processScanBatch(
 
     let studentId = item.studentId ?? null
     let matchStatus = item.matchStatus
+    let matchedViaName = false
 
+    // 1) TC öncelikli
     if (tc && !studentId) {
       const student = await prisma.student.findUnique({
         where: { tcNumber: tc },
@@ -112,6 +131,46 @@ export async function processScanBatch(
       }
     }
 
+    // 2) TC yoksa ad-soyad (tek yüksek skorlu aday)
+    if (!studentId && item.studentNameRaw) {
+      const scored = scopeCandidates
+        .map((s) => ({
+          student: s,
+          score: nameSimilarity(item.studentNameRaw!, `${s.firstName} ${s.lastName}`),
+          inScope: studentInExamScope(
+            s.grade,
+            exam.grade,
+            exam.classId,
+            s.classAssignments.map((c) => c.classId)
+          ),
+        }))
+        .filter((x) => x.inScope && x.score >= 0.85)
+        .sort((a, b) => b.score - a.score)
+
+      if (scored.length === 1) {
+        studentId = scored[0].student.id
+        matchedViaName = true
+        errorCodes.push("NAME_FALLBACK")
+        summary.nameMatched++
+        // TC eksik ama isimle bulundu — TC_MISSING kalsın (incelemede görünsün)
+        matchStatus = "MATCHED"
+      } else if (scored.length > 1) {
+        errorCodes.push("NAME_AMBIGUOUS")
+        matchStatus = "UNMATCHED"
+      } else if (!tc) {
+        errorCodes.push("STUDENT_NOT_FOUND")
+        matchStatus = "UNMATCHED"
+      }
+    }
+
+    if (studentId && seenStudentIds.has(studentId)) {
+      errorCodes.push("DUPLICATE_STUDENT")
+      matchStatus = "UNMATCHED"
+      studentId = null
+    } else if (studentId) {
+      seenStudentIds.add(studentId)
+    }
+
     const conf = item.confidenceScore ?? 1
     if (conf < LOW_CONFIDENCE) {
       errorCodes.push("LOW_CONFIDENCE")
@@ -119,11 +178,14 @@ export async function processScanBatch(
       summary.lowConfidence++
     }
 
+    // TC ile eşleşen veya isim yedek eşleşmesi (NAME_FALLBACK) sonuç yazılabilir
     const canImport =
-      studentId &&
+      Boolean(studentId) &&
       matchStatus !== "UNMATCHED" &&
       !errorCodes.includes("DUPLICATE_TC") &&
-      !errorCodes.includes("TC_MISSING")
+      !errorCodes.includes("DUPLICATE_STUDENT") &&
+      !errorCodes.includes("OUT_OF_SCOPE") &&
+      (Boolean(tc) || matchedViaName)
 
     if (canImport) summary.matched++
     else summary.unmatched++
@@ -132,7 +194,11 @@ export async function processScanBatch(
       item,
       studentId: canImport ? studentId : null,
       errorCodes,
-      matchStatus: canImport ? (matchStatus === "LOW_CONFIDENCE" ? "LOW_CONFIDENCE" : "MATCHED") : "UNMATCHED",
+      matchStatus: canImport
+        ? matchStatus === "LOW_CONFIDENCE"
+          ? "LOW_CONFIDENCE"
+          : "MATCHED"
+        : "UNMATCHED",
     })
   }
 

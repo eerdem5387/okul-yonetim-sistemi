@@ -49,13 +49,33 @@ export function normalizeTc(raw: string | null | undefined): string | null {
   return digits.length === 11 ? digits : null
 }
 
+function normalizePersonName(s: string): string {
+  return s
+    .toLocaleLowerCase("tr-TR")
+    .replace(/^\[[^\]]*\]\s*/, "") // TXT'deki [ogrenciNo] öneki
+    .replace(/[^a-zçğıöşü0-9\s]/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+/** Ad-soyad benzerliği (0–1). Token Jaccard + alt dize. */
 export function nameSimilarity(a: string, b: string): number {
-  const na = a.toLocaleLowerCase("tr-TR").replace(/\s+/g, " ").trim()
-  const nb = b.toLocaleLowerCase("tr-TR").replace(/\s+/g, " ").trim()
+  const na = normalizePersonName(a)
+  const nb = normalizePersonName(b)
   if (!na || !nb) return 0
   if (na === nb) return 1
+  if (na.replace(/\s/g, "") === nb.replace(/\s/g, "")) return 1
+
+  const ta = new Set(na.split(" ").filter(Boolean))
+  const tb = new Set(nb.split(" ").filter(Boolean))
+  let inter = 0
+  for (const t of ta) if (tb.has(t)) inter++
+  const union = new Set([...ta, ...tb]).size
+  const jaccard = union > 0 ? inter / union : 0
+
   const longer = na.length > nb.length ? na : nb
   const shorter = na.length > nb.length ? nb : na
-  if (longer.includes(shorter)) return shorter.length / longer.length
-  return 0.5
+  const contains = longer.includes(shorter) ? shorter.length / longer.length : 0
+
+  return Math.max(jaccard, contains)
 }

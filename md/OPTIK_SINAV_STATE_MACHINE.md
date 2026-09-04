@@ -50,4 +50,7 @@ DRAFT → ARCHIVED             (iptal)
 | `DUPLICATE_TC` | Aynı batch'te tekrar |
 | `LOW_CONFIDENCE` | Okuma güven skoru düşük |
 | `AMBIGUOUS_ANSWER` | Çift işaretli soru |
-| `VERSION_MISMATCH` | Sınav sürümü uyuşmuyor |
+| `NAME_FALLBACK` | TC yok; ad-soyad ile tek aday eşleşti |
+| `NAME_AMBIGUOUS` | Birden fazla ad-soyad adayı |
+| `NAME_MISMATCH` | TC eşleşti ama isim uyuşmuyor |
+| `DUPLICATE_STUDENT` | Aynı öğrenci batch içinde tekrar |

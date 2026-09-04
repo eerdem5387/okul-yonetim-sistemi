@@ -1,0 +1,30 @@
+{
+  "id": "device-txt-v1",
+  "type": "device_txt",
+  "publisher": "Okul Optik Cihaz",
+  "version": "1.0.0",
+  "label": "Cihaz TXT (TYT 120 — 4×50 blok)",
+  "encoding": ["cp1254", "utf-8", "latin1"],
+  "delimiter": "\\",
+  "expectedLineLength": 269,
+  "fields": {
+    "formFlag": { "index": 0 },
+    "studentNumber": { "index": 1 },
+    "firstName": { "index": 2 },
+    "lastName": { "index": 3 },
+    "reserved": { "index": 4 },
+    "tcNumber": { "index": 5 },
+    "extra": { "index": 6 },
+    "bookletCode": { "index": 7 },
+    "bookletVariant": { "index": 8 },
+    "answerBlocks": [
+      { "index": 9, "startQuestion": 1, "blockLength": 50, "activeLength": 40 },
+      { "index": 10, "startQuestion": 41, "blockLength": 50, "activeLength": 20 },
+      { "index": 11, "startQuestion": 61, "blockLength": 50, "activeLength": 40 },
+      { "index": 12, "startQuestion": 101, "blockLength": 50, "activeLength": 20 }
+    ]
+  },
+  "questionCount": 120,
+  "options": ["A", "B", "C", "D", "E"],
+  "notes": "Cihaz markası netleşene kadar örnek okul TXT çıktısına göre geçici şablon. Marka/layout gelince yalnızca bu dosya güncellenir."
+}

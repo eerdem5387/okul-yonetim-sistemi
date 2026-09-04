@@ -126,6 +126,8 @@ export default function ExamDetailPage() {
   const [outcomeForm, setOutcomeForm] = useState({ code: "", subject: "", topic: "", learningOutcome: "" })
   const [answerKey, setAnswerKey] = useState<Record<string, string>>({})
   const [outcomeMap, setOutcomeMap] = useState<Record<string, string>>({})
+  const [uploadMsg, setUploadMsg] = useState<string | null>(null)
+  const [txtUploading, setTxtUploading] = useState(false)
 
   const fetchExam = useCallback(async () => {
     const res = await fetch(`/api/exams/${examId}`, { headers: getAuthHeaders() })
@@ -265,6 +267,100 @@ export default function ExamDetailPage() {
     setTemplates(data.templates ?? [])
   }
 
+  const downloadImportTemplate = async (template: "outcomes" | "answer_key") => {
+    const res = await fetch(`/api/exams/${examId}/import?template=${template}`, {
+      headers: getAuthHeaders(),
+    })
+    if (!res.ok) {
+      alert("Şablon indirilemedi")
+      return
+    }
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = template === "outcomes" ? "kazanim-sablon.csv" : "cevap-anahtari-sablon.csv"
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const fileToBase64 = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => {
+        const result = String(reader.result ?? "")
+        const base64 = result.includes(",") ? result.split(",")[1] : result
+        resolve(base64)
+      }
+      reader.onerror = () => reject(reader.error)
+      reader.readAsDataURL(file)
+    })
+
+  const importTabular = async (kind: "outcomes" | "answer_key", file: File) => {
+    setSaving(true)
+    setUploadMsg(null)
+    try {
+      const contentBase64 = await fileToBase64(file)
+      const res = await fetch(`/api/exams/${examId}/import`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ kind, contentBase64, fileName: file.name }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setUploadMsg(data.error ?? "Import başarısız")
+      } else if (kind === "outcomes") {
+        setUploadMsg(`${data.imported} kazanım içe aktarıldı.`)
+      } else {
+        setUploadMsg(
+          `${data.updated} cevap anahtarı güncellendi` +
+            (data.skipped ? `, ${data.skipped} atlandı` : "") +
+            (data.missingOutcomeCodes?.length
+              ? `. Eksik kazanım kodu: ${data.missingOutcomeCodes.join(", ")}`
+              : "")
+        )
+      }
+      await fetchExam()
+    } catch (e) {
+      setUploadMsg(e instanceof Error ? e.message : "Import hatası")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const uploadDeviceTxt = async (file: File) => {
+    setTxtUploading(true)
+    setUploadMsg(null)
+    try {
+      const contentBase64 = await fileToBase64(file)
+      const res = await fetch(`/api/exams/${examId}/scan-batches/from-txt`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          contentBase64,
+          encoding: "cp1254",
+          operatorNote: `Web TXT: ${file.name}`,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setUploadMsg(data.error ?? "TXT yükleme başarısız")
+      } else {
+        setUploadMsg(
+          `TXT kabul edildi (${data.parse?.rowCount ?? "?"} satır). ` +
+            `Eşleşen: ${data.summary?.matched ?? 0}, eşleşmeyen: ${data.summary?.unmatched ?? 0}. ` +
+            `Doğrulama sekmesinden inceleyin.`
+        )
+        setTab("dogrulama")
+      }
+      await fetchExam()
+    } catch (e) {
+      setUploadMsg(e instanceof Error ? e.message : "TXT yükleme hatası")
+    } finally {
+      setTxtUploading(false)
+    }
+  }
+
   if (loading || !exam) {
     return (
       <div className="flex h-screen">
@@ -388,6 +484,31 @@ export default function ExamDetailPage() {
               <CardHeader><CardTitle>Kazanım Kataloğu</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 {!locked && (
+                  <div className="flex flex-wrap gap-3 items-center p-3 bg-indigo-50 rounded-lg text-sm">
+                    <button
+                      type="button"
+                      className="text-indigo-700 underline"
+                      onClick={() => void downloadImportTemplate("outcomes")}
+                    >
+                      Excel/CSV şablon indir
+                    </button>
+                    <label className="inline-flex items-center gap-2 cursor-pointer">
+                      <span className="font-medium">Excel/CSV yükle</span>
+                      <input
+                        type="file"
+                        accept=".csv,.xlsx,.xls"
+                        className="text-xs"
+                        disabled={saving}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0]
+                          if (f) void importTabular("outcomes", f)
+                          e.target.value = ""
+                        }}
+                      />
+                    </label>
+                  </div>
+                )}
+                {!locked && (
                   <div className="grid md:grid-cols-2 gap-3 p-4 bg-gray-50 rounded-lg">
                     <Input placeholder="Kod" value={outcomeForm.code} onChange={(e) => setOutcomeForm({ ...outcomeForm, code: e.target.value })} />
                     <Input placeholder="Ders *" value={outcomeForm.subject} onChange={(e) => setOutcomeForm({ ...outcomeForm, subject: e.target.value })} />
@@ -395,6 +516,9 @@ export default function ExamDetailPage() {
                     <Input placeholder="Kazanım *" value={outcomeForm.learningOutcome} onChange={(e) => setOutcomeForm({ ...outcomeForm, learningOutcome: e.target.value })} />
                     <Button onClick={addOutcome} disabled={saving}>Ekle</Button>
                   </div>
+                )}
+                {uploadMsg && tab === "kazanimlar" && (
+                  <p className="text-sm text-indigo-800 bg-indigo-50 p-2 rounded">{uploadMsg}</p>
                 )}
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -429,11 +553,41 @@ export default function ExamDetailPage() {
                 </Card>
               )}
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
+                <CardHeader className="flex flex-row items-center justify-between gap-3 flex-wrap">
                   <CardTitle>Sorular & Cevap Anahtarı</CardTitle>
-                  {!locked && <Button size="sm" onClick={saveQuestions} disabled={saving}>Kaydet</Button>}
+                  <div className="flex flex-wrap gap-2 items-center">
+                    {!locked && (
+                      <>
+                        <button
+                          type="button"
+                          className="text-xs text-indigo-700 underline"
+                          onClick={() => void downloadImportTemplate("answer_key")}
+                        >
+                          Anahtar şablon
+                        </button>
+                        <label className="text-xs cursor-pointer border rounded px-2 py-1 hover:bg-gray-50">
+                          Excel/CSV import
+                          <input
+                            type="file"
+                            accept=".csv,.xlsx,.xls"
+                            className="hidden"
+                            disabled={saving}
+                            onChange={(e) => {
+                              const f = e.target.files?.[0]
+                              if (f) void importTabular("answer_key", f)
+                              e.target.value = ""
+                            }}
+                          />
+                        </label>
+                        <Button size="sm" onClick={saveQuestions} disabled={saving}>Kaydet</Button>
+                      </>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent>
+                  {uploadMsg && tab === "sorular" && (
+                    <p className="text-sm text-indigo-800 bg-indigo-50 p-2 rounded mb-3">{uploadMsg}</p>
+                  )}
                   <div className="overflow-x-auto max-h-[500px]">
                     <table className="w-full text-sm">
                       <thead className="sticky top-0 bg-white">
@@ -484,20 +638,52 @@ export default function ExamDetailPage() {
           )}
 
           {tab === "okutma" && (
-            <Card>
-              <CardHeader><CardTitle>Okutma Durumu</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                {exam.status === "READY_FOR_SCAN" ? (
-                  <p className="text-green-700">Sınav okutmaya açık. Masaüstü uygulama (okul-optik-reader) ile batch gönderilebilir.</p>
-                ) : (
-                  <p className="text-gray-600">Okutma için sınav &quot;Okutmaya hazır&quot; durumunda olmalıdır.</p>
-                )}
-                {exam.scanTemplate && (
-                  <p className="text-sm"><strong>Şablon:</strong> {exam.scanTemplate.label} ({exam.scanTemplate.templateKey})</p>
-                )}
-                <p className="text-sm"><strong>Manifest:</strong> GET /api/exams/{examId}/scan-manifest</p>
-              </CardContent>
-            </Card>
+            <div className="space-y-4">
+              <Card>
+                <CardHeader><CardTitle>Okutma Durumu</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                  {exam.status === "READY_FOR_SCAN" || exam.status === "SCANNING" ? (
+                    <p className="text-green-700">
+                      Sınav okutmaya açık. Cihaz TXT dosyasını buradan veya masaüstü uygulamadan yükleyebilirsiniz.
+                    </p>
+                  ) : (
+                    <p className="text-gray-600">Okutma için sınav &quot;Okutmaya hazır&quot; durumunda olmalıdır.</p>
+                  )}
+                  {exam.scanTemplate && (
+                    <p className="text-sm"><strong>Şablon:</strong> {exam.scanTemplate.label} ({exam.scanTemplate.templateKey})</p>
+                  )}
+                  <p className="text-xs text-gray-500">
+                    Eşleştirme sırası: TC → ad-soyad (tek aday). TC boyanmayan formlar incelemede işaretlenir.
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader><CardTitle>Cihaz TXT Yükle</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-gray-600">
+                    Optik okuyucunun ürettiği <code>.txt</code> dosyasını seçin (CP1254 / Windows Türkçe).
+                  </p>
+                  <input
+                    type="file"
+                    accept=".txt,text/plain"
+                    disabled={txtUploading || (exam.status !== "READY_FOR_SCAN" && exam.status !== "SCANNING")}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0]
+                      if (f) void uploadDeviceTxt(f)
+                      e.target.value = ""
+                    }}
+                  />
+                  {txtUploading && (
+                    <p className="text-sm flex items-center gap-2 text-gray-600">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Yükleniyor…
+                    </p>
+                  )}
+                  {uploadMsg && tab === "okutma" && (
+                    <p className="text-sm text-indigo-800 bg-indigo-50 p-2 rounded">{uploadMsg}</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           )}
 
           {tab === "dogrulama" && (
