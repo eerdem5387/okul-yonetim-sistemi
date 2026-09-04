@@ -121,15 +121,41 @@ export async function DELETE(
     const actor = await requireExamEdit(request)
     if (!actor) return NextResponse.json({ error: "Yetkisiz" }, { status: 403 })
 
-    const exam = await prisma.exam.findUnique({ where: { id } })
+    const exam = await prisma.exam.findUnique({
+      where: { id },
+      include: { _count: { select: { results: true, scanBatches: true } } },
+    })
     if (!exam) return NextResponse.json({ error: "Sınav bulunamadı" }, { status: 404 })
     if (exam.status === "PUBLISHED") {
-      return NextResponse.json({ error: "Yayınlanmış sınav silinemez" }, { status: 409 })
+      return NextResponse.json(
+        { error: "Yayınlanmış sınav silinemez. Önce arşivleyin veya yayını geri alın." },
+        { status: 409 }
+      )
     }
 
-    await prisma.exam.delete({ where: { id } })
+    await prisma.$transaction(async (tx) => {
+      // Batch item → result bağıntısını çöz (FK çakışmasını önle)
+      const batches = await tx.examScanBatch.findMany({
+        where: { examId: id },
+        select: { id: true },
+      })
+      if (batches.length > 0) {
+        await tx.examScanBatchItem.updateMany({
+          where: { batchId: { in: batches.map((b) => b.id) } },
+          data: { examResultId: null },
+        })
+      }
+      await tx.exam.delete({ where: { id } })
+    })
 
-    return NextResponse.json({ success: true, message: "Sınav başarıyla silindi" })
+    return NextResponse.json({
+      success: true,
+      message: "Sınav başarıyla silindi",
+      deleted: {
+        results: exam._count.results,
+        scanBatches: exam._count.scanBatches,
+      },
+    })
   } catch (error) {
     console.error("Error deleting exam:", error)
     return NextResponse.json({ error: "Sınav silinirken bir hata oluştu" }, { status: 500 })

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Sidebar } from "@/components/layout/sidebar"
-import { FileText, Plus, Calendar, TrendingUp, Loader2 } from "lucide-react"
+import { FileText, Plus, Calendar, TrendingUp, Loader2, Trash2 } from "lucide-react"
 import Link from "next/link"
 
 const EXAM_ACCESS_ROLES = ["admin", "counselor", "head_counselor", "student_affairs"] as const
@@ -85,6 +85,8 @@ export default function RehberlikSinavlarPage() {
     scanTemplateId: "",
     expectedParticipantCount: "",
   })
+
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -171,6 +173,36 @@ export default function RehberlikSinavlarPage() {
       alert("Sınav oluşturulurken bir hata oluştu")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDelete = async (exam: Exam) => {
+    if (exam.status === "PUBLISHED") {
+      alert("Yayınlanmış sınav silinemez.")
+      return
+    }
+    const ok = confirm(
+      `"${exam.name}" sınavını silmek istediğinize emin misiniz?\n\nBölümler, kazanımlar, sorular ve varsa okutma kayıtları da silinir.`
+    )
+    if (!ok) return
+
+    setDeletingId(exam.id)
+    try {
+      const res = await fetch(`/api/exams/${exam.id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        alert(data.error || "Sınav silinemedi")
+        return
+      }
+      setExams((prev) => prev.filter((e) => e.id !== exam.id))
+    } catch (error) {
+      console.error("Error deleting exam:", error)
+      alert("Sınav silinirken bir hata oluştu")
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -332,9 +364,26 @@ export default function RehberlikSinavlarPage() {
                           </span>
                         </div>
                       </div>
-                      <Link href={`/rehberlik/sinavlar/${exam.id}`}>
-                        <Button className="bg-purple-600 hover:bg-purple-700">Yönet</Button>
-                      </Link>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Link href={`/rehberlik/sinavlar/${exam.id}`}>
+                          <Button className="bg-purple-600 hover:bg-purple-700">Yönet</Button>
+                        </Link>
+                        {exam.status !== "PUBLISHED" && (
+                          <Button
+                            variant="outline"
+                            className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                            disabled={deletingId === exam.id}
+                            onClick={() => void handleDelete(exam)}
+                            title="Sınavı sil"
+                          >
+                            {deletingId === exam.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

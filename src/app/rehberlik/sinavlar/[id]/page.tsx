@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   Download,
+  Trash2,
 } from "lucide-react"
 
 const EXAM_ACCESS_ROLES = ["admin", "counselor", "head_counselor", "student_affairs"] as const
@@ -250,6 +251,35 @@ export default function ExamDetailPage() {
     setSaving(false)
   }
 
+  const deleteExam = async () => {
+    if (!exam) return
+    if (exam.status === "PUBLISHED") {
+      alert("Yayınlanmış sınav silinemez.")
+      return
+    }
+    const ok = confirm(
+      `"${exam.name}" sınavını silmek istediğinize emin misiniz?\n\nBu işlem geri alınamaz.`
+    )
+    if (!ok) return
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/exams/${examId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        alert(data.error || "Sınav silinemedi")
+        setSaving(false)
+        return
+      }
+      router.push("/rehberlik/sinavlar")
+    } catch {
+      alert("Sınav silinirken bir hata oluştu")
+      setSaving(false)
+    }
+  }
+
   const loadBatch = async (batchId: string) => {
     const res = await fetch(`/api/exams/${examId}/scan-batches/${batchId}`, { headers: getAuthHeaders() })
     const data = await res.json()
@@ -404,6 +434,16 @@ export default function ExamDetailPage() {
                 <span>{exam.results.length} sonuç</span>
               </div>
             </div>
+            {exam.status !== "PUBLISHED" && (
+              <Button
+                variant="outline"
+                className="text-red-600 border-red-200 hover:bg-red-50"
+                disabled={saving}
+                onClick={() => void deleteExam()}
+              >
+                <Trash2 className="h-4 w-4 mr-1" /> Sil
+              </Button>
+            )}
           </div>
 
           <div className="flex gap-2 border-b pb-2 overflow-x-auto">
