@@ -73,6 +73,8 @@ interface DashboardInsights {
   renewalTargetYear: { id: string | null; name: string; label: string } | null
   counts: {
     students: number
+    notRenewed: number
+    totalRoster: number
     newRegistrations: number
     renewals: number
     classes: number
@@ -354,8 +356,17 @@ export default function HomePage() {
               <div className="pt-2 border-t border-white/10 grid grid-cols-2 gap-2 text-xs">
                 <span className="text-indigo-200">Sınıf</span>
                 <span className="text-right font-mono">{insights.counts.classes}</span>
-                <span className="text-indigo-200">Öğrenci</span>
+                <span className="text-indigo-200">Kayıtlı öğrenci</span>
                 <span className="text-right font-mono">{insights.counts.students}</span>
+                <span className="text-amber-200">Kayıt yenilememiş</span>
+                <span className="text-right font-mono text-amber-100">
+                  {insights.counts.notRenewed ?? 0}
+                </span>
+                <span className="text-indigo-200 font-medium">Toplam (kadro)</span>
+                <span className="text-right font-mono font-semibold">
+                  {insights.counts.totalRoster ??
+                    insights.counts.students + (insights.counts.notRenewed ?? 0)}
+                </span>
               </div>
             )}
           </CardContent>

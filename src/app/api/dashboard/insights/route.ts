@@ -90,7 +90,7 @@ export async function GET() {
       }))
     }
 
-    // Toplam öğrenci = sınıf kartlarındaki "Mevcut" ile aynı (yeni kayıt + yenileyen; yenilemeyen hariç)
+    // Kayıtlı (mevcut) = yeni kayıt + yenileyen; notRenewed = kaydı yenilenmeyen
     const gradeBreakdown = buildEnrollmentRegistrationGradeBreakdown({
       students: k12Students,
       renewedStudentIds: regCtx.renewedStudentIds,
@@ -100,8 +100,11 @@ export async function GET() {
         regCtx.futureYearOnlyNewRegistrationStudentIds,
     })
     let totalStudents = 0
+    let notRenewedStudents = 0
     for (let g = 5; g <= 12; g++) {
-      totalStudents += gradeBreakdown[gradeLevelLabel(g)]?.mevcut ?? 0
+      const row = gradeBreakdown[gradeLevelLabel(g)]
+      totalStudents += row?.mevcut ?? 0
+      notRenewedStudents += row?.notRenewed ?? 0
     }
 
     const [newRegCount, renewalCount, classCount] = await Promise.all([
@@ -123,6 +126,8 @@ export async function GET() {
         : null,
       counts: {
         students: totalStudents,
+        notRenewed: notRenewedStudents,
+        totalRoster: totalStudents + notRenewedStudents,
         newRegistrations: newRegCount,
         renewals: renewalCount,
         classes: classCount,
