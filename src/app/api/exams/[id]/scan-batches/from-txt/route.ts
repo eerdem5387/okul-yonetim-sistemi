@@ -42,6 +42,14 @@ export async function POST(
     )
   }
 
+  // Operatör okutmaya başladı
+  if (exam.status === "READY_FOR_SCAN") {
+    await prisma.exam.update({
+      where: { id: examId },
+      data: { status: "SCANNING" },
+    })
+  }
+
   let body: {
     text?: string
     contentBase64?: string

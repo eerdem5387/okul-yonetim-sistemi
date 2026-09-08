@@ -90,6 +90,82 @@ paths:
         "409":
           description: Çakışma (sürüm, duplicate item)
 
+  /api/exams/{examId}/scan-batches/from-txt:
+    post:
+      summary: Sekonic/MarkView TXT dosyasını parse edip batch oluştur
+      parameters:
+        - $ref: "#/components/parameters/examId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text:
+                  type: string
+                contentBase64:
+                  type: string
+                  description: Ham TXT baytları (CP1254 önerilir)
+                encoding:
+                  type: string
+                  enum: [cp1254, windows-1254, utf-8, latin1]
+                batchId:
+                  type: string
+                operatorNote:
+                  type: string
+      responses:
+        "200":
+          description: Batch kabul edildi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScanBatchResponse"
+        "400":
+          description: Parse hatası
+        "409":
+          description: Sınav durumu uygun değil
+
+  /api/exam-scan-templates/from-fmt:
+    post:
+      summary: Sekonic .fmt şablonunu içe aktar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                contentBase64:
+                  type: string
+                text:
+                  type: string
+                fileName:
+                  type: string
+                publisher:
+                  type: string
+                label:
+                  type: string
+                sectionOverrides:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      activeLength:
+                        type: integer
+                      name:
+                        type: string
+                      startQuestion:
+                        type: integer
+                createSectionsForExamId:
+                  type: string
+                  description: Verilirse sınava bölüm ve soruları FMT’den üretir
+      responses:
+        "200":
+          description: Şablon kaydedildi
+        "400":
+          description: FMT parse hatası
+
   /api/exams/{examId}/scan-batches/{batchId}:
     get:
       summary: Batch durumu

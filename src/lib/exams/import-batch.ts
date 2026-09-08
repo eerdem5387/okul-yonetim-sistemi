@@ -51,6 +51,13 @@ export async function processScanBatch(
     throw new Error("Sınav okutmaya uygun durumda değil")
   }
 
+  if (exam.status === "READY_FOR_SCAN") {
+    await prisma.exam.update({
+      where: { id: examId },
+      data: { status: "SCANNING" },
+    })
+  }
+
   const seenTc = new Set<string>()
   const seenStudentIds = new Set<string>()
   const summary = {

@@ -120,19 +120,46 @@ function decodeBytes(bytes: Uint8Array, preferred?: string): { text: string; enc
 
 export function layoutFromJson(raw: unknown): DeviceTxtLayout {
   if (!raw || typeof raw !== "object") return DEFAULT_LAYOUT
-  const obj = raw as Partial<DeviceTxtLayout>
-  if (obj.type && obj.type !== "device_txt") {
+  const obj = raw as Record<string, unknown>
+
+  // Sekonic FMT layout → device fields
+  if (obj.type === "sekonic_fmt") {
+    const deviceFields = (obj.deviceFields ?? obj.fields) as DeviceTxtLayout["fields"] | undefined
+    if (deviceFields?.answerBlocks?.length) {
+      return {
+        id: String(obj.id ?? "sekonic_fmt"),
+        type: "sekonic_fmt",
+        delimiter: String(obj.delimiter ?? "\\"),
+        questionCount: Number(obj.questionCount) || undefined,
+        options: Array.isArray(obj.options) ? (obj.options as string[]) : DEFAULT_LAYOUT.options,
+        encoding: Array.isArray(obj.encoding) ? (obj.encoding as string[]) : DEFAULT_LAYOUT.encoding,
+        fields: {
+          formFlag: deviceFields.formFlag,
+          studentNumber: deviceFields.studentNumber,
+          firstName: deviceFields.firstName,
+          lastName: deviceFields.lastName,
+          tcNumber: deviceFields.tcNumber,
+          bookletCode: deviceFields.bookletCode,
+          bookletVariant: deviceFields.bookletVariant,
+          answerBlocks: deviceFields.answerBlocks,
+        },
+      }
+    }
+  }
+
+  const typed = obj as Partial<DeviceTxtLayout>
+  if (typed.type && typed.type !== "device_txt" && typed.type !== "sekonic_fmt") {
     // Görüntü OMR şablonu — cihaz TXT varsayılanına düş
     return DEFAULT_LAYOUT
   }
-  if (!obj.fields?.answerBlocks?.length) return DEFAULT_LAYOUT
+  if (!typed.fields?.answerBlocks?.length) return DEFAULT_LAYOUT
   return {
     ...DEFAULT_LAYOUT,
-    ...obj,
+    ...typed,
     fields: {
       ...DEFAULT_LAYOUT.fields,
-      ...obj.fields,
-      answerBlocks: obj.fields.answerBlocks,
+      ...typed.fields,
+      answerBlocks: typed.fields.answerBlocks,
     },
   }
 }

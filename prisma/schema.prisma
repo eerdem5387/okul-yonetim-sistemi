@@ -1556,12 +1556,15 @@ model ExamQuestion {
 
 model ExamScanTemplate {
   id            String @id @default(cuid())
-  templateKey   String @unique // generic-v1, publisher-b-v1
+  templateKey   String @unique // generic-v1, publisher-b-v1, sekonic-...
   publisher     String
   version       String
   label         String
   questionCount Int
   layoutJson    Json
+  /// Ham Sekonic .fmt içeriği (CP1254 metin olarak saklanır)
+  fmtRaw        String? @db.Text
+  fmtFileName   String?
   isActive      Boolean @default(true)
   exams         Exam[]
 

@@ -1,0 +1,521 @@
+{
+  "id": "sekonic-eyotek-yks-2022-1-8929fe6d",
+  "type": "sekonic_fmt",
+  "publisher": "EYOTEK",
+  "version": "1.0.0",
+  "label": "EYOTEK_YKS_2022_1",
+  "sourceFmtFileName": "EYOTEK_YKS_2022_1.fmt",
+  "sourceFmtHash": "8929fe6d1146a57e",
+  "formCols": 64,
+  "formRows": 46,
+  "encoding": [
+    "cp1254",
+    "windows-1254",
+    "utf-8"
+  ],
+  "delimiter": "\\",
+  "questionCount": 120,
+  "options": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E"
+  ],
+  "fields": [
+    {
+      "label": "SINAV TÜRÜ",
+      "kind": "identity",
+      "txtIndex": 0,
+      "startCol": 5,
+      "endCol": 5,
+      "startRow": 5,
+      "endRow": 9,
+      "mode": "K",
+      "direction": "Y",
+      "charset": "1   2",
+      "gridWidth": 1,
+      "gridHeight": 5
+    },
+    {
+      "label": "",
+      "kind": "separator",
+      "txtIndex": null,
+      "startCol": 1,
+      "endCol": 1,
+      "startRow": 1,
+      "endRow": 1,
+      "mode": "S",
+      "direction": "D",
+      "charset": "\\",
+      "gridWidth": 1,
+      "gridHeight": 1
+    },
+    {
+      "label": "ÖĞRENCİ NO",
+      "kind": "identity",
+      "txtIndex": 1,
+      "startCol": 10,
+      "endCol": 19,
+      "startRow": 14,
+      "endRow": 18,
+      "mode": "S",
+      "direction": "D",
+      "charset": "0123456789",
+      "gridWidth": 10,
+      "gridHeight": 5
+    },
+    {
+      "label": "",
+      "kind": "separator",
+      "txtIndex": null,
+      "startCol": 1,
+      "endCol": 1,
+      "startRow": 1,
+      "endRow": 1,
+      "mode": "S",
+      "direction": "D",
+      "charset": "\\",
+      "gridWidth": 1,
+      "gridHeight": 1
+    },
+    {
+      "label": "ADI",
+      "kind": "identity",
+      "txtIndex": 2,
+      "startCol": 36,
+      "endCol": 64,
+      "startRow": 2,
+      "endRow": 11,
+      "mode": "K",
+      "direction": "D",
+      "charset": "ABCÇDEFGĞHIİJKLMNOÖPRSŞTUÜVYZ",
+      "gridWidth": 29,
+      "gridHeight": 10
+    },
+    {
+      "label": "",
+      "kind": "separator",
+      "txtIndex": null,
+      "startCol": 1,
+      "endCol": 1,
+      "startRow": 1,
+      "endRow": 1,
+      "mode": "S",
+      "direction": "D",
+      "charset": "\\",
+      "gridWidth": 1,
+      "gridHeight": 1
+    },
+    {
+      "label": "SOYADI",
+      "kind": "identity",
+      "txtIndex": 3,
+      "startCol": 36,
+      "endCol": 64,
+      "startRow": 12,
+      "endRow": 21,
+      "mode": "K",
+      "direction": "D",
+      "charset": "ABCÇDEFGĞHIİJKLMNOÖPRSŞTUÜVYZ",
+      "gridWidth": 29,
+      "gridHeight": 10
+    },
+    {
+      "label": "",
+      "kind": "separator",
+      "txtIndex": null,
+      "startCol": 1,
+      "endCol": 1,
+      "startRow": 1,
+      "endRow": 1,
+      "mode": "S",
+      "direction": "D",
+      "charset": "\\",
+      "gridWidth": 1,
+      "gridHeight": 1
+    },
+    {
+      "label": "SINIF KODU",
+      "kind": "identity",
+      "txtIndex": 4,
+      "startCol": 23,
+      "endCol": 32,
+      "startRow": 14,
+      "endRow": 18,
+      "mode": "S",
+      "direction": "D",
+      "charset": "0123456789",
+      "gridWidth": 10,
+      "gridHeight": 5
+    },
+    {
+      "label": "",
+      "kind": "separator",
+      "txtIndex": null,
+      "startCol": 1,
+      "endCol": 1,
+      "startRow": 1,
+      "endRow": 1,
+      "mode": "S",
+      "direction": "D",
+      "charset": "\\",
+      "gridWidth": 1,
+      "gridHeight": 1
+    },
+    {
+      "label": "TC KİMLİK NO",
+      "kind": "identity",
+      "txtIndex": 5,
+      "startCol": 10,
+      "endCol": 19,
+      "startRow": 2,
+      "endRow": 12,
+      "mode": "S",
+      "direction": "D",
+      "charset": "0123456789",
+      "gridWidth": 10,
+      "gridHeight": 11
+    },
+    {
+      "label": "",
+      "kind": "separator",
+      "txtIndex": null,
+      "startCol": 1,
+      "endCol": 1,
+      "startRow": 1,
+      "endRow": 1,
+      "mode": "S",
+      "direction": "D",
+      "charset": "\\",
+      "gridWidth": 1,
+      "gridHeight": 1
+    },
+    {
+      "label": "KURUM KODU/CEPTEL",
+      "kind": "identity",
+      "txtIndex": 6,
+      "startCol": 23,
+      "endCol": 32,
+      "startRow": 2,
+      "endRow": 12,
+      "mode": "S",
+      "direction": "D",
+      "charset": "0123456789",
+      "gridWidth": 10,
+      "gridHeight": 11
+    },
+    {
+      "label": "",
+      "kind": "separator",
+      "txtIndex": null,
+      "startCol": 1,
+      "endCol": 1,
+      "startRow": 1,
+      "endRow": 1,
+      "mode": "S",
+      "direction": "D",
+      "charset": "\\",
+      "gridWidth": 1,
+      "gridHeight": 1
+    },
+    {
+      "label": "SINIF",
+      "kind": "identity",
+      "txtIndex": 7,
+      "startCol": 5,
+      "endCol": 9,
+      "startRow": 20,
+      "endRow": 20,
+      "mode": "K",
+      "direction": "D",
+      "charset": "9012M",
+      "gridWidth": 5,
+      "gridHeight": 1
+    },
+    {
+      "label": "ŞUBE",
+      "kind": "identity",
+      "txtIndex": 8,
+      "startCol": 5,
+      "endCol": 32,
+      "startRow": 21,
+      "endRow": 21,
+      "mode": "K",
+      "direction": "D",
+      "charset": "ABCÇDEFGHIİJKLMNOÖPRSŞTUÜVYZ",
+      "gridWidth": 28,
+      "gridHeight": 1
+    },
+    {
+      "label": "",
+      "kind": "separator",
+      "txtIndex": null,
+      "startCol": 1,
+      "endCol": 1,
+      "startRow": 1,
+      "endRow": 1,
+      "mode": "S",
+      "direction": "D",
+      "charset": "\\",
+      "gridWidth": 1,
+      "gridHeight": 1
+    },
+    {
+      "label": "KİTAPÇIK TÜRÜ",
+      "kind": "identity",
+      "txtIndex": 9,
+      "startCol": 5,
+      "endCol": 5,
+      "startRow": 15,
+      "endRow": 17,
+      "mode": "K",
+      "direction": "Y",
+      "charset": "A B",
+      "gridWidth": 1,
+      "gridHeight": 3
+    },
+    {
+      "label": "",
+      "kind": "separator",
+      "txtIndex": null,
+      "startCol": 1,
+      "endCol": 1,
+      "startRow": 1,
+      "endRow": 1,
+      "mode": "S",
+      "direction": "D",
+      "charset": "\\",
+      "gridWidth": 1,
+      "gridHeight": 1
+    },
+    {
+      "label": "TR",
+      "kind": "answers",
+      "txtIndex": 10,
+      "startCol": 15,
+      "endCol": 64,
+      "startRow": 24,
+      "endRow": 28,
+      "mode": "K",
+      "direction": "Y",
+      "charset": "ABCDE",
+      "gridWidth": 50,
+      "gridHeight": 5
+    },
+    {
+      "label": "",
+      "kind": "separator",
+      "txtIndex": null,
+      "startCol": 1,
+      "endCol": 1,
+      "startRow": 1,
+      "endRow": 1,
+      "mode": "S",
+      "direction": "D",
+      "charset": "\\",
+      "gridWidth": 1,
+      "gridHeight": 1
+    },
+    {
+      "label": "SOSYAL",
+      "kind": "answers",
+      "txtIndex": 11,
+      "startCol": 15,
+      "endCol": 64,
+      "startRow": 30,
+      "endRow": 34,
+      "mode": "K",
+      "direction": "Y",
+      "charset": "ABCDE",
+      "gridWidth": 50,
+      "gridHeight": 5
+    },
+    {
+      "label": "",
+      "kind": "separator",
+      "txtIndex": null,
+      "startCol": 1,
+      "endCol": 1,
+      "startRow": 1,
+      "endRow": 1,
+      "mode": "S",
+      "direction": "D",
+      "charset": "\\",
+      "gridWidth": 1,
+      "gridHeight": 1
+    },
+    {
+      "label": "MATEMATİK",
+      "kind": "answers",
+      "txtIndex": 12,
+      "startCol": 15,
+      "endCol": 64,
+      "startRow": 36,
+      "endRow": 40,
+      "mode": "K",
+      "direction": "Y",
+      "charset": "ABCDE",
+      "gridWidth": 50,
+      "gridHeight": 5
+    },
+    {
+      "label": "",
+      "kind": "separator",
+      "txtIndex": null,
+      "startCol": 1,
+      "endCol": 1,
+      "startRow": 1,
+      "endRow": 1,
+      "mode": "S",
+      "direction": "D",
+      "charset": "\\",
+      "gridWidth": 1,
+      "gridHeight": 1
+    },
+    {
+      "label": "FEN",
+      "kind": "answers",
+      "txtIndex": 13,
+      "startCol": 15,
+      "endCol": 64,
+      "startRow": 42,
+      "endRow": 46,
+      "mode": "K",
+      "direction": "Y",
+      "charset": "ABCDE",
+      "gridWidth": 50,
+      "gridHeight": 5
+    },
+    {
+      "label": "",
+      "kind": "separator",
+      "txtIndex": null,
+      "startCol": 1,
+      "endCol": 1,
+      "startRow": 1,
+      "endRow": 1,
+      "mode": "S",
+      "direction": "D",
+      "charset": "\\",
+      "gridWidth": 1,
+      "gridHeight": 1
+    }
+  ],
+  "identityMap": {
+    "formFlag": 0,
+    "studentNumber": 1,
+    "firstName": 2,
+    "lastName": 3,
+    "classCode": 4,
+    "tcNumber": 5,
+    "schoolCode": 6,
+    "grade": 7,
+    "section": 8,
+    "bookletVariant": 9
+  },
+  "answerSections": [
+    {
+      "name": "TR",
+      "txtIndex": 10,
+      "optionChars": "ABCDE",
+      "blockLength": 50,
+      "activeLength": 40,
+      "startQuestion": 1,
+      "endQuestion": 40
+    },
+    {
+      "name": "SOSYAL",
+      "txtIndex": 11,
+      "optionChars": "ABCDE",
+      "blockLength": 50,
+      "activeLength": 20,
+      "startQuestion": 41,
+      "endQuestion": 60
+    },
+    {
+      "name": "MATEMATİK",
+      "txtIndex": 12,
+      "optionChars": "ABCDE",
+      "blockLength": 50,
+      "activeLength": 40,
+      "startQuestion": 61,
+      "endQuestion": 100
+    },
+    {
+      "name": "FEN",
+      "txtIndex": 13,
+      "optionChars": "ABCDE",
+      "blockLength": 50,
+      "activeLength": 20,
+      "startQuestion": 101,
+      "endQuestion": 120
+    }
+  ],
+  "txt": {
+    "delimiter": "\\",
+    "encoding": "cp1254",
+    "fieldOrder": [
+      "SINAV TÜRÜ",
+      "ÖĞRENCİ NO",
+      "ADI",
+      "SOYADI",
+      "SINIF KODU",
+      "TC KİMLİK NO",
+      "KURUM KODU/CEPTEL",
+      "SINIF",
+      "ŞUBE",
+      "KİTAPÇIK TÜRÜ",
+      "TR",
+      "SOSYAL",
+      "MATEMATİK",
+      "FEN"
+    ]
+  },
+  "deviceFields": {
+    "answerBlocks": [
+      {
+        "index": 10,
+        "startQuestion": 1,
+        "blockLength": 50,
+        "activeLength": 40
+      },
+      {
+        "index": 11,
+        "startQuestion": 41,
+        "blockLength": 50,
+        "activeLength": 20
+      },
+      {
+        "index": 12,
+        "startQuestion": 61,
+        "blockLength": 50,
+        "activeLength": 40
+      },
+      {
+        "index": 13,
+        "startQuestion": 101,
+        "blockLength": 50,
+        "activeLength": 20
+      }
+    ],
+    "formFlag": {
+      "index": 0
+    },
+    "studentNumber": {
+      "index": 1
+    },
+    "firstName": {
+      "index": 2
+    },
+    "lastName": {
+      "index": 3
+    },
+    "tcNumber": {
+      "index": 5
+    },
+    "bookletVariant": {
+      "index": 9
+    }
+  }
+}

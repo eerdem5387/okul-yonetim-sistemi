@@ -39,6 +39,8 @@ DRAFT → ARCHIVED             (iptal)
 4. Her soruda cevap anahtarı girilmiş
 5. Seçili optik şablon soru sayısı ile eşleşiyor
 
+Sekonic: yayınevi `.fmt` → `POST /api/exam-scan-templates/from-fmt` (bölüm üretimi dahil). MarkView tarar; TXT → `POST /api/exams/{id}/scan-batches/from-txt` (`READY_FOR_SCAN` → `SCANNING` → `IN_REVIEW`).
+
 ## Batch hata kodları
 
 | Kod | Açıklama |

@@ -391,6 +391,88 @@ export default function ExamDetailPage() {
     }
   }
 
+  const uploadFmt = async (file: File, createSections: boolean) => {
+    setSaving(true)
+    setUploadMsg(null)
+    try {
+      const contentBase64 = await fileToBase64(file)
+
+      // Önizleme: bölümleri göster / onayla
+      let sectionOverrides: Array<{ activeLength: number; name?: string }> | undefined
+      if (createSections) {
+        const previewRes = await fetch("/api/exam-scan-templates/from-fmt", {
+          method: "POST",
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ contentBase64, fileName: file.name }),
+        })
+        const preview = await previewRes.json()
+        if (!previewRes.ok) {
+          setUploadMsg(preview.error ?? "FMT önizleme başarısız")
+          setSaving(false)
+          return
+        }
+        const sections = (preview.layout?.answerSections ?? []) as Array<{
+          name: string
+          activeLength: number
+          startQuestion: number
+          endQuestion: number
+        }>
+        const summary = sections
+          .map((s, i) => `${i + 1}. ${s.name}: soru ${s.startQuestion}–${s.endQuestion} (${s.activeLength} soru)`)
+          .join("\n")
+        const ok = confirm(
+          `FMT bölümleri (onaylayın veya İptal):\n\n${summary}\n\nToplam ${preview.layout?.questionCount} soru.\n\nSoru sayılarını değiştirmek için İptal edip yalnızca şablon olarak ekleyin; ardından bölümleri elle düzenleyin.\n\nDevam edilsin mi?`
+        )
+        if (!ok) {
+          setUploadMsg("FMT yalnızca kütüphaneye eklendi (bölüm oluşturulmadı). Şablon listesinden seçebilirsiniz.")
+          const tplRes = await fetch("/api/exam-scan-templates", { headers: getAuthHeaders() })
+          const tplData = await tplRes.json()
+          setTemplates(tplData.templates ?? [])
+          if (preview.template?.id) await saveTemplate(preview.template.id)
+          setSaving(false)
+          return
+        }
+        sectionOverrides = sections.map((s) => ({ activeLength: s.activeLength, name: s.name }))
+      }
+
+      const res = await fetch("/api/exam-scan-templates/from-fmt", {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          contentBase64,
+          fileName: file.name,
+          sectionOverrides,
+          createSectionsForExamId: createSections ? examId : undefined,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setUploadMsg(data.error ?? "FMT yükleme başarısız")
+      } else {
+        const secs = data.layout?.answerSections
+          ?.map((s: { name: string; startQuestion: number; endQuestion: number }) =>
+            `${s.name} (${s.startQuestion}–${s.endQuestion})`
+          )
+          .join(", ")
+        setUploadMsg(
+          `FMT kaydedildi: ${data.template?.label ?? data.layout?.label} — ${data.layout?.questionCount ?? "?"} soru` +
+            (createSections ? `. Bölümler oluşturuldu: ${secs}` : ". Şablon listesinden seçebilirsiniz.")
+        )
+        const tplRes = await fetch("/api/exam-scan-templates", { headers: getAuthHeaders() })
+        const tplData = await tplRes.json()
+        setTemplates(tplData.templates ?? [])
+        if (!createSections && data.template?.id) {
+          await saveTemplate(data.template.id)
+        }
+        await fetchExam()
+      }
+    } catch (e) {
+      setUploadMsg(e instanceof Error ? e.message : "FMT yükleme hatası")
+    } finally {
+      setSaving(false)
+    }
+  }
+
   if (loading || !exam) {
     return (
       <div className="flex h-screen">
@@ -402,7 +484,7 @@ export default function ExamDetailPage() {
     )
   }
 
-  const locked = exam.status === "READY_FOR_SCAN" || exam.status === "PUBLISHED" || exam.status === "IN_REVIEW"
+  const locked = exam.status === "READY_FOR_SCAN" || exam.status === "PUBLISHED" || exam.status === "IN_REVIEW" || exam.status === "SCANNING"
   const tabs: { id: Tab; label: string }[] = [
     { id: "genel", label: "Genel" },
     { id: "kazanimlar", label: "Kazanımlar" },
@@ -473,7 +555,7 @@ export default function ExamDetailPage() {
                 </CardContent>
               </Card>
               <Card>
-                <CardHeader><CardTitle>Optik Şablon</CardTitle></CardHeader>
+                <CardHeader><CardTitle>Optik Şablon (Sekonic FMT)</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
                   {templates.length === 0 && (
                     <Button variant="outline" size="sm" onClick={seedTemplates}>Şablonları yükle</Button>
@@ -489,6 +571,40 @@ export default function ExamDetailPage() {
                       <option key={t.id} value={t.id}>{t.label} ({t.questionCount} soru)</option>
                     ))}
                   </select>
+                  {!locked && (
+                    <div className="space-y-2 rounded-lg border border-indigo-100 bg-indigo-50/50 p-3 text-sm">
+                      <p className="text-gray-700">Yayınevi <code>.fmt</code> dosyasını yükleyin. Bölümler otomatik üretilebilir.</p>
+                      <label className="flex flex-col gap-1 cursor-pointer">
+                        <span className="font-medium text-indigo-800">FMT yükle + bölüm/soru oluştur</span>
+                        <input
+                          type="file"
+                          accept=".fmt,text/plain"
+                          disabled={saving}
+                          onChange={(e) => {
+                            const f = e.target.files?.[0]
+                            if (f) void uploadFmt(f, true)
+                            e.target.value = ""
+                          }}
+                        />
+                      </label>
+                      <label className="flex flex-col gap-1 cursor-pointer">
+                        <span className="text-xs text-gray-600">Yalnızca şablon kütüphanesine ekle</span>
+                        <input
+                          type="file"
+                          accept=".fmt,text/plain"
+                          disabled={saving}
+                          onChange={(e) => {
+                            const f = e.target.files?.[0]
+                            if (f) void uploadFmt(f, false)
+                            e.target.value = ""
+                          }}
+                        />
+                      </label>
+                    </div>
+                  )}
+                  {uploadMsg && tab === "genel" && (
+                    <p className="text-sm text-indigo-800 bg-indigo-50 p-2 rounded">{uploadMsg}</p>
+                  )}
                 </CardContent>
               </Card>
               {readiness && (
