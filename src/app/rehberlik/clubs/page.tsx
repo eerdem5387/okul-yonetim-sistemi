@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RehberlikSidebar } from "@/components/layout/rehberlik-sidebar"
+import { ClubBackupButton } from "@/components/clubs/club-backup-dialog"
 import { 
   Plus, 
   Edit, 
@@ -294,6 +295,7 @@ export default function ClubsPage() {
             <span className="hidden sm:inline">Kulüpleri İndir</span>
             <span className="sm:hidden">İndir</span>
           </Button>
+          <ClubBackupButton />
           <Button onClick={() => setShowForm(true)} size="sm" className="flex-1 sm:flex-initial text-xs sm:text-sm">
             <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
             <span className="hidden sm:inline">Yeni Kulüp</span>

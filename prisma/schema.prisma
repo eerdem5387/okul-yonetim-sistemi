@@ -96,6 +96,50 @@ model ClubSelection {
   @@map("club_selections")
 }
 
+/// Bir akademik yıl için kulüp listesinin anlık yedeği (öğrenci ad/sınıf kopyası).
+model ClubBackup {
+  id               String   @id @default(cuid())
+  academicYearId   String
+  academicYear     AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  /// Yedek anındaki yıl adı (yıl adı değişse bile arşiv etiketi korunur)
+  academicYearName String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  clubs            ClubBackupClub[]
+
+  @@unique([academicYearId])
+  @@map("club_backups")
+}
+
+model ClubBackupClub {
+  id          String   @id @default(cuid())
+  backupId    String
+  backup      ClubBackup @relation(fields: [backupId], references: [id], onDelete: Cascade)
+  sourceClubId String?
+  name        String
+  description String?
+  capacity    Int
+  members     ClubBackupMember[]
+
+  @@index([backupId])
+  @@map("club_backup_clubs")
+}
+
+model ClubBackupMember {
+  id           String   @id @default(cuid())
+  backupClubId String
+  backupClub   ClubBackupClub @relation(fields: [backupClubId], references: [id], onDelete: Cascade)
+  studentId    String?
+  firstName    String
+  lastName     String
+  grade        String
+  tcNumber     String?
+  selectedAt   DateTime?
+
+  @@index([backupClubId])
+  @@map("club_backup_members")
+}
+
 model NewRegistration {
   id           String   @id @default(cuid())
   studentId    String
@@ -775,6 +819,7 @@ model AcademicYear {
   holidays    Holiday[]
   disruptions Disruption[]
   classes     Class[] // Akademik yıla ait sınıflar (FAZ 2)
+  clubBackups ClubBackup[]
 
   @@index([isActive])
   @@index([isRenewalPeriod])
