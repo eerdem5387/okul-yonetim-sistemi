@@ -80,6 +80,8 @@ export default function RootLayout({
 
   const hardRedirect = useCallback((href: string) => {
     if (redirectingRef.current) return
+    const targetPath = href.split("?")[0]
+    if (typeof window !== "undefined" && window.location.pathname === targetPath) return
     redirectingRef.current = true
     window.location.href = href
   }, [])
@@ -264,8 +266,13 @@ export default function RootLayout({
       return
     }
 
-    // Veli sayfaları için kontrol (/veli-gorusmeleri ve /admin/veli-gorusmeleri hariç)
-    if ((pathname?.startsWith("/veli") && pathname !== "/veli-gorusmeleri") || pathname === "/parent") {
+    // Veli sayfaları için kontrol. /veli-login bu önekle başlar; giriş sayfası olarak ayrı tutulmalı.
+    const isParentArea =
+      pathname === "/parent" ||
+      (Boolean(pathname?.startsWith("/veli")) &&
+        pathname !== "/veli-gorusmeleri" &&
+        pathname !== "/veli-login")
+    if (isParentArea) {
       if (normalizedRole !== "parent") {
         hardRedirect("/veli-login")
         return
