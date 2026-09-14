@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
       if (existing) {
         await tx.clubBackup.delete({ where: { id: existing.id } })
       }
-      return tx.clubBackup.create({
+      const created = await tx.clubBackup.create({
         data: {
           academicYearId: year.id,
           academicYearName: year.name,
@@ -121,6 +121,9 @@ export async function POST(request: NextRequest) {
         },
         include: backupInclude,
       })
+      // Yedek alındıktan sonra canlı kulüp listesini sıfırla (seçimler cascade ile silinir).
+      await tx.club.deleteMany()
+      return created
     })
 
     const studentCount = clubs.reduce((sum, club) => sum + club.selections.length, 0)
