@@ -33,7 +33,7 @@ function LayoutBody({
 
 type AuthRole = "admin" | "principal" | "student_affairs" | "parent" | "teacher" | "counselor" | "head_counselor" | null
 
-const PUBLIC_AUTH_PATHS = ["/login", "/veli-login", "/ib-viewer/login", "/change-password"]
+const PUBLIC_AUTH_PATHS = ["/login", "/veli-login", "/kulup-secimi", "/ib-viewer/login", "/change-password"]
 
 /** Staff roles that use the main Sidebar; permission grants can expand their route access. */
 const MAIN_SIDEBAR_STAFF_ROLES: readonly NonNullable<AuthRole>[] = [
@@ -411,7 +411,7 @@ export default function RootLayout({
   }
 
   // Login, Veli Login ve Change Password sayfaları için özel layout
-  if (pathname === "/login" || pathname === "/veli-login" || pathname === "/change-password") {
+  if (pathname === "/login" || pathname === "/veli-login" || pathname === "/kulup-secimi" || pathname === "/change-password") {
     return (
       <html lang="tr">
         <head>
