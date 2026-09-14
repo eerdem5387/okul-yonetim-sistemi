@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { formatClubGradeLevels } from "@/lib/club-grade-levels"
 
 export async function GET() {
     try {
@@ -81,6 +82,7 @@ export async function GET() {
             return {
                 "Kulüp Adı": club.name,
                 "Açıklama": club.description || "",
+                "Sınıf Düzeyleri": formatClubGradeLevels(club.gradeLevels),
                 "Kontejan": club.capacity,
                 "Kayıtlı Öğrenci Sayısı": club.selections.length,
                 "Boş Kontenjan": club.capacity - club.selections.length,

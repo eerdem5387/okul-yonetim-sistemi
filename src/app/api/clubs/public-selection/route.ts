@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { clubMatchesStudentGrade } from "@/lib/club-grade-levels"
 import { k12GradeWhereClause } from "@/lib/student-grade-level"
 
 const MAX_CLUBS = 3
@@ -16,7 +17,7 @@ async function findStudent(tc: string) {
   })
 }
 
-async function clubPayload(studentId: string) {
+async function clubPayload(studentId: string, studentGrade: string) {
   const [clubs, mine] = await Promise.all([
     prisma.club.findMany({
       orderBy: { name: "asc" },
@@ -25,6 +26,7 @@ async function clubPayload(studentId: string) {
         name: true,
         description: true,
         capacity: true,
+        gradeLevels: true,
         _count: { select: { selections: true } },
         selections: { where: { studentId }, select: { id: true } },
       },
@@ -35,8 +37,11 @@ async function clubPayload(studentId: string) {
     }),
   ])
 
+  const visible = clubs.filter((club) => clubMatchesStudentGrade(club.gradeLevels, studentGrade))
+  const visibleIds = new Set(visible.map((club) => club.id))
+
   return {
-    clubs: clubs.map((club) => ({
+    clubs: visible.map((club) => ({
       id: club.id,
       name: club.name,
       description: club.description,
@@ -44,7 +49,7 @@ async function clubPayload(studentId: string) {
       filled: club._count.selections,
       selected: club.selections.length > 0,
     })),
-    selectedClubIds: mine.map((row) => row.clubId),
+    selectedClubIds: mine.map((row) => row.clubId).filter((id) => visibleIds.has(id)),
   }
 }
 
@@ -62,7 +67,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!Array.isArray(body.clubIds)) {
-      const payload = await clubPayload(student.id)
+      const payload = await clubPayload(student.id, student.grade)
       return NextResponse.json({
         student: {
           firstName: student.firstName,
@@ -79,12 +84,17 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await prisma.$transaction(async (tx) => {
-      const clubs = await tx.club.findMany({
-        where: { id: { in: clubIds } },
-        include: { selections: { select: { studentId: true } } },
-      })
+      const clubs = clubIds.length
+        ? await tx.club.findMany({
+            where: { id: { in: clubIds } },
+            include: { selections: { select: { studentId: true } } },
+          })
+        : []
       if (clubs.length !== clubIds.length) {
         throw new Error("CLUB_NOT_FOUND")
+      }
+      if (clubs.some((club) => !clubMatchesStudentGrade(club.gradeLevels, student.grade))) {
+        throw new Error("GRADE_MISMATCH")
       }
 
       const fullClubs: string[] = []
@@ -96,7 +106,13 @@ export async function POST(request: NextRequest) {
         throw new Error(`FULL:${fullClubs.join("|")}`)
       }
 
-      await tx.clubSelection.deleteMany({ where: { studentId: student.id } })
+      const visibleClubs = await tx.club.findMany({ select: { id: true, gradeLevels: true } })
+      const visibleIds = visibleClubs
+        .filter((club) => clubMatchesStudentGrade(club.gradeLevels, student.grade))
+        .map((club) => club.id)
+      await tx.clubSelection.deleteMany({
+        where: { studentId: student.id, clubId: { in: visibleIds } },
+      })
       if (clubIds.length > 0) {
         await tx.clubSelection.createMany({
           data: clubIds.map((clubId) => ({ studentId: student.id, clubId })),
@@ -106,7 +122,7 @@ export async function POST(request: NextRequest) {
       return { saved: clubIds.length }
     })
 
-    const payload = await clubPayload(student.id)
+    const payload = await clubPayload(student.id, student.grade)
     return NextResponse.json({
       student: {
         firstName: student.firstName,
@@ -126,6 +142,9 @@ export async function POST(request: NextRequest) {
     }
     if (message === "CLUB_NOT_FOUND") {
       return NextResponse.json({ error: "Kulüp bulunamadı" }, { status: 400 })
+    }
+    if (message === "GRADE_MISMATCH") {
+      return NextResponse.json({ error: "Seçilen kulüpler öğrencinin sınıfına açık değil" }, { status: 400 })
     }
     console.error("Public club selection error:", error)
     return NextResponse.json({ error: "İşlem tamamlanamadı" }, { status: 500 })

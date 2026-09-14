@@ -7,12 +7,15 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ArrowLeft, Users, Plus, Search, UserPlus, UserMinus } from "lucide-react"
 import Link from "next/link"
+import { formatClubGradeLevels } from "@/lib/club-grade-levels"
+import { ClubDetailEditor } from "@/components/clubs/club-detail-editor"
 
 interface Club {
   id: string
   name: string
   description: string | null
   capacity: number
+  gradeLevels?: number[]
   createdAt: string
   selections: {
     id: string
@@ -193,14 +196,15 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
   return (
     <div className="p-6">
       <div className="mb-6">
-        <div className="flex items-center gap-4 mb-4">
+        <div className="flex flex-wrap items-center gap-3 mb-4">
           <Link href="/clubs">
             <Button variant="outline" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Geri Dön
             </Button>
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900">{club.name}</h1>
+          <h1 className="text-3xl font-bold text-gray-900 break-words">{club.name}</h1>
+          <ClubDetailEditor club={club} onSaved={() => void fetchClub()} />
         </div>
         <p className="text-gray-600">Kulüp detayları ve öğrenci yönetimi</p>
       </div>
@@ -227,6 +231,11 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
                   <p className="text-sm text-gray-600">{club.description}</p>
                 </div>
               )}
+
+              <div>
+                <Label className="text-sm font-medium text-gray-700">Sınıf düzeyleri</Label>
+                <p className="text-sm text-gray-600">{formatClubGradeLevels(club.gradeLevels)}</p>
+              </div>
 
               <div>
                 <Label className="text-sm font-medium text-gray-700">Kontejan</Label>

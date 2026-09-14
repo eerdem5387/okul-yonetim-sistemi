@@ -67,33 +67,26 @@ export default function GeziPage() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const role = localStorage.getItem("auth_role")
-      const staffId = localStorage.getItem("staff_id")
-      
-      // Admin, principal, student_affairs, counselor için varsayılan erişim var
-      if (role === "admin" || role === "principal" || role === "student_affairs" || role === "counselor") {
-        setHasAccess(true)
-        return
-      }
-      
-      // Teacher için yetki kontrolü
-      if (role === "teacher" && staffId) {
-        fetchPermissionsMe()
-          .then((me) => {
-            if (canViewGezi(me)) {
-              setHasAccess(true)
-            } else {
-              setHasAccess(false)
-              router.push("/ogretmen")
-            }
-          })
-          .catch(() => {
-            setHasAccess(false)
-            router.push("/ogretmen")
-          })
-      } else {
-        setHasAccess(false)
-        router.push("/login")
-      }
+      const roleDefault =
+        role === "admin" ||
+        role === "principal" ||
+        role === "student_affairs" ||
+        role === "counselor" ||
+        role === "head_counselor"
+
+      fetchPermissionsMe({ redirectOn401: false })
+        .then((me) => {
+          if (roleDefault || canViewGezi(me)) {
+            setHasAccess(true)
+            return
+          }
+          setHasAccess(false)
+          router.push(role === "teacher" ? "/ogretmen" : "/login")
+        })
+        .catch(() => {
+          setHasAccess(roleDefault)
+          if (!roleDefault) router.push("/login")
+        })
     }
   }, [router])
 

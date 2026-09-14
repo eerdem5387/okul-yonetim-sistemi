@@ -13,6 +13,7 @@ import {
   invalidateExpiredStaffSession,
   installStaffSessionGuard,
 } from "@/lib/auth/session-guard"
+import { canAccessPathByPermission } from "@/lib/permissions/access"
 import { clearStaffSession, redirectToStaffLogin } from "@/lib/permissions/client"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -74,7 +75,18 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
+
+  useEffect(() => {
+    const dpr = window.devicePixelRatio || 1
+    const cssWidth = Math.round(window.screen.width / dpr)
+    const phoneWidth = Math.min(window.screen.width, cssWidth)
+    if (phoneWidth > 520 || window.innerWidth <= phoneWidth + 80) return
+    const meta = document.querySelector('meta[name="viewport"]')
+    if (!meta) return
+    meta.setAttribute("content", `width=${phoneWidth}, initial-scale=1, viewport-fit=cover`)
+  }, [])
   const [authRole, setAuthRole] = useState<AuthRole>(null)
+  const [permissionKeys, setPermissionKeys] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const redirectingRef = useRef(false)
 
@@ -92,6 +104,9 @@ export default function RootLayout({
 
     const removeSessionGuard = installStaffSessionGuard()
 
+    let cancelled = false
+    let permissionRequest = 0
+
     const checkAuth = () => {
       const storedRole = localStorage.getItem("auth_role")
       const token = localStorage.getItem("auth_token")
@@ -100,6 +115,7 @@ export default function RootLayout({
       if (isStaffAuthRole(storedRole) && token && isStaffTokenExpired(token)) {
         clearStaffSession()
         setAuthRole(null)
+        setPermissionKeys([])
         setIsLoading(false)
         if (!isPublicAuthPath(currentPath)) {
           redirectToStaffLogin("expired")
@@ -117,6 +133,28 @@ export default function RootLayout({
       }
 
       setAuthRole(normalizedRole)
+
+      if (isStaffAuthRole(normalizedRole) && token) {
+        const requestId = ++permissionRequest
+        fetch("/api/permissions/me", {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        })
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data) => {
+            if (cancelled || requestId !== permissionRequest) return
+            setPermissionKeys(Array.isArray(data?.permissions) ? data.permissions : [])
+            setIsLoading(false)
+          })
+          .catch(() => {
+            if (cancelled || requestId !== permissionRequest) return
+            setPermissionKeys([])
+            setIsLoading(false)
+          })
+        return
+      }
+
+      setPermissionKeys([])
       setIsLoading(false)
     }
 
@@ -138,6 +176,7 @@ export default function RootLayout({
     document.addEventListener("visibilitychange", handleVisibilityChange)
     document.addEventListener("click", handleUserInteraction, true)
     return () => {
+      cancelled = true
       removeSessionGuard()
       window.removeEventListener("storage", handleStorageChange)
       document.removeEventListener("visibilitychange", handleVisibilityChange)
@@ -172,6 +211,7 @@ export default function RootLayout({
     }
 
     const isAllowedPath = isPublicAuthPath(pathname)
+    const permitted = canAccessPathByPermission(pathname, permissionKeys)
 
     // Login sayfasındaysa ve zaten giriş yapılmışsa, rolüne göre yönlendir
     if (pathname === "/login" && normalizedRole) {
@@ -207,12 +247,24 @@ export default function RootLayout({
       return
     }
 
+    // Atanmış modül yetkisi, rol listesinde olmasa da sayfayı açar.
+    if (
+      permitted &&
+      normalizedRole &&
+      normalizedRole !== "parent" &&
+      !pathname?.startsWith("/ogretmen") &&
+      pathname !== "/yonetim/yetkilendirme"
+    ) {
+      return
+    }
+
     // Rehberlik sayfaları için kontrol (sistem yöneticisi dahil)
     if (pathname?.startsWith("/rehberlik")) {
       if (
         normalizedRole !== "counselor" &&
         normalizedRole !== "head_counselor" &&
-        normalizedRole !== "admin"
+        normalizedRole !== "admin" &&
+        !permitted
       ) {
         hardRedirect("/login")
         return
@@ -381,7 +433,7 @@ export default function RootLayout({
         pathname === "/mesajlar" ||
         pathname === "/faaliyet-ekle" ||
         pathname?.startsWith("/faaliyet-yonetimi")
-      if (!teacherPaths && !isAllowedPath) {
+      if (!teacherPaths && !isAllowedPath && !permitted) {
         hardRedirect("/ogretmen")
         return
       }
@@ -392,7 +444,7 @@ export default function RootLayout({
       hardRedirect("/login")
       return
     }
-  }, [pathname, isLoading, authRole, hardRedirect])
+  }, [pathname, isLoading, authRole, permissionKeys, hardRedirect])
 
   // Loading durumu
   if (isLoading) {
@@ -415,6 +467,7 @@ export default function RootLayout({
     return (
       <html lang="tr">
         <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
           <title>Okul Yönetim Sistemi - Giriş</title>
           <meta name="description" content="Öğrenci kayıt ve sözleşme yönetim sistemi" />
           <link rel="icon" href="/logo.png?v=2" type="image/png" />
@@ -432,6 +485,7 @@ export default function RootLayout({
     return (
       <html lang="tr">
         <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
           <title>IB Program Görüntüleme - Okul Yönetim Sistemi</title>
           <meta name="description" content="IB programı öğrenci faaliyet görüntüleme" />
           <link rel="icon" href="/logo.png?v=2" type="image/png" />
@@ -449,6 +503,7 @@ export default function RootLayout({
     return (
       <html lang="tr">
         <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
           <title>Neredeyiz? - Yıllık Plan Takip Sistemi</title>
           <meta name="description" content="Yıllık plan takip ve ilerleme yönetim sistemi" />
           <link rel="icon" href="/logo.png?v=2" type="image/png" />
@@ -466,6 +521,7 @@ export default function RootLayout({
     return (
       <html lang="tr">
         <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
           <title>Öğretmen Paneli - Okul Yönetim Sistemi</title>
           <meta name="description" content="Öğretmen yıllık plan takip paneli" />
           <link rel="icon" href="/logo.png?v=2" type="image/png" />
@@ -488,6 +544,7 @@ export default function RootLayout({
     return (
       <html lang="tr">
         <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
           <title>Mesajlar - Öğretmen Paneli</title>
           <meta name="description" content="Okul içi mesajlaşma" />
           <link rel="icon" href="/logo.png?v=2" type="image/png" />
@@ -513,6 +570,7 @@ export default function RootLayout({
     return (
       <html lang="tr">
         <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
           <title>Faaliyet Yönetimi - Öğretmen Paneli</title>
           <meta name="description" content="Faaliyet oluşturma ve takip" />
           <link rel="icon" href="/logo.png?v=2" type="image/png" />
@@ -535,6 +593,7 @@ export default function RootLayout({
     return (
       <html lang="tr">
         <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
           <title>Rehberlik Paneli - Okul Yönetim Sistemi</title>
           <meta name="description" content="Rehberlik danışmanı yönetim paneli" />
           <link rel="icon" href="/logo.png?v=2" type="image/png" />
@@ -552,6 +611,7 @@ export default function RootLayout({
     return (
       <html lang="tr">
         <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
           <title>Veli Paneli - Okul Yönetim Sistemi</title>
           <meta name="description" content="Veli paneli ve öğrenci takip sistemi" />
           <link rel="icon" href="/logo.png?v=2" type="image/png" />
@@ -580,6 +640,7 @@ export default function RootLayout({
     return (
       <html lang="tr">
         <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
           <title>Okul Yönetim Sistemi</title>
           <meta name="description" content="Öğrenci kayıt ve sözleşme yönetim sistemi" />
           <link rel="icon" href="/logo.png?v=2" type="image/png" />
@@ -603,6 +664,35 @@ export default function RootLayout({
     )
   }
 
+  // Öğretmen — yetkiyle açılan modüller (menüde olmasa da)
+  if (authRole === "teacher" && canAccessPathByPermission(pathname, permissionKeys)) {
+    return (
+      <html lang="tr">
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+          <title>Okul Yönetim Sistemi</title>
+          <meta name="description" content="Öğrenci kayıt ve sözleşme yönetim sistemi" />
+          <link rel="icon" href="/logo.png?v=2" type="image/png" />
+          <link rel="apple-touch-icon" href="/logo.png?v=2" />
+        </head>
+        <LayoutBody className={inter.className}>
+          <div className="flex h-screen bg-gray-50 lg:flex-row">
+            <OgretmenSidebar />
+            <div
+              className={
+                pathname === "/mesajlar"
+                  ? "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+                  : "flex-1 overflow-y-auto w-full lg:w-auto"
+              }
+            >
+              {children}
+            </div>
+          </div>
+        </LayoutBody>
+      </html>
+    )
+  }
+
   // Öğretmen — beklenmeyen rotalarda login veya panele yönlendir
   if (
     authRole === "teacher" &&
@@ -611,7 +701,8 @@ export default function RootLayout({
     !pathname?.startsWith("/ogretmen") &&
     pathname !== "/mesajlar" &&
     pathname !== "/faaliyet-ekle" &&
-    !pathname?.startsWith("/faaliyet-yonetimi")
+    !pathname?.startsWith("/faaliyet-yonetimi") &&
+    !canAccessPathByPermission(pathname, permissionKeys)
   ) {
     if (typeof window !== "undefined") {
       window.location.href = "/ogretmen"

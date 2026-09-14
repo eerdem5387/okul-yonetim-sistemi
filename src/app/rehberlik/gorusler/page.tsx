@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Sidebar } from "@/components/layout/sidebar"
+import { hasAnyModulePermission } from "@/lib/permissions/access"
+import { fetchPermissionsMe } from "@/lib/permissions/client"
 import { MessageSquare, Plus, Calendar, ThumbsUp, ThumbsDown, Loader2, Edit, Trash2 } from "lucide-react"
 
 interface StudentComment {
@@ -53,14 +55,29 @@ export default function RehberlikGoruslerPage() {
       const role = localStorage.getItem("auth_role")
       const id = localStorage.getItem("staff_id")
 
-      if (role !== "counselor" || !id) {
+      if (!id) {
         router.push("/login")
         return
       }
 
-      setStaffId(id)
-      fetchComments(id)
-      fetchStudents()
+      const roleOk =
+        role === "counselor" || role === "head_counselor" || role === "admin" || role === "principal"
+      const open = () => {
+        setStaffId(id)
+        fetchComments(id)
+        fetchStudents()
+      }
+      if (roleOk) {
+        open()
+        return
+      }
+      fetchPermissionsMe({ redirectOn401: false }).then((me) => {
+        if (me && hasAnyModulePermission(me.permissions, "student_comments")) {
+          open()
+          return
+        }
+        router.push("/login")
+      })
     }
   }, [router])
 

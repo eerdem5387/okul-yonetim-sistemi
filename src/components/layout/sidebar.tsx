@@ -14,8 +14,6 @@ import {
   Bus, 
   BookOpen, 
   UserPlus, 
-  Menu,
-  X,
   LogOut,
   ClipboardList,
   Award,
@@ -37,6 +35,8 @@ import {
   checkNavPermission,
   useStaffPermissions,
 } from "@/hooks/use-staff-permissions"
+import { MobileMenuButton } from "@/components/layout/mobile-menu-button"
+import { extraGrantedNavItems } from "@/lib/permissions/nav-catalog"
 const allNavigation = [
   // 1. Dashboard
   { name: "Dashboard", href: "/", icon: LayoutDashboard, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
@@ -111,7 +111,7 @@ export function Sidebar() {
   const hrefToPermission: Record<string, string> = {
     "/": "dashboard.view",
     "/mesajlar": "messaging.view",
-    "/new-registration": "registrations.create",
+    "/new-registration": "registrations.view",
     "/renewal": "registrations.view",
     "/teklif-gorusmeleri": "applications.view",
     "/aday-ogrenci-tespiti": "aday_tespit.view",
@@ -138,7 +138,7 @@ export function Sidebar() {
     "/book": "registrations.view",
   }
 
-  const navigation = allNavigation.filter((item) => {
+  const visibleNavigation = allNavigation.filter((item) => {
     if (!currentRole) return false
 
     const teacherPortal = item.href.startsWith("/ogretmen")
@@ -163,6 +163,15 @@ export function Sidebar() {
     return roleAllowed
   })
 
+  const navigation = [
+    ...visibleNavigation,
+    ...extraGrantedNavItems({
+      permissionKeys: permState.permissionKeys,
+      existingHrefs: allNavigation.map((item) => item.href),
+      existingModules: Object.values(hrefToPermission).map((perm) => perm.split(".")[0]),
+    }),
+  ]
+
   const handleLogout = () => {
     if (confirm("Çıkış yapmak istediğinizden emin misiniz?")) {
       localStorage.removeItem("auth_role")
@@ -179,18 +188,7 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile Menu Button */}
-      <button
-        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        className="lg:hidden fixed top-4 left-4 z-[60] p-3 rounded-xl bg-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 border border-gray-100"
-        aria-label="Menüyü Aç/Kapat"
-      >
-        {mobileMenuOpen ? (
-          <X className="h-6 w-6 text-gray-700" />
-        ) : (
-          <Menu className="h-6 w-6 text-gray-700" />
-        )}
-      </button>
+      <MobileMenuButton open={mobileMenuOpen} onToggle={() => setMobileMenuOpen(!mobileMenuOpen)} />
 
       {/* Mobile Overlay */}
       {mobileMenuOpen && (

@@ -15,8 +15,6 @@ import {
   ChevronRight,
   User,
   GraduationCap,
-  Menu,
-  X,
   Target,
   MapPin,
   Award,
@@ -27,6 +25,8 @@ import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { UnreadBadge } from "@/components/chat/UnreadBadge"
 import { checkNavPermission, useStaffPermissions } from "@/hooks/use-staff-permissions"
+import { MobileMenuButton } from "@/components/layout/mobile-menu-button"
+import { extraGrantedNavItems } from "@/lib/permissions/nav-catalog"
 
 interface OgretmenSidebarProps {
   className?: string
@@ -72,13 +72,17 @@ export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
     }
   }, [permState.me?.subject])
 
-  const navigation = useMemo(
-    () =>
-      ALL_NAV.filter((item) =>
-        checkNavPermission(permState, item.module, item.action, true)
-      ),
-    [permState]
-  )
+  const navigation = useMemo(() => {
+    const visible = ALL_NAV.filter((item) =>
+      checkNavPermission(permState, item.module, item.action, true)
+    )
+    const extras = extraGrantedNavItems({
+      permissionKeys: permState.permissionKeys,
+      existingHrefs: ALL_NAV.map((item) => item.href),
+      existingModules: ALL_NAV.map((item) => item.module),
+    }).map((item) => ({ ...item, action: "view" }))
+    return [...visible, ...extras]
+  }, [permState])
 
   const handleLogout = () => {
     if (confirm("Çıkış yapmak istediğinizden emin misiniz?")) {
@@ -93,12 +97,7 @@ export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
 
   return (
     <>
-      <button
-        onClick={() => setIsMobileOpen(!isMobileOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-blue-600 text-white rounded-lg shadow-lg"
-      >
-        {isMobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-      </button>
+      <MobileMenuButton open={isMobileOpen} onToggle={() => setIsMobileOpen(!isMobileOpen)} />
 
       {isMobileOpen && (
         <div className="lg:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setIsMobileOpen(false)} />

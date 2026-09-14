@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { normalizeClubGradeLevels } from "@/lib/club-grade-levels"
 
 export async function GET() {
     try {
@@ -35,13 +36,18 @@ export async function GET() {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
-        const { name, description, capacity } = body
+        const { name, description, capacity, gradeLevels } = body
+        const levels = normalizeClubGradeLevels(gradeLevels)
+        if (levels.length === 0) {
+            return NextResponse.json({ error: "En az bir sınıf düzeyi seçin" }, { status: 400 })
+        }
 
         const club = await prisma.club.create({
             data: {
                 name,
                 description,
-                capacity: parseInt(capacity)
+                capacity: parseInt(capacity),
+                gradeLevels: levels,
             }
         })
 
@@ -55,14 +61,19 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
     try {
         const body = await request.json()
-        const { id, name, description, capacity } = body
+        const { id, name, description, capacity, gradeLevels } = body
+        const levels = normalizeClubGradeLevels(gradeLevels)
+        if (levels.length === 0) {
+            return NextResponse.json({ error: "En az bir sınıf düzeyi seçin" }, { status: 400 })
+        }
 
         const club = await prisma.club.update({
             where: { id },
             data: {
                 name,
                 description,
-                capacity: parseInt(capacity)
+                capacity: parseInt(capacity),
+                gradeLevels: levels,
             }
         })
 

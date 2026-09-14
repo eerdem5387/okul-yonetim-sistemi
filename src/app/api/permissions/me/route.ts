@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma"
 import { readLoginRoleFromRequest, resolveStaffActor } from "@/lib/hr/actor"
 import { getEffectivePermissionKeys, isSuperAdmin } from "@/lib/permissions"
 
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 export async function GET(request: NextRequest) {
   const actor = await resolveStaffActor(request)
   if (!actor) {
@@ -24,18 +27,25 @@ export async function GET(request: NextRequest) {
     },
   })
 
-  return NextResponse.json({
-    staffId: actor.staffId,
-    department: actor.department,
-    loginRole,
-    isSuperAdmin: isSuperAdmin(actor.department, actor.staffId),
-    permissions,
-    firstName: staff?.firstName ?? actor.firstName,
-    lastName: staff?.lastName ?? actor.lastName,
-    fullName: `${staff?.firstName ?? actor.firstName} ${staff?.lastName ?? actor.lastName}`.trim(),
-    subject: staff?.subject ?? null,
-    hasGeziAccess: staff?.hasGeziAccess ?? false,
-    hasIbAccess: staff?.hasIbAccess ?? false,
-    isActive: staff?.isActive ?? true,
-  })
+  return NextResponse.json(
+    {
+      staffId: actor.staffId,
+      department: actor.department,
+      loginRole,
+      isSuperAdmin: isSuperAdmin(actor.department, actor.staffId),
+      permissions,
+      firstName: staff?.firstName ?? actor.firstName,
+      lastName: staff?.lastName ?? actor.lastName,
+      fullName: `${staff?.firstName ?? actor.firstName} ${staff?.lastName ?? actor.lastName}`.trim(),
+      subject: staff?.subject ?? null,
+      hasGeziAccess: staff?.hasGeziAccess ?? false,
+      hasIbAccess: staff?.hasIbAccess ?? false,
+      isActive: staff?.isActive ?? true,
+    },
+    {
+      headers: {
+        "Cache-Control": "no-store",
+      },
+    }
+  )
 }

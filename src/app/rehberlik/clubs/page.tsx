@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RehberlikSidebar } from "@/components/layout/rehberlik-sidebar"
 import Link from "next/link"
+import { ClubGradeLevelField } from "@/components/clubs/club-grade-level-field"
+import { CLUB_GRADE_LEVELS, formatClubGradeLevels } from "@/lib/club-grade-levels"
 import { 
   Plus, 
-  Edit, 
   Trash2, 
   Users, 
   Eye, 
@@ -42,6 +43,7 @@ interface Club {
   name: string
   description: string | null
   capacity: number
+  gradeLevels?: number[]
   createdAt: string
   selections: ClubSelection[]
 }
@@ -62,7 +64,8 @@ export default function ClubsPage() {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    capacity: 0
+    capacity: 0,
+    gradeLevels: [...CLUB_GRADE_LEVELS] as number[],
   })
   const [selectedGrade, setSelectedGrade] = useState("all")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
@@ -109,6 +112,10 @@ export default function ClubsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (formData.gradeLevels.length === 0) {
+      alert("En az bir sınıf düzeyi seçin.")
+      return
+    }
     try {
       const url = editingClub ? `/api/clubs/${editingClub.id}` : "/api/clubs"
       const method = editingClub ? "PUT" : "POST"
@@ -125,23 +132,14 @@ export default function ClubsPage() {
         fetchClubs()
         setShowForm(false)
         setEditingClub(null)
-        setFormData({ name: "", description: "", capacity: 0 })
+        setFormData({ name: "", description: "", capacity: 0, gradeLevels: [...CLUB_GRADE_LEVELS] })
       } else {
-        alert("Kulüp kaydedilirken hata oluştu!")
+        const err = await response.json().catch(() => ({}))
+        alert((err as { error?: string }).error || "Kulüp kaydedilirken hata oluştu!")
       }
     } catch (error) {
       console.error("Error saving club:", error)
     }
-  }
-
-  const handleEdit = (club: Club) => {
-    setEditingClub(club)
-    setFormData({
-      name: club.name,
-      description: club.description || "",
-      capacity: club.capacity
-    })
-    setShowForm(true)
   }
 
   const handleDelete = async (clubId: string) => {
@@ -498,6 +496,10 @@ export default function ClubsPage() {
                   className="h-9 sm:h-10 text-xs sm:text-sm"
                 />
               </div>
+              <ClubGradeLevelField
+                value={formData.gradeLevels}
+                onChange={(gradeLevels) => setFormData({ ...formData, gradeLevels })}
+              />
               <div className="flex flex-col sm:flex-row gap-2 pt-2">
                 <Button type="submit" size="sm" className="w-full sm:w-auto text-xs sm:text-sm">
                   {editingClub ? "Güncelle" : "Oluştur"}
@@ -505,7 +507,7 @@ export default function ClubsPage() {
                 <Button type="button" variant="outline" size="sm" onClick={() => {
                   setShowForm(false)
                   setEditingClub(null)
-                  setFormData({ name: "", description: "", capacity: 0 })
+                  setFormData({ name: "", description: "", capacity: 0, gradeLevels: [...CLUB_GRADE_LEVELS] })
                 }} className="w-full sm:w-auto text-xs sm:text-sm">
                   İptal
                 </Button>
@@ -548,13 +550,13 @@ export default function ClubsPage() {
                 <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 lg:pt-6">
                   <div className="flex justify-between items-start gap-2 sm:gap-3">
                     <div className="flex-1 min-w-0">
-                      <CardTitle className="flex items-center gap-2 sm:gap-3 text-base sm:text-lg">
-                        <Users className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 icon-blue flex-shrink-0" />
-                        <span className="truncate">{club.name}</span>
+                      <CardTitle className="flex items-start gap-2 sm:gap-3 text-base sm:text-lg">
+                        <Users className="mt-0.5 h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 icon-blue flex-shrink-0" />
+                        <span className="whitespace-normal break-words">{club.name}</span>
                       </CardTitle>
                       <div className="mt-1.5 sm:mt-2 flex flex-wrap items-center gap-1.5 sm:gap-2">
                         <CardDescription className="text-xs sm:text-sm">
-                          {club.selections.length}/{club.capacity} öğrenci
+                          {club.selections.length}/{club.capacity} öğrenci · {formatClubGradeLevels(club.gradeLevels)}
                         </CardDescription>
                         <span className={`px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold rounded-full ${statusColor}`}>
                           {isFull ? "Dolu" : isEmpty ? "Boş" : "Kontenjan Var"}
@@ -574,14 +576,6 @@ export default function ClubsPage() {
                         className="h-7 w-7 sm:h-8 sm:w-8 p-0"
                       >
                         <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleEdit(club)}
-                        className="h-7 w-7 sm:h-8 sm:w-8 p-0"
-                      >
-                        <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
                       </Button>
                       <Button
                         size="sm"

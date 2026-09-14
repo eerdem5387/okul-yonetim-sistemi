@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Check, X, AlertCircle, FileText } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { clubMatchesStudentGrade } from "@/lib/club-grade-levels"
 
 interface Student {
   id: string
@@ -19,6 +20,7 @@ interface Club {
   name: string
   description?: string
   capacity: number
+  gradeLevels?: number[]
   selections?: Array<{ id: string; studentId: string; clubId: string }>
 }
 
@@ -27,8 +29,12 @@ export default function ParentPage() {
   const [clubs, setClubs] = useState<Club[]>([])
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
   const [selectedClubs, setSelectedClubs] = useState<string[]>([])
+  const [savedClubs, setSavedClubs] = useState<Array<{ id: string; name: string; capacity?: number }>>([])
+  const [selectionReady, setSelectionReady] = useState(false)
+  const [selecting, setSelecting] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [showReselectConfirm, setShowReselectConfirm] = useState(false)
 
   // Öğrenci bilgisini localStorage'dan al
   useEffect(() => {
@@ -157,11 +163,17 @@ export default function ParentPage() {
       const response = await fetch(`/api/clubs/students?studentId=${studentId}`)
       if (response.ok) {
         const data = await response.json()
-        const dbClubIds: string[] = Array.isArray(data) 
-          ? data
+        const rows = Array.isArray(data) ? data : []
+        const dbClubIds: string[] = rows
               .map((c: { clubId?: string; club?: { id: string } }) => c.clubId || c.club?.id)
               .filter((id): id is string => typeof id === 'string' && id !== '')
-          : []
+        const snapshots = rows
+          .map((c: { clubId?: string; club?: { id?: string; name?: string; capacity?: number } }) => ({
+            id: c.clubId || c.club?.id || "",
+            name: c.club?.name || "Kulüp",
+            capacity: c.club?.capacity,
+          }))
+          .filter((c) => c.id)
         
         if (preserveCurrentSelections) {
           // Otomatik yenileme sırasında: Mevcut seçimleri koru, sadece veritabanındaki seçimleri ekle
@@ -172,23 +184,54 @@ export default function ParentPage() {
             return combined
           })
         } else {
-          // Öğrenci seçildiğinde veya kayıt sonrası: Veritabanındaki seçimleri yükle
+          setSavedClubs(snapshots)
           setSelectedClubs(dbClubIds)
+          setSelecting(snapshots.length === 0)
+          setSelectionReady(true)
         }
-        return dbClubIds // Başarılı durumda kulüp ID'lerini döndür
+        return dbClubIds
       } else {
         console.error("Failed to fetch student clubs:", response.statusText)
         if (!preserveCurrentSelections) {
           setSelectedClubs([])
+          setSavedClubs([])
+          setSelecting(true)
+          setSelectionReady(true)
         }
-        return [] // Hata durumunda boş array döndür
+        return []
       }
     } catch (error) {
       console.error("Error fetching student clubs:", error)
       if (!preserveCurrentSelections) {
         setSelectedClubs([])
+        setSavedClubs([])
+        setSelecting(true)
+        setSelectionReady(true)
       }
-      return [] // Hata durumunda boş array döndür
+      return []
+    }
+  }
+
+  const cancelSavedSelections = async () => {
+    if (!selectedStudent) return
+    setSubmitting(true)
+    try {
+      const response = await fetch("/api/clubs/students", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId: selectedStudent.id, clubSelections: [] }),
+      })
+      if (!response.ok) throw new Error("İptal edilemedi")
+      setSavedClubs([])
+      setSelectedClubs([])
+      setSelecting(true)
+      setShowReselectConfirm(false)
+      await fetchClubs()
+    } catch (error) {
+      console.error("Error clearing club selections:", error)
+      alert("Mevcut seçimler iptal edilemedi.")
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -198,7 +241,11 @@ export default function ParentPage() {
       setSelectedClubs(selectedClubs.filter(id => id !== clubId))
     } else {
       // Yeni seçim ekle
-      if (selectedClubs.length >= 3) {
+      const visibleSelectedCount = selectedClubs.filter((id) => {
+        const existing = clubs.find((item) => item.id === id)
+        return existing ? clubMatchesStudentGrade(existing.gradeLevels, selectedStudent?.grade) : false
+      }).length
+      if (visibleSelectedCount >= 3) {
         alert("Maksimum 3 kulüp seçebilirsiniz!")
         return
       }
@@ -274,7 +321,12 @@ export default function ParentPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           studentId: selectedStudent.id,
-          clubSelections: selectedClubs.map(clubId => ({
+          clubSelections: selectedClubs
+            .filter((clubId) => {
+              const club = clubs.find((item) => item.id === clubId)
+              return club ? clubMatchesStudentGrade(club.gradeLevels, selectedStudent.grade) : false
+            })
+            .map(clubId => ({
             clubId,
             studentId: selectedStudent.id
           }))
@@ -291,17 +343,9 @@ export default function ParentPage() {
         // Öğrencinin güncel kulüp seçimlerini yükle (veritabanından)
         // Bu işlem selectedClubs state'ini güncelleyecek
         await fetchStudentClubs(selectedStudent.id, false)
-        
-        // Başarı mesajını göster
         if (savedClubCount === 0) {
-          alert("✅ Öğrenci tüm kulüplerden başarıyla çıkarıldı!")
-        } else {
-          alert(`✅ Kulüp seçimleri başarıyla güncellendi! (${savedClubCount} kulüp)`)
+          setSelecting(true)
         }
-        
-        // Modal zaten kapatıldı (setShowConfirmModal(false) yukarıda)
-        // selectedStudent kalmalı, sadece selectedClubs fetchStudentClubs tarafından güncellenecek
-        // Artık sayfa normal görünümüne dönecek çünkü selectedStudent null değil
       } else {
         const errorData = await response.json()
         if (errorData.error && errorData.fullClubs) {
@@ -335,7 +379,9 @@ export default function ParentPage() {
                   <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Kulüp Seçimi</h1>
                   {selectedStudent && (
                     <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">
-                      {selectedStudent.firstName} {selectedStudent.lastName} için kulüp tercihlerinizi yapın
+                      {selecting
+                        ? `${selectedStudent.firstName} ${selectedStudent.lastName} için kulüp tercihlerinizi yapın`
+                        : `${selectedStudent.firstName} ${selectedStudent.lastName} için kulüp seçimi tamamlandı`}
                     </p>
                   )}
                 </div>
@@ -352,14 +398,78 @@ export default function ParentPage() {
               </div>
             </div>
 
-        {/* Kulüp Seçimi */}
+        {!selectionReady || !selectedStudent ? (
+          <Card className="shadow-lg max-w-4xl mx-auto">
+            <CardContent className="p-6 sm:p-8 text-center">
+              <div className="inline-block h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4" />
+              <p className="text-sm sm:text-base text-gray-500">Öğrenci bilgileri yükleniyor...</p>
+            </CardContent>
+          </Card>
+        ) : !selecting && savedClubs.length > 0 ? (
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+            <Card className="shadow-lg order-2 lg:order-1">
+              <CardHeader>
+                <CardTitle>Kulüp seçiminiz kaydedildi</CardTitle>
+                <CardDescription>
+                  {selectedStudent.firstName} {selectedStudent.lastName} · {selectedStudent.grade}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-600">
+                  Seçimler kayda alındı. Değiştirmek için tekrar seçim yapın. Bu işlem mevcut kaydı siler.
+                </p>
+              </CardContent>
+            </Card>
+            <div className="space-y-3 order-1 lg:order-2">
+              <Card className="shadow-lg border-green-200">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">Seçilen kulüpler</CardTitle>
+                  <CardDescription>{savedClubs.length}/3</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {savedClubs.map((saved) => {
+                    const live = clubs.find((club) => club.id === saved.id)
+                    const filled = live?.selections?.length
+                    return (
+                      <div key={saved.id} className="rounded-xl border border-green-200 bg-green-50 px-3 py-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="font-semibold text-gray-900">{live?.name || saved.name}</p>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-green-600 px-2 py-1 text-[11px] font-semibold text-white">
+                            <Check className="h-3 w-3" />
+                            Kayıtlı
+                          </span>
+                        </div>
+                        {typeof filled === "number" && (
+                          <p className="mt-1 text-xs text-gray-500">
+                            {filled}/{live?.capacity ?? saved.capacity}
+                          </p>
+                        )}
+                      </div>
+                    )
+                  })}
+                </CardContent>
+              </Card>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setShowReselectConfirm(true)}
+                disabled={submitting}
+              >
+                Tekrar seçim yap
+              </Button>
+            </div>
+          </div>
+        ) : (
           <Card className="shadow-lg max-w-4xl mx-auto">
             <CardHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1">
                   <CardTitle className="text-lg sm:text-xl">Kulüp Seçimi</CardTitle>
                   <CardDescription className="text-xs sm:text-sm mt-1">
-                    Maksimum 3 kulüp seçebilirsiniz ({selectedClubs.length}/3)
+                    Maksimum 3 kulüp seçebilirsiniz ({selectedClubs.filter((id) => {
+                      const existing = clubs.find((item) => item.id === id)
+                      return existing ? clubMatchesStudentGrade(existing.gradeLevels, selectedStudent?.grade) : false
+                    }).length}/3)
                   </CardDescription>
                 </div>
                 {selectedStudent && (
@@ -373,16 +483,9 @@ export default function ParentPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6 pb-4 sm:pb-6">
-              {!selectedStudent ? (
-                <div className="p-6 sm:p-8 text-center">
-                  <div className="inline-block h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-                  <p className="text-sm sm:text-base text-gray-500">Öğrenci bilgileri yükleniyor...</p>
-                </div>
-              ) : (
-                <>
                   <div className="space-y-2 sm:space-y-3 max-h-64 sm:max-h-96 overflow-y-auto pr-1 sm:pr-2 custom-scrollbar">
-                    {clubs.length > 0 ? (
-                      clubs.map((club) => {
+                    {clubs.filter((club) => clubMatchesStudentGrade(club.gradeLevels, selectedStudent.grade)).length > 0 ? (
+                      clubs.filter((club) => clubMatchesStudentGrade(club.gradeLevels, selectedStudent.grade)).map((club) => {
                         const isSelected = selectedClubs.includes(club.id)
                         // Seçili kulüpler için +1 ekle (henüz kaydedilmemiş olsa bile)
                         // Bu sayede seçim yapıldığında kontejan otomatik olarak artar
@@ -501,22 +604,31 @@ export default function ParentPage() {
                       })
                     ) : (
                       <div className="p-6 sm:p-8 text-center text-gray-500">
-                        <p className="text-base sm:text-lg mb-1 sm:mb-2">Kulüp bulunamadı</p>
-                        <p className="text-xs sm:text-sm">Henüz hiç kulüp eklenmemiş</p>
+                        <p className="text-base sm:text-lg mb-1 sm:mb-2">Bu sınıfa açık kulüp yok</p>
+                        <p className="text-xs sm:text-sm">{selectedStudent.grade} için tanımlı kulüp bulunmuyor</p>
                       </div>
                     )}
                   </div>
 
-                  {selectedClubs.length > 0 && (
+                  {selectedClubs.some((id) => {
+                    const existing = clubs.find((item) => item.id === id)
+                    return existing ? clubMatchesStudentGrade(existing.gradeLevels, selectedStudent.grade) : false
+                  }) && (
                     <div className="p-3 sm:p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border-2 border-green-300 shadow-md">
                       <div className="flex items-center justify-between mb-2 sm:mb-3">
-                        <p className="text-xs sm:text-sm font-bold text-green-900">Seçili Kulüpler ({selectedClubs.length}/3)</p>
+                        <p className="text-xs sm:text-sm font-bold text-green-900">Seçili Kulüpler ({selectedClubs.filter((id) => {
+                          const existing = clubs.find((item) => item.id === id)
+                          return existing ? clubMatchesStudentGrade(existing.gradeLevels, selectedStudent.grade) : false
+                        }).length}/3)</p>
                         <div className="h-5 w-5 sm:h-6 sm:w-6 rounded-full bg-green-600 flex items-center justify-center">
                           <Check className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
                         </div>
                       </div>
                       <div className="space-y-1.5 sm:space-y-2">
-                        {selectedClubs.map((clubId) => {
+                        {selectedClubs.filter((clubId) => {
+                          const existing = clubs.find((item) => item.id === clubId)
+                          return existing ? clubMatchesStudentGrade(existing.gradeLevels, selectedStudent.grade) : false
+                        }).map((clubId) => {
                           const club = clubs.find(c => c.id === clubId)
                           return club ? (
                             <div 
@@ -563,12 +675,44 @@ export default function ParentPage() {
                       </span>
                     )}
                   </Button>
-                </>
-              )}
             </CardContent>
           </Card>
+        )}
           </div>
         </div>
+
+      {showReselectConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-3 sm:p-4"
+          onClick={() => !submitting && setShowReselectConfirm(false)}
+        >
+          <Card className="w-full max-w-md bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <CardHeader>
+              <CardTitle>Tekrar seçim yap</CardTitle>
+              <CardDescription>
+                Tekrar seçim yapmak mevcut seçimlerini iptal edecektir. Onaylıyor musun?
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col sm:flex-row gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                disabled={submitting}
+                onClick={() => setShowReselectConfirm(false)}
+              >
+                Vazgeç
+              </Button>
+              <Button
+                className="flex-1"
+                disabled={submitting}
+                onClick={() => void cancelSavedSelections()}
+              >
+                {submitting ? "İptal ediliyor..." : "Onayla"}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Onay Modal */}
       {showConfirmModal && (

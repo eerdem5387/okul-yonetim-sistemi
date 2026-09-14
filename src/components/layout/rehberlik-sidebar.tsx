@@ -12,8 +12,6 @@ import {
   Award,
   MessageSquare,
   School,
-  Menu,
-  X,
   LogOut,
   ClipboardList,
   FileText,
@@ -23,6 +21,8 @@ import {
 import { useState, useEffect, useMemo } from "react"
 import { UnreadBadge } from "@/components/chat/UnreadBadge"
 import { checkNavPermission, useStaffPermissions } from "@/hooks/use-staff-permissions"
+import { MobileMenuButton } from "@/components/layout/mobile-menu-button"
+import { extraGrantedNavItems } from "@/lib/permissions/nav-catalog"
 import type { LucideIcon } from "lucide-react"
 
 type NavDef = { name: string; href: string; icon: LucideIcon; module: string; action: string }
@@ -43,7 +43,7 @@ const headCounselorNavigation: NavDef[] = [
   { name: "Yaz Okulu Başvuruları", href: "/yaz-okulu-basvurular", icon: ClipboardList, module: "applications", action: "view" },
   { name: "Teklif Görüşmeleri", href: "/teklif-gorusmeleri", icon: Handshake, module: "applications", action: "view" },
   { name: "Aday Öğrenci Tespiti", href: "/aday-ogrenci-tespiti", icon: Contact, module: "aday_tespit", action: "view" },
-  { name: "Yeni Kayıt", href: "/new-registration", icon: FileText, module: "registrations", action: "create" },
+  { name: "Yeni Kayıt", href: "/new-registration", icon: FileText, module: "registrations", action: "view" },
   { name: "Kayıt Yenileme", href: "/renewal", icon: FileText, module: "registrations", action: "view" },
 ]
 
@@ -70,7 +70,13 @@ export function RehberlikSidebar() {
     const extra = headCounselorNavigation.filter((item) =>
       checkNavPermission(permState, item.module, item.action, isHeadCounselor)
     )
-    return [...base, ...extra]
+    const roleNav = [...baseNavigation, ...headCounselorNavigation]
+    const granted = extraGrantedNavItems({
+      permissionKeys: permState.permissionKeys,
+      existingHrefs: roleNav.map((item) => item.href),
+      existingModules: roleNav.map((item) => item.module),
+    }).map((item) => ({ ...item, action: "view" }))
+    return [...base, ...extra, ...granted]
   }, [permState, isHeadCounselor])
 
   const handleLogout = () => {
@@ -86,13 +92,7 @@ export function RehberlikSidebar() {
 
   return (
     <>
-      <button
-        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        className="lg:hidden fixed top-4 left-4 z-[60] p-3 rounded-xl bg-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 border border-gray-100"
-        aria-label="Menüyü Aç/Kapat"
-      >
-        {mobileMenuOpen ? <X className="h-6 w-6 text-gray-700" /> : <Menu className="h-6 w-6 text-gray-700" />}
-      </button>
+      <MobileMenuButton open={mobileMenuOpen} onToggle={() => setMobileMenuOpen(!mobileMenuOpen)} />
 
       {mobileMenuOpen && (
         <div

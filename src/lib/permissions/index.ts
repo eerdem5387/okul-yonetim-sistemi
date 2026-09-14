@@ -8,6 +8,7 @@ import {
   permissionKey,
   type PermissionAction,
 } from "./constants"
+import { implyViewKeys } from "./access"
 import { isPrimarySystemAdminStaffId } from "./system-admin"
 
 export { PERMISSION_MODULES, PERMISSION_ACTIONS, PERMISSION_ACTION_LABELS } from "./constants"
@@ -76,6 +77,11 @@ export async function hasPermission(
   const key = permissionKey(module, action)
   const map = await getStaffPermissionMap(staffId)
   if (map.has(key)) return map.get(key) === true
+  if (action === "view") {
+    for (const [existingKey, granted] of map) {
+      if (granted && existingKey.startsWith(`${module}.`)) return true
+    }
+  }
 
   if (department === "OGRETMEN") {
     const staff = await prisma.staff.findUnique({
@@ -125,6 +131,7 @@ export async function getEffectivePermissionKeys(
     ;["homework", "attendance", "messaging", "schedules", "neredeyiz", "student_comments", "students"].forEach((mod) => {
       ;["view", "create", "edit"].forEach((a) => keys.add(permissionKey(mod, a)))
     })
+    implyViewKeys(keys)
     stripNonSuperAdminKeys(keys)
     return Array.from(keys)
   }
@@ -135,6 +142,7 @@ export async function getEffectivePermissionKeys(
     if (!map.has(k)) keys.add(k)
   }
 
+  implyViewKeys(keys)
   stripNonSuperAdminKeys(keys)
   return Array.from(keys)
 }

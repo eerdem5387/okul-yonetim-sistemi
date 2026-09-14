@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { clubMatchesStudentGrade } from "@/lib/club-grade-levels"
 
 export async function GET(request: NextRequest) {
     try {
@@ -37,12 +38,24 @@ export async function POST(request: NextRequest) {
 
         // Transaction içinde tüm işlemleri atomic olarak yap
         const result = await prisma.$transaction(async (tx) => {
-            // 1. Önce öğrencinin mevcut tüm kulüp seçimlerini sil
+            const student = await tx.student.findUnique({
+                where: { id: studentId },
+                select: { grade: true },
+            })
+            if (!student) {
+                throw new Error("STUDENT_NOT_FOUND")
+            }
+
+            const visibleClubs = await tx.club.findMany({ select: { id: true, gradeLevels: true } })
+            const visibleIds = visibleClubs
+                .filter((club) => clubMatchesStudentGrade(club.gradeLevels, student.grade))
+                .map((club) => club.id)
+
+            // Yalnızca öğrencinin sınıfına açık kulüp seçimlerini değiştir; diğerlerini koru
             await tx.clubSelection.deleteMany({
-                where: { studentId }
+                where: { studentId, clubId: { in: visibleIds } },
             })
 
-            // Eğer boş array geldiyse (tüm kulüplerden çıkma), sadece silme işlemiyle bitir
             if (clubSelections.length === 0) {
                 return { success: true, message: "All club selections removed", count: 0 }
             }
@@ -68,6 +81,9 @@ export async function POST(request: NextRequest) {
 
                 if (!club) {
                     throw new Error(`Club with id ${selection.clubId} not found`)
+                }
+                if (!clubMatchesStudentGrade(club.gradeLevels, student.grade)) {
+                    throw new Error("GRADE_MISMATCH")
                 }
 
                 // GÜNCEL kontenjan kontrolü (transaction içinde fresh data ile)
@@ -111,6 +127,12 @@ export async function POST(request: NextRequest) {
         console.error("Error saving club selections:", error)
         
         // Kapasite hatası için özel handling
+        if (error instanceof Error && error.message === "GRADE_MISMATCH") {
+            return NextResponse.json({ error: "Seçilen kulüpler öğrencinin sınıfına açık değil" }, { status: 400 })
+        }
+        if (error instanceof Error && error.message === "STUDENT_NOT_FOUND") {
+            return NextResponse.json({ error: "Öğrenci bulunamadı" }, { status: 404 })
+        }
         if (error instanceof Error && error.message.startsWith("{")) {
             try {
                 const errorData = JSON.parse(error.message)

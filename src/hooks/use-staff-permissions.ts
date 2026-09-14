@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { hasAnyModulePermission } from "@/lib/permissions/access"
 import {
   fetchPermissionsMe,
   type PermissionsMeResponse,
@@ -50,6 +51,13 @@ export function checkNavPermission(
   if (state.isSuperAdmin) return true
   const key = `${module}.${action}`
   if (state.permissionsLoaded && state.permissionKeys?.includes(key)) return true
+  if (
+    state.permissionsLoaded &&
+    action === "view" &&
+    hasAnyModulePermission(state.permissionKeys, module)
+  ) {
+    return true
+  }
   if (shouldApplyPermissionFilter(state)) return false
   return roleAllowed
 }

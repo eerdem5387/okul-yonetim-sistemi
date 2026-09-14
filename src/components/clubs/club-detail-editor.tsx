@@ -1,0 +1,129 @@
+"use client"
+
+import { useState } from "react"
+import { Pencil } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { ClubGradeLevelField } from "@/components/clubs/club-grade-level-field"
+import { effectiveClubGradeLevels } from "@/lib/club-grade-levels"
+
+type ClubDraft = {
+  id: string
+  name: string
+  description: string | null
+  capacity: number
+  gradeLevels?: number[]
+}
+
+export function ClubDetailEditor({
+  club,
+  onSaved,
+}: {
+  club: ClubDraft
+  onSaved: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({
+    name: club.name,
+    description: club.description || "",
+    capacity: club.capacity,
+    gradeLevels: effectiveClubGradeLevels(club.gradeLevels),
+  })
+
+  const start = () => {
+    setForm({
+      name: club.name,
+      description: club.description || "",
+      capacity: club.capacity,
+      gradeLevels: effectiveClubGradeLevels(club.gradeLevels),
+    })
+    setOpen(true)
+  }
+
+  const save = async () => {
+    if (!form.name.trim()) {
+      alert("Kulüp adı gerekli.")
+      return
+    }
+    if (form.gradeLevels.length === 0) {
+      alert("En az bir sınıf düzeyi seçin.")
+      return
+    }
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/clubs/${club.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        alert((err as { error?: string }).error || "Kulüp güncellenemedi")
+        return
+      }
+      setOpen(false)
+      onSaved()
+    } catch {
+      alert("Kulüp güncellenemedi")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!open) {
+    return (
+      <Button variant="outline" size="sm" onClick={start}>
+        <Pencil className="h-4 w-4 mr-2" />
+        Düzenle
+      </Button>
+    )
+  }
+
+  return (
+    <div className="mt-2 w-full basis-full rounded-xl border bg-white p-4 space-y-3">
+      <p className="font-semibold text-gray-900">Kulübü düzenle</p>
+      <div>
+        <Label htmlFor="club-name">Kulüp adı</Label>
+        <Input
+          id="club-name"
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          className="mt-1"
+        />
+      </div>
+      <div>
+        <Label htmlFor="club-description">Açıklama</Label>
+        <Input
+          id="club-description"
+          value={form.description}
+          onChange={(e) => setForm({ ...form, description: e.target.value })}
+          className="mt-1"
+        />
+      </div>
+      <div>
+        <Label htmlFor="club-capacity">Kontejan</Label>
+        <Input
+          id="club-capacity"
+          type="number"
+          value={form.capacity}
+          onChange={(e) => setForm({ ...form, capacity: parseInt(e.target.value) || 0 })}
+          className="mt-1"
+        />
+      </div>
+      <ClubGradeLevelField
+        value={form.gradeLevels}
+        onChange={(gradeLevels) => setForm({ ...form, gradeLevels })}
+      />
+      <div className="flex gap-2">
+        <Button type="button" size="sm" onClick={() => void save()} disabled={saving}>
+          {saving ? "Kaydediliyor..." : "Kaydet"}
+        </Button>
+        <Button type="button" size="sm" variant="outline" onClick={() => setOpen(false)} disabled={saving}>
+          Vazgeç
+        </Button>
+      </div>
+    </div>
+  )
+}

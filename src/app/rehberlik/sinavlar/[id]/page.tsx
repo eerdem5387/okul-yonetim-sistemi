@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Sidebar } from "@/components/layout/sidebar"
+import { hasAnyModulePermission } from "@/lib/permissions/access"
+import { fetchPermissionsMe } from "@/lib/permissions/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -149,16 +151,29 @@ export default function ExamDetailPage() {
   useEffect(() => {
     const role = localStorage.getItem("auth_role")
     const token = localStorage.getItem("auth_token")
-    if (!token || !canAccessExamPages(role)) {
-      router.push(token ? "/" : "/login")
+    if (!token) {
+      router.push("/login")
       return
     }
+    const load = () => {
     Promise.all([
       fetchExam(),
       fetch("/api/exam-scan-templates", { headers: getAuthHeaders() }).then((r) => r.json()),
     ]).then(([, tplData]) => {
       setTemplates(tplData.templates ?? [])
       setLoading(false)
+    })
+    }
+    if (canAccessExamPages(role)) {
+      load()
+      return
+    }
+    fetchPermissionsMe({ redirectOn401: false }).then((me) => {
+      if (me && hasAnyModulePermission(me.permissions, "exams")) {
+        load()
+        return
+      }
+      router.push("/")
     })
   }, [fetchExam, router])
 

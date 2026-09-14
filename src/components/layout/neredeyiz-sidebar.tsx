@@ -10,12 +10,11 @@ import {
   AlertTriangle,
   BarChart3,
   ArrowLeft,
-  Menu,
-  X,
   Calendar,
   Target,
 } from "lucide-react"
 import { useState, useEffect } from "react"
+import { MobileMenuButton } from "@/components/layout/mobile-menu-button"
 
 const navigation = [
   {
@@ -59,18 +58,7 @@ export function NeredeyizSidebar() {
 
   return (
     <>
-      {/* Mobile Menu Button */}
-      <button
-        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        className="lg:hidden fixed top-4 left-4 z-[60] p-3 rounded-xl bg-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 border border-gray-100"
-        aria-label="Menüyü Aç/Kapat"
-      >
-        {mobileMenuOpen ? (
-          <X className="h-6 w-6 text-gray-700" />
-        ) : (
-          <Menu className="h-6 w-6 text-gray-700" />
-        )}
-      </button>
+      <MobileMenuButton open={mobileMenuOpen} onToggle={() => setMobileMenuOpen(!mobileMenuOpen)} />
 
       {/* Mobile Overlay */}
       {mobileMenuOpen && (

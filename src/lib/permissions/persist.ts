@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client"
+import { implyViewKeys } from "./access"
 import { ADMIN_ONLY_PERMISSION_MODULE_ID } from "./constants"
 
 export type PermissionEntryInput = {
@@ -11,7 +12,7 @@ export function normalizeGrantedEntries(
   entries: PermissionEntryInput[]
 ): Array<{ module: string; action: string; granted: true }> {
   if (!Array.isArray(entries)) return []
-  return entries
+  const granted = entries
     .filter(
       (e) =>
         e?.granted === true &&
@@ -24,6 +25,17 @@ export function normalizeGrantedEntries(
       action: String(e.action),
       granted: true as const,
     }))
+
+  const keys = new Set(granted.map((e) => `${e.module}.${e.action}`))
+  implyViewKeys(keys)
+  return [...keys].map((key) => {
+    const dot = key.indexOf(".")
+    return {
+      module: key.slice(0, dot),
+      action: key.slice(dot + 1),
+      granted: true as const,
+    }
+  })
 }
 
 export async function replaceStaffPermissions(

@@ -27,6 +27,8 @@ export default function PublicClubSelectionPage() {
   const [student, setStudent] = useState<StudentBrief | null>(null)
   const [clubs, setClubs] = useState<Club[]>([])
   const [selected, setSelected] = useState<string[]>([])
+  const [saved, setSaved] = useState(false)
+  const [confirmReselect, setConfirmReselect] = useState(false)
   const [error, setError] = useState("")
   const [message, setMessage] = useState("")
   const [loading, setLoading] = useState(false)
@@ -48,6 +50,8 @@ export default function PublicClubSelectionPage() {
       setStudent(data.student)
       setClubs(data.clubs ?? [])
       setSelected(data.selectedClubIds ?? [])
+      setSaved((data.selectedClubIds ?? []).length > 0)
+      setConfirmReselect(false)
     } catch (e) {
       setStudent(null)
       setError(e instanceof Error ? e.message : "Öğrenci bulunamadı")
@@ -92,7 +96,8 @@ export default function PublicClubSelectionPage() {
       }
       setClubs(data.clubs ?? [])
       setSelected(data.selectedClubIds ?? [])
-      setMessage("Kulüp seçimleri kaydedildi.")
+      setSaved((data.selectedClubIds ?? []).length > 0)
+      setMessage("")
     } catch (e) {
       setError(e instanceof Error ? e.message : "Kaydedilemedi")
     } finally {
@@ -102,7 +107,7 @@ export default function PublicClubSelectionPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-8">
-      <div className="mx-auto max-w-3xl space-y-4">
+      <div className="mx-auto max-w-5xl space-y-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Kulüp seçimi</h1>
           <p className="mt-1 text-sm text-gray-600">
@@ -138,6 +143,111 @@ export default function PublicClubSelectionPage() {
               </form>
             </CardContent>
           </Card>
+        ) : saved ? (
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+            <Card className="order-2 lg:order-1">
+              <CardHeader>
+                <CardTitle>Kulüp seçiminiz kaydedildi</CardTitle>
+                <CardDescription>
+                  {student.firstName} {student.lastName} · {student.grade}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-gray-600">
+                  Seçimler kayda alındı. Değiştirmek için tekrar seçim yapın. Bu işlem mevcut kaydı siler.
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setStudent(null)
+                    setClubs([])
+                    setSelected([])
+                    setSaved(false)
+                    setTc("")
+                    setError("")
+                    setMessage("")
+                    setConfirmReselect(false)
+                  }}
+                >
+                  Başka öğrenci
+                </Button>
+              </CardContent>
+            </Card>
+            <div className="order-1 space-y-3 lg:order-2">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">Seçilen kulüpler</CardTitle>
+                  <CardDescription>{selected.length}/3</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {clubs
+                    .filter((club) => selected.includes(club.id))
+                    .map((club) => (
+                      <div key={club.id} className="rounded-xl border border-green-200 bg-green-50 px-3 py-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="font-semibold text-gray-900">{club.name}</p>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-green-600 px-2 py-1 text-[11px] font-semibold text-white">
+                            <Check className="h-3 w-3" />
+                            Kayıtlı
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-gray-500">
+                          {club.filled}/{club.capacity}
+                        </p>
+                      </div>
+                    ))}
+                </CardContent>
+              </Card>
+              {!confirmReselect ? (
+                <Button variant="outline" className="w-full" onClick={() => setConfirmReselect(true)}>
+                  Tekrar seçim yap
+                </Button>
+              ) : (
+                <Card>
+                  <CardContent className="space-y-3 pt-6">
+                    <p className="text-sm text-gray-700">
+                      Tekrar seçim yapmak mevcut seçimlerini iptal edecektir. Onaylıyor musun?
+                    </p>
+                    <div className="flex gap-2">
+                      <Button variant="outline" className="flex-1" onClick={() => setConfirmReselect(false)}>
+                        Vazgeç
+                      </Button>
+                      <Button
+                        className="flex-1"
+                        disabled={saving}
+                        onClick={() => {
+                          void (async () => {
+                            setSaving(true)
+                            setError("")
+                            try {
+                              const res = await fetch("/api/clubs/public-selection", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ tcNumber: tc, clubIds: [] }),
+                              })
+                              const data = await res.json()
+                              if (!res.ok) throw new Error(data.error || "Seçimler iptal edilemedi")
+                              setClubs(data.clubs ?? [])
+                              setSelected([])
+                              setSaved(false)
+                              setConfirmReselect(false)
+                            } catch (e) {
+                              setError(e instanceof Error ? e.message : "Seçimler iptal edilemedi")
+                            } finally {
+                              setSaving(false)
+                            }
+                          })()
+                        }}
+                      >
+                        {saving ? "İptal ediliyor..." : "Onayla"}
+                      </Button>
+                    </div>
+                    {error && <p className="text-sm text-red-600">{error}</p>}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
         ) : (
           <Card>
             <CardHeader>
@@ -150,6 +260,11 @@ export default function PublicClubSelectionPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1">
+                {clubs.length === 0 && (
+                  <p className="rounded-xl border border-dashed border-gray-200 p-4 text-sm text-gray-500">
+                    {student.grade} için açık kulüp yok.
+                  </p>
+                )}
                 {clubs.map((club) => {
                   const isSelected = selected.includes(club.id)
                   const shownFilled = club.filled + (isSelected && !club.selected ? 1 : 0)

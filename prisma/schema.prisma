@@ -73,6 +73,8 @@ model Club {
   name        String
   description String?
   capacity    Int
+  /// Boş dizi = tüm 5–12. sınıflar. Doluysa yalnızca bu düzeyler kulübü görür.
+  gradeLevels Int[]    @default([])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @default(now())
 

@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Sidebar } from "@/components/layout/sidebar"
+import { hasAnyModulePermission } from "@/lib/permissions/access"
+import { fetchPermissionsMe } from "@/lib/permissions/client"
 import { FileText, Plus, Calendar, TrendingUp, Loader2, Trash2 } from "lucide-react"
 import Link from "next/link"
 
@@ -92,13 +94,26 @@ export default function RehberlikSinavlarPage() {
     if (typeof window !== "undefined") {
       const role = localStorage.getItem("auth_role")
       const token = localStorage.getItem("auth_token")
-      if (!token || !canAccessExamPages(role)) {
-        router.push(token ? "/" : "/login")
+      if (!token) {
+        router.push("/login")
         return
       }
-      fetchExams()
-      fetchClasses()
-      fetchTemplates()
+      const load = () => {
+        fetchExams()
+        fetchClasses()
+        fetchTemplates()
+      }
+      if (canAccessExamPages(role)) {
+        load()
+        return
+      }
+      fetchPermissionsMe({ redirectOn401: false }).then((me) => {
+        if (me && hasAnyModulePermission(me.permissions, "exams")) {
+          load()
+          return
+        }
+        router.push("/")
+      })
     }
   }, [router])
 
