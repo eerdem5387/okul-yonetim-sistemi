@@ -2,10 +2,10 @@
 
 export function hasAnyModulePermission(
   keys: readonly string[] | null | undefined,
-  module: string
+  moduleId: string
 ): boolean {
-  if (!keys?.length || !module) return false
-  const prefix = `${module}.`
+  if (!keys?.length || !moduleId) return false
+  const prefix = `${moduleId}.`
   return keys.some((key) => key.startsWith(prefix))
 }
 
@@ -15,9 +15,9 @@ export function implyViewKeys(keys: Set<string>): void {
     const dot = key.indexOf(".")
     if (dot > 0) modules.add(key.slice(0, dot))
   }
-  for (const module of modules) {
-    if (module === "permissions") continue
-    keys.add(`${module}.view`)
+  for (const moduleId of modules) {
+    if (moduleId === "permissions") continue
+    keys.add(`${moduleId}.view`)
   }
 }
 
@@ -79,5 +79,7 @@ export function canAccessPathByPermission(
   keys: readonly string[] | null | undefined
 ): boolean {
   if (!pathname || !keys?.length) return false
-  return modulesForPath(pathname).some((module) => hasAnyModulePermission(keys, module))
+  return modulesForPath(pathname).some((moduleId) =>
+    hasAnyModulePermission(keys, moduleId)
+  )
 }

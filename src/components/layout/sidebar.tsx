@@ -29,7 +29,7 @@ import {
   UserSearch,
   Contact,
 } from "lucide-react"
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect } from "react"
 import { UnreadBadge } from "@/components/chat/UnreadBadge"
 import {
   checkNavPermission,
