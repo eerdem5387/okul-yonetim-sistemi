@@ -78,7 +78,10 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const clubIds = [...new Set(body.clubIds.map((id: unknown) => String(id ?? "").trim()).filter(Boolean))]
+    const rawClubIds: unknown[] = Array.isArray(body.clubIds) ? body.clubIds : []
+    const clubIds = Array.from(
+      new Set(rawClubIds.map((id) => String(id ?? "").trim()).filter((id) => id.length > 0))
+    )
     if (clubIds.length > MAX_CLUBS) {
       return NextResponse.json({ error: `En fazla ${MAX_CLUBS} kulüp seçilebilir` }, { status: 400 })
     }
