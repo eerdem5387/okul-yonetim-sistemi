@@ -7,6 +7,8 @@ import {
   ClipboardList,
   Clock,
   Loader2,
+  Maximize2,
+  Minimize2,
   School,
   Search,
   User,
@@ -79,6 +81,7 @@ export default function DersProgramiPage() {
   const [teacherLoading, setTeacherLoading] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
   const [hoursOpen, setHoursOpen] = useState(false)
+  const [fullscreen, setFullscreen] = useState(false)
   const [slotMap, setSlotMap] = useState<{
     ortaokul: Array<LessonSlot & { kind?: "LESSON" | "BREAK" }>
     lise: Array<LessonSlot & { kind?: "LESSON" | "BREAK" }>
@@ -140,6 +143,24 @@ export default function DersProgramiPage() {
       .then((data) => setTeachers(Array.isArray(data.staff) ? data.staff : []))
       .catch(() => setTeachers([]))
   }, [loadClasses, loadDayTemplates])
+
+  useEffect(() => {
+    if (!fullscreen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setFullscreen(false)
+    }
+    window.addEventListener("keydown", onKey)
+    return () => {
+      document.body.style.overflow = prev
+      window.removeEventListener("keydown", onKey)
+    }
+  }, [fullscreen])
+
+  useEffect(() => {
+    if (viewMode !== "class") setFullscreen(false)
+  }, [viewMode])
 
   const filteredClasses = useMemo(() => {
     const bandGrades = gradesForBand(band)
@@ -377,108 +398,180 @@ export default function DersProgramiPage() {
           </CardContent>
         </Card>
       ) : viewMode === "class" ? (
-        <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
-          <Card className="border-0 shadow-sm h-fit lg:sticky lg:top-4">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Sınıflar</CardTitle>
-              <CardDescription>Program düzenlemek için seçin</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="relative">
-                <Input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Sınıf ara"
-                  className="pl-9"
-                />
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <div
+          className={
+            fullscreen
+              ? "fixed inset-0 z-[60] bg-slate-100 flex flex-col"
+              : "grid gap-4 lg:grid-cols-[280px_1fr]"
+          }
+        >
+          {fullscreen && (
+            <div className="flex items-center justify-between gap-3 px-4 py-3 border-b bg-white shrink-0">
+              <div className="min-w-0">
+                <p className="font-semibold text-gray-900 truncate">
+                  Ders programı — tam ekran
+                  {selectedClass ? ` · ${selectedClass.name}` : ""}
+                </p>
+                <p className="text-xs text-gray-500">Esc ile çıkabilirsiniz</p>
               </div>
-              <select
-                className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
-                value={gradeFilter === "all" ? "all" : String(gradeFilter)}
-                onChange={(e) =>
-                  setGradeFilter(e.target.value === "all" ? "all" : parseInt(e.target.value, 10))
-                }
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setFullscreen(false)}
+                title="Tam ekrandan çık"
               >
-                <option value="all">Tüm düzeyler</option>
-                {gradeOptions.map((g) => (
-                  <option key={g} value={g}>
-                    {g}. Sınıf
-                  </option>
-                ))}
-              </select>
+                <Minimize2 className="h-4 w-4 mr-2" />
+                Küçült
+              </Button>
+            </div>
+          )}
 
-              {loading ? (
-                <div className="flex justify-center py-8 text-gray-500 gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Yükleniyor...
+          <div
+            className={
+              fullscreen
+                ? "flex-1 min-h-0 grid gap-4 lg:grid-cols-[260px_1fr] p-4 overflow-hidden"
+                : "contents"
+            }
+          >
+            <Card
+              className={`border-0 shadow-sm ${
+                fullscreen ? "h-full overflow-hidden flex flex-col" : "h-fit lg:sticky lg:top-4"
+              }`}
+            >
+              <CardHeader className="pb-3 shrink-0">
+                <CardTitle className="text-base">Sınıflar</CardTitle>
+                <CardDescription>Program düzenlemek için seçin</CardDescription>
+              </CardHeader>
+              <CardContent className={`space-y-3 ${fullscreen ? "flex-1 min-h-0 flex flex-col" : ""}`}>
+                <div className="relative shrink-0">
+                  <Input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Sınıf ara"
+                    className="pl-9"
+                  />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 </div>
-              ) : filteredClasses.length === 0 ? (
-                <p className="text-sm text-gray-500 py-6 text-center">Sınıf bulunamadı</p>
-              ) : (
-                <div className="max-h-[28rem] overflow-y-auto space-y-1 pr-1">
-                  {filteredClasses.map((c) => {
-                    const active = c.id === selectedClassId
-                    const bandLabel = gradeBandFor(c.grade) === "ortaokul" ? "Ortaokul" : "Lise"
-                    return (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => setSelectedClassId(c.id)}
-                        className={`w-full text-left rounded-lg px-3 py-2.5 border transition ${
-                          active
-                            ? "border-indigo-400 bg-indigo-50 shadow-sm"
-                            : "border-transparent hover:bg-gray-50 hover:border-gray-200"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-semibold text-gray-900">{c.name}</span>
-                          <span className="text-[10px] text-gray-500">{bandLabel}</span>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          {c._count?.schedules ?? 0} ders · {c._count?.students ?? 0} öğrenci
-                        </p>
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                <select
+                  className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm shrink-0"
+                  value={gradeFilter === "all" ? "all" : String(gradeFilter)}
+                  onChange={(e) =>
+                    setGradeFilter(e.target.value === "all" ? "all" : parseInt(e.target.value, 10))
+                  }
+                >
+                  <option value="all">Tüm düzeyler</option>
+                  {gradeOptions.map((g) => (
+                    <option key={g} value={g}>
+                      {g}. Sınıf
+                    </option>
+                  ))}
+                </select>
 
-          <Card className="border-0 shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">
-                {selectedClass ? `${selectedClass.name} programı` : "Sınıf seçin"}
-              </CardTitle>
-              <CardDescription>
-                {selectedClass
-                  ? `${selectedClass.grade}. sınıf · hücreye tıklayın veya özel saat ekleyin`
-                  : "Sol listeden bir sınıf seçerek programı düzenleyin"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {!selectedClassId ? (
-                <p className="text-sm text-gray-500 py-16 text-center">Sınıf seçilmedi</p>
-              ) : scheduleLoading ? (
-                <div className="flex justify-center py-16 text-gray-500 gap-2">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Program yükleniyor...
+                {loading ? (
+                  <div className="flex justify-center py-8 text-gray-500 gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Yükleniyor...
+                  </div>
+                ) : filteredClasses.length === 0 ? (
+                  <p className="text-sm text-gray-500 py-6 text-center">Sınıf bulunamadı</p>
+                ) : (
+                  <div
+                    className={`overflow-y-auto space-y-1 pr-1 ${
+                      fullscreen ? "flex-1 min-h-0" : "max-h-[28rem]"
+                    }`}
+                  >
+                    {filteredClasses.map((c) => {
+                      const active = c.id === selectedClassId
+                      const bandLabel = gradeBandFor(c.grade) === "ortaokul" ? "Ortaokul" : "Lise"
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => setSelectedClassId(c.id)}
+                          className={`w-full text-left rounded-lg px-3 py-2.5 border transition ${
+                            active
+                              ? "border-indigo-400 bg-indigo-50 shadow-sm"
+                              : "border-transparent hover:bg-gray-50 hover:border-gray-200"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-semibold text-gray-900">{c.name}</span>
+                            <span className="text-[10px] text-gray-500">{bandLabel}</span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {c._count?.schedules ?? 0} ders · {c._count?.students ?? 0} öğrenci
+                          </p>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card
+              className={`border-0 shadow-sm ${
+                fullscreen ? "h-full overflow-hidden flex flex-col" : ""
+              }`}
+            >
+              <CardHeader className="pb-3 shrink-0">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <CardTitle className="text-lg">
+                      {selectedClass ? `${selectedClass.name} programı` : "Sınıf seçin"}
+                    </CardTitle>
+                    <CardDescription>
+                      {selectedClass
+                        ? `${selectedClass.grade}. sınıf · hücreye tıklayın veya özel saat ekleyin`
+                        : "Sol listeden bir sınıf seçerek programı düzenleyin"}
+                    </CardDescription>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0"
+                    disabled={!selectedClassId}
+                    onClick={() => setFullscreen((v) => !v)}
+                    title={fullscreen ? "Küçült" : "Tam ekran"}
+                  >
+                    {fullscreen ? (
+                      <>
+                        <Minimize2 className="h-4 w-4 mr-2" />
+                        Küçült
+                      </>
+                    ) : (
+                      <>
+                        <Maximize2 className="h-4 w-4 mr-2" />
+                        Tam ekran
+                      </>
+                    )}
+                  </Button>
                 </div>
-              ) : (
-                <ClassScheduleGrid
-                  classId={selectedClassId}
-                  className={selectedClass?.name}
-                  schedules={schedules}
-                  slots={activeSlots}
-                  onChanged={() => {
-                    void reload()
-                    void loadClasses()
-                  }}
-                />
-              )}
-            </CardContent>
-          </Card>
+              </CardHeader>
+              <CardContent className={fullscreen ? "flex-1 min-h-0 overflow-y-auto" : ""}>
+                {!selectedClassId ? (
+                  <p className="text-sm text-gray-500 py-16 text-center">Sınıf seçilmedi</p>
+                ) : scheduleLoading ? (
+                  <div className="flex justify-center py-16 text-gray-500 gap-2">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    Program yükleniyor...
+                  </div>
+                ) : (
+                  <ClassScheduleGrid
+                    classId={selectedClassId}
+                    className={selectedClass?.name}
+                    schedules={schedules}
+                    slots={activeSlots}
+                    onChanged={() => {
+                      void reload()
+                      void loadClasses()
+                    }}
+                  />
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       ) : (
         <Card className="border-0 shadow-sm">
