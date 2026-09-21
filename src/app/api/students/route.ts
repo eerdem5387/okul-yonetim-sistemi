@@ -28,6 +28,9 @@ export async function GET(request: NextRequest) {
                 : 'all'
         const registrationMeta = searchParams.get('registrationMeta') === '1' || searchParams.get('registrationMeta') === 'true'
         const graduates = searchParams.get('graduates') === '1' || searchParams.get('graduates') === 'true'
+        const excludeClubSelected =
+            searchParams.get('excludeClubSelected') === '1' ||
+            searchParams.get('excludeClubSelected') === 'true'
 
         const skip = (page - 1) * limit
 
@@ -60,6 +63,10 @@ export async function GET(request: NextRequest) {
             whereConditions.push({ OR: orParts })
         } else {
             whereConditions.push(k12GradeWhereClause())
+        }
+
+        if (excludeClubSelected) {
+            whereConditions.push({ clubSelections: { none: {} } })
         }
 
         const regCtx = await getRenewalTargetContext(prisma)

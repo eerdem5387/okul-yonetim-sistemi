@@ -110,7 +110,9 @@ export function StudyGroupsPanel() {
       const [groupsRes, teachersRes, studentsRes, templatesRes] = await Promise.all([
         fetch("/api/study-groups", { cache: "no-store" }),
         fetch("/api/staff/pickers?type=teachers", { headers: getAuthHeaders() }),
-        fetch("/api/students?limit=3000&gradeBand=k12", { cache: "no-store" }),
+        fetch("/api/students?limit=3000&gradeBand=k12&excludeClubSelected=1", {
+          cache: "no-store",
+        }),
         fetch("/api/schedules/day-templates?band=all", { cache: "no-store" }),
       ])
       if (!groupsRes.ok) throw new Error("Gruplar alınamadı")
@@ -241,6 +243,7 @@ export function StudyGroupsPanel() {
   }
 
   const openEdit = (group: StudyGroup) => {
+    const eligibleIds = new Set(students.map((s) => s.id))
     setEditing(group)
     setForm({
       name: group.name,
@@ -251,7 +254,10 @@ export function StudyGroupsPanel() {
       endTime: group.endTime,
       room: group.room || "",
       notes: group.notes || "",
-      studentIds: group.students.map((m) => m.student.id),
+      // Kulüp seçimi olanlar listede yok; kayıtta da tutulmaz
+      studentIds: group.students
+        .map((m) => m.student.id)
+        .filter((id) => eligibleIds.has(id)),
     })
     setStudentSearch("")
     setGradeLevelFilter("all")
@@ -623,6 +629,9 @@ export function StudyGroupsPanel() {
               <div className="flex flex-col sm:flex-row sm:items-end gap-3 mb-2">
                 <div className="flex-1">
                   <Label>Öğrenciler * ({form.studentIds.length} seçili)</Label>
+                  <p className="mt-0.5 text-xs text-gray-500">
+                    Kulüp seçimi yapmış öğrenciler listede yer almaz.
+                  </p>
                   {selectedStudentLabels.length > 0 && (
                     <p className="mt-1 text-xs text-violet-700 line-clamp-2">
                       {selectedStudentLabels.join(", ")}

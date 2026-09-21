@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { assertStudentsWithoutClubSelection } from "@/lib/schedules/club-selection-guard"
 import { hasTimeConflict } from "@/lib/schedules/time-conflict"
 
 export const dynamic = "force-dynamic"
@@ -198,6 +199,11 @@ export async function PUT(
       if (found.length !== studentIds.length) {
         return NextResponse.json({ error: "Bazı öğrenciler bulunamadı" }, { status: 400 })
       }
+    }
+
+    const clubConflict = await assertStudentsWithoutClubSelection(finalStudentIds)
+    if (clubConflict) {
+      return NextResponse.json({ error: clubConflict }, { status: 400 })
     }
 
     const teacherConflict = await assertTeacherFree({
