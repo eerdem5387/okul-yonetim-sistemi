@@ -80,9 +80,11 @@ export function ClassScheduleGrid({
   const slots: GridSlot[] = slotsProp && slotsProp.length > 0 ? slotsProp : DEFAULT_LESSON_SLOTS
   const lessonSlots = slots.filter((s) => (s.kind ?? "LESSON") === "LESSON")
   const [teachers, setTeachers] = useState<ScheduleTeacher[]>([])
+  const [courses, setCourses] = useState<Array<{ id: string; name: string }>>([])
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<ScheduleRow | null>(null)
   const [form, setForm] = useState<ScheduleForm>(emptyForm)
+  const [customSubject, setCustomSubject] = useState(false)
   const [busy, setBusy] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
   const [staffId, setStaffId] = useState<string | null>(null)
@@ -100,12 +102,29 @@ export function ClassScheduleGrid({
       .catch(() => setTeachers([]))
   }, [])
 
+  const loadCourses = useCallback(() => {
+    fetch("/api/schedules/courses", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { courses: [] }))
+      .then((data) => setCourses(Array.isArray(data.courses) ? data.courses : []))
+      .catch(() => setCourses([]))
+  }, [])
+
+  useEffect(() => {
+    loadCourses()
+  }, [loadCourses])
+
+  useEffect(() => {
+    if (modalOpen) loadCourses()
+  }, [modalOpen, loadCourses])
+
   const openCell = (dayOfWeek: number, startTime: string, endTime: string) => {
     const existing = schedules.find(
       (s) => s.dayOfWeek === dayOfWeek && s.startTime === startTime
     )
     if (existing) {
       setEditing(existing)
+      const known = courses.some((c) => c.name === existing.subjectName)
+      setCustomSubject(!known && !!existing.subjectName)
       setForm({
         subjectName: existing.subjectName,
         teacherId: existing.teacher.id,
@@ -116,6 +135,7 @@ export function ClassScheduleGrid({
       })
     } else {
       setEditing(null)
+      setCustomSubject(false)
       setForm({
         subjectName: "",
         teacherId: "",
@@ -131,6 +151,7 @@ export function ClassScheduleGrid({
   const closeModal = () => {
     setModalOpen(false)
     setEditing(null)
+    setCustomSubject(false)
     setForm(emptyForm())
   }
 
@@ -389,14 +410,60 @@ export function ClassScheduleGrid({
             </div>
 
             <div>
-              <Label>Ders adı *</Label>
-              <Input
-                className="mt-1"
-                value={form.subjectName}
-                onChange={(e) => setForm({ ...form, subjectName: e.target.value })}
-                placeholder="Örn: Matematik"
-                autoFocus
-              />
+              <Label>Ders *</Label>
+              {customSubject ? (
+                <div className="mt-1 space-y-2">
+                  <Input
+                    value={form.subjectName}
+                    onChange={(e) => setForm({ ...form, subjectName: e.target.value })}
+                    placeholder="Özel ders adı yazın"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    className="text-xs text-indigo-600 hover:underline"
+                    onClick={() => {
+                      setCustomSubject(false)
+                      setForm({ ...form, subjectName: "" })
+                    }}
+                  >
+                    Listeden seç
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-1 space-y-2">
+                  <select
+                    className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
+                    value={form.subjectName}
+                    onChange={(e) => {
+                      if (e.target.value === "__custom__") {
+                        setCustomSubject(true)
+                        setForm({ ...form, subjectName: "" })
+                        return
+                      }
+                      setForm({ ...form, subjectName: e.target.value })
+                    }}
+                    autoFocus
+                  >
+                    <option value="">Ders seçiniz</option>
+                    {courses.map((c) => (
+                      <option key={c.id} value={c.name}>
+                        {c.name}
+                      </option>
+                    ))}
+                    {form.subjectName &&
+                      !courses.some((c) => c.name === form.subjectName) && (
+                        <option value={form.subjectName}>{form.subjectName}</option>
+                      )}
+                    <option value="__custom__">Diğer (yazarak ekle)…</option>
+                  </select>
+                  {courses.length === 0 && (
+                    <p className="text-xs text-amber-700">
+                      Henüz ders tanımı yok. Ders Programı → Ders tanımları ile ekleyin.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div>

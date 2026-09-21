@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import {
+  BookOpen,
   Calendar,
   ClipboardList,
   Clock,
@@ -24,6 +25,7 @@ import {
 } from "@/components/schedules/class-schedule-grid"
 import { StudyGroupsPanel } from "@/components/schedules/study-groups-panel"
 import { DayTemplateEditorDialog } from "@/components/schedules/day-template-editor-dialog"
+import { ScheduleCoursesDialog } from "@/components/schedules/schedule-courses-dialog"
 import { WeeklyScheduleCalendar } from "@/components/hr/WeeklyScheduleCalendar"
 import { getAuthHeaders } from "@/components/hr/hr-utils"
 import {
@@ -81,6 +83,7 @@ export default function DersProgramiPage() {
   const [teacherLoading, setTeacherLoading] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
   const [hoursOpen, setHoursOpen] = useState(false)
+  const [coursesOpen, setCoursesOpen] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
   const [slotMap, setSlotMap] = useState<{
     ortaokul: Array<LessonSlot & { kind?: "LESSON" | "BREAK" }>
@@ -493,6 +496,10 @@ export default function DersProgramiPage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={() => setCoursesOpen(true)}>
+                <BookOpen className="h-4 w-4 mr-2" />
+                Ders tanımları
+              </Button>
               <Button variant="outline" size="sm" onClick={() => setHoursOpen(true)}>
                 <Clock className="h-4 w-4 mr-2" />
                 Ders saatleri
@@ -608,6 +615,7 @@ export default function DersProgramiPage() {
         onOpenChange={setHoursOpen}
         onSaved={() => void loadDayTemplates()}
       />
+      <ScheduleCoursesDialog open={coursesOpen} onOpenChange={setCoursesOpen} />
     </div>
   )
 }

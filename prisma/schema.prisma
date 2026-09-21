@@ -1416,6 +1416,19 @@ model SchoolDaySlot {
   @@map("school_day_slots")
 }
 
+/// Ders programında seçilen ders adları (Matematik, Fizik vb.)
+model ScheduleCourse {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+  @@map("schedule_courses")
+}
+
 // ============================================
 // FAZ 1 - GENİŞLETME: VELİ GİRİŞ SİSTEMİ
 // ============================================
