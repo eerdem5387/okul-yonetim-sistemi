@@ -13,7 +13,14 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { getAuthHeaders } from "@/components/hr/hr-utils"
-import { DAY_NAMES, WEEKDAY_INDEXES } from "@/lib/schedules/lesson-slots"
+import {
+  DAY_NAMES,
+  DEFAULT_LESSON_SLOTS,
+  WEEKDAY_INDEXES,
+  type LessonSlot,
+} from "@/lib/schedules/lesson-slots"
+import { hasTimeConflict } from "@/lib/schedules/time-conflict"
+import { parseStudentGradeLevel } from "@/lib/student-grade-level"
 
 type Teacher = {
   id: string
@@ -43,6 +50,14 @@ type StudyGroup = {
   students: Array<{ student: Student }>
 }
 
+type BusyBlock = {
+  dayOfWeek: number
+  startTime: string
+  endTime: string
+  label: string
+  kind: "class" | "study"
+}
+
 type FormState = {
   name: string
   subjectName: string
@@ -54,6 +69,8 @@ type FormState = {
   notes: string
   studentIds: string[]
 }
+
+type GridSlot = LessonSlot & { kind?: "LESSON" | "BREAK" }
 
 const emptyForm = (): FormState => ({
   name: "",
@@ -67,6 +84,8 @@ const emptyForm = (): FormState => ({
   studentIds: [],
 })
 
+const GRADE_LEVELS = [5, 6, 7, 8, 9, 10, 11, 12]
+
 export function StudyGroupsPanel() {
   const [groups, setGroups] = useState<StudyGroup[]>([])
   const [teachers, setTeachers] = useState<Teacher[]>([])
@@ -77,17 +96,22 @@ export function StudyGroupsPanel() {
   const [editing, setEditing] = useState<StudyGroup | null>(null)
   const [form, setForm] = useState<FormState>(emptyForm)
   const [studentSearch, setStudentSearch] = useState("")
+  const [gradeLevelFilter, setGradeLevelFilter] = useState<number | "all">("all")
   const [dayFilter, setDayFilter] = useState<"all" | number>("all")
   const [error, setError] = useState("")
+  const [teacherBusy, setTeacherBusy] = useState<BusyBlock[]>([])
+  const [teacherBusyLoading, setTeacherBusyLoading] = useState(false)
+  const [slots, setSlots] = useState<GridSlot[]>(DEFAULT_LESSON_SLOTS)
 
   const load = useCallback(async () => {
     setLoading(true)
     setError("")
     try {
-      const [groupsRes, teachersRes, studentsRes] = await Promise.all([
+      const [groupsRes, teachersRes, studentsRes, templatesRes] = await Promise.all([
         fetch("/api/study-groups", { cache: "no-store" }),
         fetch("/api/staff/pickers?type=teachers", { headers: getAuthHeaders() }),
         fetch("/api/students?limit=3000&gradeBand=k12", { cache: "no-store" }),
+        fetch("/api/schedules/day-templates?band=all", { cache: "no-store" }),
       ])
       if (!groupsRes.ok) throw new Error("Gruplar alınamadı")
       const gData = await groupsRes.json()
@@ -98,6 +122,21 @@ export function StudyGroupsPanel() {
 
       const sData = studentsRes.ok ? await studentsRes.json() : { students: [] }
       setStudents(Array.isArray(sData.students) ? sData.students : Array.isArray(sData) ? sData : [])
+
+      if (templatesRes.ok) {
+        const tmpl = await templatesRes.json()
+        const templates = Array.isArray(tmpl.templates) ? tmpl.templates : []
+        const orta = templates.find((t: { band: string }) => t.band === "ortaokul")
+        const lise = templates.find((t: { band: string }) => t.band === "lise")
+        // ÖÇG grid: birleşik ders saatleri (ortaokul öncelikli, yoksa lise/varsayılan)
+        const preferred =
+          (Array.isArray(orta?.slots) && orta.slots.length > 0
+            ? orta.slots
+            : Array.isArray(lise?.slots) && lise.slots.length > 0
+              ? lise.slots
+              : DEFAULT_LESSON_SLOTS) as GridSlot[]
+        setSlots(preferred)
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Yüklenemedi")
       setGroups([])
@@ -110,6 +149,53 @@ export function StudyGroupsPanel() {
     void load()
   }, [load])
 
+  const loadTeacherBusy = useCallback(async (teacherId: string, excludeGroupId?: string) => {
+    if (!teacherId) {
+      setTeacherBusy([])
+      return
+    }
+    setTeacherBusyLoading(true)
+    try {
+      const [schedRes, groupRes] = await Promise.all([
+        fetch(`/api/schedules?teacherId=${teacherId}`, { cache: "no-store" }),
+        fetch(`/api/study-groups?teacherId=${teacherId}`, { cache: "no-store" }),
+      ])
+      const schedData = schedRes.ok ? await schedRes.json() : { schedules: [] }
+      const groupData = groupRes.ok ? await groupRes.json() : { groups: [] }
+
+      const blocks: BusyBlock[] = []
+      for (const s of Array.isArray(schedData.schedules) ? schedData.schedules : []) {
+        blocks.push({
+          dayOfWeek: s.dayOfWeek,
+          startTime: s.startTime,
+          endTime: s.endTime,
+          label: `${s.subjectName}${s.class?.name ? ` · ${s.class.name}` : ""}`,
+          kind: "class",
+        })
+      }
+      for (const g of Array.isArray(groupData.groups) ? groupData.groups : []) {
+        if (excludeGroupId && g.id === excludeGroupId) continue
+        blocks.push({
+          dayOfWeek: g.dayOfWeek,
+          startTime: g.startTime,
+          endTime: g.endTime,
+          label: `ÖÇG: ${g.name}`,
+          kind: "study",
+        })
+      }
+      setTeacherBusy(blocks)
+    } catch {
+      setTeacherBusy([])
+    } finally {
+      setTeacherBusyLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!modalOpen) return
+    void loadTeacherBusy(form.teacherId, editing?.id)
+  }, [modalOpen, form.teacherId, editing?.id, loadTeacherBusy])
+
   const filteredGroups = useMemo(() => {
     if (dayFilter === "all") return groups
     return groups.filter((g) => g.dayOfWeek === dayFilter)
@@ -117,9 +203,13 @@ export function StudyGroupsPanel() {
 
   const filteredStudents = useMemo(() => {
     const q = studentSearch.trim().toLocaleLowerCase("tr-TR")
-    if (!q) return students.slice(0, 80)
     return students
       .filter((s) => {
+        if (gradeLevelFilter !== "all") {
+          const level = parseStudentGradeLevel(s.grade)
+          if (level !== gradeLevelFilter) return false
+        }
+        if (!q) return true
         const full = `${s.firstName} ${s.lastName}`.toLocaleLowerCase("tr-TR")
         return (
           full.includes(q) ||
@@ -127,13 +217,26 @@ export function StudyGroupsPanel() {
           s.grade.toLocaleLowerCase("tr-TR").includes(q)
         )
       })
-      .slice(0, 80)
-  }, [students, studentSearch])
+      .slice(0, 120)
+  }, [students, studentSearch, gradeLevelFilter])
+
+  const lessonSlots = useMemo(
+    () => slots.filter((s) => (s.kind ?? "LESSON") === "LESSON"),
+    [slots]
+  )
+
+  const findBusy = (day: number, start: string, end: string) =>
+    teacherBusy.find((b) => b.dayOfWeek === day && hasTimeConflict(b.startTime, b.endTime, start, end))
+
+  const isSelectedSlot = (day: number, start: string, end: string) =>
+    form.dayOfWeek === String(day) && form.startTime === start && form.endTime === end
 
   const openCreate = () => {
     setEditing(null)
     setForm(emptyForm())
     setStudentSearch("")
+    setGradeLevelFilter("all")
+    setTeacherBusy([])
     setModalOpen(true)
   }
 
@@ -151,6 +254,7 @@ export function StudyGroupsPanel() {
       studentIds: group.students.map((m) => m.student.id),
     })
     setStudentSearch("")
+    setGradeLevelFilter("all")
     setModalOpen(true)
   }
 
@@ -223,6 +327,8 @@ export function StudyGroupsPanel() {
       .filter(Boolean)
       .map((s) => `${s!.firstName} ${s!.lastName}`)
   }, [form.studentIds, students])
+
+  const selectedTeacher = teachers.find((t) => t.id === form.teacherId)
 
   return (
     <div className="space-y-4">
@@ -333,17 +439,21 @@ export function StudyGroupsPanel() {
           else setModalOpen(true)
         }}
       >
-        <DialogContent className="max-w-2xl w-[min(94vw,42rem)] max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editing ? "Grubu düzenle" : "Yeni özel çalışma grubu"}</DialogTitle>
-          </DialogHeader>
+        <DialogContent className="max-w-6xl w-[min(96vw,72rem)] max-h-[92vh] overflow-y-auto p-0">
+          <div className="sticky top-0 z-10 border-b bg-white px-6 pt-6 pb-4">
+            <DialogHeader className="pr-8 mb-0">
+              <DialogTitle className="text-xl">
+                {editing ? "Grubu düzenle" : "Yeni özel çalışma grubu"}
+              </DialogTitle>
+            </DialogHeader>
+          </div>
 
-          <div className="space-y-3 py-1">
-            <div className="grid gap-3 sm:grid-cols-2">
+          <div className="px-6 py-5 space-y-6">
+            <div className="grid gap-4 lg:grid-cols-2">
               <div>
                 <Label>Grup adı *</Label>
                 <Input
-                  className="mt-1"
+                  className="mt-1.5"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   placeholder="Örn: Matematik Destek A"
@@ -352,7 +462,7 @@ export function StudyGroupsPanel() {
               <div>
                 <Label>Konu / ders (opsiyonel)</Label>
                 <Input
-                  className="mt-1"
+                  className="mt-1.5"
                   value={form.subjectName}
                   onChange={(e) => setForm({ ...form, subjectName: e.target.value })}
                   placeholder="Örn: Matematik"
@@ -360,78 +470,187 @@ export function StudyGroupsPanel() {
               </div>
             </div>
 
-            <div>
-              <Label>Öğretmen *</Label>
-              <select
-                className="mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
-                value={form.teacherId}
-                onChange={(e) => setForm({ ...form, teacherId: e.target.value })}
-              >
-                <option value="">Öğretmen seçiniz</option>
-                {teachers.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.firstName} {t.lastName}
-                    {t.subject ? ` (${t.subject})` : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid gap-4 lg:grid-cols-[1fr_180px]">
               <div>
-                <Label>Gün</Label>
+                <Label>Öğretmen *</Label>
                 <select
-                  className="mt-1 w-full rounded-md border border-gray-200 bg-white px-2 py-2 text-sm"
-                  value={form.dayOfWeek}
-                  onChange={(e) => setForm({ ...form, dayOfWeek: e.target.value })}
+                  className="mt-1.5 w-full rounded-md border border-gray-200 bg-white px-3 py-2.5 text-sm"
+                  value={form.teacherId}
+                  onChange={(e) => {
+                    setForm({ ...form, teacherId: e.target.value })
+                  }}
                 >
-                  {WEEKDAY_INDEXES.map((d) => (
-                    <option key={d} value={d}>
-                      {DAY_NAMES[d]}
+                  <option value="">Öğretmen seçiniz</option>
+                  {teachers.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.firstName} {t.lastName}
+                      {t.subject ? ` (${t.subject})` : ""}
                     </option>
                   ))}
                 </select>
               </div>
               <div>
-                <Label>Başlangıç</Label>
+                <Label>Derslik (opsiyonel)</Label>
                 <Input
-                  type="time"
-                  className="mt-1"
-                  value={form.startTime}
-                  onChange={(e) => setForm({ ...form, startTime: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label>Bitiş</Label>
-                <Input
-                  type="time"
-                  className="mt-1"
-                  value={form.endTime}
-                  onChange={(e) => setForm({ ...form, endTime: e.target.value })}
+                  className="mt-1.5"
+                  value={form.room}
+                  onChange={(e) => setForm({ ...form, room: e.target.value })}
+                  placeholder="Örn: B203"
                 />
               </div>
             </div>
 
-            <div>
-              <Label>Derslik (opsiyonel)</Label>
-              <Input
-                className="mt-1"
-                value={form.room}
-                onChange={(e) => setForm({ ...form, room: e.target.value })}
-                placeholder="Örn: B203"
-              />
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between gap-2">
-                <Label>Öğrenciler * ({form.studentIds.length} seçili)</Label>
+            <div className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                  <p className="font-semibold text-gray-900">Öğretmen haftalık programı</p>
+                  <p className="text-sm text-gray-600">
+                    {selectedTeacher
+                      ? `${selectedTeacher.firstName} ${selectedTeacher.lastName} — boş (yeşil) hücreye tıklayarak saat seçin`
+                      : "Önce öğretmen seçin; dolu ve boş saatler burada görünür"}
+                  </p>
+                </div>
+                {form.teacherId && (
+                  <p className="text-xs font-medium text-indigo-800 bg-white/80 border border-indigo-100 rounded-lg px-3 py-1.5">
+                    Seçili: {DAY_NAMES[parseInt(form.dayOfWeek, 10) || 1]} · {form.startTime}–{form.endTime}
+                  </p>
+                )}
               </div>
-              {selectedStudentLabels.length > 0 && (
-                <p className="mt-1 text-xs text-violet-700 line-clamp-2">
-                  {selectedStudentLabels.join(", ")}
-                </p>
+
+              {!form.teacherId ? (
+                <p className="text-sm text-gray-500 py-8 text-center">Öğretmen seçildikten sonra program açılır</p>
+              ) : teacherBusyLoading ? (
+                <div className="flex justify-center py-10 text-gray-500 gap-2">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Program yükleniyor...
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-white bg-white">
+                  <table className="w-full border-collapse min-w-[640px]">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="border-b border-r border-gray-200 p-2 text-xs font-semibold text-gray-700 w-28">
+                          Saat
+                        </th>
+                        {WEEKDAY_INDEXES.map((day) => (
+                          <th
+                            key={day}
+                            className="border-b border-gray-200 p-2 text-xs font-semibold text-gray-700"
+                          >
+                            {DAY_NAMES[day]}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {lessonSlots.map((slot) => (
+                        <tr key={`${slot.id}-${slot.startTime}`}>
+                          <td className="border-b border-r border-gray-200 p-2 text-xs font-medium text-gray-700 bg-gray-50/80">
+                            <div>{slot.label}</div>
+                            <div className="text-[10px] text-gray-500 font-normal">
+                              {slot.startTime}–{slot.endTime}
+                            </div>
+                          </td>
+                          {WEEKDAY_INDEXES.map((day) => {
+                            const occupied = findBusy(day, slot.startTime, slot.endTime)
+                            const selected = isSelectedSlot(day, slot.startTime, slot.endTime)
+                            if (occupied) {
+                              return (
+                                <td
+                                  key={`${day}-${slot.id}`}
+                                  className="border-b border-gray-100 p-1.5 align-top bg-rose-50"
+                                  title={occupied.label}
+                                >
+                                  <div className="px-1 py-1">
+                                    <p className="text-[10px] font-semibold text-rose-800 leading-tight line-clamp-2">
+                                      {occupied.label}
+                                    </p>
+                                    <p className="text-[9px] text-rose-600 mt-0.5">Dolu</p>
+                                  </div>
+                                </td>
+                              )
+                            }
+                            return (
+                              <td
+                                key={`${day}-${slot.id}`}
+                                className={`border-b border-gray-100 p-1.5 cursor-pointer align-middle transition-colors ${
+                                  selected
+                                    ? "bg-violet-100 ring-2 ring-inset ring-violet-400"
+                                    : "bg-emerald-50/70 hover:bg-emerald-100"
+                                }`}
+                                onClick={() =>
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    dayOfWeek: String(day),
+                                    startTime: slot.startTime,
+                                    endTime: slot.endTime,
+                                  }))
+                                }
+                              >
+                                <div className="h-11 flex items-center justify-center">
+                                  <span
+                                    className={`text-[10px] font-medium ${
+                                      selected ? "text-violet-800" : "text-emerald-700"
+                                    }`}
+                                  >
+                                    {selected ? "Seçildi" : "Boş"}
+                                  </span>
+                                </div>
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
-              <div className="relative mt-2">
+
+              <div className="flex flex-wrap gap-3 text-[11px] text-gray-600">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-3 w-3 rounded bg-emerald-100 border border-emerald-200" /> Boş
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-3 w-3 rounded bg-rose-50 border border-rose-200" /> Dolu
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-3 w-3 rounded bg-violet-100 border border-violet-300" /> Seçili
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex flex-col sm:flex-row sm:items-end gap-3 mb-2">
+                <div className="flex-1">
+                  <Label>Öğrenciler * ({form.studentIds.length} seçili)</Label>
+                  {selectedStudentLabels.length > 0 && (
+                    <p className="mt-1 text-xs text-violet-700 line-clamp-2">
+                      {selectedStudentLabels.join(", ")}
+                    </p>
+                  )}
+                </div>
+                <div className="w-full sm:w-44">
+                  <Label className="text-xs text-gray-500">Sınıf düzeyi</Label>
+                  <select
+                    className="mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
+                    value={gradeLevelFilter === "all" ? "all" : String(gradeLevelFilter)}
+                    onChange={(e) =>
+                      setGradeLevelFilter(
+                        e.target.value === "all" ? "all" : parseInt(e.target.value, 10)
+                      )
+                    }
+                  >
+                    <option value="all">Tüm düzeyler</option>
+                    {GRADE_LEVELS.map((g) => (
+                      <option key={g} value={g}>
+                        {g}. Sınıf
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="relative">
                 <Input
                   value={studentSearch}
                   onChange={(e) => setStudentSearch(e.target.value)}
@@ -440,16 +659,16 @@ export function StudyGroupsPanel() {
                 />
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               </div>
-              <div className="mt-2 max-h-52 overflow-y-auto rounded-xl border border-gray-200 divide-y">
+              <div className="mt-3 max-h-72 overflow-y-auto rounded-xl border border-gray-200 divide-y bg-white">
                 {filteredStudents.length === 0 ? (
-                  <p className="text-sm text-gray-500 p-4 text-center">Öğrenci bulunamadı</p>
+                  <p className="text-sm text-gray-500 p-6 text-center">Öğrenci bulunamadı</p>
                 ) : (
                   filteredStudents.map((s) => {
                     const checked = form.studentIds.includes(s.id)
                     return (
                       <label
                         key={s.id}
-                        className={`flex items-start gap-3 px-3 py-2 cursor-pointer hover:bg-violet-50/60 ${
+                        className={`flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-violet-50/60 ${
                           checked ? "bg-violet-50" : ""
                         }`}
                       >
@@ -473,15 +692,20 @@ export function StudyGroupsPanel() {
                 )}
               </div>
             </div>
+          </div>
 
-            <div className="flex gap-2 pt-1">
-              <Button variant="outline" className="flex-1" onClick={() => setModalOpen(false)} disabled={busy}>
-                İptal
-              </Button>
-              <Button className="flex-1" onClick={() => void save()} disabled={busy}>
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : editing ? "Güncelle" : "Oluştur"}
-              </Button>
-            </div>
+          <div className="sticky bottom-0 border-t bg-white px-6 py-4 flex gap-3">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setModalOpen(false)}
+              disabled={busy}
+            >
+              İptal
+            </Button>
+            <Button className="flex-1" onClick={() => void save()} disabled={busy}>
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : editing ? "Güncelle" : "Oluştur"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
