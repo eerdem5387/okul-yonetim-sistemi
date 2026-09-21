@@ -299,16 +299,32 @@ export default function PublicClubSelectionPage() {
                 {clubs.map((club) => {
                   const isSelected = selected.includes(club.id)
                   const shownFilled = club.filled + (isSelected && !club.selected ? 1 : 0)
+                  const cappedFilled = Math.min(shownFilled, club.capacity)
                   const full = !isSelected && shownFilled >= club.capacity
+                  const capacityPercentage =
+                    club.capacity > 0 ? (cappedFilled / club.capacity) * 100 : 0
+                  const availableSlots = Math.max(0, club.capacity - shownFilled)
+                  const barColor = full
+                    ? "bg-red-500"
+                    : capacityPercentage >= 80
+                      ? "bg-orange-500"
+                      : capacityPercentage >= 60
+                        ? "bg-yellow-500"
+                        : "bg-green-500"
+                  const countColor = full
+                    ? "text-red-600"
+                    : availableSlots <= 2
+                      ? "text-orange-600"
+                      : "text-green-600"
                   return (
                     <div
                       key={club.id}
-                      className={`w-full rounded-xl border-2 p-3 ${
+                      className={`w-full rounded-xl border-2 p-3 sm:p-4 transition-all ${
                         isSelected
-                          ? "border-blue-500 bg-blue-50"
+                          ? "border-blue-500 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-sm"
                           : full
                             ? "border-gray-200 bg-gray-50"
-                            : "border-gray-200 bg-white"
+                            : "border-gray-200 bg-white hover:border-blue-200 hover:shadow-sm"
                       }`}
                     >
                       <button
@@ -318,24 +334,76 @@ export default function PublicClubSelectionPage() {
                         className={`w-full text-left ${full ? "cursor-default" : ""}`}
                       >
                         <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="font-semibold text-gray-900">{club.name}</p>
-                            <p className="text-xs text-gray-500">
-                              {Math.min(shownFilled, club.capacity)}/{club.capacity}
-                              {full ? " · Dolu" : ""}
-                            </p>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2 mb-1">
+                              <p
+                                className={`font-semibold text-base ${
+                                  isSelected
+                                    ? "text-blue-700"
+                                    : full
+                                      ? "text-gray-500"
+                                      : "text-gray-900"
+                                }`}
+                              >
+                                {club.name}
+                              </p>
+                              {full && (
+                                <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+                                  Dolu
+                                </span>
+                              )}
+                              {!full && availableSlots > 0 && availableSlots <= 2 && (
+                                <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold text-orange-700">
+                                  Son kontenjan
+                                </span>
+                              )}
+                            </div>
+                            {club.description && (
+                              <p
+                                className={`text-xs mb-2 line-clamp-2 ${
+                                  isSelected
+                                    ? "text-blue-600"
+                                    : full
+                                      ? "text-gray-400"
+                                      : "text-gray-600"
+                                }`}
+                              >
+                                {club.description}
+                              </p>
+                            )}
+                            <div className="mt-2 space-y-1.5">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs font-medium text-gray-600">Kontejan</span>
+                                <span className={`text-xs font-semibold ${countColor}`}>
+                                  {cappedFilled}/{club.capacity}
+                                  {!full && availableSlots > 0
+                                    ? ` · ${availableSlots} boş`
+                                    : full
+                                      ? " · Dolu"
+                                      : ""}
+                                </span>
+                              </div>
+                              <div className="h-2 w-full rounded-full bg-gray-200 overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-300 ${barColor}`}
+                                  style={{ width: `${Math.min(capacityPercentage, 100)}%` }}
+                                />
+                              </div>
+                            </div>
                           </div>
                           {isSelected && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-2 py-1 text-xs text-white">
+                            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-blue-600 px-2 py-1 text-xs text-white">
                               <Check className="h-3 w-3" /> Seçildi
                             </span>
                           )}
                         </div>
                       </button>
                       {full && (
-                        <div className="mt-2">
+                        <div className="mt-3 pt-2 border-t border-gray-200/80">
                           {club.demanded ? (
-                            <span className="text-xs font-medium text-teal-700">Talebiniz alındı</span>
+                            <span className="text-xs font-medium text-teal-700">
+                              Talebiniz alındı
+                            </span>
                           ) : (
                             <Button
                               type="button"
