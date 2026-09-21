@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { normalizeClubGradeLevels } from "@/lib/club-grade-levels"
+import { instructorSelect } from "@/lib/clubs/access"
 
 export async function GET(
     request: Request,
@@ -11,6 +12,7 @@ export async function GET(
         const club = await prisma.club.findUnique({
             where: { id: params.id },
             include: {
+                instructor: { select: instructorSelect },
                 selections: {
                     include: {
                         student: {
@@ -23,7 +25,19 @@ export async function GET(
                             }
                         }
                     }
-                }
+                },
+                membershipRequests: {
+                    where: { status: "PENDING" },
+                    include: {
+                        student: {
+                            select: { id: true, firstName: true, lastName: true, grade: true },
+                        },
+                        requestedBy: {
+                            select: { id: true, firstName: true, lastName: true },
+                        },
+                    },
+                    orderBy: { createdAt: "desc" },
+                },
             }
         })
 
@@ -45,7 +59,7 @@ export async function PUT(
     try {
         const params = await context.params
         const body = await request.json()
-        const { name, description, capacity, gradeLevels } = body
+        const { name, description, capacity, gradeLevels, instructorId } = body
         const levels = normalizeClubGradeLevels(gradeLevels)
         if (levels.length === 0) {
             return NextResponse.json({ error: "En az bir sınıf düzeyi seçin" }, { status: 400 })
@@ -58,7 +72,11 @@ export async function PUT(
                 description,
                 capacity: parseInt(capacity),
                 gradeLevels: levels,
-            }
+                ...(instructorId !== undefined
+                  ? { instructorId: instructorId ? String(instructorId) : null }
+                  : {}),
+            },
+            include: { instructor: { select: instructorSelect } },
         })
 
         return NextResponse.json(club)
@@ -74,13 +92,11 @@ export async function DELETE(
 ) {
     try {
         const params = await context.params
-        
-        // Önce kulüp seçimlerini sil (cascade delete çalışmazsa)
+
         await prisma.clubSelection.deleteMany({
             where: { clubId: params.id }
         })
-        
-        // Sonra kulübü sil
+
         await prisma.club.delete({
             where: { id: params.id }
         })

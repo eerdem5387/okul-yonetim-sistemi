@@ -21,6 +21,7 @@ import {
   AlertCircle,
   UserX,
   Archive,
+  ClipboardCheck,
 } from "lucide-react"
 
 type StatusFilter = "all" | "available" | "full" | "empty"
@@ -46,6 +47,8 @@ interface Club {
   gradeLevels?: number[]
   createdAt: string
   selections: ClubSelection[]
+  instructor?: { id: string; firstName: string; lastName: string; subject?: string | null } | null
+  _count?: { membershipRequests?: number }
 }
 
 interface Student {
@@ -268,6 +271,13 @@ export default function ClubsPage() {
             <span className="hidden sm:inline">Kulüpleri İndir</span>
             <span className="sm:hidden">İndir</span>
           </Button>
+          <Link href="/rehberlik/clubs/uye-onaylari" className="flex-1 sm:flex-initial">
+            <Button variant="outline" size="sm" className="w-full text-xs sm:text-sm">
+              <ClipboardCheck className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Üyelik Onayları</span>
+              <span className="sm:hidden">Onaylar</span>
+            </Button>
+          </Link>
           <Link href="/rehberlik/clubs/yedek" className="flex-1 sm:flex-initial">
             <Button variant="outline" size="sm" className="w-full text-xs sm:text-sm">
               <Archive className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
@@ -543,6 +553,15 @@ export default function ClubsPage() {
                           </span>
                         )}
                       </div>
+                      <p className="mt-1 text-[11px] sm:text-xs text-gray-500">
+                        Öğretmen:{" "}
+                        {club.instructor
+                          ? `${club.instructor.firstName} ${club.instructor.lastName}`
+                          : "Atanmadı"}
+                        {(club._count?.membershipRequests ?? 0) > 0
+                          ? ` · ${club._count!.membershipRequests} bekleyen talep`
+                          : ""}
+                      </p>
                     </div>
                     <div className="flex gap-1 sm:gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                       <Button

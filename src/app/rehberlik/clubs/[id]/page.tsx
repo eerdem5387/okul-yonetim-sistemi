@@ -18,6 +18,8 @@ interface Club {
   capacity: number
   gradeLevels?: number[]
   createdAt: string
+  instructorId?: string | null
+  instructor?: { id: string; firstName: string; lastName: string; subject?: string | null } | null
   selections: {
     id: string
     student: {
@@ -242,6 +244,15 @@ export default function RehberlikClubDetailPage() {
                   <div>
                     <Label className="text-sm font-medium text-gray-700">Sınıf düzeyleri</Label>
                     <p className="text-sm text-gray-600">{formatClubGradeLevels(club.gradeLevels)}</p>
+                  </div>
+
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700">Sorumlu öğretmen</Label>
+                    <p className="text-sm text-gray-600">
+                      {club.instructor
+                        ? `${club.instructor.firstName} ${club.instructor.lastName}`
+                        : "Atanmadı"}
+                    </p>
                   </div>
 
                   <div>

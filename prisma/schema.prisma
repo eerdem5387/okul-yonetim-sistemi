@@ -47,7 +47,8 @@ model Student {
   updatedAt           DateTime @default(now())
 
   // Relations
-  clubSelections       ClubSelection[]
+  clubSelections         ClubSelection[]
+  clubMembershipRequests ClubMembershipRequest[]
   newRegistrations     NewRegistration[]
   renewals             Renewal[]
   uniformContracts     UniformContract[]
@@ -69,18 +70,23 @@ model Student {
 }
 
 model Club {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  capacity    Int
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  capacity     Int
   /// Boş dizi = tüm 5–12. sınıflar. Doluysa yalnızca bu düzeyler kulübü görür.
-  gradeLevels Int[]    @default([])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @default(now())
+  gradeLevels  Int[]    @default([])
+  /// Sorumlu öğretmen (Staff). Atanan öğretmen yalnızca bu kulübü görür.
+  instructorId String?
+  instructor   Staff?   @relation("ClubInstructor", fields: [instructorId], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now())
 
   // Relations
-  selections ClubSelection[]
+  selections         ClubSelection[]
+  membershipRequests ClubMembershipRequest[]
 
+  @@index([instructorId])
   @@map("clubs")
 }
 
@@ -96,6 +102,36 @@ model ClubSelection {
 
   @@unique([studentId, clubId])
   @@map("club_selections")
+}
+
+enum ClubMembershipChangeType {
+  ADD
+  REMOVE
+}
+
+/// Öğretmenin kulübe öğrenci ekleme/çıkarma talebi — onay sonrası uygulanır.
+model ClubMembershipRequest {
+  id            String                   @id @default(cuid())
+  clubId        String
+  studentId     String
+  changeType    ClubMembershipChangeType
+  status        ApprovalStatus           @default(PENDING)
+  requestedById String
+  reviewedById  String?
+  reviewedAt    DateTime?
+  note          String?
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+
+  club        Club    @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  student     Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  requestedBy Staff   @relation("ClubMembershipRequestedBy", fields: [requestedById], references: [id], onDelete: Cascade)
+  reviewedBy  Staff?  @relation("ClubMembershipReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([clubId, status])
+  @@index([requestedById])
+  @@map("club_membership_requests")
 }
 
 /// Bir akademik yıl için kulüp listesinin anlık yedeği (öğrenci ad/sınıf kopyası).
@@ -637,6 +673,9 @@ model Staff {
   examScanBatches       ExamScanBatch[]     @relation("ExamScanBatchOperator")
   studentComments       StudentComment[]    @relation("StaffComments")
   teacherActivityEvents ActivityEvent[]     @relation("TeacherActivityEvents")
+  instructedClubs       Club[]              @relation("ClubInstructor")
+  clubMembershipRequestsRequested ClubMembershipRequest[] @relation("ClubMembershipRequestedBy")
+  clubMembershipRequestsReviewed  ClubMembershipRequest[] @relation("ClubMembershipReviewedBy")
 
   // İç Haberleşme (Chat)
   chatParticipants ConversationParticipant[] @relation("StaffChatParticipants")

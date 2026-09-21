@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { normalizeClubGradeLevels } from "@/lib/club-grade-levels"
+import { instructorSelect } from "@/lib/clubs/access"
 
 export async function GET() {
     try {
         const clubs = await prisma.club.findMany({
             include: {
+                instructor: { select: instructorSelect },
                 selections: {
                     select: {
                         id: true,
@@ -19,7 +21,12 @@ export async function GET() {
                             }
                         }
                     }
-                }
+                },
+                _count: {
+                    select: {
+                        membershipRequests: { where: { status: "PENDING" } },
+                    },
+                },
             },
             orderBy: {
                 createdAt: "desc"
@@ -36,7 +43,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
-        const { name, description, capacity, gradeLevels } = body
+        const { name, description, capacity, gradeLevels, instructorId } = body
         const levels = normalizeClubGradeLevels(gradeLevels)
         if (levels.length === 0) {
             return NextResponse.json({ error: "En az bir sınıf düzeyi seçin" }, { status: 400 })
@@ -48,7 +55,9 @@ export async function POST(request: NextRequest) {
                 description,
                 capacity: parseInt(capacity),
                 gradeLevels: levels,
-            }
+                instructorId: instructorId ? String(instructorId) : null,
+            },
+            include: { instructor: { select: instructorSelect } },
         })
 
         return NextResponse.json(club)
@@ -61,7 +70,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
     try {
         const body = await request.json()
-        const { id, name, description, capacity, gradeLevels } = body
+        const { id, name, description, capacity, gradeLevels, instructorId } = body
         const levels = normalizeClubGradeLevels(gradeLevels)
         if (levels.length === 0) {
             return NextResponse.json({ error: "En az bir sınıf düzeyi seçin" }, { status: 400 })
@@ -74,7 +83,11 @@ export async function PUT(request: NextRequest) {
                 description,
                 capacity: parseInt(capacity),
                 gradeLevels: levels,
-            }
+                ...(instructorId !== undefined
+                  ? { instructorId: instructorId ? String(instructorId) : null }
+                  : {}),
+            },
+            include: { instructor: { select: instructorSelect } },
         })
 
         return NextResponse.json(club)

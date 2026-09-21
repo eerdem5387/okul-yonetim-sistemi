@@ -20,6 +20,7 @@ import {
   Award,
   Plus,
   CalendarOff,
+  Users,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -54,6 +55,7 @@ const ALL_NAV: NavItem[] = [
   { name: "Gezi Yönetimi", href: "/ogretmen/gezi-yonetimi", icon: MapPin, module: "gezi", action: "view" },
   { name: "Faaliyet Yönetimi", href: "/ogretmen/faaliyet-yonetimi", icon: Award, module: "activity_events", action: "view" },
   { name: "Faaliyet Ekle", href: "/faaliyet-ekle", icon: Plus, module: "activity_events", action: "create" },
+  { name: "Kulüplerim", href: "/ogretmen/kulupler", icon: Users, module: "clubs", action: "view" },
 ]
 
 export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
@@ -73,9 +75,11 @@ export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
   }, [permState.me?.subject])
 
   const navigation = useMemo(() => {
-    const visible = ALL_NAV.filter((item) =>
-      checkNavPermission(permState, item.module, item.action, true)
-    )
+    const visible = ALL_NAV.filter((item) => {
+      // Atanmış kulüpler öğretmen menüsünde her zaman görünür (yoksa boş durum gösterilir).
+      if (item.href === "/ogretmen/kulupler") return true
+      return checkNavPermission(permState, item.module, item.action, true)
+    })
     const extras = extraGrantedNavItems({
       permissionKeys: permState.permissionKeys,
       existingHrefs: ALL_NAV.map((item) => item.href),

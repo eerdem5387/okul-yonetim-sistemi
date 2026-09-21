@@ -1,12 +1,20 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Pencil } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ClubGradeLevelField } from "@/components/clubs/club-grade-level-field"
 import { effectiveClubGradeLevels } from "@/lib/club-grade-levels"
+import { staffAuthHeaders } from "@/lib/permissions/client"
+
+type TeacherOption = {
+  id: string
+  firstName: string
+  lastName: string
+  subject?: string | null
+}
 
 type ClubDraft = {
   id: string
@@ -14,6 +22,8 @@ type ClubDraft = {
   description: string | null
   capacity: number
   gradeLevels?: number[]
+  instructorId?: string | null
+  instructor?: TeacherOption | null
 }
 
 export function ClubDetailEditor({
@@ -25,12 +35,25 @@ export function ClubDetailEditor({
 }) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [teachers, setTeachers] = useState<TeacherOption[]>([])
   const [form, setForm] = useState({
     name: club.name,
     description: club.description || "",
     capacity: club.capacity,
     gradeLevels: effectiveClubGradeLevels(club.gradeLevels),
+    instructorId: club.instructorId || club.instructor?.id || "",
   })
+
+  useEffect(() => {
+    if (!open) return
+    fetch("/api/staff/pickers?type=teachers", {
+      headers: staffAuthHeaders(),
+      cache: "no-store",
+    })
+      .then((r) => (r.ok ? r.json() : { staff: [] }))
+      .then((data) => setTeachers(Array.isArray(data.staff) ? data.staff : []))
+      .catch(() => setTeachers([]))
+  }, [open])
 
   const start = () => {
     setForm({
@@ -38,6 +61,7 @@ export function ClubDetailEditor({
       description: club.description || "",
       capacity: club.capacity,
       gradeLevels: effectiveClubGradeLevels(club.gradeLevels),
+      instructorId: club.instructorId || club.instructor?.id || "",
     })
     setOpen(true)
   }
@@ -56,7 +80,10 @@ export function ClubDetailEditor({
       const res = await fetch(`/api/clubs/${club.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          instructorId: form.instructorId || null,
+        }),
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
@@ -111,6 +138,23 @@ export function ClubDetailEditor({
           onChange={(e) => setForm({ ...form, capacity: parseInt(e.target.value) || 0 })}
           className="mt-1"
         />
+      </div>
+      <div>
+        <Label htmlFor="club-instructor">Sorumlu öğretmen</Label>
+        <select
+          id="club-instructor"
+          value={form.instructorId}
+          onChange={(e) => setForm({ ...form, instructorId: e.target.value })}
+          className="mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
+        >
+          <option value="">Atanmadı</option>
+          {teachers.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.firstName} {t.lastName}
+              {t.subject ? ` (${t.subject})` : ""}
+            </option>
+          ))}
+        </select>
       </div>
       <ClubGradeLevelField
         value={form.gradeLevels}
