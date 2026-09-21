@@ -29,10 +29,12 @@ export default function ParentPage() {
   const [clubs, setClubs] = useState<Club[]>([])
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
   const [selectedClubs, setSelectedClubs] = useState<string[]>([])
+  const [demandedClubIds, setDemandedClubIds] = useState<string[]>([])
   const [savedClubs, setSavedClubs] = useState<Array<{ id: string; name: string; capacity?: number }>>([])
   const [selectionReady, setSelectionReady] = useState(false)
   const [selecting, setSelecting] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [demandBusyId, setDemandBusyId] = useState<string | null>(null)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [showReselectConfirm, setShowReselectConfirm] = useState(false)
 
@@ -163,12 +165,17 @@ export default function ParentPage() {
       const response = await fetch(`/api/clubs/students?studentId=${studentId}`)
       if (response.ok) {
         const data = await response.json()
-        const rows = Array.isArray(data) ? data : []
+        const rows: Array<{ clubId?: string; club?: { id?: string; name?: string; capacity?: number } }> =
+          Array.isArray(data) ? data : Array.isArray(data.selections) ? data.selections : []
+        const demanded = Array.isArray(data?.demandedClubIds)
+          ? (data.demandedClubIds as unknown[]).filter((id): id is string => typeof id === "string")
+          : []
+        setDemandedClubIds(demanded)
         const dbClubIds: string[] = rows
-              .map((c: { clubId?: string; club?: { id: string } }) => c.clubId || c.club?.id)
-              .filter((id): id is string => typeof id === 'string' && id !== '')
+          .map((c) => c.clubId || c.club?.id)
+          .filter((id): id is string => typeof id === "string" && id !== "")
         const snapshots = rows
-          .map((c: { clubId?: string; club?: { id?: string; name?: string; capacity?: number } }) => ({
+          .map((c) => ({
             id: c.clubId || c.club?.id || "",
             name: c.club?.name || "Kulüp",
             capacity: c.club?.capacity,
@@ -260,12 +267,39 @@ export default function ParentPage() {
         
         // Eğer bu kulüp zaten doluysa
         if (currentSelections >= club.capacity) {
-          alert(`❌ ${club.name} kulübünün kontenjanı dolmuştur!\n\nVeriler güncellendi, lütfen başka bir kulüp seçin.`)
+          alert(`❌ ${club.name} kulübünün kontenjanı dolmuştur!\n\nTalep oluştur butonunu kullanabilirsiniz.`)
           return
         }
       }
       
       setSelectedClubs([...selectedClubs, clubId])
+    }
+  }
+
+  const createDemand = async (club: Club) => {
+    if (!selectedStudent) return
+    setDemandBusyId(club.id)
+    try {
+      const res = await fetch("/api/clubs/demands", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clubId: club.id, studentId: selectedStudent.id }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert((data as { error?: string }).error || "Talep oluşturulamadı")
+        return
+      }
+      setDemandedClubIds((prev) =>
+        prev.includes(club.id) ? prev : [...prev, club.id]
+      )
+      alert(
+        (data as { alreadyExists?: boolean }).alreadyExists
+          ? `${club.name} için talebiniz zaten kayıtlı.`
+          : `${club.name} için talebiniz alındı.`
+      )
+    } finally {
+      setDemandBusyId(null)
     }
   }
 
@@ -498,7 +532,7 @@ export default function ParentPage() {
                             key={club.id}
                             className={`relative group transition-all duration-300 ${
                               isFull && !isSelected
-                                ? "opacity-70 pointer-events-none"
+                                ? "opacity-100"
                                 : "opacity-100"
                             }`}
                           >
@@ -509,7 +543,7 @@ export default function ParentPage() {
                                 isSelected
                                   ? "bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-500 shadow-md active:shadow-lg"
                                   : isFull
-                                  ? "bg-gray-50 border-gray-200 cursor-not-allowed"
+                                  ? "bg-gray-50 border-gray-200 cursor-default"
                                   : "bg-white border-gray-200 active:border-blue-300 active:bg-blue-50 active:shadow-md"
                               }`}
                             >
@@ -588,15 +622,28 @@ export default function ParentPage() {
                               </div>
                             </button>
                             
-                            {/* Dolu kulüp mesajı */}
+                            {/* Dolu kulüp — talep */}
                             {isFull && !isSelected && (
-                              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                                <div className="bg-gradient-to-r from-red-600 to-red-700 text-white px-3 sm:px-5 py-2 sm:py-3 rounded-xl shadow-2xl text-xs sm:text-sm font-bold animate-pulse border-2 border-red-400 mx-2">
-                                  <div className="flex items-center gap-1.5 sm:gap-2">
-                                    <span className="text-sm sm:text-lg">⚠️</span>
-                                    <span className="whitespace-nowrap">Bu kulübün kontenjanı doludur</span>
-                                  </div>
-                                </div>
+                              <div className="mt-2 flex flex-wrap items-center gap-2 px-1">
+                                <span className="text-[10px] sm:text-xs font-semibold text-red-600">
+                                  Kontenjan dolu
+                                </span>
+                                {demandedClubIds.includes(club.id) ? (
+                                  <span className="text-[10px] sm:text-xs font-medium text-teal-700">
+                                    Talebiniz alındı
+                                  </span>
+                                ) : (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 text-xs"
+                                    disabled={demandBusyId === club.id}
+                                    onClick={() => void createDemand(club)}
+                                  >
+                                    {demandBusyId === club.id ? "Gönderiliyor…" : "Talep oluştur"}
+                                  </Button>
+                                )}
                               </div>
                             )}
                           </div>

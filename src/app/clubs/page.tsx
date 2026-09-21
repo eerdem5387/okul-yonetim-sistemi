@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { ClubGradeLevelField } from "@/components/clubs/club-grade-level-field"
+import { ClubDemandsDialog } from "@/components/clubs/club-demands-dialog"
 import { CLUB_GRADE_LEVELS, formatClubGradeLevels } from "@/lib/club-grade-levels"
 import { 
   Plus, 
@@ -21,6 +22,7 @@ import {
   UserX,
   Archive,
   ClipboardCheck,
+  Inbox,
 } from "lucide-react"
 
 type StatusFilter = "all" | "available" | "full" | "empty"
@@ -47,7 +49,7 @@ interface Club {
   createdAt: string
   selections: ClubSelection[]
   instructor?: { id: string; firstName: string; lastName: string; subject?: string | null } | null
-  _count?: { membershipRequests?: number }
+  _count?: { membershipRequests?: number; demandRequests?: number }
 }
 
 interface Student {
@@ -70,6 +72,7 @@ export default function ClubsPage() {
   })
   const [selectedGrade, setSelectedGrade] = useState("all")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
+  const [demandsClub, setDemandsClub] = useState<{ id: string; name: string } | null>(null)
 
   const fetchClubs = useCallback(async () => {
     try {
@@ -563,6 +566,18 @@ export default function ClubsPage() {
                       <Button
                         size="sm"
                         variant="outline"
+                        className="h-7 sm:h-8 px-2 text-[10px] sm:text-xs gap-1"
+                        onClick={() => setDemandsClub({ id: club.id, name: club.name })}
+                      >
+                        <Inbox className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                        Talepler
+                        {(club._count?.demandRequests ?? 0) > 0
+                          ? ` (${club._count!.demandRequests})`
+                          : ""}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
                         onClick={() => (window.location.href = `/clubs/${club.id}`)}
                         className="h-7 w-7 sm:h-8 sm:w-8 p-0"
                       >
@@ -638,6 +653,15 @@ export default function ClubsPage() {
           </Card>
         )}
       </div>
+
+      <ClubDemandsDialog
+        clubId={demandsClub?.id ?? null}
+        clubName={demandsClub?.name}
+        open={!!demandsClub}
+        onOpenChange={(open) => {
+          if (!open) setDemandsClub(null)
+        }}
+      />
     </div>
   )
 }

@@ -18,7 +18,7 @@ async function findStudent(tc: string) {
 }
 
 async function clubPayload(studentId: string, studentGrade: string) {
-  const [clubs, mine] = await Promise.all([
+  const [clubs, mine, myDemands] = await Promise.all([
     prisma.club.findMany({
       orderBy: { name: "asc" },
       select: {
@@ -35,10 +35,15 @@ async function clubPayload(studentId: string, studentGrade: string) {
       where: { studentId },
       select: { clubId: true },
     }),
+    prisma.clubDemandRequest.findMany({
+      where: { studentId },
+      select: { clubId: true },
+    }),
   ])
 
   const visible = clubs.filter((club) => clubMatchesStudentGrade(club.gradeLevels, studentGrade))
   const visibleIds = new Set(visible.map((club) => club.id))
+  const demandedIds = new Set(myDemands.map((d) => d.clubId))
 
   return {
     clubs: visible.map((club) => ({
@@ -48,8 +53,10 @@ async function clubPayload(studentId: string, studentGrade: string) {
       capacity: club.capacity,
       filled: club._count.selections,
       selected: club.selections.length > 0,
+      demanded: demandedIds.has(club.id),
     })),
     selectedClubIds: mine.map((row) => row.clubId).filter((id) => visibleIds.has(id)),
+    demandedClubIds: [...demandedIds].filter((id) => visibleIds.has(id)),
   }
 }
 
@@ -120,6 +127,10 @@ export async function POST(request: NextRequest) {
         await tx.clubSelection.createMany({
           data: clubIds.map((clubId) => ({ studentId: student.id, clubId })),
           skipDuplicates: true,
+        })
+        // Kayıt olan talepleri temizle
+        await tx.clubDemandRequest.deleteMany({
+          where: { studentId: student.id, clubId: { in: clubIds } },
         })
       }
       return { saved: clubIds.length }

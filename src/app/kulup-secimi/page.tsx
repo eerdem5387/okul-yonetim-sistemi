@@ -14,6 +14,7 @@ type Club = {
   capacity: number
   filled: number
   selected: boolean
+  demanded?: boolean
 }
 
 type StudentBrief = {
@@ -33,6 +34,7 @@ export default function PublicClubSelectionPage() {
   const [message, setMessage] = useState("")
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [demandBusyId, setDemandBusyId] = useState<string | null>(null)
 
   const lookup = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -72,11 +74,40 @@ export default function PublicClubSelectionPage() {
     }
     const alreadyMine = club.selected
     if (!alreadyMine && club.filled >= club.capacity) {
-      setError(`${club.name} kontenjanı dolu`)
+      setError(`${club.name} kontenjanı dolu — talep oluşturabilirsiniz`)
       return
     }
     setError("")
     setSelected([...selected, club.id])
+  }
+
+  const createDemand = async (club: Club) => {
+    setDemandBusyId(club.id)
+    setError("")
+    setMessage("")
+    try {
+      const res = await fetch("/api/clubs/demands", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clubId: club.id, tcNumber: tc }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error((data as { error?: string }).error || "Talep oluşturulamadı")
+      }
+      setClubs((prev) =>
+        prev.map((c) => (c.id === club.id ? { ...c, demanded: true } : c))
+      )
+      setMessage(
+        (data as { alreadyExists?: boolean }).alreadyExists
+          ? `${club.name} için talebiniz zaten kayıtlı.`
+          : `${club.name} için talebiniz alındı.`
+      )
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Talep oluşturulamadı")
+    } finally {
+      setDemandBusyId(null)
+    }
   }
 
   const save = async () => {
@@ -270,34 +301,55 @@ export default function PublicClubSelectionPage() {
                   const shownFilled = club.filled + (isSelected && !club.selected ? 1 : 0)
                   const full = !isSelected && shownFilled >= club.capacity
                   return (
-                    <button
+                    <div
                       key={club.id}
-                      type="button"
-                      disabled={full}
-                      onClick={() => toggle(club)}
-                      className={`w-full rounded-xl border-2 p-3 text-left ${
+                      className={`w-full rounded-xl border-2 p-3 ${
                         isSelected
                           ? "border-blue-500 bg-blue-50"
                           : full
-                            ? "cursor-not-allowed border-gray-200 bg-gray-50 opacity-70"
+                            ? "border-gray-200 bg-gray-50"
                             : "border-gray-200 bg-white"
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="font-semibold text-gray-900">{club.name}</p>
-                          <p className="text-xs text-gray-500">
-                            {Math.min(shownFilled, club.capacity)}/{club.capacity}
-                            {full ? " · Dolu" : ""}
-                          </p>
+                      <button
+                        type="button"
+                        disabled={full}
+                        onClick={() => toggle(club)}
+                        className={`w-full text-left ${full ? "cursor-default" : ""}`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-semibold text-gray-900">{club.name}</p>
+                            <p className="text-xs text-gray-500">
+                              {Math.min(shownFilled, club.capacity)}/{club.capacity}
+                              {full ? " · Dolu" : ""}
+                            </p>
+                          </div>
+                          {isSelected && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-2 py-1 text-xs text-white">
+                              <Check className="h-3 w-3" /> Seçildi
+                            </span>
+                          )}
                         </div>
-                        {isSelected && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-2 py-1 text-xs text-white">
-                            <Check className="h-3 w-3" /> Seçildi
-                          </span>
-                        )}
-                      </div>
-                    </button>
+                      </button>
+                      {full && (
+                        <div className="mt-2">
+                          {club.demanded ? (
+                            <span className="text-xs font-medium text-teal-700">Talebiniz alındı</span>
+                          ) : (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={demandBusyId === club.id}
+                              onClick={() => void createDemand(club)}
+                            >
+                              {demandBusyId === club.id ? "Gönderiliyor…" : "Talep oluştur"}
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   )
                 })}
               </div>

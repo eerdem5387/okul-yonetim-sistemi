@@ -1,9 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Loader2, Plus, Trash2, Users } from "lucide-react"
+import { Loader2, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -45,11 +44,7 @@ type ClubScheduleRow = {
   endTime: string
   room: string | null
   notes: string | null
-  club: ClubRow & {
-    selections?: Array<{
-      student: { id: string; firstName: string; lastName: string; grade: string }
-    }>
-  }
+  club: ClubRow
 }
 
 export function ClubSchedulesPanel() {
@@ -60,8 +55,10 @@ export function ClubSchedulesPanel() {
   const [busy, setBusy] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedClubId, setSelectedClubId] = useState("")
-  const [dayOfWeek, setDayOfWeek] = useState("1")
-  const [slotKey, setSlotKey] = useState("")
+  const [dayOfWeek, setDayOfWeek] = useState(1)
+  const [startTime, setStartTime] = useState("")
+  const [endTime, setEndTime] = useState("")
+  const [slotLabel, setSlotLabel] = useState("")
   const [room, setRoom] = useState("")
   const [error, setError] = useState("")
 
@@ -88,30 +85,29 @@ export function ClubSchedulesPanel() {
     void load()
   }, [load])
 
-  const schedulesByClub = useMemo(() => {
-    const map = new Map<string, ClubScheduleRow[]>()
-    for (const s of schedules) {
-      const list = map.get(s.clubId) ?? []
-      list.push(s)
-      map.set(s.clubId, list)
-    }
-    return map
-  }, [schedules])
+  const cellEntries = useCallback(
+    (day: number, start: string, end: string) =>
+      schedules.filter(
+        (s) => s.dayOfWeek === day && s.startTime === start && s.endTime === end
+      ),
+    [schedules]
+  )
 
-  const openAssign = (clubId?: string) => {
-    setSelectedClubId(clubId || "")
-    setDayOfWeek("1")
-    setSlotKey(etutSlots[0] ? `${etutSlots[0].startTime}|${etutSlots[0].endTime}` : "")
+  const openCell = (day: number, slot: EtutSlot) => {
+    setDayOfWeek(day)
+    setStartTime(slot.startTime)
+    setEndTime(slot.endTime)
+    setSlotLabel(slot.label)
+    setSelectedClubId("")
     setRoom("")
     setModalOpen(true)
   }
 
   const save = async () => {
-    if (!selectedClubId || !slotKey) {
-      alert("Kulüp ve etüt saati seçin.")
+    if (!selectedClubId || !startTime || !endTime) {
+      alert("Kulüp seçin.")
       return
     }
-    const [startTime, endTime] = slotKey.split("|")
     setBusy(true)
     try {
       const res = await fetch("/api/schedules/clubs", {
@@ -119,7 +115,7 @@ export function ClubSchedulesPanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           clubId: selectedClubId,
-          dayOfWeek: parseInt(dayOfWeek, 10),
+          dayOfWeek,
           startTime,
           endTime,
           room: room.trim() || null,
@@ -138,7 +134,7 @@ export function ClubSchedulesPanel() {
   }
 
   const remove = async (id: string) => {
-    if (!confirm("Bu kulüp saatini programdan kaldırmak istiyor musunuz?")) return
+    if (!confirm("Bu kulübü etütten kaldırmak istiyor musunuz?")) return
     setBusy(true)
     try {
       const res = await fetch(`/api/schedules/clubs/${id}`, { method: "DELETE" })
@@ -153,6 +149,11 @@ export function ClubSchedulesPanel() {
     }
   }
 
+  const unassignedClubs = useMemo(() => {
+    const assigned = new Set(schedules.map((s) => s.clubId))
+    return clubs.filter((c) => !assigned.has(c.id))
+  }, [clubs, schedules])
+
   if (loading) {
     return (
       <div className="flex justify-center py-16 text-gray-500 gap-2">
@@ -164,99 +165,119 @@ export function ClubSchedulesPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">Kulüp programı</h2>
-          <p className="text-sm text-gray-600">
-            Kulüpleri yalnızca etüt saatlerine yerleştirin. Üyeler kulüp seçiminden gelir.
-          </p>
-        </div>
-        <Button size="sm" onClick={() => openAssign()} disabled={etutSlots.length === 0}>
-          <Plus className="h-4 w-4 mr-2" />
-          Etüte yerleştir
-        </Button>
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900">Haftalık etüt programı — Kulüpler</h2>
+        <p className="text-sm text-gray-600">
+          Etüt hücresine tıklayarak kulüp yerleştirin. Üyeler kulüp seçiminden gelir.
+        </p>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      {etutSlots.length === 0 && (
-        <Card className="border-amber-200 bg-amber-50/60">
-          <CardContent className="p-4 text-sm text-amber-900">
-            Henüz etüt saati yok. <strong>Ders saatleri</strong> içinde türü{" "}
-            <strong>Etüt</strong> olan satırlar ekleyin; ardından kulüpleri buraya
-            yerleştirebilirsiniz.
-          </CardContent>
-        </Card>
+      {etutSlots.length === 0 ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4 text-sm text-amber-900">
+          Henüz etüt saati yok. <strong>Ders saatleri</strong> içinde türü{" "}
+          <strong>Etüt</strong> olan satırlar ekleyin.
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+          <table className="w-full border-collapse min-w-[720px]">
+            <thead>
+              <tr className="bg-gray-50">
+                <th className="border-b border-r border-gray-200 p-2 text-xs font-semibold text-gray-700 w-28">
+                  Etüt
+                </th>
+                {WEEKDAY_INDEXES.map((day) => (
+                  <th
+                    key={day}
+                    className="border-b border-gray-200 p-2 text-xs font-semibold text-gray-700"
+                  >
+                    {DAY_NAMES[day]}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {etutSlots.map((slot) => (
+                <tr key={`${slot.startTime}-${slot.endTime}`}>
+                  <td className="border-b border-r border-gray-200 p-2 text-xs font-medium bg-emerald-50 text-emerald-900">
+                    <div>{slot.label}</div>
+                    <div className="text-[10px] opacity-70 font-normal">
+                      {slot.startTime}–{slot.endTime}
+                    </div>
+                  </td>
+                  {WEEKDAY_INDEXES.map((day) => {
+                    const entries = cellEntries(day, slot.startTime, slot.endTime)
+                    return (
+                      <td
+                        key={`${day}-${slot.startTime}`}
+                        className="border-b border-gray-100 p-1.5 align-top cursor-pointer hover:bg-emerald-50/80 transition-colors min-h-[4rem]"
+                        onClick={() => openCell(day, slot)}
+                      >
+                        {entries.length === 0 ? (
+                          <div className="flex h-14 items-center justify-center text-gray-300">
+                            <Plus className="h-4 w-4" />
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            {entries.map((row) => (
+                              <div
+                                key={row.id}
+                                className="rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-1"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <div className="flex items-start justify-between gap-1">
+                                  <div className="min-w-0">
+                                    <p className="text-xs font-semibold text-gray-900 leading-tight truncate">
+                                      {row.club.name}
+                                    </p>
+                                    <p className="text-[10px] text-gray-600">
+                                      {row.club._count.selections}/{row.club.capacity} üye
+                                    </p>
+                                    {row.room && (
+                                      <p className="text-[10px] text-gray-500">{row.room}</p>
+                                    )}
+                                  </div>
+                                  <button
+                                    type="button"
+                                    className="shrink-0 text-red-600 p-0.5"
+                                    disabled={busy}
+                                    onClick={() => void remove(row.id)}
+                                    title="Kaldır"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                            <button
+                              type="button"
+                              className="w-full text-[10px] text-emerald-700 py-0.5 hover:underline"
+                              onClick={() => openCell(day, slot)}
+                            >
+                              + Ekle
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
-      {clubs.length === 0 ? (
-        <p className="text-sm text-gray-500 py-10 text-center">Tanımlı kulüp yok.</p>
-      ) : (
-        <div className="grid gap-3 md:grid-cols-2">
-          {clubs.map((club) => {
-            const rows = schedulesByClub.get(club.id) ?? []
-            return (
-              <Card key={club.id} className="border shadow-sm">
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <CardTitle className="text-base">{club.name}</CardTitle>
-                      <CardDescription className="mt-1">
-                        <span className="inline-flex items-center gap-1">
-                          <Users className="h-3.5 w-3.5" />
-                          {club._count.selections}/{club.capacity} üye
-                        </span>
-                        {club.instructor && (
-                          <span className="ml-2">
-                            · {club.instructor.firstName} {club.instructor.lastName}
-                          </span>
-                        )}
-                      </CardDescription>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={etutSlots.length === 0}
-                      onClick={() => openAssign(club.id)}
-                    >
-                      Yerleştir
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {rows.length === 0 ? (
-                    <p className="text-xs text-gray-500">Henüz etüt saati atanmadı.</p>
-                  ) : (
-                    rows.map((row) => (
-                      <div
-                        key={row.id}
-                        className="flex items-center justify-between gap-2 rounded-md border border-emerald-100 bg-emerald-50/50 px-3 py-2 text-sm"
-                      >
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            {DAY_NAMES[row.dayOfWeek]} · {row.startTime}–{row.endTime}
-                          </p>
-                          {row.room && (
-                            <p className="text-xs text-gray-500">Derslik: {row.room}</p>
-                          )}
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 w-8 p-0 text-red-600"
-                          disabled={busy}
-                          onClick={() => void remove(row.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))
-                  )}
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
+      {unassignedClubs.length > 0 && (
+        <p className="text-xs text-gray-500">
+          Henüz programa alınmayan kulüp: {unassignedClubs.length} (
+          {unassignedClubs
+            .slice(0, 5)
+            .map((c) => c.name)
+            .join(", ")}
+          {unassignedClubs.length > 5 ? "…" : ""})
+        </p>
       )}
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
@@ -265,6 +286,10 @@ export function ClubSchedulesPanel() {
             <DialogTitle>Kulübü etüte yerleştir</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
+            <p className="text-sm text-gray-600">
+              {DAY_NAMES[dayOfWeek]} · {slotLabel || `${startTime}–${endTime}`} ({startTime}–
+              {endTime})
+            </p>
             <div>
               <Label>Kulüp *</Label>
               <select
@@ -275,41 +300,9 @@ export function ClubSchedulesPanel() {
                 <option value="">Seçiniz</option>
                 {clubs.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name} ({c._count.selections} üye)
+                    {c.name} ({c._count.selections}/{c.capacity})
                   </option>
                 ))}
-              </select>
-            </div>
-            <div>
-              <Label>Gün *</Label>
-              <select
-                className="mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
-                value={dayOfWeek}
-                onChange={(e) => setDayOfWeek(e.target.value)}
-              >
-                {WEEKDAY_INDEXES.map((d) => (
-                  <option key={d} value={d}>
-                    {DAY_NAMES[d]}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label>Etüt saati *</Label>
-              <select
-                className="mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
-                value={slotKey}
-                onChange={(e) => setSlotKey(e.target.value)}
-              >
-                {etutSlots.length === 0 ? (
-                  <option value="">Etüt tanımlı değil</option>
-                ) : (
-                  etutSlots.map((s) => (
-                    <option key={`${s.startTime}|${s.endTime}`} value={`${s.startTime}|${s.endTime}`}>
-                      {s.label} · {s.startTime}–{s.endTime}
-                    </option>
-                  ))
-                )}
               </select>
             </div>
             <div>

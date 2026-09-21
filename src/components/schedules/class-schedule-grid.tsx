@@ -78,7 +78,9 @@ export function ClassScheduleGrid({
   slots?: GridSlot[]
 }) {
   const slots: GridSlot[] = slotsProp && slotsProp.length > 0 ? slotsProp : DEFAULT_LESSON_SLOTS
-  const lessonSlots = slots.filter((s) => (s.kind ?? "LESSON") === "LESSON")
+  // Sınıf programında etüt satırları gösterilmez (kulüp / ÖÇG ayrı sekmede)
+  const displaySlots = slots.filter((s) => (s.kind ?? "LESSON") !== "ETUT")
+  const lessonSlots = displaySlots.filter((s) => (s.kind ?? "LESSON") === "LESSON")
   const [teachers, setTeachers] = useState<ScheduleTeacher[]>([])
   const [courses, setCourses] = useState<Array<{ id: string; name: string }>>([])
   const [modalOpen, setModalOpen] = useState(false)
@@ -255,18 +257,13 @@ export function ClassScheduleGrid({
             </tr>
           </thead>
           <tbody>
-            {slots.map((slot) => {
+            {displaySlots.map((slot) => {
               const isBreak = (slot.kind ?? "LESSON") === "BREAK"
-              const isEtut = slot.kind === "ETUT"
               return (
               <tr key={`${slot.id}-${slot.startTime}-${slot.label}`}>
                 <td
                   className={`border-b border-r border-gray-200 p-2 text-xs font-medium ${
-                    isBreak
-                      ? "bg-amber-50 text-amber-900"
-                      : isEtut
-                        ? "bg-emerald-50 text-emerald-900"
-                        : "text-gray-700 bg-gray-50/80"
+                    isBreak ? "bg-amber-50 text-amber-900" : "text-gray-700 bg-gray-50/80"
                   }`}
                 >
                   <div>{slot.label}</div>
@@ -282,16 +279,6 @@ export function ClassScheduleGrid({
                         className="border-b border-gray-100 p-1.5 bg-amber-50/40 text-center text-[10px] text-amber-700/80"
                       >
                         —
-                      </td>
-                    )
-                  }
-                  if (isEtut) {
-                    return (
-                      <td
-                        key={`${day}-${slot.id}-etut`}
-                        className="border-b border-gray-100 p-1.5 bg-emerald-50/40 text-center text-[10px] text-emerald-800/80"
-                      >
-                        Etüt
                       </td>
                     )
                   }

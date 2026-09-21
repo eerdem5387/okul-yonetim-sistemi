@@ -11,12 +11,21 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: "studentId is required" }, { status: 400 })
         }
 
-        const selections = await prisma.clubSelection.findMany({
+        const [selections, demands] = await Promise.all([
+          prisma.clubSelection.findMany({
             where: { studentId },
-            include: { club: true }
-        })
+            include: { club: true },
+          }),
+          prisma.clubDemandRequest.findMany({
+            where: { studentId },
+            select: { clubId: true },
+          }),
+        ])
 
-        return NextResponse.json(selections)
+        return NextResponse.json({
+          selections,
+          demandedClubIds: demands.map((d) => d.clubId),
+        })
     } catch (error) {
         console.error("Error fetching student clubs:", error)
         return NextResponse.json({ error: "Failed to fetch student clubs" }, { status: 500 })
@@ -115,6 +124,13 @@ export async function POST(request: NextRequest) {
                 data: clubSelections,
                 skipDuplicates: true
             })
+
+            const savedClubIds = clubSelections.map((s: { clubId: string }) => s.clubId)
+            if (savedClubIds.length > 0) {
+              await tx.clubDemandRequest.deleteMany({
+                where: { studentId, clubId: { in: savedClubIds } },
+              })
+            }
 
             return { success: true, count: createdSelections.count }
         }, {

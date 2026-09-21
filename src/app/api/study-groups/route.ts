@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { assertStudentsWithoutClubSelection } from "@/lib/schedules/club-selection-guard"
+import { assertEtutSlot } from "@/lib/schedules/club-schedule"
 import { DAY_LABELS, hasTimeConflict } from "@/lib/schedules/time-conflict"
 
 export const dynamic = "force-dynamic"
@@ -165,6 +166,11 @@ export async function POST(request: NextRequest) {
     }
     if (studentIds.length === 0) {
       return NextResponse.json({ error: "En az bir öğrenci seçin" }, { status: 400 })
+    }
+
+    const etutErr = await assertEtutSlot(startTime, endTime)
+    if (etutErr) {
+      return NextResponse.json({ error: etutErr }, { status: 400 })
     }
 
     const teacher = await prisma.staff.findUnique({ where: { id: teacherId } })

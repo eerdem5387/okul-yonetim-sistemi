@@ -49,6 +49,7 @@ model Student {
   // Relations
   clubSelections         ClubSelection[]
   clubMembershipRequests ClubMembershipRequest[]
+  clubDemandRequests     ClubDemandRequest[]
   studyGroupMemberships  StudyGroupStudent[]
   newRegistrations     NewRegistration[]
   renewals             Renewal[]
@@ -86,6 +87,7 @@ model Club {
   // Relations
   selections         ClubSelection[]
   membershipRequests ClubMembershipRequest[]
+  demandRequests     ClubDemandRequest[]
   schedules          ClubSchedule[]
 
   @@index([instructorId])
@@ -104,6 +106,23 @@ model ClubSelection {
 
   @@unique([studentId, clubId])
   @@map("club_selections")
+}
+
+/// Kontenjan doluyken velinin oluşturduğu bekleme / talep kaydı
+model ClubDemandRequest {
+  id        String   @id @default(cuid())
+  clubId    String
+  studentId String
+  note      String?
+  createdAt DateTime @default(now())
+
+  club    Club    @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([clubId, studentId])
+  @@index([clubId])
+  @@index([studentId])
+  @@map("club_demand_requests")
 }
 
 enum ClubMembershipChangeType {

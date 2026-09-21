@@ -130,14 +130,25 @@ export function StudyGroupsPanel() {
         const templates = Array.isArray(tmpl.templates) ? tmpl.templates : []
         const orta = templates.find((t: { band: string }) => t.band === "ortaokul")
         const lise = templates.find((t: { band: string }) => t.band === "lise")
-        // ÖÇG grid: birleşik ders saatleri (ortaokul öncelikli, yoksa lise/varsayılan)
-        const preferred =
-          (Array.isArray(orta?.slots) && orta.slots.length > 0
-            ? orta.slots
-            : Array.isArray(lise?.slots) && lise.slots.length > 0
-              ? lise.slots
-              : DEFAULT_LESSON_SLOTS) as GridSlot[]
-        setSlots(preferred)
+        const ortaSlots = (Array.isArray(orta?.slots) ? orta.slots : []) as GridSlot[]
+        const liseSlots = (Array.isArray(lise?.slots) ? lise.slots : []) as GridSlot[]
+        // ÖÇG: her iki kademenin etüt saatlerini birleştir (eşsiz start-end)
+        const merged: GridSlot[] = []
+        const seen = new Set<string>()
+        let id = 1
+        for (const s of [...ortaSlots, ...liseSlots]) {
+          if ((s.kind ?? "LESSON") !== "ETUT") continue
+          const key = `${s.startTime}|${s.endTime}`
+          if (seen.has(key)) continue
+          seen.add(key)
+          merged.push({ ...s, id: id++ })
+        }
+        // Etüt yoksa tüm ortaokul şablonunu tut (uyarı gösterilir)
+        setSlots(
+          merged.length > 0
+            ? merged
+            : ((ortaSlots.length > 0 ? ortaSlots : liseSlots.length > 0 ? liseSlots : DEFAULT_LESSON_SLOTS) as GridSlot[])
+        )
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Yüklenemedi")
@@ -158,12 +169,14 @@ export function StudyGroupsPanel() {
     }
     setTeacherBusyLoading(true)
     try {
-      const [schedRes, groupRes] = await Promise.all([
+      const [schedRes, groupRes, clubRes] = await Promise.all([
         fetch(`/api/schedules?teacherId=${teacherId}`, { cache: "no-store" }),
         fetch(`/api/study-groups?teacherId=${teacherId}`, { cache: "no-store" }),
+        fetch("/api/schedules/clubs", { cache: "no-store" }),
       ])
       const schedData = schedRes.ok ? await schedRes.json() : { schedules: [] }
       const groupData = groupRes.ok ? await groupRes.json() : { groups: [] }
+      const clubData = clubRes.ok ? await clubRes.json() : { schedules: [] }
 
       const blocks: BusyBlock[] = []
       for (const s of Array.isArray(schedData.schedules) ? schedData.schedules : []) {
@@ -182,6 +195,16 @@ export function StudyGroupsPanel() {
           startTime: g.startTime,
           endTime: g.endTime,
           label: `ÖÇG: ${g.name}`,
+          kind: "study",
+        })
+      }
+      for (const c of Array.isArray(clubData.schedules) ? clubData.schedules : []) {
+        if (c.club?.instructorId !== teacherId && c.club?.instructor?.id !== teacherId) continue
+        blocks.push({
+          dayOfWeek: c.dayOfWeek,
+          startTime: c.startTime,
+          endTime: c.endTime,
+          label: `Kulüp: ${c.club?.name ?? ""}`,
           kind: "study",
         })
       }
@@ -222,8 +245,8 @@ export function StudyGroupsPanel() {
       .slice(0, 120)
   }, [students, studentSearch, gradeLevelFilter])
 
-  const lessonSlots = useMemo(
-    () => slots.filter((s) => (s.kind ?? "LESSON") === "LESSON"),
+  const etutSlots = useMemo(
+    () => slots.filter((s) => s.kind === "ETUT"),
     [slots]
   )
 
@@ -342,7 +365,7 @@ export function StudyGroupsPanel() {
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Özel çalışma grupları</h2>
           <p className="text-sm text-gray-600">
-            Sınıf yerine seçtiğiniz öğrencilere + öğretmene haftalık saat atayın
+            Seçilen öğrencilere + öğretmene yalnızca etüt saatlerinde yer ayırın
           </p>
         </div>
         <Button size="sm" onClick={openCreate}>
@@ -509,11 +532,11 @@ export function StudyGroupsPanel() {
             <div className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4 space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div>
-                  <p className="font-semibold text-gray-900">Öğretmen haftalık programı</p>
+                  <p className="font-semibold text-gray-900">Etüt programı — öğretmen müsaitliği</p>
                   <p className="text-sm text-gray-600">
                     {selectedTeacher
-                      ? `${selectedTeacher.firstName} ${selectedTeacher.lastName} — boş (yeşil) hücreye tıklayarak saat seçin`
-                      : "Önce öğretmen seçin; dolu ve boş saatler burada görünür"}
+                      ? `${selectedTeacher.firstName} ${selectedTeacher.lastName} — boş etüt hücresine tıklayarak saat seçin`
+                      : "Önce öğretmen seçin; ÖÇG yalnızca etüt saatlerine yerleştirilir"}
                   </p>
                 </div>
                 {form.teacherId && (
@@ -530,13 +553,17 @@ export function StudyGroupsPanel() {
                   <Loader2 className="h-5 w-5 animate-spin" />
                   Program yükleniyor...
                 </div>
+              ) : etutSlots.length === 0 ? (
+                <p className="text-sm text-amber-800 py-6 text-center">
+                  Tanımlı etüt saati yok. Ders saatleri’nden Etüt ekleyin.
+                </p>
               ) : (
                 <div className="overflow-x-auto rounded-xl border border-white bg-white">
                   <table className="w-full border-collapse min-w-[640px]">
                     <thead>
                       <tr className="bg-gray-50">
                         <th className="border-b border-r border-gray-200 p-2 text-xs font-semibold text-gray-700 w-28">
-                          Saat
+                          Etüt
                         </th>
                         {WEEKDAY_INDEXES.map((day) => (
                           <th
@@ -549,11 +576,11 @@ export function StudyGroupsPanel() {
                       </tr>
                     </thead>
                     <tbody>
-                      {lessonSlots.map((slot) => (
+                      {etutSlots.map((slot) => (
                         <tr key={`${slot.id}-${slot.startTime}`}>
-                          <td className="border-b border-r border-gray-200 p-2 text-xs font-medium text-gray-700 bg-gray-50/80">
+                          <td className="border-b border-r border-gray-200 p-2 text-xs font-medium text-emerald-900 bg-emerald-50/80">
                             <div>{slot.label}</div>
-                            <div className="text-[10px] text-gray-500 font-normal">
+                            <div className="text-[10px] text-emerald-700/80 font-normal">
                               {slot.startTime}–{slot.endTime}
                             </div>
                           </td>

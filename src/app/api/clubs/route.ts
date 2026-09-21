@@ -25,6 +25,7 @@ export async function GET() {
                 _count: {
                     select: {
                         membershipRequests: { where: { status: "PENDING" } },
+                        demandRequests: true,
                     },
                 },
             },
