@@ -16,7 +16,7 @@ import {
   DAY_NAMES,
   DEFAULT_LESSON_SLOTS,
   WEEKDAY_INDEXES,
-  findSlotLabel,
+  type LessonSlot,
 } from "@/lib/schedules/lesson-slots"
 
 export type ScheduleTeacher = {
@@ -36,6 +36,8 @@ export type ScheduleRow = {
   teacher: ScheduleTeacher
 }
 
+export type GridSlot = LessonSlot & { kind?: "LESSON" | "BREAK" }
+
 type ScheduleForm = {
   subjectName: string
   teacherId: string
@@ -54,17 +56,29 @@ const emptyForm = (): ScheduleForm => ({
   room: "",
 })
 
+function slotLabel(slots: GridSlot[], startTime: string, endTime?: string): string {
+  const slot = slots.find(
+    (s) => s.startTime === startTime && (!endTime || s.endTime === endTime)
+  )
+  if (slot) return slot.label
+  return `${startTime}${endTime ? `–${endTime}` : ""}`
+}
+
 export function ClassScheduleGrid({
   classId,
   className,
   schedules,
   onChanged,
+  slots: slotsProp,
 }: {
   classId: string
   className?: string
   schedules: ScheduleRow[]
   onChanged: () => void
+  slots?: GridSlot[]
 }) {
+  const slots: GridSlot[] = slotsProp && slotsProp.length > 0 ? slotsProp : DEFAULT_LESSON_SLOTS
+  const lessonSlots = slots.filter((s) => (s.kind ?? "LESSON") === "LESSON")
   const [teachers, setTeachers] = useState<ScheduleTeacher[]>([])
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<ScheduleRow | null>(null)
@@ -186,18 +200,19 @@ export function ClassScheduleGrid({
   }
 
   const unmatched = useMemo(() => {
-    const slotStarts = new Set(DEFAULT_LESSON_SLOTS.map((s) => s.startTime))
+    const slotStarts = new Set(lessonSlots.map((s) => s.startTime))
     return schedules.filter(
       (s) => WEEKDAY_INDEXES.includes(s.dayOfWeek as (typeof WEEKDAY_INDEXES)[number]) && !slotStarts.has(s.startTime)
     )
-  }, [schedules])
+  }, [schedules, lessonSlots])
 
   return (
     <div className="space-y-4">
       {className && (
         <p className="text-sm text-gray-600">
-          <span className="font-semibold text-gray-900">{className}</span> haftalık programı — hücreye
-          tıklayarak ekleyin veya düzenleyin. Saatleri formda serbestçe değiştirebilirsiniz.
+          <span className="font-semibold text-gray-900">{className}</span> haftalık programı — ders
+          hücrelerine tıklayın. Saat şablonu:{" "}
+          <span className="font-medium">Ders saatleri</span> butonundan düzenlenir.
         </p>
       )}
 
@@ -219,15 +234,31 @@ export function ClassScheduleGrid({
             </tr>
           </thead>
           <tbody>
-            {DEFAULT_LESSON_SLOTS.map((slot) => (
-              <tr key={slot.id}>
-                <td className="border-b border-r border-gray-200 p-2 text-xs font-medium text-gray-700 bg-gray-50/80">
+            {slots.map((slot) => {
+              const isBreak = (slot.kind ?? "LESSON") === "BREAK"
+              return (
+              <tr key={`${slot.id}-${slot.startTime}-${slot.label}`}>
+                <td
+                  className={`border-b border-r border-gray-200 p-2 text-xs font-medium ${
+                    isBreak ? "bg-amber-50 text-amber-900" : "text-gray-700 bg-gray-50/80"
+                  }`}
+                >
                   <div>{slot.label}</div>
-                  <div className="text-[10px] text-gray-500 font-normal">
+                  <div className="text-[10px] opacity-70 font-normal">
                     {slot.startTime}–{slot.endTime}
                   </div>
                 </td>
                 {WEEKDAY_INDEXES.map((day) => {
+                  if (isBreak) {
+                    return (
+                      <td
+                        key={`${day}-${slot.id}-break`}
+                        className="border-b border-gray-100 p-1.5 bg-amber-50/40 text-center text-[10px] text-amber-700/80"
+                      >
+                        —
+                      </td>
+                    )
+                  }
                   const row = schedules.find(
                     (s) => s.dayOfWeek === day && s.startTime === slot.startTime
                   )
@@ -265,7 +296,7 @@ export function ClassScheduleGrid({
                   )
                 })}
               </tr>
-            ))}
+            )})}
           </tbody>
         </table>
       </div>
@@ -353,7 +384,7 @@ export function ClassScheduleGrid({
               <Calendar className="h-4 w-4 shrink-0" />
               <span>
                 {DAY_NAMES[parseInt(form.dayOfWeek, 10) || 0]} ·{" "}
-                {findSlotLabel(form.startTime, form.endTime)}
+                {slotLabel(slots, form.startTime, form.endTime)}
               </span>
             </div>
 

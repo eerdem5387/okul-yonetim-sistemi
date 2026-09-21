@@ -1380,6 +1380,42 @@ model StudyGroupStudent {
   @@map("study_group_students")
 }
 
+enum SchoolBand {
+  ORTAOKUL
+  LISE
+}
+
+enum SchoolDaySlotKind {
+  LESSON
+  BREAK
+}
+
+/// Ortaokul / lise ders ve teneffüs saat şablonu
+model SchoolDayTemplate {
+  id        String     @id @default(cuid())
+  band      SchoolBand @unique
+  updatedAt DateTime   @updatedAt
+  createdAt DateTime   @default(now())
+  slots     SchoolDaySlot[]
+
+  @@map("school_day_templates")
+}
+
+model SchoolDaySlot {
+  id         String            @id @default(cuid())
+  templateId String
+  sortOrder  Int
+  label      String // "1. Ders", "Teneffüs", "Öğle Arası"
+  kind       SchoolDaySlotKind @default(LESSON)
+  startTime  String // "08:00"
+  endTime    String // "08:40"
+  template   SchoolDayTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId])
+  @@index([templateId, sortOrder])
+  @@map("school_day_slots")
+}
+
 // ============================================
 // FAZ 1 - GENİŞLETME: VELİ GİRİŞ SİSTEMİ
 // ============================================

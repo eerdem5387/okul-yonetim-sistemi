@@ -5,6 +5,7 @@ import Link from "next/link"
 import {
   Calendar,
   ClipboardList,
+  Clock,
   Loader2,
   School,
   Search,
@@ -20,12 +21,15 @@ import {
   type ScheduleRow,
 } from "@/components/schedules/class-schedule-grid"
 import { StudyGroupsPanel } from "@/components/schedules/study-groups-panel"
+import { DayTemplateEditorDialog } from "@/components/schedules/day-template-editor-dialog"
 import { WeeklyScheduleCalendar } from "@/components/hr/WeeklyScheduleCalendar"
 import { getAuthHeaders } from "@/components/hr/hr-utils"
 import {
+  DEFAULT_LESSON_SLOTS,
   gradeBandFor,
   gradesForBand,
   type GradeBand,
+  type LessonSlot,
 } from "@/lib/schedules/lesson-slots"
 
 type ClassItem = {
@@ -74,10 +78,38 @@ export default function DersProgramiPage() {
   >([])
   const [teacherLoading, setTeacherLoading] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
+  const [hoursOpen, setHoursOpen] = useState(false)
+  const [slotMap, setSlotMap] = useState<{
+    ortaokul: Array<LessonSlot & { kind?: "LESSON" | "BREAK" }>
+    lise: Array<LessonSlot & { kind?: "LESSON" | "BREAK" }>
+  }>({ ortaokul: DEFAULT_LESSON_SLOTS, lise: DEFAULT_LESSON_SLOTS })
 
   const { schedules, loading: scheduleLoading, reload } = useClassSchedules(
     viewMode === "class" ? selectedClassId : null
   )
+
+  const loadDayTemplates = useCallback(async () => {
+    try {
+      const res = await fetch("/api/schedules/day-templates?band=all", { cache: "no-store" })
+      if (!res.ok) return
+      const data = await res.json()
+      const templates = Array.isArray(data.templates) ? data.templates : []
+      const next = {
+        ortaokul: DEFAULT_LESSON_SLOTS as Array<LessonSlot & { kind?: "LESSON" | "BREAK" }>,
+        lise: DEFAULT_LESSON_SLOTS as Array<LessonSlot & { kind?: "LESSON" | "BREAK" }>,
+      }
+      for (const t of templates) {
+        if (t.band === "ortaokul") {
+          next.ortaokul = Array.isArray(t.slots) ? t.slots : next.ortaokul
+        } else if (t.band === "lise") {
+          next.lise = Array.isArray(t.slots) ? t.slots : next.lise
+        }
+      }
+      setSlotMap(next)
+    } catch {
+      /* keep defaults */
+    }
+  }, [])
 
   const loadClasses = useCallback(async () => {
     setLoading(true)
@@ -102,11 +134,12 @@ export default function DersProgramiPage() {
 
   useEffect(() => {
     void loadClasses()
+    void loadDayTemplates()
     fetch("/api/staff/pickers?type=teachers", { headers: getAuthHeaders() })
       .then((r) => (r.ok ? r.json() : { staff: [] }))
       .then((data) => setTeachers(Array.isArray(data.staff) ? data.staff : []))
       .catch(() => setTeachers([]))
-  }, [loadClasses])
+  }, [loadClasses, loadDayTemplates])
 
   const filteredClasses = useMemo(() => {
     const bandGrades = gradesForBand(band)
@@ -133,6 +166,12 @@ export default function DersProgramiPage() {
     () => classes.find((c) => c.id === selectedClassId) ?? null,
     [classes, selectedClassId]
   )
+
+  const activeSlots = useMemo(() => {
+    const band = selectedClass ? gradeBandFor(selectedClass.grade) : null
+    if (band === "lise") return slotMap.lise
+    return slotMap.ortaokul
+  }, [selectedClass, slotMap])
 
   useEffect(() => {
     if (filteredClasses.length === 0) {
@@ -236,6 +275,10 @@ export default function DersProgramiPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={() => setHoursOpen(true)}>
+            <Clock className="h-4 w-4 mr-2" />
+            Ders saatleri
+          </Button>
           {(userRole === "admin" || userRole === "principal") && (
             <Link href="/onay-paneli">
               <Button variant="outline" size="sm">
@@ -427,6 +470,7 @@ export default function DersProgramiPage() {
                   classId={selectedClassId}
                   className={selectedClass?.name}
                   schedules={schedules}
+                  slots={activeSlots}
                   onChanged={() => {
                     void reload()
                     void loadClasses()
@@ -471,6 +515,12 @@ export default function DersProgramiPage() {
           </CardContent>
         </Card>
       )}
+
+      <DayTemplateEditorDialog
+        open={hoursOpen}
+        onOpenChange={setHoursOpen}
+        onSaved={() => void loadDayTemplates()}
+      />
     </div>
   )
 }
