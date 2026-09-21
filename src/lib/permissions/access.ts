@@ -43,6 +43,8 @@ const PATH_MODULE_PREFIXES: Array<{ prefix: string; module: string }> = [
   { prefix: "/yaz-okulu-basvurular", module: "applications" },
   { prefix: "/ik-basvurular", module: "hr_recruitment" },
   { prefix: "/sinif-yonetimi", module: "classes" },
+  { prefix: "/ders-programi", module: "schedules" },
+  { prefix: "/ders-programi", module: "classes" },
   { prefix: "/ogrenci-dashboard", module: "students" },
   { prefix: "/veli-gorusmeleri", module: "parent_meetings" },
   { prefix: "/onay-paneli", module: "approval_panel" },

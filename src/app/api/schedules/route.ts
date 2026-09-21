@@ -205,6 +205,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const studyGroupConflicts = await prisma.studyGroup.findMany({
+      where: { teacherId, dayOfWeek, isActive: true },
+    })
+    const overlappingGroups = studyGroupConflicts.filter((g) =>
+      hasTimeConflict(g.startTime, g.endTime, startTime, endTime)
+    )
+    if (overlappingGroups.length > 0) {
+      const info = overlappingGroups
+        .map((g) => `${g.name} (${g.startTime}–${g.endTime})`)
+        .join(", ")
+      return NextResponse.json(
+        {
+          error: `Bu öğretmenin aynı saatte özel çalışma grubu var: ${info}`,
+        },
+        { status: 400 }
+      )
+    }
+
     // Eğer requestedBy varsa (Rehberlik), onay talebi oluştur
     if (requestedBy) {
       const newValue = JSON.stringify({

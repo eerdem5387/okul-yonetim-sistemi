@@ -28,6 +28,7 @@ import {
   Shield,
   UserSearch,
   Contact,
+  Calendar,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { UnreadBadge } from "@/components/chat/UnreadBadge"
@@ -67,6 +68,7 @@ const allNavigation = [
   // Neredeyiz
   { name: "Neredeyiz?", href: "/neredeyiz", icon: Target, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
   { name: "Sınıf Yönetimi", href: "/sinif-yonetimi", icon: School, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
+  { name: "Ders Programı", href: "/ders-programi", icon: Calendar, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
   { name: "Onay Paneli", href: "/onay-paneli", icon: ClipboardList, roles: ["admin", "principal"] },
   { name: "Bursluluk Başvuruları", href: "/basvurular", icon: ClipboardList, roles: ["admin", "principal", "student_affairs", "head_counselor"] },
   { name: "Yaz Okulu Başvuruları", href: "/yaz-okulu-basvurular", icon: ClipboardList, roles: ["admin", "principal", "student_affairs", "head_counselor"] },
@@ -123,6 +125,7 @@ export function Sidebar() {
     "/yonetim/ayarlar": "settings.view",
     "/neredeyiz": "neredeyiz.view",
     "/sinif-yonetimi": "classes.view",
+    "/ders-programi": "classes.view",
     "/onay-paneli": "approval_panel.view",
     "/basvurular": "applications.view",
     "/yaz-okulu-basvurular": "applications.view",

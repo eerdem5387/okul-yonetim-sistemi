@@ -70,15 +70,23 @@ export default function ClassManagementPage() {
             Sınıfları yönetin, öğrenci atayın ve ders programlarını düzenleyin
           </p>
         </div>
-        {/* ✅ Sadece Yönetici, Müdür ve Öğrenci İşleri sınıf oluşturabilir */}
-        {(userRole === "admin" || userRole === "principal" || userRole === "student_affairs") && (
-          <Link href="/sinif-yonetimi/yeni">
-            <Button size="lg">
-              <Plus className="h-5 w-5 mr-2" />
-              Yeni Sınıf Oluştur
+        <div className="flex flex-wrap gap-2">
+          <Link href="/ders-programi">
+            <Button variant="outline" size="lg">
+              <Calendar className="h-5 w-5 mr-2" />
+              Ders Programı
             </Button>
           </Link>
-        )}
+          {/* ✅ Sadece Yönetici, Müdür ve Öğrenci İşleri sınıf oluşturabilir */}
+          {(userRole === "admin" || userRole === "principal" || userRole === "student_affairs") && (
+            <Link href="/sinif-yonetimi/yeni">
+              <Button size="lg">
+                <Plus className="h-5 w-5 mr-2" />
+                Yeni Sınıf Oluştur
+              </Button>
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* Stats */}

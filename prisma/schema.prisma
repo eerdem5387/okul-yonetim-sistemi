@@ -49,6 +49,7 @@ model Student {
   // Relations
   clubSelections         ClubSelection[]
   clubMembershipRequests ClubMembershipRequest[]
+  studyGroupMemberships  StudyGroupStudent[]
   newRegistrations     NewRegistration[]
   renewals             Renewal[]
   uniformContracts     UniformContract[]
@@ -666,6 +667,7 @@ model Staff {
   subjectAssignments    SubjectAssignment[]
   assignedClasses       Class[]             @relation("ClassCounselor")
   teacherSchedules      Schedule[]          @relation("TeacherSchedules")
+  studyGroups           StudyGroup[]        @relation("StudyGroupTeacher")
   homeworks             Homework[]          @relation("TeacherHomeworks")
   attendances           Attendance[]        @relation("TeacherAttendances")
   createdExams          Exam[]              @relation("ExamCreator")
@@ -1337,6 +1339,45 @@ model ScheduleApproval {
   @@index([classId])
   @@index([status, classId])
   @@map("schedule_approvals")
+}
+
+// Özel çalışma grubu — sınıf değil, seçilen öğrenciler + öğretmen
+model StudyGroup {
+  id          String   @id @default(cuid())
+  name        String // Grup adı (örn: "Matematik Destek A")
+  subjectName String? // Ders/konu (opsiyonel)
+  teacherId   String
+  dayOfWeek   Int // 1-7
+  startTime   String // "09:00"
+  endTime     String // "09:45"
+  room        String?
+  notes       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  teacher  Staff               @relation("StudyGroupTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+  students StudyGroupStudent[]
+
+  @@index([teacherId])
+  @@index([dayOfWeek])
+  @@index([teacherId, dayOfWeek])
+  @@map("study_groups")
+}
+
+model StudyGroupStudent {
+  id           String   @id @default(cuid())
+  studyGroupId String
+  studentId    String
+  createdAt    DateTime @default(now())
+
+  studyGroup StudyGroup @relation(fields: [studyGroupId], references: [id], onDelete: Cascade)
+  student    Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studyGroupId, studentId])
+  @@index([studyGroupId])
+  @@index([studentId])
+  @@map("study_group_students")
 }
 
 // ============================================
