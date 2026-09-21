@@ -58,7 +58,6 @@ interface Student {
 export default function ClubsPage() {
   const [clubs, setClubs] = useState<Club[]>([])
   const [students, setStudents] = useState<Student[]>([])
-  const [studentsLoading, setStudentsLoading] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [editingClub, setEditingClub] = useState<Club | null>(null)
   const [formData, setFormData] = useState({
@@ -69,9 +68,6 @@ export default function ClubsPage() {
   })
   const [selectedGrade, setSelectedGrade] = useState("all")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
-  const [showUnassignedModal, setShowUnassignedModal] = useState(false)
-  const [modalGradeFilter, setModalGradeFilter] = useState("all")
-  const [modalSearch, setModalSearch] = useState("")
 
   const fetchClubs = useCallback(async () => {
     try {
@@ -89,7 +85,6 @@ export default function ClubsPage() {
 
   const fetchStudents = useCallback(async () => {
     try {
-      setStudentsLoading(true)
       const response = await fetch("/api/students?limit=1000")
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -100,8 +95,6 @@ export default function ClubsPage() {
     } catch (error) {
       console.error("Error fetching students:", error)
       setStudents([])
-    } finally {
-      setStudentsLoading(false)
     }
   }, [])
 
@@ -252,28 +245,9 @@ export default function ClubsPage() {
     })
   }, [clubs, selectedGrade, statusFilter])
 
-  const modalFilteredStudents = useMemo(() => {
-    return studentsWithoutClubs.filter((student) => {
-      const matchesGrade = modalGradeFilter === "all" || student.grade === modalGradeFilter
-      const search = modalSearch.trim().toLowerCase()
-      const matchesSearch =
-        !search ||
-        student.firstName.toLowerCase().includes(search) ||
-        student.lastName.toLowerCase().includes(search) ||
-        `${student.firstName} ${student.lastName}`.toLowerCase().includes(search)
-      return matchesGrade && matchesSearch
-    })
-  }, [studentsWithoutClubs, modalGradeFilter, modalSearch])
-
   const handleResetFilters = () => {
     setSelectedGrade("all")
     setStatusFilter("all")
-  }
-
-  const handleOpenUnassignedModal = () => {
-    setModalGradeFilter("all")
-    setModalSearch("")
-    setShowUnassignedModal(true)
   }
 
   return (
@@ -372,12 +346,12 @@ export default function ClubsPage() {
                 <UserX className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
               </div>
             </div>
-            <button
-              className="text-[10px] sm:text-xs font-semibold text-rose-600 mt-2 sm:mt-3 hover:underline"
-              onClick={handleOpenUnassignedModal}
+            <Link
+              href="/rehberlik/clubs/secim-yapmayanlar"
+              className="text-[10px] sm:text-xs font-semibold text-rose-600 mt-2 sm:mt-3 hover:underline inline-block"
             >
               Listeyi görüntüle
-            </button>
+            </Link>
           </CardContent>
         </Card>
       </div>
@@ -441,10 +415,12 @@ export default function ClubsPage() {
             <div className="flex flex-col justify-end">
               <Label className="text-xs uppercase tracking-wide text-gray-500 mb-2">Aksiyonlar</Label>
               <div className="flex flex-wrap gap-2">
-                <Button variant="secondary" className="flex-1" onClick={handleOpenUnassignedModal}>
-                  <AlertCircle className="h-4 w-4" />
-                  Seçim Yapmayan Öğrenciler
-                </Button>
+                <Link href="/rehberlik/clubs/secim-yapmayanlar" className="flex-1">
+                  <Button variant="secondary" className="w-full">
+                    <AlertCircle className="h-4 w-4" />
+                    Seçim Yapmayan Öğrenciler
+                  </Button>
+                </Link>
                 <Button
                   variant="outline"
                   className="flex-1"
@@ -647,103 +623,6 @@ export default function ClubsPage() {
           </Card>
         )}
       </div>
-
-      {showUnassignedModal && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="relative w-full max-w-4xl rounded-2xl bg-white shadow-2xl">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-start gap-4">
-              <div>
-                <p className="text-sm uppercase tracking-wide text-gray-500">Kulüp Seçimi Yapmayanlar</p>
-                <h2 className="text-2xl font-bold text-gray-900 mt-1">
-                  {studentsWithoutClubs.length} öğrenci
-                </h2>
-                <p className="text-sm text-gray-500 mt-1">
-                  Sınıf bazlı filtreleme ve arama ile hızla aksiyon alın.
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="secondary" size="sm" onClick={handleResetFilters}>
-                  Global Filtreleri Sıfırla
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setShowUnassignedModal(false)}>
-                  Kapat
-                </Button>
-              </div>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div className="grid gap-4 md:grid-cols-[200px_1fr]">
-                <div>
-                  <Label className="text-xs uppercase tracking-wide text-gray-500">Sınıf Filtrele</Label>
-                  <select
-                    value={modalGradeFilter}
-                    onChange={(e) => setModalGradeFilter(e.target.value)}
-                    className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                  >
-                    <option value="all">Tüm sınıflar</option>
-                    {gradeOptions.map((grade) => (
-                      <option key={grade} value={grade}>
-                        {grade}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <Label className="text-xs uppercase tracking-wide text-gray-500">Öğrenci Ara</Label>
-                  <div className="mt-2 relative">
-                    <Input
-                      value={modalSearch}
-                      onChange={(e) => setModalSearch(e.target.value)}
-                      placeholder="Ad, soyad veya sınıf bilgisi girin"
-                      className="pl-10"
-                    />
-                    <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="max-h-[420px] overflow-y-auto rounded-2xl border border-gray-100">
-                {studentsLoading ? (
-                  <div className="p-8 text-center text-gray-500">Öğrenciler yükleniyor...</div>
-                ) : modalFilteredStudents.length > 0 ? (
-                  <div className="divide-y divide-gray-50">
-                    {modalFilteredStudents.map((student) => (
-                      <div
-                        key={student.id}
-                        className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-all"
-                      >
-                        <div>
-                          <p className="font-semibold text-gray-900">
-                            {student.firstName} {student.lastName}
-                          </p>
-                          <p className="text-sm text-gray-500">{student.grade}</p>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setShowUnassignedModal(false)
-                            setSelectedGrade(student.grade)
-                          }}
-                        >
-                          Kulüpleri Göster
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-10 text-center">
-                    <p className="text-gray-700 font-medium mb-1">Eşleşme bulunamadı</p>
-                    <p className="text-sm text-gray-500">
-                      Başka bir sınıf veya arama kriteri deneyebilirsiniz.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
         </div>
       </main>
     </div>
