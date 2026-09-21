@@ -526,27 +526,20 @@ export default function DersProgramiPage() {
                         : "Sol listeden bir sınıf seçerek programı düzenleyin"}
                     </CardDescription>
                   </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="shrink-0"
-                    disabled={!selectedClassId}
-                    onClick={() => setFullscreen((v) => !v)}
-                    title={fullscreen ? "Küçült" : "Tam ekran"}
-                  >
-                    {fullscreen ? (
-                      <>
-                        <Minimize2 className="h-4 w-4 mr-2" />
-                        Küçült
-                      </>
-                    ) : (
-                      <>
-                        <Maximize2 className="h-4 w-4 mr-2" />
-                        Tam ekran
-                      </>
-                    )}
-                  </Button>
+                  {!fullscreen && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="shrink-0"
+                      disabled={!selectedClassId}
+                      onClick={() => setFullscreen(true)}
+                      title="Tam ekran"
+                    >
+                      <Maximize2 className="h-4 w-4 mr-2" />
+                      Tam ekran
+                    </Button>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className={fullscreen ? "flex-1 min-h-0 overflow-y-auto" : ""}>
