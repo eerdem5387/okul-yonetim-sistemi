@@ -4,6 +4,8 @@ import {
   bandToEnum,
   defaultSlotsForBand,
   enumToBand,
+  kindToDb,
+  normalizeSlotKind,
   toLessonSlots,
   type DaySlotInput,
 } from "@/lib/schedules/day-templates"
@@ -15,7 +17,23 @@ async function ensureTemplate(band: "ORTAOKUL" | "LISE") {
     where: { band },
     include: { slots: { orderBy: { sortOrder: "asc" } } },
   })
-  if (existing && existing.slots.length > 0) return existing
+  if (existing && existing.slots.length > 0) {
+    // Eski "Etüt" etiketli LESSON satırlarını ETUT'a yükselt
+    const toPromote = existing.slots.filter(
+      (s) => s.kind === "LESSON" && normalizeSlotKind("LESSON", s.label) === "ETUT"
+    )
+    if (toPromote.length > 0) {
+      await prisma.schoolDaySlot.updateMany({
+        where: { id: { in: toPromote.map((s) => s.id) } },
+        data: { kind: "ETUT" },
+      })
+      return prisma.schoolDayTemplate.findUniqueOrThrow({
+        where: { id: existing.id },
+        include: { slots: { orderBy: { sortOrder: "asc" } } },
+      })
+    }
+    return existing
+  }
 
   const defaults = defaultSlotsForBand(band)
   if (existing) {
@@ -24,7 +42,7 @@ async function ensureTemplate(band: "ORTAOKUL" | "LISE") {
         templateId: existing.id,
         sortOrder: index,
         label: slot.label,
-        kind: slot.kind === "BREAK" ? "BREAK" : "LESSON",
+        kind: kindToDb(slot.kind),
         startTime: slot.startTime,
         endTime: slot.endTime,
       })),
@@ -42,7 +60,7 @@ async function ensureTemplate(band: "ORTAOKUL" | "LISE") {
         create: defaults.map((slot, index) => ({
           sortOrder: index,
           label: slot.label,
-          kind: slot.kind === "BREAK" ? "BREAK" : "LESSON",
+          kind: kindToDb(slot.kind),
           startTime: slot.startTime,
           endTime: slot.endTime,
         })),
@@ -106,12 +124,15 @@ export async function PUT(request: NextRequest) {
 
     const rawSlots = Array.isArray(body.slots) ? body.slots : []
     const slots: DaySlotInput[] = rawSlots
-      .map((row: Record<string, unknown>) => ({
-        label: String(row.label ?? "").trim(),
-        kind: String(row.kind ?? "LESSON").toUpperCase() === "BREAK" ? "BREAK" : "LESSON",
-        startTime: String(row.startTime ?? "").trim(),
-        endTime: String(row.endTime ?? "").trim(),
-      }))
+      .map((row: Record<string, unknown>) => {
+        const label = String(row.label ?? "").trim()
+        return {
+          label,
+          kind: normalizeSlotKind(String(row.kind ?? "LESSON"), label),
+          startTime: String(row.startTime ?? "").trim(),
+          endTime: String(row.endTime ?? "").trim(),
+        }
+      })
       .filter((s: DaySlotInput) => s.label && s.startTime && s.endTime)
 
     if (slots.length === 0) {
@@ -139,7 +160,7 @@ export async function PUT(request: NextRequest) {
           templateId: row.id,
           sortOrder: index,
           label: slot.label,
-          kind: slot.kind === "BREAK" ? "BREAK" : "LESSON",
+          kind: kindToDb(slot.kind),
           startTime: slot.startTime,
           endTime: slot.endTime,
         })),

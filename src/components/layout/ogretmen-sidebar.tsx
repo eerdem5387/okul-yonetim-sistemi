@@ -45,7 +45,8 @@ const ALL_NAV: NavItem[] = [
   { name: "Ana Sayfa", href: "/ogretmen", icon: Home, module: "dashboard", action: "view" },
   { name: "Mesajlar", href: "/mesajlar", icon: MessageSquare, module: "messaging", action: "view" },
   { name: "Neredeyiz?", href: "/ogretmen/neredeyiz", icon: Target, module: "neredeyiz", action: "view" },
-  { name: "Ders Programım", href: "/ogretmen/ders-programim", icon: Calendar, module: "schedules", action: "view" },
+  // Kendi programı — schedules yetkisinden bağımsız (yönetim sayfası /ders-programi ayrı)
+  { name: "Ders Programım", href: "/ogretmen/ders-programim", icon: Calendar, module: "dashboard", action: "view" },
   { name: "Ödev Yönetimi", href: "/ogretmen/odevler", icon: BookOpen, module: "homework", action: "view" },
   { name: "Yoklama Al", href: "/ogretmen/yoklama", icon: ClipboardList, module: "attendance", action: "view" },
   { name: "Öğrenci Görüşleri", href: "/ogretmen/gorusler", icon: MessageSquare, module: "student_comments", action: "view" },
@@ -78,6 +79,7 @@ export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
     const visible = ALL_NAV.filter((item) => {
       // Atanmış kulüpler öğretmen menüsünde her zaman görünür (yoksa boş durum gösterilir).
       if (item.href === "/ogretmen/kulupler") return true
+      if (item.href === "/ogretmen/ders-programim") return true
       return checkNavPermission(permState, item.module, item.action, true)
     })
     const extras = extraGrantedNavItems({

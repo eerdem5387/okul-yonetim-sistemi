@@ -128,9 +128,11 @@ export async function getEffectivePermissionKeys(
         keys.add(permissionKey("activity_events", a))
       )
     }
-    ;["homework", "attendance", "messaging", "schedules", "neredeyiz", "student_comments", "students"].forEach((mod) => {
+    ;["homework", "attendance", "messaging", "neredeyiz", "student_comments", "students"].forEach((mod) => {
       ;["view", "create", "edit"].forEach((a) => keys.add(permissionKey(mod, a)))
     })
+    // Ders Programım öğretmen paneline özel; okul ders programı yönetimi
+    // yalnızca yetkilendirmeden verilen schedules.* ile açılır.
     implyViewKeys(keys)
     stripNonSuperAdminKeys(keys)
     return Array.from(keys)

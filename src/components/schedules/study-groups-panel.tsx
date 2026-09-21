@@ -70,7 +70,7 @@ type FormState = {
   studentIds: string[]
 }
 
-type GridSlot = LessonSlot & { kind?: "LESSON" | "BREAK" }
+type GridSlot = LessonSlot & { kind?: "LESSON" | "BREAK" | "ETUT" }
 
 const emptyForm = (): FormState => ({
   name: "",

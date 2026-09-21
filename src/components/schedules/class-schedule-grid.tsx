@@ -36,7 +36,7 @@ export type ScheduleRow = {
   teacher: ScheduleTeacher
 }
 
-export type GridSlot = LessonSlot & { kind?: "LESSON" | "BREAK" }
+export type GridSlot = LessonSlot & { kind?: "LESSON" | "BREAK" | "ETUT" }
 
 type ScheduleForm = {
   subjectName: string
@@ -257,11 +257,16 @@ export function ClassScheduleGrid({
           <tbody>
             {slots.map((slot) => {
               const isBreak = (slot.kind ?? "LESSON") === "BREAK"
+              const isEtut = slot.kind === "ETUT"
               return (
               <tr key={`${slot.id}-${slot.startTime}-${slot.label}`}>
                 <td
                   className={`border-b border-r border-gray-200 p-2 text-xs font-medium ${
-                    isBreak ? "bg-amber-50 text-amber-900" : "text-gray-700 bg-gray-50/80"
+                    isBreak
+                      ? "bg-amber-50 text-amber-900"
+                      : isEtut
+                        ? "bg-emerald-50 text-emerald-900"
+                        : "text-gray-700 bg-gray-50/80"
                   }`}
                 >
                   <div>{slot.label}</div>
@@ -277,6 +282,16 @@ export function ClassScheduleGrid({
                         className="border-b border-gray-100 p-1.5 bg-amber-50/40 text-center text-[10px] text-amber-700/80"
                       >
                         —
+                      </td>
+                    )
+                  }
+                  if (isEtut) {
+                    return (
+                      <td
+                        key={`${day}-${slot.id}-etut`}
+                        className="border-b border-gray-100 p-1.5 bg-emerald-50/40 text-center text-[10px] text-emerald-800/80"
+                      >
+                        Etüt
                       </td>
                     )
                   }

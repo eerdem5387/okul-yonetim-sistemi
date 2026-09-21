@@ -24,6 +24,7 @@ import {
   type ScheduleRow,
 } from "@/components/schedules/class-schedule-grid"
 import { StudyGroupsPanel } from "@/components/schedules/study-groups-panel"
+import { ClubSchedulesPanel } from "@/components/schedules/club-schedules-panel"
 import { DayTemplateEditorDialog } from "@/components/schedules/day-template-editor-dialog"
 import { ScheduleCoursesDialog } from "@/components/schedules/schedule-courses-dialog"
 import { WeeklyScheduleCalendar } from "@/components/hr/WeeklyScheduleCalendar"
@@ -35,6 +36,7 @@ import {
   type GradeBand,
   type LessonSlot,
 } from "@/lib/schedules/lesson-slots"
+import type { SlotKind } from "@/lib/schedules/day-templates"
 
 type ClassItem = {
   id: string
@@ -55,7 +57,7 @@ type TeacherScheduleRow = ScheduleRow & {
   class?: { id: string; name: string; grade?: number; section?: string }
 }
 
-type ViewMode = "class" | "teacher" | "study"
+type ViewMode = "class" | "teacher" | "study" | "club"
 
 export default function DersProgramiPage() {
   const [classes, setClasses] = useState<ClassItem[]>([])
@@ -86,8 +88,8 @@ export default function DersProgramiPage() {
   const [coursesOpen, setCoursesOpen] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
   const [slotMap, setSlotMap] = useState<{
-    ortaokul: Array<LessonSlot & { kind?: "LESSON" | "BREAK" }>
-    lise: Array<LessonSlot & { kind?: "LESSON" | "BREAK" }>
+    ortaokul: Array<LessonSlot & { kind?: SlotKind }>
+    lise: Array<LessonSlot & { kind?: SlotKind }>
   }>({ ortaokul: DEFAULT_LESSON_SLOTS, lise: DEFAULT_LESSON_SLOTS })
 
   const { schedules, loading: scheduleLoading, reload } = useClassSchedules(
@@ -101,8 +103,8 @@ export default function DersProgramiPage() {
       const data = await res.json()
       const templates = Array.isArray(data.templates) ? data.templates : []
       const next = {
-        ortaokul: DEFAULT_LESSON_SLOTS as Array<LessonSlot & { kind?: "LESSON" | "BREAK" }>,
-        lise: DEFAULT_LESSON_SLOTS as Array<LessonSlot & { kind?: "LESSON" | "BREAK" }>,
+        ortaokul: DEFAULT_LESSON_SLOTS as Array<LessonSlot & { kind?: SlotKind }>,
+        lise: DEFAULT_LESSON_SLOTS as Array<LessonSlot & { kind?: SlotKind }>,
       }
       for (const t of templates) {
         if (t.band === "ortaokul") {
@@ -308,6 +310,14 @@ export default function DersProgramiPage() {
         <Users className="h-4 w-4 mr-1" />
         Özel Çalışma
       </Button>
+      <Button
+        size="sm"
+        variant={viewMode === "club" ? "default" : "outline"}
+        onClick={() => setViewMode("club")}
+      >
+        <Users className="h-4 w-4 mr-1" />
+        Kulüp
+      </Button>
     </>
   )
 
@@ -317,6 +327,12 @@ export default function DersProgramiPage() {
         <Card className={`border-0 shadow-sm ${fullscreen ? "h-full overflow-y-auto" : ""}`}>
           <CardContent className="p-4 sm:p-6">
             <StudyGroupsPanel />
+          </CardContent>
+        </Card>
+      ) : viewMode === "club" ? (
+        <Card className={`border-0 shadow-sm ${fullscreen ? "h-full overflow-y-auto" : ""}`}>
+          <CardContent className="p-4 sm:p-6">
+            <ClubSchedulesPanel />
           </CardContent>
         </Card>
       ) : viewMode === "class" ? (
@@ -590,6 +606,7 @@ export default function DersProgramiPage() {
                 {viewMode === "class" && selectedClass ? ` · ${selectedClass.name}` : ""}
                 {viewMode === "teacher" ? " · Öğretmen" : ""}
                 {viewMode === "study" ? " · Özel Çalışma" : ""}
+                {viewMode === "club" ? " · Kulüp" : ""}
               </p>
               <p className="text-xs text-gray-500">Esc ile çıkabilirsiniz</p>
             </div>

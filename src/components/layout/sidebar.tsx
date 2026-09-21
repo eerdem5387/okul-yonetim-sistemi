@@ -125,7 +125,7 @@ export function Sidebar() {
     "/yonetim/ayarlar": "settings.view",
     "/neredeyiz": "neredeyiz.view",
     "/sinif-yonetimi": "classes.view",
-    "/ders-programi": "classes.view",
+    "/ders-programi": "schedules.view",
     "/onay-paneli": "approval_panel.view",
     "/basvurular": "applications.view",
     "/yaz-okulu-basvurular": "applications.view",

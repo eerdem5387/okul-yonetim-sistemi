@@ -33,7 +33,7 @@ const baseNavigation: NavDef[] = [
   { name: "Mesajlar", href: "/mesajlar", icon: MessageSquare, module: "messaging", action: "view" },
   { name: "Neredeyiz?", href: "/rehberlik/neredeyiz", icon: Target, module: "neredeyiz", action: "view" },
   { name: "Sınıf Yönetimi", href: "/sinif-yonetimi", icon: School, module: "classes", action: "view" },
-  { name: "Ders Programı", href: "/ders-programi", icon: Calendar, module: "classes", action: "view" },
+  { name: "Ders Programı", href: "/ders-programi", icon: Calendar, module: "schedules", action: "view" },
   { name: "Gezi Yönetimi", href: "/rehberlik/gezi", icon: MapPin, module: "gezi", action: "view" },
   { name: "Kulüp Yönetimi", href: "/rehberlik/clubs", icon: Users, module: "clubs", action: "view" },
   { name: "Faaliyet Yönetimi", href: "/faaliyet-yonetimi", icon: Award, module: "activity_events", action: "view" },

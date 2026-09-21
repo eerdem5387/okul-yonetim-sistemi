@@ -86,6 +86,7 @@ model Club {
   // Relations
   selections         ClubSelection[]
   membershipRequests ClubMembershipRequest[]
+  schedules          ClubSchedule[]
 
   @@index([instructorId])
   @@map("clubs")
@@ -1388,6 +1389,7 @@ enum SchoolBand {
 enum SchoolDaySlotKind {
   LESSON
   BREAK
+  ETUT
 }
 
 /// Ortaokul / lise ders ve teneffüs saat şablonu
@@ -1405,7 +1407,7 @@ model SchoolDaySlot {
   id         String            @id @default(cuid())
   templateId String
   sortOrder  Int
-  label      String // "1. Ders", "Teneffüs", "Öğle Arası"
+  label      String // "1. Ders", "Teneffüs", "1. Etüt"
   kind       SchoolDaySlotKind @default(LESSON)
   startTime  String // "08:00"
   endTime    String // "08:40"
@@ -1414,6 +1416,27 @@ model SchoolDaySlot {
   @@index([templateId])
   @@index([templateId, sortOrder])
   @@map("school_day_slots")
+}
+
+/// Kulüp haftalık programı — yalnızca ETUT saatlerine atanır
+model ClubSchedule {
+  id        String   @id @default(cuid())
+  clubId    String
+  dayOfWeek Int // 1-7 (Pazartesi=1)
+  startTime String // "16:10"
+  endTime   String // "16:40"
+  room      String?
+  notes     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@unique([clubId, dayOfWeek, startTime, endTime])
+  @@index([clubId])
+  @@index([dayOfWeek, startTime])
+  @@map("club_schedules")
 }
 
 /// Ders programında seçilen ders adları (Matematik, Fizik vb.)
