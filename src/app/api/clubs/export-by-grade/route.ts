@@ -13,7 +13,7 @@ function sortGrades(a: string, b: string): number {
 
 export async function GET() {
   try {
-    const [students, selections] = await Promise.all([
+    const [students, selectedRows] = await Promise.all([
       prisma.student.findMany({
         where: k12GradeWhereClause(),
         select: {
@@ -26,44 +26,34 @@ export async function GET() {
         orderBy: [{ grade: "asc" }, { lastName: "asc" }, { firstName: "asc" }],
       }),
       prisma.clubSelection.findMany({
-        include: {
-          club: { select: { name: true } },
-        },
+        select: { studentId: true },
+        distinct: ["studentId"],
       }),
     ])
 
-    const clubsByStudent = new Map<string, string[]>()
-    for (const row of selections) {
-      const list = clubsByStudent.get(row.studentId) ?? []
-      list.push(row.club.name)
-      clubsByStudent.set(row.studentId, list)
-    }
+    const selectedIds = new Set(selectedRows.map((row) => row.studentId))
 
-    const studentRows = students.map((student) => {
-      const clubs = clubsByStudent.get(student.id) ?? []
-      return {
+    const unassignedRows = students
+      .filter((student) => !selectedIds.has(student.id))
+      .map((student) => ({
         Sınıf: student.grade,
         Ad: student.firstName,
         Soyad: student.lastName,
         TC: student.tcNumber,
-        Kulüp: clubs.join(", "),
-        Durum: clubs.length > 0 ? "Seçim yaptı" : "Seçim yapmadı",
-      }
-    })
-
-    studentRows.sort((a, b) => {
-      const gradeCmp = sortGrades(a.Sınıf, b.Sınıf)
-      if (gradeCmp !== 0) return gradeCmp
-      const last = a.Soyad.localeCompare(b.Soyad, "tr")
-      if (last !== 0) return last
-      return a.Ad.localeCompare(b.Ad, "tr")
-    })
+      }))
+      .sort((a, b) => {
+        const gradeCmp = sortGrades(a.Sınıf, b.Sınıf)
+        if (gradeCmp !== 0) return gradeCmp
+        const last = a.Soyad.localeCompare(b.Soyad, "tr")
+        if (last !== 0) return last
+        return a.Ad.localeCompare(b.Ad, "tr")
+      })
 
     const gradeTotals = new Map<string, { total: number; selected: number; unassigned: number }>()
     for (const student of students) {
       const entry = gradeTotals.get(student.grade) ?? { total: 0, selected: 0, unassigned: 0 }
       entry.total += 1
-      if ((clubsByStudent.get(student.id) ?? []).length > 0) entry.selected += 1
+      if (selectedIds.has(student.id)) entry.selected += 1
       else entry.unassigned += 1
       gradeTotals.set(student.grade, entry)
     }
@@ -79,23 +69,16 @@ export async function GET() {
           stats.total > 0 ? Math.round((stats.unassigned / stats.total) * 100) : 0,
       }))
 
-    const unassignedRows = studentRows
-      .filter((row) => row.Durum === "Seçim yapmadı")
-      .map(({ Sınıf, Ad, Soyad, TC }) => ({ Sınıf, Ad, Soyad, TC }))
-
     const XLSX = await import("xlsx")
     const wb = XLSX.utils.book_new()
 
-    const studentsWs = XLSX.utils.json_to_sheet(studentRows)
-    studentsWs["!cols"] = [
-      { wch: 12 },
-      { wch: 16 },
-      { wch: 16 },
-      { wch: 14 },
-      { wch: 36 },
-      { wch: 16 },
-    ]
-    XLSX.utils.book_append_sheet(wb, studentsWs, "Öğrenci Kulüp Listesi")
+    const unassignedWs = XLSX.utils.json_to_sheet(
+      unassignedRows.length > 0
+        ? unassignedRows
+        : [{ Sınıf: "", Ad: "", Soyad: "", TC: "" }]
+    )
+    unassignedWs["!cols"] = [{ wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 14 }]
+    XLSX.utils.book_append_sheet(wb, unassignedWs, "Seçim Yapmayanlar")
 
     const summaryWs = XLSX.utils.json_to_sheet(summaryRows)
     summaryWs["!cols"] = [
@@ -107,17 +90,9 @@ export async function GET() {
     ]
     XLSX.utils.book_append_sheet(wb, summaryWs, "Sınıf Özeti")
 
-    const unassignedWs = XLSX.utils.json_to_sheet(
-      unassignedRows.length > 0
-        ? unassignedRows
-        : [{ Sınıf: "", Ad: "", Soyad: "", TC: "" }]
-    )
-    unassignedWs["!cols"] = [{ wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 14 }]
-    XLSX.utils.book_append_sheet(wb, unassignedWs, "Seçim Yapmayanlar")
-
     const wbout = XLSX.write(wb, { type: "array", bookType: "xlsx" }) as Uint8Array
     const dateStr = new Date().toISOString().split("T")[0]
-    const filename = `kulup-sinif-verileri_${dateStr}.xlsx`
+    const filename = `secim-yapmayan-ogrenciler_${dateStr}.xlsx`
 
     return new NextResponse(Buffer.from(wbout), {
       headers: {
@@ -127,7 +102,7 @@ export async function GET() {
       },
     })
   } catch (error) {
-    console.error("Error exporting club data by grade:", error)
+    console.error("Error exporting unassigned club students:", error)
     return NextResponse.json({ error: "Excel indirilirken hata oluştu" }, { status: 500 })
   }
 }
