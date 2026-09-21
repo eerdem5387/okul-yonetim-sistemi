@@ -158,10 +158,6 @@ export default function DersProgramiPage() {
     }
   }, [fullscreen])
 
-  useEffect(() => {
-    if (viewMode !== "class") setFullscreen(false)
-  }, [viewMode])
-
   const filteredClasses = useMemo(() => {
     const bandGrades = gradesForBand(band)
     const q = search.trim().toLocaleLowerCase("tr-TR")
@@ -283,116 +279,39 @@ export default function DersProgramiPage() {
     return { total, withSchedule, empty: total - withSchedule, lessonCount }
   }, [filteredClasses])
 
-  return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <Calendar className="h-7 w-7 text-indigo-600" />
-            Ders Programı
-          </h1>
-          <p className="text-sm text-gray-600 mt-1">
-            Ortaokul ve lise sınıflarının haftalık programını buradan yönetin
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={() => setHoursOpen(true)}>
-            <Clock className="h-4 w-4 mr-2" />
-            Ders saatleri
-          </Button>
-          {(userRole === "admin" || userRole === "principal") && (
-            <Link href="/onay-paneli">
-              <Button variant="outline" size="sm">
-                <ClipboardList className="h-4 w-4 mr-2" />
-                Onay Paneli
-              </Button>
-            </Link>
-          )}
-          <Link href="/sinif-yonetimi">
-            <Button variant="outline" size="sm">
-              <School className="h-4 w-4 mr-2" />
-              Sınıf Yönetimi
-            </Button>
-          </Link>
-        </div>
-      </div>
+  const viewModeButtons = (
+    <>
+      <Button
+        size="sm"
+        variant={viewMode === "class" ? "default" : "outline"}
+        onClick={() => setViewMode("class")}
+      >
+        <School className="h-4 w-4 mr-1" />
+        Sınıf
+      </Button>
+      <Button
+        size="sm"
+        variant={viewMode === "teacher" ? "default" : "outline"}
+        onClick={() => setViewMode("teacher")}
+      >
+        <User className="h-4 w-4 mr-1" />
+        Öğretmen
+      </Button>
+      <Button
+        size="sm"
+        variant={viewMode === "study" ? "default" : "outline"}
+        onClick={() => setViewMode("study")}
+      >
+        <Users className="h-4 w-4 mr-1" />
+        Özel Çalışma
+      </Button>
+    </>
+  )
 
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <p className="text-xs text-gray-500">Sınıf</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</p>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <p className="text-xs text-gray-500">Programı olan</p>
-            <p className="text-2xl font-bold text-emerald-700 mt-1">{stats.withSchedule}</p>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <p className="text-xs text-gray-500">Boş program</p>
-            <p className="text-2xl font-bold text-amber-700 mt-1">{stats.empty}</p>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <p className="text-xs text-gray-500">Toplam ders satırı</p>
-            <p className="text-2xl font-bold text-indigo-700 mt-1">{stats.lessonCount}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {(
-          [
-            { id: "all" as const, label: "Tümü" },
-            { id: "ortaokul" as const, label: "Ortaokul (5–8)" },
-            { id: "lise" as const, label: "Lise (9–12)" },
-          ] as const
-        ).map((opt) => (
-          <Button
-            key={opt.id}
-            size="sm"
-            variant={band === opt.id ? "default" : "outline"}
-            onClick={() => {
-              setBand(opt.id)
-              setGradeFilter("all")
-            }}
-          >
-            {opt.label}
-          </Button>
-        ))}
-        <div className="w-px bg-gray-200 mx-1 hidden sm:block" />
-        <Button
-          size="sm"
-          variant={viewMode === "class" ? "default" : "outline"}
-          onClick={() => setViewMode("class")}
-        >
-          <School className="h-4 w-4 mr-1" />
-          Sınıf
-        </Button>
-        <Button
-          size="sm"
-          variant={viewMode === "teacher" ? "default" : "outline"}
-          onClick={() => setViewMode("teacher")}
-        >
-          <User className="h-4 w-4 mr-1" />
-          Öğretmen
-        </Button>
-        <Button
-          size="sm"
-          variant={viewMode === "study" ? "default" : "outline"}
-          onClick={() => setViewMode("study")}
-        >
-          <Users className="h-4 w-4 mr-1" />
-          Özel Çalışma
-        </Button>
-      </div>
-
+  const workspace = (
+    <>
       {viewMode === "study" ? (
-        <Card className="border-0 shadow-sm">
+        <Card className={`border-0 shadow-sm ${fullscreen ? "h-full overflow-y-auto" : ""}`}>
           <CardContent className="p-4 sm:p-6">
             <StudyGroupsPanel />
           </CardContent>
@@ -401,173 +320,128 @@ export default function DersProgramiPage() {
         <div
           className={
             fullscreen
-              ? "fixed inset-0 z-[60] bg-slate-100 flex flex-col"
+              ? "h-full min-h-0 grid gap-4 lg:grid-cols-[260px_1fr] overflow-hidden"
               : "grid gap-4 lg:grid-cols-[280px_1fr]"
           }
         >
-          {fullscreen && (
-            <div className="flex items-center justify-between gap-3 px-4 py-3 border-b bg-white shrink-0">
-              <div className="min-w-0">
-                <p className="font-semibold text-gray-900 truncate">
-                  Ders programı — tam ekran
-                  {selectedClass ? ` · ${selectedClass.name}` : ""}
-                </p>
-                <p className="text-xs text-gray-500">Esc ile çıkabilirsiniz</p>
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setFullscreen(false)}
-                title="Tam ekrandan çık"
-              >
-                <Minimize2 className="h-4 w-4 mr-2" />
-                Küçült
-              </Button>
-            </div>
-          )}
-
-          <div
-            className={
-              fullscreen
-                ? "flex-1 min-h-0 grid gap-4 lg:grid-cols-[260px_1fr] p-4 overflow-hidden"
-                : "contents"
-            }
+          <Card
+            className={`border-0 shadow-sm ${
+              fullscreen ? "h-full overflow-hidden flex flex-col" : "h-fit lg:sticky lg:top-4"
+            }`}
           >
-            <Card
-              className={`border-0 shadow-sm ${
-                fullscreen ? "h-full overflow-hidden flex flex-col" : "h-fit lg:sticky lg:top-4"
-              }`}
-            >
-              <CardHeader className="pb-3 shrink-0">
-                <CardTitle className="text-base">Sınıflar</CardTitle>
-                <CardDescription>Program düzenlemek için seçin</CardDescription>
-              </CardHeader>
-              <CardContent className={`space-y-3 ${fullscreen ? "flex-1 min-h-0 flex flex-col" : ""}`}>
-                <div className="relative shrink-0">
-                  <Input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Sınıf ara"
-                    className="pl-9"
-                  />
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <CardHeader className="pb-3 shrink-0">
+              <CardTitle className="text-base">Sınıflar</CardTitle>
+              <CardDescription>Program düzenlemek için seçin</CardDescription>
+            </CardHeader>
+            <CardContent className={`space-y-3 ${fullscreen ? "flex-1 min-h-0 flex flex-col" : ""}`}>
+              <div className="relative shrink-0">
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Sınıf ara"
+                  className="pl-9"
+                />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              </div>
+              <select
+                className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm shrink-0"
+                value={gradeFilter === "all" ? "all" : String(gradeFilter)}
+                onChange={(e) =>
+                  setGradeFilter(e.target.value === "all" ? "all" : parseInt(e.target.value, 10))
+                }
+              >
+                <option value="all">Tüm düzeyler</option>
+                {gradeOptions.map((g) => (
+                  <option key={g} value={g}>
+                    {g}. Sınıf
+                  </option>
+                ))}
+              </select>
+
+              {loading ? (
+                <div className="flex justify-center py-8 text-gray-500 gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Yükleniyor...
                 </div>
-                <select
-                  className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm shrink-0"
-                  value={gradeFilter === "all" ? "all" : String(gradeFilter)}
-                  onChange={(e) =>
-                    setGradeFilter(e.target.value === "all" ? "all" : parseInt(e.target.value, 10))
-                  }
+              ) : filteredClasses.length === 0 ? (
+                <p className="text-sm text-gray-500 py-6 text-center">Sınıf bulunamadı</p>
+              ) : (
+                <div
+                  className={`overflow-y-auto space-y-1 pr-1 ${
+                    fullscreen ? "flex-1 min-h-0" : "max-h-[28rem]"
+                  }`}
                 >
-                  <option value="all">Tüm düzeyler</option>
-                  {gradeOptions.map((g) => (
-                    <option key={g} value={g}>
-                      {g}. Sınıf
-                    </option>
-                  ))}
-                </select>
-
-                {loading ? (
-                  <div className="flex justify-center py-8 text-gray-500 gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Yükleniyor...
-                  </div>
-                ) : filteredClasses.length === 0 ? (
-                  <p className="text-sm text-gray-500 py-6 text-center">Sınıf bulunamadı</p>
-                ) : (
-                  <div
-                    className={`overflow-y-auto space-y-1 pr-1 ${
-                      fullscreen ? "flex-1 min-h-0" : "max-h-[28rem]"
-                    }`}
-                  >
-                    {filteredClasses.map((c) => {
-                      const active = c.id === selectedClassId
-                      const bandLabel = gradeBandFor(c.grade) === "ortaokul" ? "Ortaokul" : "Lise"
-                      return (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => setSelectedClassId(c.id)}
-                          className={`w-full text-left rounded-lg px-3 py-2.5 border transition ${
-                            active
-                              ? "border-indigo-400 bg-indigo-50 shadow-sm"
-                              : "border-transparent hover:bg-gray-50 hover:border-gray-200"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-semibold text-gray-900">{c.name}</span>
-                            <span className="text-[10px] text-gray-500">{bandLabel}</span>
-                          </div>
-                          <p className="text-xs text-gray-500 mt-0.5">
-                            {c._count?.schedules ?? 0} ders · {c._count?.students ?? 0} öğrenci
-                          </p>
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card
-              className={`border-0 shadow-sm ${
-                fullscreen ? "h-full overflow-hidden flex flex-col" : ""
-              }`}
-            >
-              <CardHeader className="pb-3 shrink-0">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <CardTitle className="text-lg">
-                      {selectedClass ? `${selectedClass.name} programı` : "Sınıf seçin"}
-                    </CardTitle>
-                    <CardDescription>
-                      {selectedClass
-                        ? `${selectedClass.grade}. sınıf · hücreye tıklayın veya özel saat ekleyin`
-                        : "Sol listeden bir sınıf seçerek programı düzenleyin"}
-                    </CardDescription>
-                  </div>
-                  {!fullscreen && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="shrink-0"
-                      disabled={!selectedClassId}
-                      onClick={() => setFullscreen(true)}
-                      title="Tam ekran"
-                    >
-                      <Maximize2 className="h-4 w-4 mr-2" />
-                      Tam ekran
-                    </Button>
-                  )}
+                  {filteredClasses.map((c) => {
+                    const active = c.id === selectedClassId
+                    const bandLabel = gradeBandFor(c.grade) === "ortaokul" ? "Ortaokul" : "Lise"
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => setSelectedClassId(c.id)}
+                        className={`w-full text-left rounded-lg px-3 py-2.5 border transition ${
+                          active
+                            ? "border-indigo-400 bg-indigo-50 shadow-sm"
+                            : "border-transparent hover:bg-gray-50 hover:border-gray-200"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-semibold text-gray-900">{c.name}</span>
+                          <span className="text-[10px] text-gray-500">{bandLabel}</span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {c._count?.schedules ?? 0} ders · {c._count?.students ?? 0} öğrenci
+                        </p>
+                      </button>
+                    )
+                  })}
                 </div>
-              </CardHeader>
-              <CardContent className={fullscreen ? "flex-1 min-h-0 overflow-y-auto" : ""}>
-                {!selectedClassId ? (
-                  <p className="text-sm text-gray-500 py-16 text-center">Sınıf seçilmedi</p>
-                ) : scheduleLoading ? (
-                  <div className="flex justify-center py-16 text-gray-500 gap-2">
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    Program yükleniyor...
-                  </div>
-                ) : (
-                  <ClassScheduleGrid
-                    classId={selectedClassId}
-                    className={selectedClass?.name}
-                    schedules={schedules}
-                    slots={activeSlots}
-                    onChanged={() => {
-                      void reload()
-                      void loadClasses()
-                    }}
-                  />
-                )}
-              </CardContent>
-            </Card>
-          </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card
+            className={`border-0 shadow-sm ${
+              fullscreen ? "h-full overflow-hidden flex flex-col" : ""
+            }`}
+          >
+            <CardHeader className="pb-3 shrink-0">
+              <div className="min-w-0">
+                <CardTitle className="text-lg">
+                  {selectedClass ? `${selectedClass.name} programı` : "Sınıf seçin"}
+                </CardTitle>
+                <CardDescription>
+                  {selectedClass
+                    ? `${selectedClass.grade}. sınıf · hücreye tıklayın veya özel saat ekleyin`
+                    : "Sol listeden bir sınıf seçerek programı düzenleyin"}
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className={fullscreen ? "flex-1 min-h-0 overflow-y-auto" : ""}>
+              {!selectedClassId ? (
+                <p className="text-sm text-gray-500 py-16 text-center">Sınıf seçilmedi</p>
+              ) : scheduleLoading ? (
+                <div className="flex justify-center py-16 text-gray-500 gap-2">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Program yükleniyor...
+                </div>
+              ) : (
+                <ClassScheduleGrid
+                  classId={selectedClassId}
+                  className={selectedClass?.name}
+                  schedules={schedules}
+                  slots={activeSlots}
+                  onChanged={() => {
+                    void reload()
+                    void loadClasses()
+                  }}
+                />
+              )}
+            </CardContent>
+          </Card>
         </div>
       ) : (
-        <Card className="border-0 shadow-sm">
+        <Card className={`border-0 shadow-sm ${fullscreen ? "h-full overflow-y-auto" : ""}`}>
           <CardHeader>
             <CardTitle className="text-lg">Öğretmen programı</CardTitle>
             <CardDescription>Öğretmen seçerek haftalık yükünü görüntüleyin</CardDescription>
@@ -596,10 +470,137 @@ export default function DersProgramiPage() {
             ) : teacherCalendarItems.length === 0 ? (
               <p className="text-sm text-gray-500 text-center py-10">Bu öğretmene atanmış ders yok.</p>
             ) : (
-              <WeeklyScheduleCalendar items={teacherCalendarItems} />
+              <WeeklyScheduleCalendar items={teacherCalendarItems} height={fullscreen ? 720 : 620} />
             )}
           </CardContent>
         </Card>
+      )}
+    </>
+  )
+
+  return (
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
+      {!fullscreen && (
+        <>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2">
+                <Calendar className="h-7 w-7 text-indigo-600" />
+                Ders Programı
+              </h1>
+              <p className="text-sm text-gray-600 mt-1">
+                Ortaokul ve lise sınıflarının haftalık programını buradan yönetin
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={() => setHoursOpen(true)}>
+                <Clock className="h-4 w-4 mr-2" />
+                Ders saatleri
+              </Button>
+              {(userRole === "admin" || userRole === "principal") && (
+                <Link href="/onay-paneli">
+                  <Button variant="outline" size="sm">
+                    <ClipboardList className="h-4 w-4 mr-2" />
+                    Onay Paneli
+                  </Button>
+                </Link>
+              )}
+              <Link href="/sinif-yonetimi">
+                <Button variant="outline" size="sm">
+                  <School className="h-4 w-4 mr-2" />
+                  Sınıf Yönetimi
+                </Button>
+              </Link>
+            </div>
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <p className="text-xs text-gray-500">Sınıf</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</p>
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <p className="text-xs text-gray-500">Programı olan</p>
+                <p className="text-2xl font-bold text-emerald-700 mt-1">{stats.withSchedule}</p>
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <p className="text-xs text-gray-500">Boş program</p>
+                <p className="text-2xl font-bold text-amber-700 mt-1">{stats.empty}</p>
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <p className="text-xs text-gray-500">Toplam ders satırı</p>
+                <p className="text-2xl font-bold text-indigo-700 mt-1">{stats.lessonCount}</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="flex flex-wrap gap-2 items-center">
+            {(
+              [
+                { id: "all" as const, label: "Tümü" },
+                { id: "ortaokul" as const, label: "Ortaokul (5–8)" },
+                { id: "lise" as const, label: "Lise (9–12)" },
+              ] as const
+            ).map((opt) => (
+              <Button
+                key={opt.id}
+                size="sm"
+                variant={band === opt.id ? "default" : "outline"}
+                onClick={() => {
+                  setBand(opt.id)
+                  setGradeFilter("all")
+                }}
+              >
+                {opt.label}
+              </Button>
+            ))}
+            <div className="w-px bg-gray-200 mx-1 hidden sm:block self-stretch" />
+            {viewModeButtons}
+            <div className="w-px bg-gray-200 mx-1 hidden sm:block self-stretch" />
+            <Button size="sm" variant="outline" onClick={() => setFullscreen(true)}>
+              <Maximize2 className="h-4 w-4 mr-1" />
+              Tam ekran
+            </Button>
+          </div>
+
+          {workspace}
+        </>
+      )}
+
+      {fullscreen && (
+        <div className="fixed inset-0 z-[60] bg-slate-100 flex flex-col">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-3 border-b bg-white shrink-0">
+            <div className="min-w-0">
+              <p className="font-semibold text-gray-900 truncate">
+                Ders programı — tam ekran
+                {viewMode === "class" && selectedClass ? ` · ${selectedClass.name}` : ""}
+                {viewMode === "teacher" ? " · Öğretmen" : ""}
+                {viewMode === "study" ? " · Özel Çalışma" : ""}
+              </p>
+              <p className="text-xs text-gray-500">Esc ile çıkabilirsiniz</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {viewModeButtons}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setFullscreen(false)}
+                title="Tam ekrandan çık"
+              >
+                <Minimize2 className="h-4 w-4 mr-2" />
+                Küçült
+              </Button>
+            </div>
+          </div>
+          <div className="flex-1 min-h-0 overflow-hidden p-4">{workspace}</div>
+        </div>
       )}
 
       <DayTemplateEditorDialog
