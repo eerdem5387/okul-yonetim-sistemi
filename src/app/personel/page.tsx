@@ -21,6 +21,9 @@ import {
   Briefcase,
   Eye,
   MessageSquare,
+  Archive,
+  ArrowLeft,
+  UserMinus,
 } from "lucide-react"
 import { getAuthHeaders } from "@/components/hr/hr-utils"
 
@@ -86,10 +89,12 @@ export default function PersonelPage() {
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all")
-  const [activeFilter, setActiveFilter] = useState<string>("all")
+  const [listMode, setListMode] = useState<"active" | "former">("active")
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalStaff, setTotalStaff] = useState(0)
+  const [formerCount, setFormerCount] = useState(0)
+  const [deactivatingId, setDeactivatingId] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -105,44 +110,78 @@ export default function PersonelPage() {
     notes: "",
   })
 
+  const fetchFormerCount = useCallback(async () => {
+    try {
+      const params = new URLSearchParams({
+        page: "1",
+        limit: "1",
+        isActive: "false",
+      })
+      const response = await fetch(`/api/staff?${params.toString()}`, {
+        headers: getAuthHeaders(),
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setFormerCount(data.pagination?.total || 0)
+      }
+    } catch (err) {
+      console.error("Error fetching former staff count:", err)
+    }
+  }, [])
+
   const fetchStaff = useCallback(async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: "50",
+        isActive: listMode === "active" ? "true" : "false",
       })
 
       if (searchTerm) params.append("search", searchTerm)
       if (selectedDepartment !== "all") params.append("department", selectedDepartment)
-      if (activeFilter !== "all") params.append("isActive", activeFilter)
 
       const response = await fetch(`/api/staff?${params.toString()}`, {
         headers: getAuthHeaders(),
       })
       if (response.ok) {
         const data = await response.json()
-        // Güvenli array kontrolü
         const staffArray = Array.isArray(data.staff) ? data.staff : (Array.isArray(data) ? data : [])
         setStaff(staffArray)
         setTotalStaff(data.pagination?.total || 0)
         setTotalPages(data.pagination?.totalPages || 1)
+        if (listMode === "former") {
+          setFormerCount(data.pagination?.total || 0)
+        }
       } else {
-        // Hata durumunda boş array set et
         setStaff([])
       }
-    } catch (error) {
-      console.error("Error fetching staff:", error)
-      // Hata durumunda boş array set et
+    } catch (err) {
+      console.error("Error fetching staff:", err)
       setStaff([])
     } finally {
       setLoading(false)
     }
-  }, [currentPage, searchTerm, selectedDepartment, activeFilter])
+  }, [currentPage, searchTerm, selectedDepartment, listMode])
 
   useEffect(() => {
     fetchStaff()
   }, [fetchStaff])
+
+  useEffect(() => {
+    if (listMode === "active") {
+      fetchFormerCount()
+    }
+  }, [listMode, fetchFormerCount])
+
+  const switchListMode = (mode: "active" | "former") => {
+    setListMode(mode)
+    setCurrentPage(1)
+    setSearchTerm("")
+    setSelectedDepartment("all")
+    setShowForm(false)
+    setEditingStaff(null)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -174,12 +213,19 @@ export default function PersonelPage() {
 
       if (response.ok) {
         const isEdit = !!editingStaff
+        const becameFormer = isEdit && editingStaff.isActive && !formData.isActive
+        const becameActive = isEdit && !editingStaff.isActive && formData.isActive
         success(
           isEdit
-            ? "Personel başarıyla güncellendi!"
+            ? becameFormer
+              ? "Personel eski personellere taşındı."
+              : becameActive
+                ? "Personel tekrar aktifleştirildi."
+                : "Personel başarıyla güncellendi!"
             : "Personel başarıyla eklendi!"
         )
         await fetchStaff()
+        if (listMode === "active") await fetchFormerCount()
         setShowForm(false)
         setEditingStaff(null)
         setFormData({
@@ -225,6 +271,82 @@ export default function PersonelPage() {
     setShowForm(true)
   }
 
+  const handleDeactivate = async (staffId: string) => {
+    const staffMember = staff.find((s) => s.id === staffId)
+    const staffName = staffMember
+      ? `${staffMember.firstName} ${staffMember.lastName}`
+      : ""
+
+    if (
+      !confirm(
+        `"${staffName}" personelini listeden kaldırmak istiyor musunuz?\n\nKayıt silinmez; Eski Personeller bölümüne taşınır.`
+      )
+    ) {
+      return
+    }
+
+    setDeactivatingId(staffId)
+    try {
+      const response = await fetch(`/api/staff/${staffId}`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ ...staffMember, isActive: false }),
+      })
+
+      if (response.ok) {
+        success("Personel eski personellere taşındı.")
+        await fetchStaff()
+        await fetchFormerCount()
+      } else {
+        const errorData = await response.json()
+        error(errorData.error || "Personel taşınırken hata oluştu!")
+      }
+    } catch (err) {
+      console.error("Error deactivating staff:", err)
+      error("Personel taşınırken bir hata oluştu!")
+    } finally {
+      setDeactivatingId(null)
+    }
+  }
+
+  const handleReactivate = async (staffId: string) => {
+    const staffMember = staff.find((s) => s.id === staffId)
+    const staffName = staffMember
+      ? `${staffMember.firstName} ${staffMember.lastName}`
+      : ""
+
+    if (
+      !confirm(
+        `"${staffName}" personelini tekrar aktifleştirmek istiyor musunuz?`
+      )
+    ) {
+      return
+    }
+
+    setDeactivatingId(staffId)
+    try {
+      const response = await fetch(`/api/staff/${staffId}`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ ...staffMember, isActive: true }),
+      })
+
+      if (response.ok) {
+        success("Personel tekrar aktifleştirildi.")
+        await fetchStaff()
+        await fetchFormerCount()
+      } else {
+        const errorData = await response.json()
+        error(errorData.error || "Personel aktifleştirilirken hata oluştu!")
+      }
+    } catch (err) {
+      console.error("Error reactivating staff:", err)
+      error("Personel aktifleştirilirken bir hata oluştu!")
+    } finally {
+      setDeactivatingId(null)
+    }
+  }
+
   const handleDelete = async (staffId: string) => {
     const staffMember = staff.find((s) => s.id === staffId)
     const staffName = staffMember
@@ -233,7 +355,7 @@ export default function PersonelPage() {
 
     if (
       !confirm(
-        `"${staffName}" personelini silmek istediğinizden emin misiniz?\n\nBu işlem geri alınamaz.`
+        `"${staffName}" personelini kalıcı olarak silmek istediğinizden emin misiniz?\n\nBu işlem geri alınamaz.`
       )
     ) {
       return
@@ -247,8 +369,13 @@ export default function PersonelPage() {
       })
 
       if (response.ok) {
-        success("Personel başarıyla silindi!")
+        success("Personel kalıcı olarak silindi!")
         await fetchStaff()
+        if (listMode === "former") {
+          setFormerCount((c) => Math.max(0, c - 1))
+        } else {
+          await fetchFormerCount()
+        }
       } else {
         const errorData = await response.json()
         error(errorData.error || "Personel silinirken hata oluştu!")
@@ -270,11 +397,9 @@ export default function PersonelPage() {
   }
 
   const stats = useMemo(() => {
-    // Güvenli array kontrolü
     const staffArray = Array.isArray(staff) ? staff : []
     return {
       total: totalStaff,
-      active: staffArray.filter((s) => s.isActive).length,
       teachers: staffArray.filter((s) => s.department === "OGRETMEN").length,
       byDepartment: Object.keys(departmentLabels).reduce((acc, dept) => {
         acc[dept] = staffArray.filter((s) => s.department === dept).length
@@ -283,73 +408,99 @@ export default function PersonelPage() {
     }
   }, [staff, totalStaff])
 
+  const isFormerView = listMode === "former"
+
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 relative">{/* Header */}
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 relative">      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div className="flex-1 min-w-0">
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
-            Personel Yönetimi
+            {isFormerView ? "Eski Personeller" : "Personel Yönetimi"}
           </h1>
           <p className="text-gray-600 mt-1 sm:mt-2 text-xs sm:text-sm">
-            Okul personelini yönetin ve kayıt altına alın
+            {isFormerView
+              ? "Okuldan ayrılan personel kayıtları — veriler korunur"
+              : "Okul personelini yönetin ve kayıt altına alın"}
           </p>
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-          <Link
-            href="/personel/gorusmeler"
-            className="inline-flex h-9 w-full items-center justify-center rounded-md border border-gray-200 bg-white px-3 text-xs font-medium hover:bg-gray-50 sm:w-auto sm:text-sm"
-          >
-            <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-            Personel Görüşmeler
-          </Link>
-          <Button
-            onClick={() => {
-              setShowForm(true)
-              setEditingStaff(null)
-              setFormData({
-                firstName: "",
-                lastName: "",
-                tcNumber: "",
-                email: "",
-                phone: "",
-                department: "OGRETMEN",
-                position: "",
-                subject: "",
-                isActive: true,
-                hireDate: "",
-                notes: "",
-              })
-            }}
-            size="sm"
-            className="w-full sm:w-auto text-xs sm:text-sm"
-          >
-            <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-            Yeni Personel Ekle
-          </Button>
+          {isFormerView ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => switchListMode("active")}
+              className="w-full sm:w-auto text-xs sm:text-sm"
+            >
+              <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+              Aktif Personeller
+            </Button>
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => switchListMode("former")}
+                className="w-full sm:w-auto text-xs sm:text-sm"
+              >
+                <Archive className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                Eski Personeller
+                {formerCount > 0 && (
+                  <span className="ml-1.5 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-gray-200 px-1.5 text-[10px] font-semibold text-gray-700">
+                    {formerCount}
+                  </span>
+                )}
+              </Button>
+              <Link
+                href="/personel/gorusmeler"
+                className="inline-flex h-9 w-full items-center justify-center rounded-md border border-gray-200 bg-white px-3 text-xs font-medium hover:bg-gray-50 sm:w-auto sm:text-sm"
+              >
+                <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                Personel Görüşmeler
+              </Link>
+              <Button
+                onClick={() => {
+                  setShowForm(true)
+                  setEditingStaff(null)
+                  setFormData({
+                    firstName: "",
+                    lastName: "",
+                    tcNumber: "",
+                    email: "",
+                    phone: "",
+                    department: "OGRETMEN",
+                    position: "",
+                    subject: "",
+                    isActive: true,
+                    hireDate: "",
+                    notes: "",
+                  })
+                }}
+                size="sm"
+                className="w-full sm:w-auto text-xs sm:text-sm"
+              >
+                <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                Yeni Personel Ekle
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
       {/* İstatistikler */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
         <Card>
           <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 lg:pt-6">
             <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">
-              Toplam Personel
+              {isFormerView ? "Eski Personel" : "Aktif Personel"}
             </CardTitle>
           </CardHeader>
           <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
-            <div className="text-xl sm:text-2xl font-bold">{stats.total}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 lg:pt-6">
-            <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">
-              Aktif Personel
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
-            <div className="text-xl sm:text-2xl font-bold text-green-600">
-              {stats.active}
+            <div
+              className={`text-xl sm:text-2xl font-bold ${
+                isFormerView ? "text-amber-700" : "text-green-600"
+              }`}
+            >
+              {stats.total}
             </div>
           </CardContent>
         </Card>
@@ -363,20 +514,41 @@ export default function PersonelPage() {
             <div className="text-xl sm:text-2xl font-bold text-blue-600">
               {stats.teachers}
             </div>
+            <p className="text-[10px] text-gray-400 mt-1">Bu sayfadaki</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 lg:pt-6">
-            <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">
-              Pasif Personel
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
-            <div className="text-xl sm:text-2xl font-bold text-red-600">
-              {stats.total - stats.active}
-            </div>
-          </CardContent>
-        </Card>
+        {!isFormerView ? (
+          <Card
+            className="cursor-pointer hover:bg-gray-50 transition-colors"
+            onClick={() => switchListMode("former")}
+          >
+            <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 lg:pt-6">
+              <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">
+                Eski Personeller
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
+              <div className="text-xl sm:text-2xl font-bold text-amber-700">
+                {formerCount}
+              </div>
+              <p className="text-[10px] text-gray-400 mt-1">Görüntülemek için tıkla</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card
+            className="cursor-pointer hover:bg-gray-50 transition-colors"
+            onClick={() => switchListMode("active")}
+          >
+            <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 lg:pt-6">
+              <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">
+                Aktif Personellere Dön
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
+              <div className="text-sm font-medium text-blue-600">← Listeye dön</div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Filtreler */}
@@ -388,7 +560,7 @@ export default function PersonelPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <Label htmlFor="search" className="text-xs sm:text-sm">
                 Arama
@@ -399,7 +571,10 @@ export default function PersonelPage() {
                   id="search"
                   placeholder="Ad, soyad, TC, email..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value)
+                    setCurrentPage(1)
+                  }}
                   className="pl-8 sm:pl-10 h-9 sm:h-10 text-xs sm:text-sm"
                 />
               </div>
@@ -411,7 +586,10 @@ export default function PersonelPage() {
               <select
                 id="department"
                 value={selectedDepartment}
-                onChange={(e) => setSelectedDepartment(e.target.value)}
+                onChange={(e) => {
+                  setSelectedDepartment(e.target.value)
+                  setCurrentPage(1)
+                }}
                 className="w-full h-9 sm:h-10 px-2 sm:px-3 py-1.5 sm:py-2 border border-input bg-background rounded-md text-xs sm:text-sm focus:ring-2 focus:ring-blue-500"
               >
                 <option value="all">Tüm Bölümler</option>
@@ -422,23 +600,8 @@ export default function PersonelPage() {
                 ))}
               </select>
             </div>
-            <div>
-              <Label htmlFor="activeFilter" className="text-xs sm:text-sm">
-                Durum
-              </Label>
-              <select
-                id="activeFilter"
-                value={activeFilter}
-                onChange={(e) => setActiveFilter(e.target.value)}
-                className="w-full h-9 sm:h-10 px-2 sm:px-3 py-1.5 sm:py-2 border border-input bg-background rounded-md text-xs sm:text-sm focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">Tümü</option>
-                <option value="true">Aktif</option>
-                <option value="false">Pasif</option>
-              </select>
-            </div>
           </div>
-          {(searchTerm || selectedDepartment !== "all" || activeFilter !== "all") && (
+          {(searchTerm || selectedDepartment !== "all") && (
             <div className="mt-3 sm:mt-4">
               <Button
                 variant="outline"
@@ -446,7 +609,7 @@ export default function PersonelPage() {
                 onClick={() => {
                   setSearchTerm("")
                   setSelectedDepartment("all")
-                  setActiveFilter("all")
+                  setCurrentPage(1)
                 }}
                 className="text-xs sm:text-sm"
               >
@@ -668,7 +831,9 @@ export default function PersonelPage() {
                       className="h-3 w-3 sm:h-4 sm:w-4"
                     />
                     <Label htmlFor="isActive" className="text-xs sm:text-sm cursor-pointer">
-                      Aktif Personel
+                      {formData.isActive
+                        ? "Aktif Personel"
+                        : "Eski Personel (pasif — listeden gizlenir)"}
                     </Label>
                   </div>
                 </div>
@@ -744,8 +909,12 @@ export default function PersonelPage() {
       <Card>
         <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
           <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-            <Users className="h-4 w-4 sm:h-5 sm:w-5" />
-            Personel Listesi
+            {isFormerView ? (
+              <Archive className="h-4 w-4 sm:h-5 sm:w-5" />
+            ) : (
+              <Users className="h-4 w-4 sm:h-5 sm:w-5" />
+            )}
+            {isFormerView ? "Eski Personel Listesi" : "Aktif Personel Listesi"}
           </CardTitle>
         </CardHeader>
         <CardContent className="px-0 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
@@ -758,11 +927,15 @@ export default function PersonelPage() {
             <div className="text-center py-8 sm:py-12 px-4">
               <Briefcase className="h-12 w-12 text-gray-300 mx-auto mb-3" />
               <p className="text-gray-500 text-xs sm:text-sm font-medium">
-                Henüz personel kaydı bulunmamaktadır.
+                {isFormerView
+                  ? "Eski personel kaydı bulunmamaktadır."
+                  : "Henüz aktif personel kaydı bulunmamaktadır."}
               </p>
-              <p className="text-gray-400 text-xs mt-1">
-                Yeni personel eklemek için &quot;Yeni Personel Ekle&quot; butonuna tıklayın.
-              </p>
+              {!isFormerView && (
+                <p className="text-gray-400 text-xs mt-1">
+                  Yeni personel eklemek için &quot;Yeni Personel Ekle&quot; butonuna tıklayın.
+                </p>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -785,7 +958,7 @@ export default function PersonelPage() {
                       İletişim
                     </th>
                     <th className="px-2 sm:px-3 lg:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Durum
+                      {isFormerView ? "Kayıt" : "Durum"}
                     </th>
                     <th className="px-2 sm:px-3 lg:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
                       İşlemler
@@ -853,12 +1026,12 @@ export default function PersonelPage() {
                       <td className="px-2 sm:px-3 lg:px-6 py-2 sm:py-4 whitespace-nowrap">
                         <span
                           className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] sm:text-xs font-medium ${
-                            staffMember.isActive
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
+                            isFormerView
+                              ? "bg-amber-100 text-amber-800"
+                              : "bg-green-100 text-green-800"
                           }`}
                         >
-                          {staffMember.isActive ? "Aktif" : "Pasif"}
+                          {isFormerView ? "Eski" : "Aktif"}
                         </span>
                       </td>
                       <td className="px-2 sm:px-3 lg:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
@@ -874,23 +1047,58 @@ export default function PersonelPage() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleEdit(staffMember)}
+                            title="Düzenle"
                             className="h-7 w-7 sm:h-8 sm:w-8 p-0"
                           >
                             <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
                           </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDelete(staffMember.id)}
-                            disabled={deletingId === staffMember.id}
-                            className="h-7 w-7 sm:h-8 sm:w-8 p-0"
-                          >
-                            {deletingId === staffMember.id ? (
-                              <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                            )}
-                          </Button>
+                          {isFormerView ? (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleReactivate(staffMember.id)}
+                                disabled={deactivatingId === staffMember.id}
+                                title="Tekrar aktifleştir"
+                                className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-green-700 hover:text-green-800"
+                              >
+                                {deactivatingId === staffMember.id ? (
+                                  <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                                ) : (
+                                  <Users className="h-3 w-3 sm:h-4 sm:w-4" />
+                                )}
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleDelete(staffMember.id)}
+                                disabled={deletingId === staffMember.id}
+                                title="Kalıcı sil"
+                                className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                              >
+                                {deletingId === staffMember.id ? (
+                                  <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                                )}
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeactivate(staffMember.id)}
+                              disabled={deactivatingId === staffMember.id}
+                              title="Eski personellere taşı"
+                              className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-amber-700 hover:text-amber-800"
+                            >
+                              {deactivatingId === staffMember.id ? (
+                                <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                              ) : (
+                                <UserMinus className="h-3 w-3 sm:h-4 sm:w-4" />
+                              )}
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -907,7 +1115,8 @@ export default function PersonelPage() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
           <div className="text-xs sm:text-sm text-gray-600 text-center sm:text-left">
             Sayfa <span className="font-medium">{currentPage}</span> /{" "}
-            <span className="font-medium">{totalPages}</span> ({totalStaff} personel)
+            <span className="font-medium">{totalPages}</span> (
+            {totalStaff} {isFormerView ? "eski" : "aktif"} personel)
           </div>
           <div className="flex gap-1.5 sm:gap-2">
             <Button

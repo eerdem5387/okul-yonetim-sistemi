@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { assertStudentsWithoutClubSelection } from "@/lib/schedules/club-selection-guard"
 import { assertEtutSlot } from "@/lib/schedules/club-schedule"
 import { hasTimeConflict } from "@/lib/schedules/time-conflict"
 
@@ -174,9 +173,6 @@ export async function PUT(
         { status: 400 }
       )
     }
-    if (studentIds && studentIds.length === 0) {
-      return NextResponse.json({ error: "En az bir öğrenci seçin" }, { status: 400 })
-    }
 
     const etutErr = await assertEtutSlot(startTime, endTime)
     if (etutErr) {
@@ -202,14 +198,9 @@ export async function PUT(
         where: { id: { in: studentIds } },
         select: { id: true },
       })
-      if (found.length !== studentIds.length) {
+      if (studentIds.length > 0 && found.length !== studentIds.length) {
         return NextResponse.json({ error: "Bazı öğrenciler bulunamadı" }, { status: 400 })
       }
-    }
-
-    const clubConflict = await assertStudentsWithoutClubSelection(finalStudentIds)
-    if (clubConflict) {
-      return NextResponse.json({ error: clubConflict }, { status: 400 })
     }
 
     const teacherConflict = await assertTeacherFree({
@@ -223,13 +214,16 @@ export async function PUT(
       return NextResponse.json({ error: teacherConflict }, { status: 400 })
     }
 
-    const studentConflict = await assertStudentsFree({
-      studentIds: finalStudentIds,
-      dayOfWeek,
-      startTime,
-      endTime,
-      excludeGroupId: id,
-    })
+    const studentConflict =
+      finalStudentIds.length > 0
+        ? await assertStudentsFree({
+            studentIds: finalStudentIds,
+            dayOfWeek,
+            startTime,
+            endTime,
+            excludeGroupId: id,
+          })
+        : null
     if (studentConflict) {
       return NextResponse.json({ error: studentConflict }, { status: 400 })
     }
@@ -237,9 +231,11 @@ export async function PUT(
     const group = await prisma.$transaction(async (tx) => {
       if (studentIds) {
         await tx.studyGroupStudent.deleteMany({ where: { studyGroupId: id } })
-        await tx.studyGroupStudent.createMany({
-          data: studentIds.map((studentId) => ({ studyGroupId: id, studentId })),
-        })
+        if (studentIds.length > 0) {
+          await tx.studyGroupStudent.createMany({
+            data: studentIds.map((studentId) => ({ studyGroupId: id, studentId })),
+          })
+        }
       }
       return tx.studyGroup.update({
         where: { id },

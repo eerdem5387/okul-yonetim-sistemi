@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Loader2, Pencil, Plus, Search, Trash2, Users } from "lucide-react"
+import { Loader2, Pencil, Plus, Search, Trash2, Users, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -97,6 +97,7 @@ export function StudyGroupsPanel() {
   const [form, setForm] = useState<FormState>(emptyForm)
   const [studentSearch, setStudentSearch] = useState("")
   const [gradeLevelFilter, setGradeLevelFilter] = useState<number | "all">("all")
+  const [showSelectedOnly, setShowSelectedOnly] = useState(false)
   const [dayFilter, setDayFilter] = useState<"all" | number>("all")
   const [error, setError] = useState("")
   const [teacherBusy, setTeacherBusy] = useState<BusyBlock[]>([])
@@ -110,7 +111,7 @@ export function StudyGroupsPanel() {
       const [groupsRes, teachersRes, studentsRes, templatesRes] = await Promise.all([
         fetch("/api/study-groups", { cache: "no-store" }),
         fetch("/api/staff/pickers?type=teachers", { headers: getAuthHeaders() }),
-        fetch("/api/students?limit=3000&gradeBand=k12&excludeClubSelected=1", {
+        fetch("/api/students?limit=3000&gradeBand=k12", {
           cache: "no-store",
         }),
         fetch("/api/schedules/day-templates?band=all", { cache: "no-store" }),
@@ -226,24 +227,56 @@ export function StudyGroupsPanel() {
     return groups.filter((g) => g.dayOfWeek === dayFilter)
   }, [groups, dayFilter])
 
-  const filteredStudents = useMemo(() => {
+  const studentMatchStats = useMemo(() => {
     const q = studentSearch.trim().toLocaleLowerCase("tr-TR")
-    return students
-      .filter((s) => {
-        if (gradeLevelFilter !== "all") {
-          const level = parseStudentGradeLevel(s.grade)
-          if (level !== gradeLevelFilter) return false
-        }
-        if (!q) return true
-        const full = `${s.firstName} ${s.lastName}`.toLocaleLowerCase("tr-TR")
-        return (
-          full.includes(q) ||
-          s.tcNumber.includes(q) ||
-          s.grade.toLocaleLowerCase("tr-TR").includes(q)
-        )
-      })
-      .slice(0, 120)
-  }, [students, studentSearch, gradeLevelFilter])
+    const selectedSet = new Set(form.studentIds)
+
+    const matched = students.filter((s) => {
+      if (showSelectedOnly && !selectedSet.has(s.id)) return false
+      if (gradeLevelFilter !== "all") {
+        const level = parseStudentGradeLevel(s.grade)
+        if (level !== gradeLevelFilter) return false
+      }
+      if (!q) return true
+      const full = `${s.firstName} ${s.lastName}`.toLocaleLowerCase("tr-TR")
+      const grade = s.grade.toLocaleLowerCase("tr-TR")
+      return (
+        full.includes(q) ||
+        s.tcNumber.includes(q) ||
+        grade.includes(q) ||
+        full.replace(/\s+/g, "").includes(q.replace(/\s+/g, ""))
+      )
+    })
+
+    const sorted = [...matched].sort((a, b) => {
+      const aSel = selectedSet.has(a.id) ? 0 : 1
+      const bSel = selectedSet.has(b.id) ? 0 : 1
+      if (aSel !== bSel) return aSel - bSel
+      const an = `${a.lastName} ${a.firstName}`.localeCompare(
+        `${b.lastName} ${b.firstName}`,
+        "tr"
+      )
+      return an
+    })
+
+    const limit = q || gradeLevelFilter !== "all" || showSelectedOnly ? 200 : 80
+    return {
+      totalMatched: matched.length,
+      shown: sorted.slice(0, limit),
+      limit,
+    }
+  }, [students, studentSearch, gradeLevelFilter, showSelectedOnly, form.studentIds])
+
+  const filteredStudents = studentMatchStats.shown
+
+  const selectedStudents = useMemo(() => {
+    const map = new Map(students.map((s) => [s.id, s]))
+    // Düzenlemede listede olmayan (silinmiş) öğrenci id'leri de korunsun diye group fallback yok;
+    // sadece bilinen öğrencileri chip olarak göster.
+    return form.studentIds
+      .map((id) => map.get(id))
+      .filter((s): s is Student => Boolean(s))
+  }, [form.studentIds, students])
 
   const etutSlots = useMemo(
     () => slots.filter((s) => s.kind === "ETUT"),
@@ -261,12 +294,12 @@ export function StudyGroupsPanel() {
     setForm(emptyForm())
     setStudentSearch("")
     setGradeLevelFilter("all")
+    setShowSelectedOnly(false)
     setTeacherBusy([])
     setModalOpen(true)
   }
 
   const openEdit = (group: StudyGroup) => {
-    const eligibleIds = new Set(students.map((s) => s.id))
     setEditing(group)
     setForm({
       name: group.name,
@@ -277,13 +310,11 @@ export function StudyGroupsPanel() {
       endTime: group.endTime,
       room: group.room || "",
       notes: group.notes || "",
-      // Kulüp seçimi olanlar listede yok; kayıtta da tutulmaz
-      studentIds: group.students
-        .map((m) => m.student.id)
-        .filter((id) => eligibleIds.has(id)),
+      studentIds: group.students.map((m) => m.student.id),
     })
     setStudentSearch("")
     setGradeLevelFilter("all")
+    setShowSelectedOnly(false)
     setModalOpen(true)
   }
 
@@ -296,9 +327,30 @@ export function StudyGroupsPanel() {
     }))
   }
 
+  const selectVisibleStudents = () => {
+    setForm((prev) => {
+      const next = new Set(prev.studentIds)
+      for (const s of filteredStudents) next.add(s.id)
+      return { ...prev, studentIds: [...next] }
+    })
+  }
+
+  const clearVisibleStudents = () => {
+    const visible = new Set(filteredStudents.map((s) => s.id))
+    setForm((prev) => ({
+      ...prev,
+      studentIds: prev.studentIds.filter((id) => !visible.has(id)),
+    }))
+  }
+
+  const clearAllStudents = () => {
+    setForm((prev) => ({ ...prev, studentIds: [] }))
+    setShowSelectedOnly(false)
+  }
+
   const save = async () => {
-    if (!form.name.trim() || !form.teacherId || form.studentIds.length === 0) {
-      alert("Grup adı, öğretmen ve en az bir öğrenci zorunludur.")
+    if (!form.name.trim() || !form.teacherId) {
+      alert("Grup adı ve öğretmen zorunludur. Öğrenciler sonradan eklenebilir.")
       return
     }
     setBusy(true)
@@ -349,14 +401,6 @@ export function StudyGroupsPanel() {
     }
   }
 
-  const selectedStudentLabels = useMemo(() => {
-    const map = new Map(students.map((s) => [s.id, s]))
-    return form.studentIds
-      .map((id) => map.get(id))
-      .filter(Boolean)
-      .map((s) => `${s!.firstName} ${s!.lastName}`)
-  }, [form.studentIds, students])
-
   const selectedTeacher = teachers.find((t) => t.id === form.teacherId)
 
   return (
@@ -365,7 +409,7 @@ export function StudyGroupsPanel() {
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Özel çalışma grupları</h2>
           <p className="text-sm text-gray-600">
-            Seçilen öğrencilere + öğretmene yalnızca etüt saatlerinde yer ayırın
+            Önce grubu oluşturun; öğrencileri şimdi veya sonra ekleyin. Karttan düzenleyerek öğrencileri değiştirebilirsiniz.
           </p>
         </div>
         <Button size="sm" onClick={openCreate}>
@@ -452,13 +496,19 @@ export function StudyGroupsPanel() {
                 </p>
                 {group.room && <p className="text-gray-500 text-xs">Derslik: {group.room}</p>}
                 <p className="text-xs text-violet-700 bg-violet-50 rounded-lg px-2 py-1 inline-block">
-                  {group.students.length} öğrenci
+                  {group.students.length === 0
+                    ? "Öğrenci henüz eklenmedi"
+                    : `${group.students.length} öğrenci`}
                 </p>
-                <div className="text-xs text-gray-600 line-clamp-3">
-                  {group.students
-                    .map((m) => `${m.student.firstName} ${m.student.lastName}`)
-                    .join(", ")}
-                </div>
+                {group.students.length > 0 ? (
+                  <div className="text-xs text-gray-600 line-clamp-3">
+                    {group.students
+                      .map((m) => `${m.student.firstName} ${m.student.lastName}`)
+                      .join(", ")}
+                  </div>
+                ) : (
+                  <p className="text-xs text-amber-700">Düzenle → öğrenci ekleyin</p>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -656,59 +706,142 @@ export function StudyGroupsPanel() {
               </div>
             </div>
 
-            <div>
-              <div className="flex flex-col sm:flex-row sm:items-end gap-3 mb-2">
-                <div className="flex-1">
-                  <Label>Öğrenciler * ({form.studentIds.length} seçili)</Label>
+            <div className="rounded-2xl border border-violet-100 bg-violet-50/30 p-4 space-y-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <Label className="text-base">
+                    Öğrenciler{" "}
+                    <span className="font-normal text-gray-500">
+                      ({form.studentIds.length} seçili — opsiyonel)
+                    </span>
+                  </Label>
                   <p className="mt-0.5 text-xs text-gray-500">
-                    Kulüp seçimi yapmış öğrenciler listede yer almaz.
+                    Tüm öğrenciler listelenir. Sınıf düzeyi + arama ile daraltın; grubu boş da kaydedebilirsiniz.
                   </p>
-                  {selectedStudentLabels.length > 0 && (
-                    <p className="mt-1 text-xs text-violet-700 line-clamp-2">
-                      {selectedStudentLabels.join(", ")}
-                    </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={showSelectedOnly ? "default" : "outline"}
+                    onClick={() => setShowSelectedOnly((v) => !v)}
+                    disabled={form.studentIds.length === 0}
+                  >
+                    Seçilenler
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={selectVisibleStudents}
+                    disabled={filteredStudents.length === 0}
+                  >
+                    Görünenleri seç
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={clearVisibleStudents}
+                    disabled={filteredStudents.length === 0}
+                  >
+                    Görünenleri kaldır
+                  </Button>
+                  {form.studentIds.length > 0 && (
+                    <Button type="button" size="sm" variant="ghost" onClick={clearAllStudents}>
+                      Tümünü temizle
+                    </Button>
                   )}
                 </div>
-                <div className="w-full sm:w-44">
-                  <Label className="text-xs text-gray-500">Sınıf düzeyi</Label>
-                  <select
-                    className="mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
-                    value={gradeLevelFilter === "all" ? "all" : String(gradeLevelFilter)}
-                    onChange={(e) =>
-                      setGradeLevelFilter(
-                        e.target.value === "all" ? "all" : parseInt(e.target.value, 10)
-                      )
-                    }
-                  >
-                    <option value="all">Tüm düzeyler</option>
-                    {GRADE_LEVELS.map((g) => (
-                      <option key={g} value={g}>
-                        {g}. Sınıf
-                      </option>
-                    ))}
-                  </select>
+              </div>
+
+              {selectedStudents.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto rounded-xl border border-violet-100 bg-white p-2">
+                  {selectedStudents.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => toggleStudent(s.id)}
+                      title="Kaldırmak için tıkla"
+                      className="inline-flex items-center gap-1 rounded-full bg-violet-100 text-violet-900 px-2.5 py-1 text-xs font-medium hover:bg-violet-200"
+                    >
+                      {s.firstName} {s.lastName}
+                      <span className="text-violet-600/80">· {s.grade}</span>
+                      <X className="h-3 w-3 opacity-70" />
+                    </button>
+                  ))}
                 </div>
+              )}
+
+              <div className="flex flex-wrap gap-1.5">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={gradeLevelFilter === "all" ? "default" : "outline"}
+                  className="h-8"
+                  onClick={() => setGradeLevelFilter("all")}
+                >
+                  Tümü
+                </Button>
+                {GRADE_LEVELS.map((g) => (
+                  <Button
+                    key={g}
+                    type="button"
+                    size="sm"
+                    variant={gradeLevelFilter === g ? "default" : "outline"}
+                    className="h-8"
+                    onClick={() => setGradeLevelFilter(g)}
+                  >
+                    {g}.
+                  </Button>
+                ))}
               </div>
 
               <div className="relative">
                 <Input
                   value={studentSearch}
                   onChange={(e) => setStudentSearch(e.target.value)}
-                  placeholder="Ad, TC veya sınıf ara"
-                  className="pl-9"
+                  placeholder="Ad, soyad, TC veya sınıf yazın (ör. Ayşe, 12345, 9-A)"
+                  className="pl-9 h-11"
+                  autoComplete="off"
                 />
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                {studentSearch && (
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    onClick={() => setStudentSearch("")}
+                    aria-label="Aramayı temizle"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
-              <div className="mt-3 max-h-72 overflow-y-auto rounded-xl border border-gray-200 divide-y bg-white">
+
+              <p className="text-xs text-gray-500">
+                {studentMatchStats.totalMatched} sonuç
+                {studentMatchStats.totalMatched > studentMatchStats.limit
+                  ? ` · ilk ${studentMatchStats.limit} gösteriliyor — aramayı daraltın`
+                  : null}
+                {!studentSearch && gradeLevelFilter === "all" && !showSelectedOnly
+                  ? " · sınıf seçin veya arama yapın"
+                  : null}
+              </p>
+
+              <div className="max-h-80 overflow-y-auto rounded-xl border border-gray-200 divide-y bg-white">
                 {filteredStudents.length === 0 ? (
-                  <p className="text-sm text-gray-500 p-6 text-center">Öğrenci bulunamadı</p>
+                  <p className="text-sm text-gray-500 p-6 text-center">
+                    {showSelectedOnly
+                      ? "Seçili öğrenci yok"
+                      : "Öğrenci bulunamadı — arama veya sınıf filtresini değiştirin"}
+                  </p>
                 ) : (
                   filteredStudents.map((s) => {
                     const checked = form.studentIds.includes(s.id)
                     return (
                       <label
                         key={s.id}
-                        className={`flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-violet-50/60 ${
+                        className={`flex items-start gap-3 px-4 py-2.5 cursor-pointer hover:bg-violet-50/60 ${
                           checked ? "bg-violet-50" : ""
                         }`}
                       >
@@ -718,7 +851,7 @@ export function StudyGroupsPanel() {
                           checked={checked}
                           onChange={() => toggleStudent(s.id)}
                         />
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium text-gray-900">
                             {s.firstName} {s.lastName}
                           </p>
@@ -734,16 +867,21 @@ export function StudyGroupsPanel() {
             </div>
           </div>
 
-          <div className="sticky bottom-0 border-t bg-white px-6 py-4 flex gap-3">
+          <div className="sticky bottom-0 border-t bg-white px-6 py-4 flex flex-col sm:flex-row gap-3">
+            <p className="text-xs text-gray-500 sm:flex-1 self-center">
+              {form.studentIds.length === 0
+                ? "Öğrencisiz kaydedilebilir; daha sonra karttan düzenleyerek ekleyin."
+                : `${form.studentIds.length} öğrenci ile kaydedilecek.`}
+            </p>
             <Button
               variant="outline"
-              className="flex-1"
+              className="sm:w-28"
               onClick={() => setModalOpen(false)}
               disabled={busy}
             >
               İptal
             </Button>
-            <Button className="flex-1" onClick={() => void save()} disabled={busy}>
+            <Button className="sm:w-36" onClick={() => void save()} disabled={busy}>
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : editing ? "Güncelle" : "Oluştur"}
             </Button>
           </div>

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { assertStudentsWithoutClubSelection } from "@/lib/schedules/club-selection-guard"
 import { assertEtutSlot } from "@/lib/schedules/club-schedule"
 import { DAY_LABELS, hasTimeConflict } from "@/lib/schedules/time-conflict"
 
@@ -164,9 +163,6 @@ export async function POST(request: NextRequest) {
     if (dayOfWeek < 1 || dayOfWeek > 7) {
       return NextResponse.json({ error: "Geçersiz gün" }, { status: 400 })
     }
-    if (studentIds.length === 0) {
-      return NextResponse.json({ error: "En az bir öğrenci seçin" }, { status: 400 })
-    }
 
     const etutErr = await assertEtutSlot(startTime, endTime)
     if (etutErr) {
@@ -182,13 +178,8 @@ export async function POST(request: NextRequest) {
       where: { id: { in: studentIds } },
       select: { id: true },
     })
-    if (foundStudents.length !== studentIds.length) {
+    if (studentIds.length > 0 && foundStudents.length !== studentIds.length) {
       return NextResponse.json({ error: "Bazı öğrenciler bulunamadı" }, { status: 400 })
-    }
-
-    const clubConflict = await assertStudentsWithoutClubSelection(studentIds)
-    if (clubConflict) {
-      return NextResponse.json({ error: clubConflict }, { status: 400 })
     }
 
     const teacherConflict = await assertTeacherFree({
@@ -201,12 +192,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: teacherConflict }, { status: 400 })
     }
 
-    const studentConflict = await assertStudentsFree({
-      studentIds,
-      dayOfWeek,
-      startTime,
-      endTime,
-    })
+    const studentConflict =
+      studentIds.length > 0
+        ? await assertStudentsFree({
+            studentIds,
+            dayOfWeek,
+            startTime,
+            endTime,
+          })
+        : null
     if (studentConflict) {
       return NextResponse.json({ error: studentConflict }, { status: 400 })
     }
@@ -221,9 +215,13 @@ export async function POST(request: NextRequest) {
         endTime,
         room,
         notes,
-        students: {
-          create: studentIds.map((studentId) => ({ studentId })),
-        },
+        ...(studentIds.length > 0
+          ? {
+              students: {
+                create: studentIds.map((studentId) => ({ studentId })),
+              },
+            }
+          : {}),
       },
       include: groupInclude,
     })
