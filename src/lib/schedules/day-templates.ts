@@ -1,7 +1,12 @@
-import type { SchoolBand, SchoolDaySlotKind } from "@prisma/client"
-import { DEFAULT_LESSON_SLOTS, type LessonSlot } from "@/lib/schedules/lesson-slots"
+import type { DayTemplateScope, SchoolBand, SchoolDaySlotKind } from "@prisma/client"
+import {
+  DEFAULT_LESSON_SLOTS,
+  DEFAULT_SATURDAY_SLOTS,
+  type LessonSlot,
+} from "@/lib/schedules/lesson-slots"
 
 export type SlotKind = "LESSON" | "BREAK" | "ETUT"
+export type TemplateScope = "weekday" | "saturday"
 
 export type DaySlotInput = {
   label: string
@@ -26,6 +31,15 @@ export function enumToBand(band: SchoolBand): "ortaokul" | "lise" {
   return band === "ORTAOKUL" ? "ortaokul" : "lise"
 }
 
+export function scopeToEnum(scope: string | null | undefined): DayTemplateScope {
+  const s = String(scope ?? "weekday").toLowerCase()
+  return s === "saturday" || s === "cumartesi" ? "SATURDAY" : "WEEKDAY"
+}
+
+export function enumToScope(scope: DayTemplateScope): TemplateScope {
+  return scope === "SATURDAY" ? "saturday" : "weekday"
+}
+
 export function normalizeSlotKind(raw: string, label?: string): SlotKind {
   const k = String(raw ?? "").toUpperCase()
   if (k === "BREAK") return "BREAK"
@@ -42,9 +56,13 @@ export function kindToDb(kind: SlotKind): SchoolDaySlotKind {
 }
 
 /** İlk kurulum için varsayılan ders/etüt satırları. */
-export function defaultSlotsForBand(band: SchoolBand): DaySlotInput[] {
+export function defaultSlotsForBand(
+  band: SchoolBand,
+  scope: DayTemplateScope = "WEEKDAY"
+): DaySlotInput[] {
   void band
-  return DEFAULT_LESSON_SLOTS.map((s) => ({
+  const source = scope === "SATURDAY" ? DEFAULT_SATURDAY_SLOTS : DEFAULT_LESSON_SLOTS
+  return source.map((s) => ({
     label: s.label,
     kind: normalizeSlotKind("LESSON", s.label),
     startTime: s.startTime,

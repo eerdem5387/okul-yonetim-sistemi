@@ -25,6 +25,8 @@ interface ClassData {
   name: string;
   grade: number;
   section: string;
+  saturdayEnabled?: boolean;
+  saturdayMode?: "FULL" | "EXAM_ONLY";
   counselorId?: string | null;
   counselor?: {
     id: string;
@@ -131,6 +133,7 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
   const [actionLoading, setActionLoading] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [studentSearch, setStudentSearch] = useState("");
+  const [teacherSearch, setTeacherSearch] = useState("");
   const [studentsPickerLoading, setStudentsPickerLoading] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null); // Kullanıcı rolü
   const [staffId, setStaffId] = useState<string | null>(null); // Rehberlik için
@@ -598,6 +601,87 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
         </Card>
       </div>
 
+      <Card className="border-violet-100">
+        <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <p className="font-medium text-gray-900">Cumartesi programı</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Açık sınıflarda ders programından cumartesi dersi / deneme sınavı atanabilir.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+            <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={!!classData.saturdayEnabled}
+                disabled={actionLoading}
+                onChange={async (e) => {
+                  setActionLoading(true);
+                  try {
+                    const res = await fetch(`/api/classes/${id}`, {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ saturdayEnabled: e.target.checked }),
+                    });
+                    if (res.ok) {
+                      setClassData((prev) =>
+                        prev ? { ...prev, saturdayEnabled: e.target.checked } : prev
+                      );
+                    } else {
+                      const data = await res.json().catch(() => ({}));
+                      alert(data.error || "Cumartesi ayarı kaydedilemedi");
+                    }
+                  } finally {
+                    setActionLoading(false);
+                  }
+                }}
+              />
+              Cumartesi açık
+            </label>
+            {classData.saturdayEnabled && (
+              <select
+                className="rounded-md border border-gray-200 bg-white px-2 py-1.5 text-sm"
+                value={classData.saturdayMode === "EXAM_ONLY" ? "EXAM_ONLY" : "FULL"}
+                disabled={actionLoading}
+                onChange={async (e) => {
+                  const mode = e.target.value as "FULL" | "EXAM_ONLY";
+                  setActionLoading(true);
+                  try {
+                    const res = await fetch(`/api/classes/${id}`, {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ saturdayMode: mode }),
+                    });
+                    if (res.ok) {
+                      setClassData((prev) =>
+                        prev ? { ...prev, saturdayMode: mode } : prev
+                      );
+                    } else {
+                      const data = await res.json().catch(() => ({}));
+                      alert(data.error || "Mod kaydedilemedi");
+                    }
+                  } finally {
+                    setActionLoading(false);
+                  }
+                }}
+              >
+                <option value="FULL">Normal dersler</option>
+                <option value="EXAM_ONLY">Yalnızca deneme sınavı</option>
+              </select>
+            )}
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => router.push("/ders-programi")}
+            >
+              Ders programında yönet
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Öğrenciler */}
         <Card>
@@ -653,7 +737,12 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
               <Calendar className="h-5 w-5 text-green-600" />
               Haftalık Ders Programı
             </CardTitle>
-            <p className="text-sm text-gray-500">Bir hücreye tıklayarak ders ekleyin veya düzenleyin</p>
+            <p className="text-sm text-gray-500">
+              Bir hücreye tıklayarak ders ekleyin veya düzenleyin.
+              {classData.saturdayEnabled
+                ? " Cumartesi sütunu açık — ayrı saatler için Ders Programı modülünü kullanın."
+                : ""}
+            </p>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -663,7 +752,10 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
                     <th className="border border-gray-300 p-2 text-xs font-semibold text-gray-700 w-32">
                       Ders
                     </th>
-                    {dayNames.slice(1, 6).map((day) => (
+                    {(classData.saturdayEnabled
+                      ? dayNames.slice(1, 7)
+                      : dayNames.slice(1, 6)
+                    ).map((day) => (
                       <th key={day} className="border border-gray-300 p-2 text-xs font-semibold text-gray-700">
                         {day}
                       </th>
@@ -672,12 +764,15 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
                 </thead>
                 <tbody>
                   {lessonSlots.map((lesson, slotIndex) => {
+                    const dayIndexes = classData.saturdayEnabled
+                      ? [1, 2, 3, 4, 5, 6]
+                      : [1, 2, 3, 4, 5];
                     return (
                       <tr key={slotIndex}>
                         <td className="border border-gray-300 p-2 text-xs font-semibold text-gray-700 bg-gray-50">
                           {lesson.label}
                         </td>
-                        {[1, 2, 3, 4, 5].map((dayIndex) => {
+                        {dayIndexes.map((dayIndex) => {
                           const schedule = classData.schedules?.find(
                             (s) => s.dayOfWeek === dayIndex && s.startTime === lesson.startTime
                           );
@@ -685,7 +780,11 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
                             <td
                               key={`${dayIndex}-${slotIndex}`}
                               className={`border border-gray-300 p-2 cursor-pointer hover:bg-blue-50 transition-colors ${
-                                schedule ? "bg-gradient-to-br from-green-50 to-teal-50" : "bg-white"
+                                schedule
+                                  ? dayIndex === 6
+                                    ? "bg-gradient-to-br from-violet-50 to-purple-50"
+                                    : "bg-gradient-to-br from-green-50 to-teal-50"
+                                  : "bg-white"
                               }`}
                               onClick={() => {
                                 if (schedule) {
@@ -701,7 +800,10 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
                                 } else {
                                   setEditingSchedule(null);
                                   setScheduleForm({
-                                    subjectName: "",
+                                    subjectName:
+                                      dayIndex === 6 && classData.saturdayMode === "EXAM_ONLY"
+                                        ? "Deneme Sınavı"
+                                        : "",
                                     teacherId: "",
                                     dayOfWeek: String(dayIndex),
                                     startTime: lesson.startTime,
@@ -710,6 +812,7 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
                                   });
                                 }
                                 setShowAddScheduleModal(true);
+                                setTeacherSearch("");
                               }}
                             >
                               {schedule ? (
@@ -982,19 +1085,33 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="teacher-select">Öğretmen *</Label>
+              <Label htmlFor="teacher-search">Öğretmen *</Label>
+              <Input
+                id="teacher-search"
+                value={teacherSearch}
+                onChange={(e) => setTeacherSearch(e.target.value)}
+                placeholder="Ad yazarak öğretmen ara…"
+              />
               <select
                 id="teacher-select"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 value={scheduleForm.teacherId}
                 onChange={(e) => setScheduleForm({ ...scheduleForm, teacherId: e.target.value })}
+                size={Math.min(8, Math.max(4, teachers.length))}
               >
                 <option value="">Öğretmen seçiniz</option>
-                {teachers.map((teacher) => (
-                  <option key={teacher.id} value={teacher.id}>
-                    {teacher.firstName} {teacher.lastName}
-                  </option>
-                ))}
+                {teachers
+                  .filter((teacher) => {
+                    const q = teacherSearch.trim().toLocaleLowerCase("tr-TR");
+                    if (!q) return true;
+                    const full = `${teacher.firstName} ${teacher.lastName}`.toLocaleLowerCase("tr-TR");
+                    return full.includes(q);
+                  })
+                  .map((teacher) => (
+                    <option key={teacher.id} value={teacher.id}>
+                      {teacher.firstName} {teacher.lastName}
+                    </option>
+                  ))}
               </select>
             </div>
             <div className="space-y-2">

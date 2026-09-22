@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Calendar, Loader2, Plus, Trash2 } from "lucide-react"
+import { Calendar, Loader2, Plus, Search, Trash2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -15,7 +15,11 @@ import { getAuthHeaders } from "@/components/hr/hr-utils"
 import {
   DAY_NAMES,
   DEFAULT_LESSON_SLOTS,
+  DEFAULT_SATURDAY_SLOTS,
+  DENEME_SINAVI_SUBJECT,
+  SATURDAY_INDEX,
   WEEKDAY_INDEXES,
+  type ClassSaturdayMode,
   type LessonSlot,
 } from "@/lib/schedules/lesson-slots"
 
@@ -70,17 +74,35 @@ export function ClassScheduleGrid({
   schedules,
   onChanged,
   slots: slotsProp,
+  saturdayEnabled = false,
+  saturdayMode = "FULL",
+  saturdaySlots: saturdaySlotsProp,
 }: {
   classId: string
   className?: string
   schedules: ScheduleRow[]
   onChanged: () => void
   slots?: GridSlot[]
+  saturdayEnabled?: boolean
+  saturdayMode?: ClassSaturdayMode
+  saturdaySlots?: GridSlot[]
 }) {
   const slots: GridSlot[] = slotsProp && slotsProp.length > 0 ? slotsProp : DEFAULT_LESSON_SLOTS
+  const saturdaySlots: GridSlot[] =
+    saturdaySlotsProp && saturdaySlotsProp.length > 0
+      ? saturdaySlotsProp
+      : DEFAULT_SATURDAY_SLOTS.map((s) => ({ ...s, kind: "LESSON" as const }))
   // Sınıf programında etüt satırları gösterilmez (kulüp / ÖÇG ayrı sekmede)
   const displaySlots = slots.filter((s) => (s.kind ?? "LESSON") !== "ETUT")
   const lessonSlots = displaySlots.filter((s) => (s.kind ?? "LESSON") === "LESSON")
+  const saturdayDisplaySlots = saturdaySlots.filter((s) => (s.kind ?? "LESSON") !== "ETUT")
+  const saturdayLessonSlots = saturdayDisplaySlots.filter(
+    (s) => (s.kind ?? "LESSON") === "LESSON"
+  )
+  const dayIndexes = saturdayEnabled
+    ? ([...WEEKDAY_INDEXES, SATURDAY_INDEX] as number[])
+    : ([...WEEKDAY_INDEXES] as number[])
+  const isExamOnly = saturdayEnabled && saturdayMode === "EXAM_ONLY"
   const [teachers, setTeachers] = useState<ScheduleTeacher[]>([])
   const [courses, setCourses] = useState<Array<{ id: string; name: string }>>([])
   const [modalOpen, setModalOpen] = useState(false)
@@ -90,6 +112,8 @@ export function ClassScheduleGrid({
   const [busy, setBusy] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
   const [staffId, setStaffId] = useState<string | null>(null)
+  const [teacherQuery, setTeacherQuery] = useState("")
+  const [teacherPickerOpen, setTeacherPickerOpen] = useState(false)
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -137,9 +161,14 @@ export function ClassScheduleGrid({
       })
     } else {
       setEditing(null)
-      setCustomSubject(false)
+      const defaultSubject =
+        dayOfWeek === SATURDAY_INDEX && saturdayMode === "EXAM_ONLY"
+          ? DENEME_SINAVI_SUBJECT
+          : ""
+      const known = courses.some((c) => c.name === defaultSubject)
+      setCustomSubject(!!defaultSubject && !known)
       setForm({
-        subjectName: "",
+        subjectName: defaultSubject,
         teacherId: "",
         dayOfWeek: String(dayOfWeek),
         startTime,
@@ -148,6 +177,8 @@ export function ClassScheduleGrid({
       })
     }
     setModalOpen(true)
+    setTeacherQuery("")
+    setTeacherPickerOpen(!existing)
   }
 
   const closeModal = () => {
@@ -155,12 +186,32 @@ export function ClassScheduleGrid({
     setEditing(null)
     setCustomSubject(false)
     setForm(emptyForm())
+    setTeacherQuery("")
+    setTeacherPickerOpen(false)
   }
 
   const save = async () => {
     if (!form.subjectName.trim() || !form.teacherId || !form.dayOfWeek || !form.startTime || !form.endTime) {
       alert("Ders adı, öğretmen, gün ve saat zorunludur.")
       return
+    }
+    const day = parseInt(form.dayOfWeek, 10)
+    if (day === SATURDAY_INDEX && !saturdayEnabled) {
+      alert("Bu sınıf için cumartesi programı kapalı. Sınıf yönetiminde açabilirsiniz.")
+      return
+    }
+    if (
+      day === SATURDAY_INDEX &&
+      saturdayMode === "EXAM_ONLY" &&
+      form.subjectName.trim() !== DENEME_SINAVI_SUBJECT
+    ) {
+      if (
+        !confirm(
+          `Bu sınıf cumartesi için “yalnızca deneme sınavı” modunda.\nYine de “${form.subjectName.trim()}” olarak kaydedilsin mi?`
+        )
+      ) {
+        return
+      }
     }
     setBusy(true)
     try {
@@ -170,7 +221,7 @@ export function ClassScheduleGrid({
         classId,
         subjectName: form.subjectName.trim(),
         teacherId: form.teacherId,
-        dayOfWeek: parseInt(form.dayOfWeek, 10),
+        dayOfWeek: day,
         startTime: form.startTime,
         endTime: form.endTime,
         room: form.room.trim() || undefined,
@@ -223,11 +274,85 @@ export function ClassScheduleGrid({
   }
 
   const unmatched = useMemo(() => {
-    const slotStarts = new Set(lessonSlots.map((s) => s.startTime))
-    return schedules.filter(
-      (s) => WEEKDAY_INDEXES.includes(s.dayOfWeek as (typeof WEEKDAY_INDEXES)[number]) && !slotStarts.has(s.startTime)
+    const weekdayStarts = new Set(lessonSlots.map((s) => s.startTime))
+    const saturdayStarts = new Set(saturdayLessonSlots.map((s) => s.startTime))
+    return schedules.filter((s) => {
+      if (!dayIndexes.includes(s.dayOfWeek)) return false
+      if (s.dayOfWeek === SATURDAY_INDEX) return !saturdayStarts.has(s.startTime)
+      return !weekdayStarts.has(s.startTime)
+    })
+  }, [schedules, lessonSlots, saturdayLessonSlots, dayIndexes])
+
+  const selectedTeacher = useMemo(
+    () => teachers.find((t) => t.id === form.teacherId) ?? null,
+    [teachers, form.teacherId]
+  )
+
+  const filteredTeachers = useMemo(() => {
+    const q = teacherQuery.trim().toLocaleLowerCase("tr-TR")
+    if (!q) return teachers
+    return teachers.filter((t) => {
+      const full = `${t.firstName} ${t.lastName}`.toLocaleLowerCase("tr-TR")
+      const subject = (t.subject || "").toLocaleLowerCase("tr-TR")
+      return full.includes(q) || subject.includes(q) || t.lastName.toLocaleLowerCase("tr-TR").includes(q)
+    })
+  }, [teachers, teacherQuery])
+
+  const renderDayColumn = (
+    day: number,
+    slot: GridSlot,
+    isBreak: boolean
+  ) => {
+    if (isBreak) {
+      return (
+        <td
+          key={`${day}-${slot.id}-break`}
+          className="border-b border-gray-100 p-1.5 bg-amber-50/40 text-center text-[10px] text-amber-700/80"
+        >
+          —
+        </td>
+      )
+    }
+    const row = schedules.find(
+      (s) => s.dayOfWeek === day && s.startTime === slot.startTime
     )
-  }, [schedules, lessonSlots])
+    return (
+      <td
+        key={`${day}-${slot.id}`}
+        className={`border-b border-gray-100 p-1.5 cursor-pointer align-top transition-colors ${
+          row
+            ? day === SATURDAY_INDEX
+              ? "bg-violet-50/80 hover:bg-violet-100/80"
+              : "bg-emerald-50/80 hover:bg-emerald-100/80"
+            : "hover:bg-blue-50"
+        }`}
+        onClick={() => openCell(day, slot.startTime, slot.endTime)}
+      >
+        {row ? (
+          <div className="space-y-0.5 px-1 py-0.5">
+            <p className="text-xs font-semibold text-gray-900 leading-tight">
+              {row.subjectName}
+            </p>
+            <p className="text-[10px] text-gray-600 leading-tight">
+              {row.teacher.firstName} {row.teacher.lastName}
+            </p>
+            {(row.startTime !== slot.startTime || row.endTime !== slot.endTime) && (
+              <p className="text-[10px] text-indigo-600">
+                {row.startTime}–{row.endTime}
+              </p>
+            )}
+            {row.room && (
+              <p className="text-[10px] text-gray-500">{row.room}</p>
+            )}
+          </div>
+        ) : (
+          <div className="flex h-12 items-center justify-center text-gray-300">
+            <Plus className="h-4 w-4" />
+          </div>
+        )}
+      </td>
+    )
+  }
 
   return (
     <div className="space-y-4">
@@ -236,6 +361,12 @@ export function ClassScheduleGrid({
           <span className="font-semibold text-gray-900">{className}</span> haftalık programı — ders
           hücrelerine tıklayın. Saat şablonu:{" "}
           <span className="font-medium">Ders saatleri</span> butonundan düzenlenir.
+          {saturdayEnabled && (
+            <span className="ml-1 text-violet-700">
+              Cumartesi açık
+              {isExamOnly ? " (yalnızca deneme sınavı)" : ""}.
+            </span>
+          )}
         </p>
       )}
 
@@ -271,58 +402,63 @@ export function ClassScheduleGrid({
                     {slot.startTime}–{slot.endTime}
                   </div>
                 </td>
-                {WEEKDAY_INDEXES.map((day) => {
-                  if (isBreak) {
-                    return (
-                      <td
-                        key={`${day}-${slot.id}-break`}
-                        className="border-b border-gray-100 p-1.5 bg-amber-50/40 text-center text-[10px] text-amber-700/80"
-                      >
-                        —
-                      </td>
-                    )
-                  }
-                  const row = schedules.find(
-                    (s) => s.dayOfWeek === day && s.startTime === slot.startTime
-                  )
-                  return (
-                    <td
-                      key={`${day}-${slot.id}`}
-                      className={`border-b border-gray-100 p-1.5 cursor-pointer align-top transition-colors ${
-                        row ? "bg-emerald-50/80 hover:bg-emerald-100/80" : "hover:bg-blue-50"
-                      }`}
-                      onClick={() => openCell(day, slot.startTime, slot.endTime)}
-                    >
-                      {row ? (
-                        <div className="space-y-0.5 px-1 py-0.5">
-                          <p className="text-xs font-semibold text-gray-900 leading-tight">
-                            {row.subjectName}
-                          </p>
-                          <p className="text-[10px] text-gray-600 leading-tight">
-                            {row.teacher.firstName} {row.teacher.lastName}
-                          </p>
-                          {(row.startTime !== slot.startTime || row.endTime !== slot.endTime) && (
-                            <p className="text-[10px] text-indigo-600">
-                              {row.startTime}–{row.endTime}
-                            </p>
-                          )}
-                          {row.room && (
-                            <p className="text-[10px] text-gray-500">{row.room}</p>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="flex h-12 items-center justify-center text-gray-300">
-                          <Plus className="h-4 w-4" />
-                        </div>
-                      )}
-                    </td>
-                  )
-                })}
+                {WEEKDAY_INDEXES.map((day) => renderDayColumn(day, slot, isBreak))}
               </tr>
             )})}
           </tbody>
         </table>
       </div>
+
+      {saturdayEnabled && (
+        <div className="rounded-xl border border-violet-200 bg-violet-50/40 p-3 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div>
+              <p className="font-semibold text-violet-950">Cumartesi programı</p>
+              <p className="text-xs text-violet-800/80">
+                {isExamOnly
+                  ? "Bu sınıf cumartesi yalnızca deneme sınavı için. Hücreye tıklayınca ders adı Deneme Sınavı önerilir; öğretmen atayın."
+                  : "Cumartesi saatleri ayrı şablondan gelir (Ders saatleri → Cumartesi)."}
+              </p>
+            </div>
+          </div>
+          <div className="overflow-x-auto rounded-xl border border-violet-100 bg-white">
+            <table className="w-full border-collapse min-w-[320px]">
+              <thead>
+                <tr className="bg-violet-50/80">
+                  <th className="border-b border-r border-violet-100 p-2 text-xs font-semibold text-violet-900 w-28">
+                    Saat
+                  </th>
+                  <th className="border-b border-violet-100 p-2 text-xs font-semibold text-violet-900">
+                    Cumartesi
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {saturdayDisplaySlots.map((slot) => {
+                  const isBreak = (slot.kind ?? "LESSON") === "BREAK"
+                  return (
+                    <tr key={`sat-${slot.id}-${slot.startTime}`}>
+                      <td
+                        className={`border-b border-r border-violet-50 p-2 text-xs font-medium ${
+                          isBreak
+                            ? "bg-amber-50 text-amber-900"
+                            : "text-violet-900 bg-violet-50/50"
+                        }`}
+                      >
+                        <div>{slot.label}</div>
+                        <div className="text-[10px] opacity-70 font-normal">
+                          {slot.startTime}–{slot.endTime}
+                        </div>
+                      </td>
+                      {renderDayColumn(SATURDAY_INDEX, slot, isBreak)}
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {unmatched.length > 0 && (
         <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3 space-y-2">
@@ -470,19 +606,95 @@ export function ClassScheduleGrid({
 
             <div>
               <Label>Öğretmen *</Label>
-              <select
-                className="mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
-                value={form.teacherId}
-                onChange={(e) => setForm({ ...form, teacherId: e.target.value })}
-              >
-                <option value="">Öğretmen seçiniz</option>
-                {teachers.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.firstName} {t.lastName}
-                    {t.subject ? ` (${t.subject})` : ""}
-                  </option>
-                ))}
-              </select>
+              {selectedTeacher && !teacherPickerOpen ? (
+                <div className="mt-1 flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {selectedTeacher.firstName} {selectedTeacher.lastName}
+                    </p>
+                    {selectedTeacher.subject && (
+                      <p className="text-xs text-gray-500 truncate">{selectedTeacher.subject}</p>
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 shrink-0"
+                    onClick={() => {
+                      setTeacherPickerOpen(true)
+                      setTeacherQuery("")
+                    }}
+                  >
+                    Değiştir
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 w-8 p-0 shrink-0 text-gray-500"
+                    onClick={() => {
+                      setForm({ ...form, teacherId: "" })
+                      setTeacherPickerOpen(true)
+                      setTeacherQuery("")
+                    }}
+                    title="Seçimi temizle"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="mt-1 space-y-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      value={teacherQuery}
+                      onChange={(e) => {
+                        setTeacherQuery(e.target.value)
+                        setTeacherPickerOpen(true)
+                      }}
+                      onFocus={() => setTeacherPickerOpen(true)}
+                      placeholder="Ad veya branş yazarak ara…"
+                      className="pl-9"
+                      autoComplete="off"
+                    />
+                  </div>
+                  {teacherPickerOpen && (
+                    <div className="max-h-48 overflow-y-auto rounded-md border border-gray-200 bg-white divide-y shadow-sm">
+                      {filteredTeachers.length === 0 ? (
+                        <p className="px-3 py-4 text-center text-sm text-gray-500">
+                          Öğretmen bulunamadı
+                        </p>
+                      ) : (
+                        filteredTeachers.map((t) => {
+                          const active = form.teacherId === t.id
+                          return (
+                            <button
+                              key={t.id}
+                              type="button"
+                              className={`w-full text-left px-3 py-2.5 text-sm hover:bg-indigo-50 ${
+                                active ? "bg-indigo-50" : ""
+                              }`}
+                              onClick={() => {
+                                setForm({ ...form, teacherId: t.id })
+                                setTeacherPickerOpen(false)
+                                setTeacherQuery("")
+                              }}
+                            >
+                              <span className="font-medium text-gray-900">
+                                {t.firstName} {t.lastName}
+                              </span>
+                              {t.subject ? (
+                                <span className="text-gray-500"> ({t.subject})</span>
+                              ) : null}
+                            </button>
+                          )
+                        })
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-3 gap-2">
@@ -493,7 +705,7 @@ export function ClassScheduleGrid({
                   value={form.dayOfWeek}
                   onChange={(e) => setForm({ ...form, dayOfWeek: e.target.value })}
                 >
-                  {WEEKDAY_INDEXES.map((d) => (
+                  {dayIndexes.map((d) => (
                     <option key={d} value={d}>
                       {DAY_NAMES[d]}
                     </option>

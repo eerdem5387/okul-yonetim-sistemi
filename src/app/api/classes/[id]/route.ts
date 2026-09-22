@@ -111,7 +111,7 @@ export async function PUT(
     const params = await context.params
     const { id } = params
     const body = await request.json()
-    const { name, grade, section, counselorId, description } = body
+    const { name, grade, section, counselorId, description, saturdayEnabled, saturdayMode } = body
 
     // Sınıf kontrolü
     const existingClass = await prisma.class.findUnique({
@@ -154,6 +154,17 @@ export async function PUT(
     if (section !== undefined) updateData.section = section
     if (counselorId !== undefined) updateData.counselorId = counselorId
     if (description !== undefined) updateData.description = description
+    if (saturdayEnabled !== undefined) updateData.saturdayEnabled = saturdayEnabled === true
+    if (saturdayMode !== undefined) {
+      const mode = String(saturdayMode).toUpperCase()
+      if (mode !== "FULL" && mode !== "EXAM_ONLY") {
+        return NextResponse.json(
+          { error: "saturdayMode FULL veya EXAM_ONLY olmalı" },
+          { status: 400 }
+        )
+      }
+      updateData.saturdayMode = mode
+    }
 
     const updatedClass = await prisma.class.update({
       where: { id },

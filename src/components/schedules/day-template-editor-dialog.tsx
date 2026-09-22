@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { normalizeSlotKind, type SlotKind } from "@/lib/schedules/day-templates"
+import { normalizeSlotKind, type SlotKind, type TemplateScope } from "@/lib/schedules/day-templates"
 
 type SlotDraft = {
   key: string
@@ -44,14 +44,18 @@ export function DayTemplateEditorDialog({
   onSaved?: () => void
 }) {
   const [band, setBand] = useState<Band>("ortaokul")
+  const [scope, setScope] = useState<TemplateScope>("weekday")
   const [slots, setSlots] = useState<SlotDraft[]>([])
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
 
-  const load = useCallback(async (target: Band) => {
+  const load = useCallback(async (target: Band, targetScope: TemplateScope) => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/schedules/day-templates?band=${target}`, { cache: "no-store" })
+      const res = await fetch(
+        `/api/schedules/day-templates?band=${target}&scope=${targetScope}`,
+        { cache: "no-store" }
+      )
       if (!res.ok) throw new Error("fail")
       const data = await res.json()
       const rows = Array.isArray(data.slots) ? data.slots : []
@@ -75,12 +79,12 @@ export function DayTemplateEditorDialog({
 
   useEffect(() => {
     if (!open) return
-    void load(band)
-  }, [open, band, load])
+    void load(band, scope)
+  }, [open, band, scope, load])
 
   const addRow = (kind: SlotKind) => {
     const last = slots[slots.length - 1]
-    const start = last?.endTime || "08:00"
+    const start = last?.endTime || (scope === "saturday" ? "09:00" : "08:00")
     const [h, m] = start.split(":").map(Number)
     const duration = kind === "BREAK" ? 10 : 40
     const endMin = (h || 0) * 60 + (m || 0) + duration
@@ -119,6 +123,7 @@ export function DayTemplateEditorDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           band,
+          scope,
           slots: slots.map((s) => ({
             label: s.label.trim(),
             kind: s.kind,
@@ -148,12 +153,12 @@ export function DayTemplateEditorDialog({
             Ders, teneffüs ve etüt saatleri
           </DialogTitle>
           <DialogDescription>
-            Ortaokul ve lise için ayrı şablon tanımlayın. Kulüpler yalnızca etüt saatlerine
-            yerleştirilir.
+            Ortaokul / lise ve hafta içi / cumartesi için ayrı şablon tanımlayın. Kulüpler yalnızca
+            etüt saatlerine yerleştirilir.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             size="sm"
             variant={band === "ortaokul" ? "default" : "outline"}
@@ -167,6 +172,23 @@ export function DayTemplateEditorDialog({
             onClick={() => setBand("lise")}
           >
             Lise (9–12)
+          </Button>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            variant={scope === "weekday" ? "default" : "outline"}
+            onClick={() => setScope("weekday")}
+          >
+            Hafta içi
+          </Button>
+          <Button
+            size="sm"
+            variant={scope === "saturday" ? "default" : "outline"}
+            onClick={() => setScope("saturday")}
+          >
+            Cumartesi
           </Button>
         </div>
 
@@ -275,10 +297,12 @@ export function DayTemplateEditorDialog({
                 <Plus className="h-4 w-4 mr-1" />
                 Teneffüs ekle
               </Button>
-              <Button type="button" size="sm" variant="outline" onClick={() => addRow("ETUT")}>
-                <Plus className="h-4 w-4 mr-1" />
-                Etüt ekle
-              </Button>
+              {scope === "weekday" && (
+                <Button type="button" size="sm" variant="outline" onClick={() => addRow("ETUT")}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Etüt ekle
+                </Button>
+              )}
             </div>
           </div>
         )}

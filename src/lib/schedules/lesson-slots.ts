@@ -9,6 +9,16 @@ export const DAY_NAMES = [
 ] as const
 
 export const WEEKDAY_INDEXES = [1, 2, 3, 4, 5] as const
+export const SATURDAY_INDEX = 6 as const
+
+export type ClassSaturdayMode = "FULL" | "EXAM_ONLY"
+
+/** Sınıfın cumartesi ayarına göre görüntülenecek günler (hafta içi + opsiyonel cumartesi). */
+export function dayIndexesForClass(saturdayEnabled?: boolean): number[] {
+  return saturdayEnabled ? [...WEEKDAY_INDEXES, SATURDAY_INDEX] : [...WEEKDAY_INDEXES]
+}
+
+export const DENEME_SINAVI_SUBJECT = "Deneme Sınavı"
 
 export type LessonSlot = {
   id: number
@@ -31,6 +41,15 @@ export const DEFAULT_LESSON_SLOTS: LessonSlot[] = [
   { id: 10, label: "2. Etüt", startTime: "17:00", endTime: "18:00" },
 ]
 
+/** Cumartesi varsayılan saatleri (daha kısa gün). */
+export const DEFAULT_SATURDAY_SLOTS: LessonSlot[] = [
+  { id: 1, label: "1. Ders", startTime: "09:00", endTime: "09:40" },
+  { id: 2, label: "2. Ders", startTime: "09:50", endTime: "10:30" },
+  { id: 3, label: "3. Ders", startTime: "10:40", endTime: "11:20" },
+  { id: 4, label: "4. Ders", startTime: "11:30", endTime: "12:10" },
+  { id: 5, label: "5. Ders", startTime: "12:20", endTime: "13:00" },
+]
+
 export type GradeBand = "all" | "ortaokul" | "lise"
 
 export function gradeBandFor(grade: number): "ortaokul" | "lise" | null {
@@ -50,5 +69,9 @@ export function findSlotLabel(startTime: string, endTime?: string): string {
     (s) => s.startTime === startTime && (!endTime || s.endTime === endTime)
   )
   if (slot) return slot.label
+  const sat = DEFAULT_SATURDAY_SLOTS.find(
+    (s) => s.startTime === startTime && (!endTime || s.endTime === endTime)
+  )
+  if (sat) return sat.label
   return `${startTime}${endTime ? `–${endTime}` : ""}`
 }

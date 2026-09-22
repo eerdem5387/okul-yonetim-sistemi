@@ -1263,6 +1263,10 @@ model Class {
   academicYearId String
   counselorId    String? // Atanan Rehberlik Uzmanı (Staff ID)
   description    String? // Sınıf hakkında notlar
+  /// Cumartesi ders programı bu sınıf için açık mı
+  saturdayEnabled Boolean @default(false)
+  /// FULL = normal cumartesi dersleri; EXAM_ONLY = yalnızca deneme sınavı
+  saturdayMode   ClassSaturdayMode @default(FULL)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -1282,6 +1286,11 @@ model Class {
   @@index([grade])
   @@index([academicYearId, grade])
   @@map("classes")
+}
+
+enum ClassSaturdayMode {
+  FULL
+  EXAM_ONLY
 }
 
 // Sınıf-Öğrenci İlişkisi (Pivot Table)
@@ -1405,20 +1414,27 @@ enum SchoolBand {
   LISE
 }
 
+enum DayTemplateScope {
+  WEEKDAY
+  SATURDAY
+}
+
 enum SchoolDaySlotKind {
   LESSON
   BREAK
   ETUT
 }
 
-/// Ortaokul / lise ders ve teneffüs saat şablonu
+/// Ortaokul / lise ders ve teneffüs saat şablonu (hafta içi veya cumartesi)
 model SchoolDayTemplate {
-  id        String     @id @default(cuid())
-  band      SchoolBand @unique
-  updatedAt DateTime   @updatedAt
-  createdAt DateTime   @default(now())
+  id        String           @id @default(cuid())
+  band      SchoolBand
+  scope     DayTemplateScope @default(WEEKDAY)
+  updatedAt DateTime         @updatedAt
+  createdAt DateTime         @default(now())
   slots     SchoolDaySlot[]
 
+  @@unique([band, scope])
   @@map("school_day_templates")
 }
 

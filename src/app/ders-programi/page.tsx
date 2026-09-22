@@ -31,8 +31,10 @@ import { WeeklyScheduleCalendar } from "@/components/hr/WeeklyScheduleCalendar"
 import { getAuthHeaders } from "@/components/hr/hr-utils"
 import {
   DEFAULT_LESSON_SLOTS,
+  DEFAULT_SATURDAY_SLOTS,
   gradeBandFor,
   gradesForBand,
+  type ClassSaturdayMode,
   type GradeBand,
   type LessonSlot,
 } from "@/lib/schedules/lesson-slots"
@@ -43,6 +45,8 @@ type ClassItem = {
   name: string
   grade: number
   section: string
+  saturdayEnabled?: boolean
+  saturdayMode?: ClassSaturdayMode
   _count?: { students?: number; schedules?: number }
 }
 
@@ -87,10 +91,18 @@ export default function DersProgramiPage() {
   const [hoursOpen, setHoursOpen] = useState(false)
   const [coursesOpen, setCoursesOpen] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
+  const [saturdaySaving, setSaturdaySaving] = useState(false)
   const [slotMap, setSlotMap] = useState<{
     ortaokul: Array<LessonSlot & { kind?: SlotKind }>
     lise: Array<LessonSlot & { kind?: SlotKind }>
-  }>({ ortaokul: DEFAULT_LESSON_SLOTS, lise: DEFAULT_LESSON_SLOTS })
+    ortaokulSaturday: Array<LessonSlot & { kind?: SlotKind }>
+    liseSaturday: Array<LessonSlot & { kind?: SlotKind }>
+  }>({
+    ortaokul: DEFAULT_LESSON_SLOTS,
+    lise: DEFAULT_LESSON_SLOTS,
+    ortaokulSaturday: DEFAULT_SATURDAY_SLOTS,
+    liseSaturday: DEFAULT_SATURDAY_SLOTS,
+  })
 
   const { schedules, loading: scheduleLoading, reload } = useClassSchedules(
     viewMode === "class" ? selectedClassId : null
@@ -98,19 +110,32 @@ export default function DersProgramiPage() {
 
   const loadDayTemplates = useCallback(async () => {
     try {
-      const res = await fetch("/api/schedules/day-templates?band=all", { cache: "no-store" })
+      const res = await fetch("/api/schedules/day-templates?band=all&scope=both", {
+        cache: "no-store",
+      })
       if (!res.ok) return
       const data = await res.json()
       const templates = Array.isArray(data.templates) ? data.templates : []
       const next = {
         ortaokul: DEFAULT_LESSON_SLOTS as Array<LessonSlot & { kind?: SlotKind }>,
         lise: DEFAULT_LESSON_SLOTS as Array<LessonSlot & { kind?: SlotKind }>,
+        ortaokulSaturday: DEFAULT_SATURDAY_SLOTS as Array<LessonSlot & { kind?: SlotKind }>,
+        liseSaturday: DEFAULT_SATURDAY_SLOTS as Array<LessonSlot & { kind?: SlotKind }>,
       }
       for (const t of templates) {
+        const scope = t.scope === "saturday" ? "saturday" : "weekday"
         if (t.band === "ortaokul") {
-          next.ortaokul = Array.isArray(t.slots) ? t.slots : next.ortaokul
+          if (scope === "saturday") {
+            next.ortaokulSaturday = Array.isArray(t.slots) ? t.slots : next.ortaokulSaturday
+          } else {
+            next.ortaokul = Array.isArray(t.slots) ? t.slots : next.ortaokul
+          }
         } else if (t.band === "lise") {
-          next.lise = Array.isArray(t.slots) ? t.slots : next.lise
+          if (scope === "saturday") {
+            next.liseSaturday = Array.isArray(t.slots) ? t.slots : next.liseSaturday
+          } else {
+            next.lise = Array.isArray(t.slots) ? t.slots : next.lise
+          }
         }
       }
       setSlotMap(next)
@@ -194,6 +219,49 @@ export default function DersProgramiPage() {
     if (band === "lise") return slotMap.lise
     return slotMap.ortaokul
   }, [selectedClass, slotMap])
+
+  const activeSaturdaySlots = useMemo(() => {
+    const band = selectedClass ? gradeBandFor(selectedClass.grade) : null
+    if (band === "lise") return slotMap.liseSaturday
+    return slotMap.ortaokulSaturday
+  }, [selectedClass, slotMap])
+
+  const updateSaturdaySettings = async (patch: {
+    saturdayEnabled?: boolean
+    saturdayMode?: ClassSaturdayMode
+  }) => {
+    if (!selectedClassId) return
+    setSaturdaySaving(true)
+    try {
+      const res = await fetch(`/api/classes/${selectedClassId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert((data as { error?: string }).error || "Cumartesi ayarı kaydedilemedi")
+        return
+      }
+      setClasses((prev) =>
+        prev.map((c) =>
+          c.id === selectedClassId
+            ? {
+                ...c,
+                saturdayEnabled:
+                  patch.saturdayEnabled !== undefined
+                    ? patch.saturdayEnabled
+                    : c.saturdayEnabled,
+                saturdayMode:
+                  patch.saturdayMode !== undefined ? patch.saturdayMode : c.saturdayMode,
+              }
+            : c
+        )
+      )
+    } finally {
+      setSaturdaySaving(false)
+    }
+  }
 
   useEffect(() => {
     if (filteredClasses.length === 0) {
@@ -410,6 +478,7 @@ export default function DersProgramiPage() {
                         </div>
                         <p className="text-xs text-gray-500 mt-0.5">
                           {c._count?.schedules ?? 0} ders · {c._count?.students ?? 0} öğrenci
+                          {c.saturdayEnabled ? " · Cumartesi" : ""}
                         </p>
                       </button>
                     )
@@ -425,15 +494,48 @@ export default function DersProgramiPage() {
             }`}
           >
             <CardHeader className="pb-3 shrink-0">
-              <div className="min-w-0">
-                <CardTitle className="text-lg">
-                  {selectedClass ? `${selectedClass.name} programı` : "Sınıf seçin"}
-                </CardTitle>
-                <CardDescription>
-                  {selectedClass
-                    ? `${selectedClass.grade}. sınıf · hücreye tıklayın veya özel saat ekleyin`
-                    : "Sol listeden bir sınıf seçerek programı düzenleyin"}
-                </CardDescription>
+              <div className="min-w-0 space-y-3">
+                <div>
+                  <CardTitle className="text-lg">
+                    {selectedClass ? `${selectedClass.name} programı` : "Sınıf seçin"}
+                  </CardTitle>
+                  <CardDescription>
+                    {selectedClass
+                      ? `${selectedClass.grade}. sınıf · hücreye tıklayın veya özel saat ekleyin`
+                      : "Sol listeden bir sınıf seçerek programı düzenleyin"}
+                  </CardDescription>
+                </div>
+                {selectedClass && (
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 rounded-xl border border-violet-100 bg-violet-50/50 px-3 py-2.5">
+                    <label className="inline-flex items-center gap-2 text-sm text-violet-950 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4"
+                        checked={!!selectedClass.saturdayEnabled}
+                        disabled={saturdaySaving}
+                        onChange={(e) =>
+                          void updateSaturdaySettings({ saturdayEnabled: e.target.checked })
+                        }
+                      />
+                      Cumartesi programı açık
+                    </label>
+                    {selectedClass.saturdayEnabled && (
+                      <select
+                        className="rounded-md border border-violet-200 bg-white px-2 py-1.5 text-sm"
+                        value={selectedClass.saturdayMode === "EXAM_ONLY" ? "EXAM_ONLY" : "FULL"}
+                        disabled={saturdaySaving}
+                        onChange={(e) =>
+                          void updateSaturdaySettings({
+                            saturdayMode: e.target.value as ClassSaturdayMode,
+                          })
+                        }
+                      >
+                        <option value="FULL">Normal dersler</option>
+                        <option value="EXAM_ONLY">Yalnızca deneme sınavı</option>
+                      </select>
+                    )}
+                  </div>
+                )}
               </div>
             </CardHeader>
             <CardContent className={fullscreen ? "flex-1 min-h-0 overflow-y-auto" : ""}>
@@ -449,11 +551,16 @@ export default function DersProgramiPage() {
                   classId={selectedClassId}
                   className={selectedClass?.name}
                   schedules={schedules}
-                  slots={activeSlots}
                   onChanged={() => {
                     void reload()
                     void loadClasses()
                   }}
+                  slots={activeSlots}
+                  saturdayEnabled={!!selectedClass?.saturdayEnabled}
+                  saturdayMode={
+                    selectedClass?.saturdayMode === "EXAM_ONLY" ? "EXAM_ONLY" : "FULL"
+                  }
+                  saturdaySlots={activeSaturdaySlots}
                 />
               )}
             </CardContent>
