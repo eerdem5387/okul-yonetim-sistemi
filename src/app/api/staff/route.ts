@@ -51,6 +51,11 @@ export async function GET(request: NextRequest) {
     const [staff, total] = await Promise.all([
       prisma.staff.findMany({
         where: whereConditions,
+        include: {
+          branchLinks: {
+            include: { branch: { select: { id: true, name: true } } },
+          },
+        },
         orderBy: [
           { department: "asc" },
           { lastName: "asc" },
@@ -63,7 +68,10 @@ export async function GET(request: NextRequest) {
     ])
 
     return NextResponse.json({
-      staff,
+      staff: staff.map((s) => ({
+        ...s,
+        branches: s.branchLinks.map((l) => l.branch),
+      })),
       pagination: {
         page,
         limit,
@@ -102,6 +110,7 @@ export async function POST(request: NextRequest) {
       notes,
       hasGeziAccess,
       hasIbAccess,
+      branchIds,
       createdByStaffId, // Ekleyen kişinin Staff ID'si (frontend'den gönderilmeli)
     } = body
 
@@ -146,7 +155,22 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    return NextResponse.json(staff, { status: 201 })
+    if (Array.isArray(branchIds)) {
+      const { syncStaffBranches } = await import("@/lib/branches")
+      await syncStaffBranches(
+        staff.id,
+        branchIds.map((id: unknown) => String(id))
+      )
+    }
+
+    const full = await prisma.staff.findUnique({
+      where: { id: staff.id },
+      include: {
+        branchLinks: { include: { branch: { select: { id: true, name: true } } } },
+      },
+    })
+
+    return NextResponse.json(full ?? staff, { status: 201 })
   } catch (error) {
     console.error("Error creating staff:", error)
     if (error instanceof Error && error.message.includes("Unique constraint")) {

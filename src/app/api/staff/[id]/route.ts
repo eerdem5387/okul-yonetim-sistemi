@@ -68,6 +68,7 @@ export async function PUT(
       notes,
       hasGeziAccess,
       hasIbAccess,
+      branchIds,
     } = body
 
     if (!firstName || !lastName || !tcNumber || !department) {
@@ -93,9 +94,24 @@ export async function PUT(
     if (hasGeziAccess !== undefined) updateData.hasGeziAccess = hasGeziAccess === true
     if (hasIbAccess !== undefined) updateData.hasIbAccess = hasIbAccess === true
 
-    const staff = await prisma.staff.update({
+    await prisma.staff.update({
       where: { id: params.id },
       data: updateData,
+    })
+
+    if (Array.isArray(branchIds)) {
+      const { syncStaffBranches } = await import("@/lib/branches")
+      await syncStaffBranches(
+        params.id,
+        branchIds.map((id: unknown) => String(id))
+      )
+    }
+
+    const staff = await prisma.staff.findUnique({
+      where: { id: params.id },
+      include: {
+        branchLinks: { include: { branch: { select: { id: true, name: true } } } },
+      },
     })
 
     return NextResponse.json(staff)

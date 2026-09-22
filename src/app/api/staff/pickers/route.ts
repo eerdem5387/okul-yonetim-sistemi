@@ -5,7 +5,7 @@ import { CLASS_COUNSELOR_DEPARTMENTS } from "@/lib/staff-counseling"
 import { resolveStaffPickerActor } from "@/lib/staff/picker-access"
 
 /**
- * GET /api/staff/pickers?type=teachers|counselors|teachers-and-counselors
+ * GET /api/staff/pickers?type=teachers|counselors|teachers-and-counselors&branchId=
  * Dropdown / atama listeleri — staff.view yerine classes.view veya neredeyiz.view yeterli.
  */
 export async function GET(request: NextRequest) {
@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
   }
 
   const type = request.nextUrl.searchParams.get("type") ?? "teachers"
+  const branchId = request.nextUrl.searchParams.get("branchId")?.trim() || ""
 
   let departments: StaffDepartment[] | undefined
   if (type === "teachers") {
@@ -31,6 +32,9 @@ export async function GET(request: NextRequest) {
     isActive: true,
     department: { in: departments },
   }
+  if (branchId) {
+    where.branchLinks = { some: { branchId } }
+  }
 
   const staff = await prisma.staff.findMany({
     where,
@@ -40,10 +44,24 @@ export async function GET(request: NextRequest) {
       lastName: true,
       department: true,
       subject: true,
+      branchLinks: {
+        include: {
+          branch: { select: { id: true, name: true } },
+        },
+      },
     },
     orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
     take: 2000,
   })
 
-  return NextResponse.json({ staff })
+  return NextResponse.json({
+    staff: staff.map((s) => ({
+      id: s.id,
+      firstName: s.firstName,
+      lastName: s.lastName,
+      department: s.department,
+      subject: s.subject,
+      branches: s.branchLinks.map((l) => l.branch),
+    })),
+  })
 }

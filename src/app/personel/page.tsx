@@ -59,6 +59,7 @@ interface Staff {
   notes: string | null
   createdAt: string
   updatedAt: string
+  branches?: Array<{ id: string; name: string }>
 }
 
 const departmentLabels: Record<StaffDepartment, string> = {
@@ -105,10 +106,12 @@ export default function PersonelPage() {
     department: "OGRETMEN" as StaffDepartment,
     position: "",
     subject: "",
+    branchIds: [] as string[],
     isActive: true,
     hireDate: "",
     notes: "",
   })
+  const [branchOptions, setBranchOptions] = useState<Array<{ id: string; name: string }>>([])
 
   const fetchFormerCount = useCallback(async () => {
     try {
@@ -174,6 +177,33 @@ export default function PersonelPage() {
     }
   }, [listMode, fetchFormerCount])
 
+  useEffect(() => {
+    fetch("/api/branches", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { branches: [] }))
+      .then((data) => {
+        const list = Array.isArray(data.branches) ? data.branches : []
+        setBranchOptions(list.map((b: { id: string; name: string }) => ({ id: b.id, name: b.name })))
+      })
+      .catch(() => setBranchOptions([]))
+  }, [])
+
+  const resetForm = () => {
+    setFormData({
+      firstName: "",
+      lastName: "",
+      tcNumber: "",
+      email: "",
+      phone: "",
+      department: "OGRETMEN",
+      position: "",
+      subject: "",
+      branchIds: [],
+      isActive: true,
+      hireDate: "",
+      notes: "",
+    })
+  }
+
   const switchListMode = (mode: "active" | "former") => {
     setListMode(mode)
     setCurrentPage(1)
@@ -228,19 +258,7 @@ export default function PersonelPage() {
         if (listMode === "active") await fetchFormerCount()
         setShowForm(false)
         setEditingStaff(null)
-        setFormData({
-          firstName: "",
-          lastName: "",
-          tcNumber: "",
-          email: "",
-          phone: "",
-          department: "OGRETMEN",
-          position: "",
-          subject: "",
-          isActive: true,
-          hireDate: "",
-          notes: "",
-        })
+        resetForm()
       } else {
         const errorData = await response.json()
         error(errorData.error || "Personel kaydedilirken hata oluştu!")
@@ -264,6 +282,7 @@ export default function PersonelPage() {
       department: staffMember.department,
       position: staffMember.position || "",
       subject: staffMember.subject || "",
+      branchIds: (staffMember.branches || []).map((b) => b.id),
       isActive: staffMember.isActive,
       hireDate: staffMember.hireDate ? staffMember.hireDate.split("T")[0] : "",
       notes: staffMember.notes || "",
@@ -470,6 +489,7 @@ export default function PersonelPage() {
                     department: "OGRETMEN",
                     position: "",
                     subject: "",
+                    branchIds: [],
                     isActive: true,
                     hireDate: "",
                     notes: "",
@@ -644,6 +664,7 @@ export default function PersonelPage() {
                       department: "OGRETMEN",
                       position: "",
                       subject: "",
+                      branchIds: [],
                       isActive: true,
                       hireDate: "",
                       notes: "",
@@ -788,19 +809,44 @@ export default function PersonelPage() {
                     />
                   </div>
                   {formData.department === "OGRETMEN" && (
-                    <div>
-                      <Label htmlFor="subject" className="text-xs sm:text-sm">
-                        Branş/Ders
-                      </Label>
-                      <Input
-                        id="subject"
-                        value={formData.subject}
-                        onChange={(e) =>
-                          setFormData({ ...formData, subject: e.target.value })
-                        }
-                        placeholder="Örn: Matematik, Türkçe..."
-                        className="h-9 sm:h-10 text-xs sm:text-sm"
-                      />
+                    <div className="sm:col-span-2">
+                      <Label className="text-xs sm:text-sm">Branşlar</Label>
+                      <p className="text-[10px] text-gray-500 mt-0.5 mb-2">
+                        Birden fazla seçebilirsiniz. Listede yoksa Personel → Branşlar’dan ekleyin.
+                      </p>
+                      <div className="max-h-40 overflow-y-auto rounded-md border border-gray-200 p-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        {branchOptions.length === 0 ? (
+                          <p className="text-xs text-amber-700 col-span-full px-1 py-2">
+                            Branş tanımlı değil. Önce Branşlar sayfasından ekleyin.
+                          </p>
+                        ) : (
+                          branchOptions.map((b) => {
+                            const checked = formData.branchIds.includes(b.id)
+                            return (
+                              <label
+                                key={b.id}
+                                className={`flex items-center gap-2 rounded px-2 py-1.5 text-xs sm:text-sm cursor-pointer ${
+                                  checked ? "bg-indigo-50" : "hover:bg-gray-50"
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => {
+                                    setFormData({
+                                      ...formData,
+                                      branchIds: checked
+                                        ? formData.branchIds.filter((id) => id !== b.id)
+                                        : [...formData.branchIds, b.id],
+                                    })
+                                  }}
+                                />
+                                {b.name}
+                              </label>
+                            )
+                          })
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -889,6 +935,7 @@ export default function PersonelPage() {
                         department: "OGRETMEN",
                         position: "",
                         subject: "",
+                        branchIds: [],
                         isActive: true,
                         hireDate: "",
                         notes: "",

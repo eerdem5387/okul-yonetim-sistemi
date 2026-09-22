@@ -27,7 +27,7 @@ import { StudyGroupsPanel } from "@/components/schedules/study-groups-panel"
 import { ClubSchedulesPanel } from "@/components/schedules/club-schedules-panel"
 import { DayTemplateEditorDialog } from "@/components/schedules/day-template-editor-dialog"
 import { ScheduleCoursesDialog } from "@/components/schedules/schedule-courses-dialog"
-import { WeeklyScheduleCalendar } from "@/components/hr/WeeklyScheduleCalendar"
+import { TeacherScheduleGrid } from "@/components/schedules/teacher-schedule-grid"
 import { getAuthHeaders } from "@/components/hr/hr-utils"
 import {
   DEFAULT_LESSON_SLOTS,
@@ -332,17 +332,49 @@ export default function DersProgramiPage() {
     () => [
       ...teacherSchedules.map((s) => ({
         id: s.id,
-        classId: s.class?.id || "",
         className: s.class?.name || "Sınıf",
         subjectName: s.subjectName,
         dayOfWeek: s.dayOfWeek,
         startTime: s.startTime,
         endTime: s.endTime,
         room: s.room,
+        kind: "class" as const,
       })),
-      ...teacherStudyItems,
+      ...teacherStudyItems.map((g) => ({
+        id: g.id,
+        className: g.className,
+        subjectName: g.subjectName,
+        dayOfWeek: g.dayOfWeek,
+        startTime: g.startTime,
+        endTime: g.endTime,
+        room: g.room,
+        kind: "study" as const,
+      })),
     ],
     [teacherSchedules, teacherStudyItems]
+  )
+
+  const teacherWeekdaySlots = useMemo(() => {
+    const map = new Map<string, LessonSlot & { kind?: SlotKind }>()
+    for (const s of [...slotMap.ortaokul, ...slotMap.lise]) {
+      if ((s.kind ?? "LESSON") === "ETUT") continue
+      if (!map.has(s.startTime)) map.set(s.startTime, s)
+    }
+    return [...map.values()].sort((a, b) => a.startTime.localeCompare(b.startTime))
+  }, [slotMap])
+
+  const teacherSaturdaySlots = useMemo(() => {
+    const map = new Map<string, LessonSlot & { kind?: SlotKind }>()
+    for (const s of [...slotMap.ortaokulSaturday, ...slotMap.liseSaturday]) {
+      if ((s.kind ?? "LESSON") === "ETUT") continue
+      if (!map.has(s.startTime)) map.set(s.startTime, s)
+    }
+    return [...map.values()].sort((a, b) => a.startTime.localeCompare(b.startTime))
+  }, [slotMap])
+
+  const selectedTeacher = useMemo(
+    () => teachers.find((t) => t.id === selectedTeacherId) ?? null,
+    [teachers, selectedTeacherId]
   )
 
   const stats = useMemo(() => {
@@ -596,7 +628,16 @@ export default function DersProgramiPage() {
             ) : teacherCalendarItems.length === 0 ? (
               <p className="text-sm text-gray-500 text-center py-10">Bu öğretmene atanmış ders yok.</p>
             ) : (
-              <WeeklyScheduleCalendar items={teacherCalendarItems} height={fullscreen ? 720 : 620} />
+              <TeacherScheduleGrid
+                items={teacherCalendarItems}
+                weekdaySlots={teacherWeekdaySlots}
+                saturdaySlots={teacherSaturdaySlots}
+                title={
+                  selectedTeacher
+                    ? `${selectedTeacher.firstName} ${selectedTeacher.lastName}`
+                    : undefined
+                }
+              />
             )}
           </CardContent>
         </Card>

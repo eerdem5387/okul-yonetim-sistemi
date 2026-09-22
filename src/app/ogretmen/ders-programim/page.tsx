@@ -1,93 +1,124 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, Clock, MapPin, School, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Calendar, Clock, School, Loader2 } from "lucide-react"
+import { TeacherScheduleGrid } from "@/components/schedules/teacher-schedule-grid"
+import {
+  DEFAULT_LESSON_SLOTS,
+  DEFAULT_SATURDAY_SLOTS,
+  type LessonSlot,
+} from "@/lib/schedules/lesson-slots"
+import type { SlotKind } from "@/lib/schedules/day-templates"
 
 interface Schedule {
-  id: string;
-  subjectName: string;
-  dayOfWeek: number;
-  startTime: string;
-  endTime: string;
-  room: string | null;
+  id: string
+  subjectName: string
+  dayOfWeek: number
+  startTime: string
+  endTime: string
+  room: string | null
   class: {
-    id: string;
-    name: string;
-    grade: number;
-    section: string;
-  };
+    id: string
+    name: string
+    grade: number
+    section: string
+  }
 }
 
-const dayNames: Record<number, string> = {
-  1: "Pazartesi",
-  2: "Salı",
-  3: "Çarşamba",
-  4: "Perşembe",
-  5: "Cuma",
-  6: "Cumartesi",
-};
+type SlotRow = LessonSlot & { kind?: SlotKind }
 
 export default function TeacherSchedulePage() {
-  const [schedules, setSchedules] = useState<Schedule[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [weeklySchedule, setWeeklySchedule] = useState<{ [key: number]: Schedule[] }>({});
-  const [visibleDays, setVisibleDays] = useState<number[]>([1, 2, 3, 4, 5]);
+  const [schedules, setSchedules] = useState<Schedule[]>([])
+  const [loading, setLoading] = useState(true)
+  const [weekdaySlots, setWeekdaySlots] = useState<SlotRow[]>(DEFAULT_LESSON_SLOTS)
+  const [saturdaySlots, setSaturdaySlots] = useState<SlotRow[]>(DEFAULT_SATURDAY_SLOTS)
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const teacherId = localStorage.getItem("staff_id");
-      if (teacherId) {
-        fetchSchedule(teacherId);
-      } else {
-        setLoading(false);
-      }
-    }
-  }, []);
-
-  const fetchSchedule = async (teacherId: string) => {
-    setLoading(true);
+  const loadTemplates = useCallback(async () => {
     try {
-      const response = await fetch(`/api/schedules/teacher?teacherId=${teacherId}`);
-      if (response.ok) {
-        const data = await response.json();
-        const list: Schedule[] = data.schedules || [];
-        setSchedules(list);
+      const res = await fetch("/api/schedules/day-templates?band=all&scope=both", {
+        cache: "no-store",
+      })
+      if (!res.ok) return
+      const data = await res.json()
+      const templates = Array.isArray(data.templates) ? data.templates : []
+      const weekdayMap = new Map<string, SlotRow>()
+      const saturdayMap = new Map<string, SlotRow>()
+      for (const t of templates) {
+        const rows = Array.isArray(t.slots) ? t.slots : []
+        const target = t.scope === "saturday" ? saturdayMap : weekdayMap
+        for (const s of rows) {
+          if ((s.kind ?? "LESSON") === "ETUT") continue
+          if (!target.has(s.startTime)) target.set(s.startTime, s)
+        }
+      }
+      if (weekdayMap.size > 0) {
+        setWeekdaySlots(
+          [...weekdayMap.values()].sort((a, b) => a.startTime.localeCompare(b.startTime))
+        )
+      }
+      if (saturdayMap.size > 0) {
+        setSaturdaySlots(
+          [...saturdayMap.values()].sort((a, b) => a.startTime.localeCompare(b.startTime))
+        )
+      }
+    } catch {
+      /* keep defaults */
+    }
+  }, [])
 
-        const organized: { [key: number]: Schedule[] } = {
-          1: [],
-          2: [],
-          3: [],
-          4: [],
-          5: [],
-          6: [],
-        };
-        list.forEach((schedule) => {
-          if (organized[schedule.dayOfWeek]) {
-            organized[schedule.dayOfWeek].push(schedule);
-          }
-        });
-        setWeeklySchedule(organized);
-        const hasSaturday = list.some((s) => s.dayOfWeek === 6);
-        setVisibleDays(hasSaturday ? [1, 2, 3, 4, 5, 6] : [1, 2, 3, 4, 5]);
+  const fetchSchedule = useCallback(async (teacherId: string) => {
+    setLoading(true)
+    try {
+      const response = await fetch(`/api/schedules/teacher?teacherId=${teacherId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setSchedules(data.schedules || [])
       }
     } catch (error) {
-      console.error("Error fetching schedule:", error);
+      console.error("Error fetching schedule:", error)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }, [])
 
-  const totalHours = schedules.length;
-  const uniqueClasses = new Set(schedules.map((s) => s.class.id)).size;
-  const uniqueSubjects = new Set(schedules.map((s) => s.subjectName)).size;
+  useEffect(() => {
+    void loadTemplates()
+    if (typeof window !== "undefined") {
+      const teacherId = localStorage.getItem("staff_id")
+      if (teacherId) {
+        void fetchSchedule(teacherId)
+      } else {
+        setLoading(false)
+      }
+    }
+  }, [fetchSchedule, loadTemplates])
+
+  const items = useMemo(
+    () =>
+      schedules.map((s) => ({
+        id: s.id,
+        subjectName: s.subjectName,
+        dayOfWeek: s.dayOfWeek,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        room: s.room,
+        className: s.class.name,
+        kind: "class" as const,
+      })),
+    [schedules]
+  )
+
+  const totalHours = schedules.length
+  const uniqueClasses = new Set(schedules.map((s) => s.class.id)).size
+  const uniqueSubjects = new Set(schedules.map((s) => s.subjectName)).size
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
-    );
+    )
   }
 
   return (
@@ -99,8 +130,7 @@ export default function TeacherSchedulePage() {
             Haftalık Ders Programım
           </h1>
           <p className="text-gray-600 mt-2 text-sm sm:text-base">
-            Size atanmış haftalık ders programınızı görüntüleyin
-            {visibleDays.includes(6) ? " (cumartesi dahil)." : "."}
+            Size atanmış haftalık ders programınızı görüntüleyin.
           </p>
         </div>
 
@@ -140,89 +170,31 @@ export default function TeacherSchedulePage() {
           </Card>
         </div>
 
-        {schedules.length === 0 ? (
-          <Card>
-            <CardContent className="p-12 text-center">
-              <Calendar className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Henüz ders programınız oluşturulmamış
-              </h3>
-              <p className="text-gray-600">
-                Okul yönetimi tarafından ders programınız atandığında burada görünecektir.
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div
-            className={`grid grid-cols-1 gap-4 ${
-              visibleDays.length > 5 ? "lg:grid-cols-6" : "lg:grid-cols-5"
-            }`}
-          >
-            {visibleDays.map((dayIndex) => {
-              const daySchedules = weeklySchedule[dayIndex] || [];
-              const isSaturday = dayIndex === 6;
-
-              return (
-                <Card
-                  key={dayIndex}
-                  className={`border-t-4 ${isSaturday ? "border-t-violet-500" : "border-t-blue-500"}`}
-                >
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Calendar
-                        className={`h-5 w-5 ${isSaturday ? "text-violet-600" : "text-blue-600"}`}
-                      />
-                      {dayNames[dayIndex]}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {daySchedules.length === 0 ? (
-                      <p className="text-sm text-gray-500 text-center py-4">Ders yok</p>
-                    ) : (
-                      daySchedules.map((schedule) => (
-                        <div
-                          key={schedule.id}
-                          className={`p-3 border rounded-lg space-y-2 ${
-                            isSaturday
-                              ? "bg-gradient-to-br from-violet-50 to-purple-50 border-violet-200"
-                              : "bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200"
-                          }`}
-                        >
-                          <div
-                            className={`flex items-center gap-2 text-sm font-semibold ${
-                              isSaturday ? "text-violet-900" : "text-blue-900"
-                            }`}
-                          >
-                            <Clock
-                              className={`h-4 w-4 ${
-                                isSaturday ? "text-violet-600" : "text-blue-600"
-                              }`}
-                            />
-                            {schedule.startTime} - {schedule.endTime}
-                          </div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {schedule.subjectName}
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-gray-600">
-                            <School className="h-3 w-3" />
-                            {schedule.class.name}
-                          </div>
-                          {schedule.room && (
-                            <div className="flex items-center gap-2 text-xs text-gray-600">
-                              <MapPin className="h-3 w-3" />
-                              {schedule.room}
-                            </div>
-                          )}
-                        </div>
-                      ))
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Haftalık program</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {items.length === 0 ? (
+              <div className="py-12 text-center">
+                <Calendar className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  Henüz ders programınız oluşturulmamış
+                </h3>
+                <p className="text-gray-600">
+                  Okul yönetimi tarafından ders programınız atandığında burada görünecektir.
+                </p>
+              </div>
+            ) : (
+              <TeacherScheduleGrid
+                items={items}
+                weekdaySlots={weekdaySlots}
+                saturdaySlots={saturdaySlots}
+              />
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
-  );
+  )
 }

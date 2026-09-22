@@ -660,7 +660,7 @@ model Staff {
   phone      String?
   department StaffDepartment
   position   String? // Pozisyon (Müdür, Müdür Yardımcısı, Sınıf Öğretmeni, vs.)
-  subject    String? // Branş/Ders (öğretmenler için)
+  subject    String? // Branş etiketi (StaffBranch’ten türetilir; geriye uyumluluk)
   isActive   Boolean         @default(true)
   hireDate   DateTime? // İşe başlama tarihi
   notes      String? // Notlar
@@ -684,6 +684,7 @@ model Staff {
   updatedAt DateTime @updatedAt
 
   // Relations
+  branchLinks           StaffBranch[]
   subjectAssignments    SubjectAssignment[]
   assignedClasses       Class[]             @relation("ClassCounselor")
   teacherSchedules      Schedule[]          @relation("TeacherSchedules")
@@ -718,6 +719,39 @@ model Staff {
   @@index([isActive])
   @@index([firstName, lastName])
   @@map("staff")
+}
+
+/// Okul genelinde ortak branş / ders kataloğu (Matematik, Fizik, …)
+model Branch {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  staffLinks      StaffBranch[]
+  scheduleCourses ScheduleCourse[]
+  subjects        Subject[]
+
+  @@index([isActive, sortOrder])
+  @@map("branches")
+}
+
+/// Öğretmen ↔ branş (çoktan çoğa)
+model StaffBranch {
+  id        String   @id @default(cuid())
+  staffId   String
+  branchId  String
+  createdAt DateTime @default(now())
+
+  staff  Staff  @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, branchId])
+  @@index([branchId])
+  @@index([staffId])
+  @@map("staff_branches")
 }
 
 // Modül bazlı yetkilendirme (Süper Admin tarafından yönetilir)
@@ -946,6 +980,7 @@ model Subject {
   grade          Int // Sınıf: 5, 6, 7, 8, 9, 10, 11, 12
   section        String? // Şube: "A", "B", "C", vb. (opsiyonel)
   classId        String? // Sınıf bağlantısı (FAZ 3 - Neredeyiz entegrasyonu için)
+  branchId       String? // Ortak branş kataloğu
   description    String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -953,6 +988,7 @@ model Subject {
   // Relations
   academicYear AcademicYear        @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
   class        Class?              @relation(fields: [classId], references: [id], onDelete: SetNull) // Opsiyonel sınıf bağlantısı
+  branch       Branch?             @relation(fields: [branchId], references: [id], onDelete: SetNull)
   units        Unit[]
   assignments  SubjectAssignment[]
 
@@ -962,6 +998,7 @@ model Subject {
   @@index([academicYearId, grade, section])
   @@index([name, grade])
   @@index([classId])
+  @@index([branchId])
   @@map("subjects")
 }
 
@@ -1474,16 +1511,20 @@ model ClubSchedule {
   @@map("club_schedules")
 }
 
-/// Ders programında seçilen ders adları (Matematik, Fizik vb.)
+/// Ders programında seçilen ders adları (Matematik, Fizik vb.) — Branş ile bağlı
 model ScheduleCourse {
   id        String   @id @default(cuid())
   name      String   @unique
+  branchId  String?
   sortOrder Int      @default(0)
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  branch Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
   @@index([isActive, sortOrder])
+  @@index([branchId])
   @@map("schedule_courses")
 }
 

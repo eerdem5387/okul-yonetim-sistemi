@@ -28,6 +28,7 @@ export type ScheduleTeacher = {
   firstName: string
   lastName: string
   subject?: string | null
+  branches?: Array<{ id: string; name: string }>
 }
 
 export type ScheduleRow = {
@@ -104,7 +105,9 @@ export function ClassScheduleGrid({
     : ([...WEEKDAY_INDEXES] as number[])
   const isExamOnly = saturdayEnabled && saturdayMode === "EXAM_ONLY"
   const [teachers, setTeachers] = useState<ScheduleTeacher[]>([])
-  const [courses, setCourses] = useState<Array<{ id: string; name: string }>>([])
+  const [courses, setCourses] = useState<
+    Array<{ id: string; name: string; branchId?: string | null; branch?: { id: string; name: string } | null }>
+  >([])
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<ScheduleRow | null>(null)
   const [form, setForm] = useState<ScheduleForm>(emptyForm)
@@ -115,6 +118,22 @@ export function ClassScheduleGrid({
   const [teacherQuery, setTeacherQuery] = useState("")
   const [teacherPickerOpen, setTeacherPickerOpen] = useState(false)
 
+  const selectedBranchId = useMemo(() => {
+    if (!form.subjectName.trim()) return null
+    const course = courses.find((c) => c.name === form.subjectName)
+    return course?.branchId || course?.branch?.id || null
+  }, [courses, form.subjectName])
+
+  const loadTeachers = useCallback((branchId?: string | null) => {
+    const qs = branchId
+      ? `/api/staff/pickers?type=teachers&branchId=${encodeURIComponent(branchId)}`
+      : "/api/staff/pickers?type=teachers"
+    fetch(qs, { headers: getAuthHeaders() })
+      .then((r) => (r.ok ? r.json() : { staff: [] }))
+      .then((data) => setTeachers(Array.isArray(data.staff) ? data.staff : []))
+      .catch(() => setTeachers([]))
+  }, [])
+
   useEffect(() => {
     if (typeof window === "undefined") return
     setUserRole(localStorage.getItem("auth_role"))
@@ -122,11 +141,13 @@ export function ClassScheduleGrid({
   }, [])
 
   useEffect(() => {
-    fetch("/api/staff/pickers?type=teachers", { headers: getAuthHeaders() })
-      .then((r) => (r.ok ? r.json() : { staff: [] }))
-      .then((data) => setTeachers(Array.isArray(data.staff) ? data.staff : []))
-      .catch(() => setTeachers([]))
-  }, [])
+    loadTeachers(null)
+  }, [loadTeachers])
+
+  useEffect(() => {
+    if (!modalOpen) return
+    loadTeachers(selectedBranchId)
+  }, [modalOpen, selectedBranchId, loadTeachers])
 
   const loadCourses = useCallback(() => {
     fetch("/api/schedules/courses", { cache: "no-store" })
@@ -576,10 +597,12 @@ export function ClassScheduleGrid({
                     onChange={(e) => {
                       if (e.target.value === "__custom__") {
                         setCustomSubject(true)
-                        setForm({ ...form, subjectName: "" })
+                        setForm({ ...form, subjectName: "", teacherId: "" })
                         return
                       }
-                      setForm({ ...form, subjectName: e.target.value })
+                      setForm({ ...form, subjectName: e.target.value, teacherId: "" })
+                      setTeacherPickerOpen(true)
+                      setTeacherQuery("")
                     }}
                     autoFocus
                   >
@@ -606,6 +629,16 @@ export function ClassScheduleGrid({
 
             <div>
               <Label>Öğretmen *</Label>
+              {form.subjectName && selectedBranchId && (
+                <p className="mt-0.5 text-[11px] text-indigo-700">
+                  Bu dersin branşına kayıtlı öğretmenler listeleniyor.
+                </p>
+              )}
+              {form.subjectName && !selectedBranchId && !customSubject && (
+                <p className="mt-0.5 text-[11px] text-amber-700">
+                  Bu ders henüz branşa bağlı değil — tüm öğretmenler gösteriliyor.
+                </p>
+              )}
               {selectedTeacher && !teacherPickerOpen ? (
                 <div className="mt-1 flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2">
                   <div className="min-w-0 flex-1">

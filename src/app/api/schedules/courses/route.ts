@@ -1,41 +1,35 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { ensureCourseLinkedToBranch, upsertBranchByName } from "@/lib/branches"
+import { DEFAULT_BRANCH_NAMES } from "@/lib/branches"
 
 export const dynamic = "force-dynamic"
 
-const DEFAULT_COURSES = [
-  "Türkçe",
-  "Matematik",
-  "Fen Bilimleri",
-  "Sosyal Bilgiler",
-  "İngilizce",
-  "Din Kültürü",
-  "Beden Eğitimi",
-  "Müzik",
-  "Görsel Sanatlar",
-  "Teknoloji ve Tasarım",
-  "Bilişim Teknolojileri",
-  "Fizik",
-  "Kimya",
-  "Biyoloji",
-  "Tarih",
-  "Coğrafya",
-  "Edebiyat",
-  "Felsefe",
-  "Rehberlik",
-]
-
 async function ensureDefaults() {
   const count = await prisma.scheduleCourse.count()
-  if (count > 0) return
-  await prisma.scheduleCourse.createMany({
-    data: DEFAULT_COURSES.map((name, index) => ({
-      name,
-      sortOrder: index,
-      isActive: true,
-    })),
-    skipDuplicates: true,
+  if (count === 0) {
+    for (let i = 0; i < DEFAULT_BRANCH_NAMES.length; i++) {
+      const name = DEFAULT_BRANCH_NAMES[i]
+      const branch = await upsertBranchByName(name, i)
+      await prisma.scheduleCourse.create({
+        data: {
+          name,
+          sortOrder: i,
+          isActive: true,
+          branchId: branch?.id,
+        },
+      })
+    }
+    return
+  }
+
+  // Mevcut dersleri branşa bağla
+  const courses = await prisma.scheduleCourse.findMany({
+    where: { branchId: null },
   })
+  for (const course of courses) {
+    await ensureCourseLinkedToBranch(course.id, course.name)
+  }
 }
 
 /** GET /api/schedules/courses?all=1 */
@@ -45,6 +39,7 @@ export async function GET(request: NextRequest) {
     const all = request.nextUrl.searchParams.get("all") === "1"
     const courses = await prisma.scheduleCourse.findMany({
       where: all ? undefined : { isActive: true },
+      include: { branch: { select: { id: true, name: true } } },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     })
     return NextResponse.json({ courses })
@@ -68,22 +63,27 @@ export async function POST(request: NextRequest) {
     })
     if (existing) {
       if (!existing.isActive) {
+        const linked = await ensureCourseLinkedToBranch(existing.id, name)
         const reactivated = await prisma.scheduleCourse.update({
           where: { id: existing.id },
-          data: { isActive: true, name },
+          data: { isActive: true, name, branchId: linked?.branchId ?? existing.branchId },
+          include: { branch: { select: { id: true, name: true } } },
         })
         return NextResponse.json({ course: reactivated, reactivated: true })
       }
       return NextResponse.json({ error: "Bu ders zaten tanımlı" }, { status: 409 })
     }
 
+    const branch = await upsertBranchByName(name)
     const maxOrder = await prisma.scheduleCourse.aggregate({ _max: { sortOrder: true } })
     const course = await prisma.scheduleCourse.create({
       data: {
         name,
         sortOrder: (maxOrder._max.sortOrder ?? -1) + 1,
         isActive: true,
+        branchId: branch?.id,
       },
+      include: { branch: { select: { id: true, name: true } } },
     })
     return NextResponse.json({ course })
   } catch (error) {
@@ -101,14 +101,21 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "id zorunlu" }, { status: 400 })
     }
 
-    const data: { name?: string; isActive?: boolean; sortOrder?: number } = {}
+    const data: { name?: string; isActive?: boolean; sortOrder?: number; branchId?: string | null } =
+      {}
     if (typeof body.name === "string" && body.name.trim()) data.name = body.name.trim()
     if (typeof body.isActive === "boolean") data.isActive = body.isActive
     if (typeof body.sortOrder === "number") data.sortOrder = body.sortOrder
 
+    if (data.name) {
+      const branch = await upsertBranchByName(data.name)
+      data.branchId = branch?.id ?? null
+    }
+
     const course = await prisma.scheduleCourse.update({
       where: { id },
       data,
+      include: { branch: { select: { id: true, name: true } } },
     })
     return NextResponse.json({ course })
   } catch (error) {
@@ -124,10 +131,10 @@ export async function DELETE(request: NextRequest) {
     if (!id) {
       return NextResponse.json({ error: "id zorunlu" }, { status: 400 })
     }
-    // Soft delete — program geçmişi bozulmasın
     const course = await prisma.scheduleCourse.update({
       where: { id },
       data: { isActive: false },
+      include: { branch: { select: { id: true, name: true } } },
     })
     return NextResponse.json({ success: true, course })
   } catch (error) {

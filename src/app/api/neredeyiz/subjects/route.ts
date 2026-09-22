@@ -110,7 +110,7 @@ import { prisma } from "@/lib/prisma"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { academicYearId, name, code, grade, section, description, classId } = body
+    const { academicYearId, name, code, grade, section, description, classId, branchId } = body
 
     if (!academicYearId || !name || !grade) {
       return NextResponse.json(
@@ -134,6 +134,14 @@ export async function POST(request: NextRequest) {
     // classId validasyonu (opsiyonel)
     const classIdValue = classId && classId.trim() !== "" ? classId.trim() : null
 
+    let resolvedBranchId: string | null =
+      typeof branchId === "string" && branchId.trim() ? branchId.trim() : null
+    if (!resolvedBranchId && name.trim()) {
+      const { upsertBranchByName } = await import("@/lib/branches")
+      const branch = await upsertBranchByName(name.trim())
+      resolvedBranchId = branch?.id ?? null
+    }
+
     const subject = await prisma.subject.create({
       data: {
         academicYearId,
@@ -142,6 +150,7 @@ export async function POST(request: NextRequest) {
         grade: gradeNum,
         section: sectionValue,
         classId: classIdValue,
+        branchId: resolvedBranchId,
         description: description && description.trim() !== "" ? description.trim() : null,
       },
     })
