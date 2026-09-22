@@ -71,7 +71,7 @@ export async function GET() {
   }
 }
 
-/** POST /api/schedules/clubs — { clubId, dayOfWeek, startTime, endTime, room?, notes? } */
+/** POST /api/schedules/clubs — { clubId, dayOfWeek, startTime, endTime, room?, notes?, instructorId? } */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}))
@@ -81,6 +81,12 @@ export async function POST(request: NextRequest) {
     const endTime = String(body.endTime ?? "").trim()
     const room = typeof body.room === "string" ? body.room.trim() || null : null
     const notes = typeof body.notes === "string" ? body.notes.trim() || null : null
+    const hasInstructor = Object.prototype.hasOwnProperty.call(body, "instructorId")
+    const instructorId = hasInstructor
+      ? body.instructorId
+        ? String(body.instructorId).trim()
+        : null
+      : undefined
 
     if (!clubId || !dayOfWeek || !startTime || !endTime) {
       return NextResponse.json(
@@ -90,6 +96,13 @@ export async function POST(request: NextRequest) {
     }
     if (dayOfWeek < 1 || dayOfWeek > 7) {
       return NextResponse.json({ error: "Geçersiz gün" }, { status: 400 })
+    }
+
+    if (instructorId) {
+      const teacher = await prisma.staff.findUnique({ where: { id: instructorId } })
+      if (!teacher || teacher.department !== "OGRETMEN") {
+        return NextResponse.json({ error: "Geçerli bir öğretmen seçiniz" }, { status: 400 })
+      }
     }
 
     const etutErr = await assertEtutSlot(startTime, endTime)
@@ -102,14 +115,23 @@ export async function POST(request: NextRequest) {
       dayOfWeek,
       startTime,
       endTime,
+      instructorIdOverride: instructorId,
     })
     if (freeErr) {
       return NextResponse.json({ error: freeErr }, { status: 400 })
     }
 
-    const row = await prisma.clubSchedule.create({
-      data: { clubId, dayOfWeek, startTime, endTime, room, notes },
-      include: scheduleInclude,
+    const row = await prisma.$transaction(async (tx) => {
+      if (hasInstructor) {
+        await tx.club.update({
+          where: { id: clubId },
+          data: { instructorId },
+        })
+      }
+      return tx.clubSchedule.create({
+        data: { clubId, dayOfWeek, startTime, endTime, room, notes },
+        include: scheduleInclude,
+      })
     })
 
     return NextResponse.json({

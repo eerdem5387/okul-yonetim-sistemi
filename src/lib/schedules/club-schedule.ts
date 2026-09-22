@@ -55,8 +55,10 @@ export async function assertClubSlotFree(options: {
   startTime: string
   endTime: string
   excludeId?: string
+  /** Atama sırasında seçilen öğretmen (kulüp instructor güncellenmeden önce) */
+  instructorIdOverride?: string | null
 }): Promise<string | null> {
-  const { clubId, dayOfWeek, startTime, endTime, excludeId } = options
+  const { clubId, dayOfWeek, startTime, endTime, excludeId, instructorIdOverride } = options
 
   const club = await prisma.club.findUnique({
     where: { id: clubId },
@@ -68,6 +70,9 @@ export async function assertClubSlotFree(options: {
     },
   })
   if (!club) return "Kulüp bulunamadı"
+
+  const instructorId =
+    instructorIdOverride !== undefined ? instructorIdOverride : club.instructorId
 
   const sameClub = await prisma.clubSchedule.findMany({
     where: {
@@ -83,20 +88,20 @@ export async function assertClubSlotFree(options: {
     return "Bu kulüp aynı gün/saatte zaten programda."
   }
 
-  if (club.instructorId) {
+  if (instructorId) {
     const [schedules, groups, otherClubs] = await Promise.all([
       prisma.schedule.findMany({
-        where: { teacherId: club.instructorId, dayOfWeek, isActive: true },
+        where: { teacherId: instructorId, dayOfWeek, isActive: true },
         include: { class: { select: { name: true } } },
       }),
       prisma.studyGroup.findMany({
-        where: { teacherId: club.instructorId, dayOfWeek, isActive: true },
+        where: { teacherId: instructorId, dayOfWeek, isActive: true },
       }),
       prisma.clubSchedule.findMany({
         where: {
           dayOfWeek,
           isActive: true,
-          club: { instructorId: club.instructorId },
+          club: { instructorId },
           ...(excludeId ? { id: { not: excludeId } } : {}),
           clubId: { not: clubId },
         },

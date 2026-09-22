@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Loader2, Plus, Trash2 } from "lucide-react"
+import { Loader2, Pencil, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { getAuthHeaders } from "@/components/hr/hr-utils"
 import { DAY_NAMES, WEEKDAY_INDEXES } from "@/lib/schedules/lesson-slots"
 
 type Instructor = {
@@ -25,6 +26,7 @@ type ClubRow = {
   name: string
   capacity: number
   gradeLevels: number[]
+  instructorId?: string | null
   instructor: Instructor | null
   _count: { selections: number }
 }
@@ -51,10 +53,13 @@ export function ClubSchedulesPanel() {
   const [clubs, setClubs] = useState<ClubRow[]>([])
   const [schedules, setSchedules] = useState<ClubScheduleRow[]>([])
   const [etutSlots, setEtutSlots] = useState<EtutSlot[]>([])
+  const [teachers, setTeachers] = useState<Instructor[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
+  const [editing, setEditing] = useState<ClubScheduleRow | null>(null)
   const [selectedClubId, setSelectedClubId] = useState("")
+  const [instructorId, setInstructorId] = useState("")
   const [dayOfWeek, setDayOfWeek] = useState(1)
   const [startTime, setStartTime] = useState("")
   const [endTime, setEndTime] = useState("")
@@ -66,12 +71,17 @@ export function ClubSchedulesPanel() {
     setLoading(true)
     setError("")
     try {
-      const res = await fetch("/api/schedules/clubs", { cache: "no-store" })
+      const [res, teachersRes] = await Promise.all([
+        fetch("/api/schedules/clubs", { cache: "no-store" }),
+        fetch("/api/staff/pickers?type=teachers", { headers: getAuthHeaders() }),
+      ])
       if (!res.ok) throw new Error("Kulüp programları alınamadı")
       const data = await res.json()
       setClubs(Array.isArray(data.clubs) ? data.clubs : [])
       setSchedules(Array.isArray(data.schedules) ? data.schedules : [])
       setEtutSlots(Array.isArray(data.etutSlots) ? data.etutSlots : [])
+      const tData = teachersRes.ok ? await teachersRes.json() : { staff: [] }
+      setTeachers(Array.isArray(tData.staff) ? tData.staff : [])
     } catch (e) {
       setError(e instanceof Error ? e.message : "Yüklenemedi")
       setClubs([])
@@ -93,25 +103,52 @@ export function ClubSchedulesPanel() {
     [schedules]
   )
 
+  const slotKey = (start: string, end: string) => `${start}|${end}`
+
   const openCell = (day: number, slot: EtutSlot) => {
+    setEditing(null)
     setDayOfWeek(day)
     setStartTime(slot.startTime)
     setEndTime(slot.endTime)
     setSlotLabel(slot.label)
     setSelectedClubId("")
+    setInstructorId("")
     setRoom("")
     setModalOpen(true)
   }
 
+  const openEdit = (row: ClubScheduleRow) => {
+    setEditing(row)
+    setDayOfWeek(row.dayOfWeek)
+    setStartTime(row.startTime)
+    setEndTime(row.endTime)
+    const match = etutSlots.find(
+      (s) => s.startTime === row.startTime && s.endTime === row.endTime
+    )
+    setSlotLabel(match?.label || `${row.startTime}–${row.endTime}`)
+    setSelectedClubId(row.clubId)
+    setInstructorId(row.club.instructorId || row.club.instructor?.id || "")
+    setRoom(row.room || "")
+    setModalOpen(true)
+  }
+
+  const onClubChange = (clubId: string) => {
+    setSelectedClubId(clubId)
+    const club = clubs.find((c) => c.id === clubId)
+    setInstructorId(club?.instructorId || club?.instructor?.id || "")
+  }
+
   const save = async () => {
     if (!selectedClubId || !startTime || !endTime) {
-      alert("Kulüp seçin.")
+      alert("Kulüp ve etüt saati seçin.")
       return
     }
     setBusy(true)
     try {
-      const res = await fetch("/api/schedules/clubs", {
-        method: "POST",
+      const url = editing ? `/api/schedules/clubs/${editing.id}` : "/api/schedules/clubs"
+      const method = editing ? "PUT" : "POST"
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           clubId: selectedClubId,
@@ -119,6 +156,7 @@ export function ClubSchedulesPanel() {
           startTime,
           endTime,
           room: room.trim() || null,
+          instructorId: instructorId || null,
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -127,6 +165,7 @@ export function ClubSchedulesPanel() {
         return
       }
       setModalOpen(false)
+      setEditing(null)
       await load()
     } finally {
       setBusy(false)
@@ -142,6 +181,10 @@ export function ClubSchedulesPanel() {
         const data = await res.json().catch(() => ({}))
         alert((data as { error?: string }).error || "Silinemedi")
         return
+      }
+      if (editing?.id === id) {
+        setModalOpen(false)
+        setEditing(null)
       }
       await load()
     } finally {
@@ -168,7 +211,7 @@ export function ClubSchedulesPanel() {
       <div>
         <h2 className="text-lg font-semibold text-gray-900">Haftalık etüt programı — Kulüpler</h2>
         <p className="text-sm text-gray-600">
-          Etüt hücresine tıklayarak kulüp yerleştirin. Üyeler kulüp seçiminden gelir.
+          Hücreye tıklayarak ekleyin; atanmış kulübe tıklayarak düzenleyin (öğretmen, derslik, saat).
         </p>
       </div>
 
@@ -223,8 +266,11 @@ export function ClubSchedulesPanel() {
                             {entries.map((row) => (
                               <div
                                 key={row.id}
-                                className="rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-1"
-                                onClick={(e) => e.stopPropagation()}
+                                className="rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-1 cursor-pointer hover:bg-emerald-100"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  openEdit(row)
+                                }}
                               >
                                 <div className="flex items-start justify-between gap-1">
                                   <div className="min-w-0">
@@ -234,26 +280,51 @@ export function ClubSchedulesPanel() {
                                     <p className="text-[10px] text-gray-600">
                                       {row.club._count.selections}/{row.club.capacity} üye
                                     </p>
+                                    {row.club.instructor && (
+                                      <p className="text-[10px] text-indigo-700 truncate">
+                                        {row.club.instructor.firstName}{" "}
+                                        {row.club.instructor.lastName}
+                                      </p>
+                                    )}
                                     {row.room && (
                                       <p className="text-[10px] text-gray-500">{row.room}</p>
                                     )}
                                   </div>
-                                  <button
-                                    type="button"
-                                    className="shrink-0 text-red-600 p-0.5"
-                                    disabled={busy}
-                                    onClick={() => void remove(row.id)}
-                                    title="Kaldır"
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </button>
+                                  <div className="flex shrink-0 gap-0.5">
+                                    <button
+                                      type="button"
+                                      className="text-indigo-600 p-0.5"
+                                      title="Düzenle"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        openEdit(row)
+                                      }}
+                                    >
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="text-red-600 p-0.5"
+                                      disabled={busy}
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        void remove(row.id)
+                                      }}
+                                      title="Kaldır"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
                             ))}
                             <button
                               type="button"
                               className="w-full text-[10px] text-emerald-700 py-0.5 hover:underline"
-                              onClick={() => openCell(day, slot)}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                openCell(day, slot)
+                              }}
                             >
                               + Ekle
                             </button>
@@ -280,27 +351,81 @@ export function ClubSchedulesPanel() {
         </p>
       )}
 
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+      <Dialog
+        open={modalOpen}
+        onOpenChange={(open) => {
+          setModalOpen(open)
+          if (!open) setEditing(null)
+        }}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Kulübü etüte yerleştir</DialogTitle>
+            <DialogTitle>
+              {editing ? "Kulüp atamasını düzenle" : "Kulübü etüte yerleştir"}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <p className="text-sm text-gray-600">
-              {DAY_NAMES[dayOfWeek]} · {slotLabel || `${startTime}–${endTime}`} ({startTime}–
-              {endTime})
-            </p>
+            <div>
+              <Label>Gün *</Label>
+              <select
+                className="mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
+                value={dayOfWeek}
+                onChange={(e) => setDayOfWeek(parseInt(e.target.value, 10))}
+              >
+                {WEEKDAY_INDEXES.map((d) => (
+                  <option key={d} value={d}>
+                    {DAY_NAMES[d]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label>Etüt saati *</Label>
+              <select
+                className="mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
+                value={slotKey(startTime, endTime)}
+                onChange={(e) => {
+                  const [s, en] = e.target.value.split("|")
+                  setStartTime(s)
+                  setEndTime(en)
+                  const match = etutSlots.find((x) => x.startTime === s && x.endTime === en)
+                  setSlotLabel(match?.label || "")
+                }}
+              >
+                {etutSlots.map((s) => (
+                  <option key={slotKey(s.startTime, s.endTime)} value={slotKey(s.startTime, s.endTime)}>
+                    {s.label} · {s.startTime}–{s.endTime}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div>
               <Label>Kulüp *</Label>
               <select
                 className="mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
                 value={selectedClubId}
-                onChange={(e) => setSelectedClubId(e.target.value)}
+                onChange={(e) => onClubChange(e.target.value)}
               >
                 <option value="">Seçiniz</option>
                 {clubs.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name} ({c._count.selections}/{c.capacity})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label>Öğretmen</Label>
+              <select
+                className="mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
+                value={instructorId}
+                onChange={(e) => setInstructorId(e.target.value)}
+              >
+                <option value="">Öğretmen seçiniz</option>
+                {teachers.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.firstName} {t.lastName}
+                    {t.subject ? ` (${t.subject})` : ""}
                   </option>
                 ))}
               </select>
@@ -315,11 +440,34 @@ export function ClubSchedulesPanel() {
               />
             </div>
             <div className="flex gap-2 pt-2">
-              <Button variant="outline" className="flex-1" onClick={() => setModalOpen(false)}>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  setModalOpen(false)
+                  setEditing(null)
+                }}
+              >
                 İptal
               </Button>
+              {editing && (
+                <Button
+                  variant="outline"
+                  className="text-red-600"
+                  disabled={busy}
+                  onClick={() => void remove(editing.id)}
+                >
+                  Sil
+                </Button>
+              )}
               <Button className="flex-1" onClick={() => void save()} disabled={busy}>
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Kaydet"}
+                {busy ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : editing ? (
+                  "Güncelle"
+                ) : (
+                  "Kaydet"
+                )}
               </Button>
             </div>
           </div>

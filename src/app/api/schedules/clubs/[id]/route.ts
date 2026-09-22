@@ -48,6 +48,19 @@ export async function PUT(
           ? body.notes.trim() || null
           : null
         : existing.notes
+    const hasInstructor = Object.prototype.hasOwnProperty.call(body, "instructorId")
+    const instructorId = hasInstructor
+      ? body.instructorId
+        ? String(body.instructorId).trim()
+        : null
+      : undefined
+
+    if (instructorId) {
+      const teacher = await prisma.staff.findUnique({ where: { id: instructorId } })
+      if (!teacher || teacher.department !== "OGRETMEN") {
+        return NextResponse.json({ error: "Geçerli bir öğretmen seçiniz" }, { status: 400 })
+      }
+    }
 
     const etutErr = await assertEtutSlot(startTime, endTime)
     if (etutErr) {
@@ -60,15 +73,24 @@ export async function PUT(
       startTime,
       endTime,
       excludeId: id,
+      instructorIdOverride: instructorId,
     })
     if (freeErr) {
       return NextResponse.json({ error: freeErr }, { status: 400 })
     }
 
-    const row = await prisma.clubSchedule.update({
-      where: { id },
-      data: { clubId, dayOfWeek, startTime, endTime, room, notes },
-      include: scheduleInclude,
+    const row = await prisma.$transaction(async (tx) => {
+      if (hasInstructor) {
+        await tx.club.update({
+          where: { id: clubId },
+          data: { instructorId },
+        })
+      }
+      return tx.clubSchedule.update({
+        where: { id },
+        data: { clubId, dayOfWeek, startTime, endTime, room, notes },
+        include: scheduleInclude,
+      })
     })
 
     return NextResponse.json({ success: true, schedule: row })
