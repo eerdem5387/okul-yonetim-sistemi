@@ -130,7 +130,7 @@ function clean(s: unknown): string {
     .trim()
 }
 
-function normKey(s: string): string {
+function normKey(s: unknown): string {
   return clean(s).toLocaleUpperCase("tr-TR")
 }
 
