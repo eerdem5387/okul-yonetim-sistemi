@@ -26,7 +26,7 @@ interface Schedule {
   }
 }
 
-type SlotRow = LessonSlot & { kind?: SlotKind }
+type SlotRow = LessonSlot & { kind?: SlotKind; band?: "ortaokul" | "lise" }
 
 export default function TeacherSchedulePage() {
   const [schedules, setSchedules] = useState<Schedule[]>([])
@@ -46,10 +46,13 @@ export default function TeacherSchedulePage() {
       const saturdayMap = new Map<string, SlotRow>()
       for (const t of templates) {
         const rows = Array.isArray(t.slots) ? t.slots : []
+        const band = t.band === "lise" ? ("lise" as const) : ("ortaokul" as const)
         const target = t.scope === "saturday" ? saturdayMap : weekdayMap
         for (const s of rows) {
           if ((s.kind ?? "LESSON") === "ETUT") continue
-          if (!target.has(s.startTime)) target.set(s.startTime, s)
+          if (!target.has(s.startTime)) {
+            target.set(s.startTime, { ...s, band })
+          }
         }
       }
       if (weekdayMap.size > 0) {

@@ -355,19 +355,27 @@ export default function DersProgramiPage() {
   )
 
   const teacherWeekdaySlots = useMemo(() => {
-    const map = new Map<string, LessonSlot & { kind?: SlotKind }>()
-    for (const s of [...slotMap.ortaokul, ...slotMap.lise]) {
+    const map = new Map<string, LessonSlot & { kind?: SlotKind; band?: "ortaokul" | "lise" }>()
+    for (const s of slotMap.ortaokul) {
       if ((s.kind ?? "LESSON") === "ETUT") continue
-      if (!map.has(s.startTime)) map.set(s.startTime, s)
+      if (!map.has(s.startTime)) map.set(s.startTime, { ...s, band: "ortaokul" })
+    }
+    for (const s of slotMap.lise) {
+      if ((s.kind ?? "LESSON") === "ETUT") continue
+      if (!map.has(s.startTime)) map.set(s.startTime, { ...s, band: "lise" })
     }
     return [...map.values()].sort((a, b) => a.startTime.localeCompare(b.startTime))
   }, [slotMap])
 
   const teacherSaturdaySlots = useMemo(() => {
-    const map = new Map<string, LessonSlot & { kind?: SlotKind }>()
-    for (const s of [...slotMap.ortaokulSaturday, ...slotMap.liseSaturday]) {
+    const map = new Map<string, LessonSlot & { kind?: SlotKind; band?: "ortaokul" | "lise" }>()
+    for (const s of slotMap.ortaokulSaturday) {
       if ((s.kind ?? "LESSON") === "ETUT") continue
-      if (!map.has(s.startTime)) map.set(s.startTime, s)
+      if (!map.has(s.startTime)) map.set(s.startTime, { ...s, band: "ortaokul" })
+    }
+    for (const s of slotMap.liseSaturday) {
+      if ((s.kind ?? "LESSON") === "ETUT") continue
+      if (!map.has(s.startTime)) map.set(s.startTime, { ...s, band: "lise" })
     }
     return [...map.values()].sort((a, b) => a.startTime.localeCompare(b.startTime))
   }, [slotMap])

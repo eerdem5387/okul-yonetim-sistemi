@@ -21,18 +21,65 @@ export type TeacherScheduleItem = {
   kind?: "class" | "study"
 }
 
-type GridSlot = LessonSlot & { kind?: "LESSON" | "BREAK" | "ETUT" }
+export type TeacherGridSlot = LessonSlot & {
+  kind?: "LESSON" | "BREAK" | "ETUT"
+  /** Ortaokul / lise şablonundan geldiyse etiket ayırımı için */
+  band?: "ortaokul" | "lise"
+}
 
 function slotKey(start: string, end: string) {
   return `${start}|${end}`
 }
 
+function basePeriodLabel(label: string): string {
+  return label.replace(/\s*[·\-–]\s*(Ortaokul|Lise)\s*$/i, "").trim()
+}
+
+function bandSuffix(band?: "ortaokul" | "lise"): string | null {
+  if (band === "lise") return "Lise"
+  if (band === "ortaokul") return "Ortaokul"
+  return null
+}
+
+/** Aynı dönem adı (örn. 5. Ders) farklı saatlerdeyse · Lise / · Ortaokul ekle. */
+function disambiguateBandLabels(slots: TeacherGridSlot[]): TeacherGridSlot[] {
+  const groups = new Map<string, TeacherGridSlot[]>()
+  for (const s of slots) {
+    const base = basePeriodLabel(s.label)
+    const list = groups.get(base) ?? []
+    list.push(s)
+    groups.set(base, list)
+  }
+
+  const out: TeacherGridSlot[] = []
+  for (const [base, group] of groups) {
+    const uniqueStarts = new Set(group.map((s) => s.startTime))
+    const needsBand = uniqueStarts.size > 1
+    for (const s of group) {
+      if (!needsBand) {
+        out.push({ ...s, label: base })
+        continue
+      }
+      const suffix = bandSuffix(s.band)
+      out.push({
+        ...s,
+        label: suffix ? `${base} · ${suffix}` : `${base} · ${s.startTime}`,
+      })
+    }
+  }
+  return out
+}
+
+/**
+ * Şablon dilimlerini birleştirir; öğretmenin programında geçen saatleri tutar.
+ * Ortaokul/lise aynı dönem adı + farklı saatteyse etikete band eklenir.
+ */
 function buildSlotRows(
-  weekdaySlots: GridSlot[],
-  saturdaySlots: GridSlot[],
+  weekdaySlots: TeacherGridSlot[],
+  saturdaySlots: TeacherGridSlot[],
   items: TeacherScheduleItem[],
   includeSaturday: boolean
-): GridSlot[] {
+): TeacherGridSlot[] {
   const source = [
     ...weekdaySlots.filter((s) => (s.kind ?? "LESSON") === "LESSON"),
     ...(includeSaturday
@@ -40,10 +87,13 @@ function buildSlotRows(
       : []),
   ]
 
-  const byStart = new Map<string, GridSlot>()
+  const byStart = new Map<string, TeacherGridSlot>()
   for (const s of source) {
-    if (!byStart.has(s.startTime)) {
+    const existing = byStart.get(s.startTime)
+    if (!existing) {
       byStart.set(s.startTime, { ...s, kind: "LESSON" })
+    } else if (!existing.band && s.band) {
+      byStart.set(s.startTime, { ...existing, band: s.band })
     }
   }
 
@@ -62,7 +112,17 @@ function buildSlotRows(
     }
   }
 
-  return [...byStart.values()].sort((a, b) => a.startTime.localeCompare(b.startTime))
+  const usedStarts = new Set(
+    items
+      .filter((i) => includeSaturday || i.dayOfWeek !== SATURDAY_INDEX)
+      .filter((i) => i.dayOfWeek >= 1 && i.dayOfWeek <= 6)
+      .map((i) => i.startTime)
+  )
+
+  const filtered = [...byStart.values()].filter((s) => usedStarts.has(s.startTime))
+  return disambiguateBandLabels(filtered).sort((a, b) =>
+    a.startTime.localeCompare(b.startTime)
+  )
 }
 
 export function TeacherScheduleGrid({
@@ -72,14 +132,18 @@ export function TeacherScheduleGrid({
   title,
 }: {
   items: TeacherScheduleItem[]
-  weekdaySlots?: GridSlot[]
-  saturdaySlots?: GridSlot[]
+  weekdaySlots?: TeacherGridSlot[]
+  saturdaySlots?: TeacherGridSlot[]
   title?: string
 }) {
   const hasSaturday = items.some((i) => i.dayOfWeek === SATURDAY_INDEX)
-  const dayIndexes = hasSaturday
-    ? ([...WEEKDAY_INDEXES, SATURDAY_INDEX] as number[])
-    : ([...WEEKDAY_INDEXES] as number[])
+  const dayIndexes = useMemo(
+    () =>
+      hasSaturday
+        ? ([...WEEKDAY_INDEXES, SATURDAY_INDEX] as number[])
+        : ([...WEEKDAY_INDEXES] as number[]),
+    [hasSaturday]
+  )
 
   const slots = useMemo(
     () =>
@@ -208,16 +272,14 @@ export function TeacherScheduleGrid({
       </div>
 
       {unmatched.length > 0 && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3 space-y-1">
-          <p className="text-sm font-medium text-amber-900">
-            Şablon dışı saatler ({unmatched.length})
-          </p>
-          {unmatched.map((item) => (
-            <p key={item.id} className="text-xs text-amber-900/90">
-              {DAY_NAMES[item.dayOfWeek]} · {item.startTime}–{item.endTime} · {item.subjectName} ·{" "}
-              {item.className}
-            </p>
-          ))}
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          Şablon dışı saatler:{" "}
+          {unmatched
+            .map(
+              (i) =>
+                `${DAY_NAMES[i.dayOfWeek]} ${i.startTime}–${i.endTime} ${i.subjectName} (${i.className})`
+            )
+            .join(" · ")}
         </div>
       )}
     </div>
