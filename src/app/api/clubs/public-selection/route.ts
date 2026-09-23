@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { clubMatchesStudentGrade } from "@/lib/club-grade-levels"
 import { k12GradeWhereClause } from "@/lib/student-grade-level"
-
-const MAX_CLUBS = 3
+import {
+  isOverClubSelectionQuota,
+  MAX_CLUB_SELECTIONS,
+} from "@/lib/clubs/selection-quota"
 
 function normalizeTc(raw: unknown): string | null {
   const tc = String(raw ?? "").replace(/\D/g, "")
@@ -27,6 +29,7 @@ async function clubPayload(studentId: string, studentGrade: string) {
         description: true,
         capacity: true,
         gradeLevels: true,
+        exemptFromSelectionLimit: true,
         _count: { select: { selections: true } },
         selections: { where: { studentId }, select: { id: true } },
       },
@@ -44,6 +47,7 @@ async function clubPayload(studentId: string, studentGrade: string) {
   const visible = clubs.filter((club) => clubMatchesStudentGrade(club.gradeLevels, studentGrade))
   const visibleIds = new Set(visible.map((club) => club.id))
   const demandedIds = new Set(myDemands.map((d) => d.clubId))
+  const selectedClubIds = mine.map((row) => row.clubId).filter((id) => visibleIds.has(id))
 
   return {
     clubs: visible.map((club) => ({
@@ -54,9 +58,11 @@ async function clubPayload(studentId: string, studentGrade: string) {
       filled: club._count.selections,
       selected: club.selections.length > 0,
       demanded: demandedIds.has(club.id),
+      exemptFromSelectionLimit: club.exemptFromSelectionLimit,
     })),
-    selectedClubIds: mine.map((row) => row.clubId).filter((id) => visibleIds.has(id)),
+    selectedClubIds,
     demandedClubIds: [...demandedIds].filter((id) => visibleIds.has(id)),
+    maxQuotaClubs: MAX_CLUB_SELECTIONS,
   }
 }
 
@@ -89,9 +95,6 @@ export async function POST(request: NextRequest) {
     const clubIds = Array.from(
       new Set(rawClubIds.map((id) => String(id ?? "").trim()).filter((id) => id.length > 0))
     )
-    if (clubIds.length > MAX_CLUBS) {
-      return NextResponse.json({ error: `En fazla ${MAX_CLUBS} kulüp seçilebilir` }, { status: 400 })
-    }
 
     const result = await prisma.$transaction(async (tx) => {
       const clubs = clubIds.length
@@ -105,6 +108,9 @@ export async function POST(request: NextRequest) {
       }
       if (clubs.some((club) => !clubMatchesStudentGrade(club.gradeLevels, student.grade))) {
         throw new Error("GRADE_MISMATCH")
+      }
+      if (isOverClubSelectionQuota(clubIds, clubs)) {
+        throw new Error("QUOTA")
       }
 
       const fullClubs: string[] = []
@@ -128,7 +134,6 @@ export async function POST(request: NextRequest) {
           data: clubIds.map((clubId) => ({ studentId: student.id, clubId })),
           skipDuplicates: true,
         })
-        // Kayıt olan talepleri temizle
         await tx.clubDemandRequest.deleteMany({
           where: { studentId: student.id, clubId: { in: clubIds } },
         })
@@ -159,6 +164,14 @@ export async function POST(request: NextRequest) {
     }
     if (message === "GRADE_MISMATCH") {
       return NextResponse.json({ error: "Seçilen kulüpler öğrencinin sınıfına açık değil" }, { status: 400 })
+    }
+    if (message === "QUOTA") {
+      return NextResponse.json(
+        {
+          error: `En fazla ${MAX_CLUB_SELECTIONS} kulüp seçebilirsiniz (kota dışı kulüpler bu sayıya dahil değildir)`,
+        },
+        { status: 400 }
+      )
     }
     console.error("Public club selection error:", error)
     return NextResponse.json({ error: "İşlem tamamlanamadı" }, { status: 500 })

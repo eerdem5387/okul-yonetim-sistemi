@@ -44,7 +44,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
-        const { name, description, capacity, gradeLevels, instructorId } = body
+        const { name, description, capacity, gradeLevels, instructorId, exemptFromSelectionLimit } = body
         const levels = normalizeClubGradeLevels(gradeLevels)
         if (levels.length === 0) {
             return NextResponse.json({ error: "En az bir sınıf düzeyi seçin" }, { status: 400 })
@@ -57,6 +57,7 @@ export async function POST(request: NextRequest) {
                 capacity: parseInt(capacity),
                 gradeLevels: levels,
                 instructorId: instructorId ? String(instructorId) : null,
+                exemptFromSelectionLimit: Boolean(exemptFromSelectionLimit),
             },
             include: { instructor: { select: instructorSelect } },
         })
@@ -71,7 +72,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
     try {
         const body = await request.json()
-        const { id, name, description, capacity, gradeLevels, instructorId } = body
+        const { id, name, description, capacity, gradeLevels, instructorId, exemptFromSelectionLimit } = body
         const levels = normalizeClubGradeLevels(gradeLevels)
         if (levels.length === 0) {
             return NextResponse.json({ error: "En az bir sınıf düzeyi seçin" }, { status: 400 })
@@ -86,6 +87,9 @@ export async function PUT(request: NextRequest) {
                 gradeLevels: levels,
                 ...(instructorId !== undefined
                   ? { instructorId: instructorId ? String(instructorId) : null }
+                  : {}),
+                ...(exemptFromSelectionLimit !== undefined
+                  ? { exemptFromSelectionLimit: Boolean(exemptFromSelectionLimit) }
                   : {}),
             },
             include: { instructor: { select: instructorSelect } },

@@ -16,6 +16,7 @@ interface Club {
   description: string | null
   capacity: number
   gradeLevels?: number[]
+  exemptFromSelectionLimit?: boolean
   createdAt: string
   instructorId?: string | null
   instructor?: { id: string; firstName: string; lastName: string; subject?: string | null } | null

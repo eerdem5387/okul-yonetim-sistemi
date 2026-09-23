@@ -6,6 +6,10 @@ import { Button } from "@/components/ui/button"
 import { Check, X, AlertCircle, FileText } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { clubMatchesStudentGrade } from "@/lib/club-grade-levels"
+import {
+  countQuotaSelections,
+  MAX_CLUB_SELECTIONS,
+} from "@/lib/clubs/selection-quota"
 
 interface Student {
   id: string
@@ -21,6 +25,7 @@ interface Club {
   description?: string
   capacity: number
   gradeLevels?: number[]
+  exemptFromSelectionLimit?: boolean
   selections?: Array<{ id: string; studentId: string; clubId: string }>
 }
 
@@ -247,13 +252,15 @@ export default function ParentPage() {
       // Seçimi kaldır
       setSelectedClubs(selectedClubs.filter(id => id !== clubId))
     } else {
-      // Yeni seçim ekle
-      const visibleSelectedCount = selectedClubs.filter((id) => {
-        const existing = clubs.find((item) => item.id === id)
-        return existing ? clubMatchesStudentGrade(existing.gradeLevels, selectedStudent?.grade) : false
-      }).length
-      if (visibleSelectedCount >= 3) {
-        alert("Maksimum 3 kulüp seçebilirsiniz!")
+      const next = [...selectedClubs, clubId]
+      const visibleClubs = clubs.filter((item) =>
+        clubMatchesStudentGrade(item.gradeLevels, selectedStudent?.grade)
+      )
+      const visibleSelected = next.filter((id) => visibleClubs.some((c) => c.id === id))
+      if (countQuotaSelections(visibleSelected, visibleClubs) > MAX_CLUB_SELECTIONS) {
+        alert(
+          `Maksimum ${MAX_CLUB_SELECTIONS} kulüp seçebilirsiniz! (Kota dışı kulüpler bu sayıya dahil değildir)`
+        )
         return
       }
       
@@ -272,7 +279,7 @@ export default function ParentPage() {
         }
       }
       
-      setSelectedClubs([...selectedClubs, clubId])
+      setSelectedClubs(next)
     }
   }
 
@@ -309,8 +316,14 @@ export default function ParentPage() {
       return
     }
 
-    if (selectedClubs.length > 3) {
-      alert("Maksimum 3 kulüp seçebilirsiniz!")
+    const visibleClubs = clubs.filter((item) =>
+      clubMatchesStudentGrade(item.gradeLevels, selectedStudent.grade)
+    )
+    const visibleSelected = selectedClubs.filter((id) => visibleClubs.some((c) => c.id === id))
+    if (countQuotaSelections(visibleSelected, visibleClubs) > MAX_CLUB_SELECTIONS) {
+      alert(
+        `Maksimum ${MAX_CLUB_SELECTIONS} kulüp seçebilirsiniz! (Kota dışı kulüpler bu sayıya dahil değildir)`
+      )
       return
     }
 
@@ -500,10 +513,18 @@ export default function ParentPage() {
                 <div className="flex-1">
                   <CardTitle className="text-lg sm:text-xl">Kulüp Seçimi</CardTitle>
                   <CardDescription className="text-xs sm:text-sm mt-1">
-                    Maksimum 3 kulüp seçebilirsiniz ({selectedClubs.filter((id) => {
-                      const existing = clubs.find((item) => item.id === id)
-                      return existing ? clubMatchesStudentGrade(existing.gradeLevels, selectedStudent?.grade) : false
-                    }).length}/3)
+                    Kota:{" "}
+                    {countQuotaSelections(
+                      selectedClubs.filter((id) => {
+                        const existing = clubs.find((item) => item.id === id)
+                        return existing
+                          ? clubMatchesStudentGrade(existing.gradeLevels, selectedStudent?.grade)
+                          : false
+                      }),
+                      clubs
+                    )}
+                    /{MAX_CLUB_SELECTIONS}
+                    {" "}(kota dışı kulüpler bu sayıya dahil değildir)
                   </CardDescription>
                 </div>
                 {selectedStudent && (
@@ -555,6 +576,11 @@ export default function ParentPage() {
                                     }`}>
                                       {club.name}
                                     </p>
+                                    {club.exemptFromSelectionLimit && (
+                                      <span className="rounded-full bg-amber-100 px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-semibold text-amber-800">
+                                        Kota dışı
+                                      </span>
+                                    )}
                                     {isSelected && (
                                       <div className="flex items-center gap-1 bg-blue-600 text-white px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold animate-pulse">
                                         <Check className="h-2.5 w-2.5 sm:h-3 sm:w-3" />

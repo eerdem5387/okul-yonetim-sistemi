@@ -46,6 +46,7 @@ interface Club {
   description: string | null
   capacity: number
   gradeLevels?: number[]
+  exemptFromSelectionLimit?: boolean
   createdAt: string
   selections: ClubSelection[]
   instructor?: { id: string; firstName: string; lastName: string; subject?: string | null } | null
@@ -69,6 +70,7 @@ export default function ClubsPage() {
     description: "",
     capacity: 0,
     gradeLevels: [...CLUB_GRADE_LEVELS] as number[],
+    exemptFromSelectionLimit: false,
   })
   const [selectedGrade, setSelectedGrade] = useState("all")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
@@ -130,7 +132,13 @@ export default function ClubsPage() {
         fetchClubs()
         setShowForm(false)
         setEditingClub(null)
-        setFormData({ name: "", description: "", capacity: 0, gradeLevels: [...CLUB_GRADE_LEVELS] })
+        setFormData({
+          name: "",
+          description: "",
+          capacity: 0,
+          gradeLevels: [...CLUB_GRADE_LEVELS],
+          exemptFromSelectionLimit: false,
+        })
       } else {
         const err = await response.json().catch(() => ({}))
         alert((err as { error?: string }).error || "Kulüp kaydedilirken hata oluştu!")
@@ -485,6 +493,24 @@ export default function ClubsPage() {
                 value={formData.gradeLevels}
                 onChange={(gradeLevels) => setFormData({ ...formData, gradeLevels })}
               />
+              <label className="flex items-start gap-3 rounded-lg border border-amber-100 bg-amber-50/60 p-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300"
+                  checked={formData.exemptFromSelectionLimit}
+                  onChange={(e) =>
+                    setFormData({ ...formData, exemptFromSelectionLimit: e.target.checked })
+                  }
+                />
+                <span>
+                  <span className="block text-xs sm:text-sm font-medium text-gray-900">
+                    Seçim kotasından muaf
+                  </span>
+                  <span className="block text-[11px] sm:text-xs text-gray-600 mt-0.5">
+                    Açıkken bu kulüp öğrencinin 3 kulüp hakkından düşmez (ör. olimpiyat).
+                  </span>
+                </span>
+              </label>
               <div className="flex flex-col sm:flex-row gap-2 pt-2">
                 <Button type="submit" size="sm" className="w-full sm:w-auto text-xs sm:text-sm">
                   {editingClub ? "Güncelle" : "Oluştur"}
@@ -492,7 +518,13 @@ export default function ClubsPage() {
                 <Button type="button" variant="outline" size="sm" onClick={() => {
                   setShowForm(false)
                   setEditingClub(null)
-                  setFormData({ name: "", description: "", capacity: 0, gradeLevels: [...CLUB_GRADE_LEVELS] })
+                  setFormData({
+                    name: "",
+                    description: "",
+                    capacity: 0,
+                    gradeLevels: [...CLUB_GRADE_LEVELS],
+                    exemptFromSelectionLimit: false,
+                  })
                 }} className="w-full sm:w-auto text-xs sm:text-sm">
                   İptal
                 </Button>
@@ -546,6 +578,11 @@ export default function ClubsPage() {
                         <span className={`px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold rounded-full ${statusColor}`}>
                           {isFull ? "Dolu" : isEmpty ? "Boş" : "Kontenjan Var"}
                         </span>
+                        {club.exemptFromSelectionLimit && (
+                          <span className="px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold rounded-full bg-amber-100 text-amber-800">
+                            Kota dışı
+                          </span>
+                        )}
                         {selectedGrade !== "all" && (
                           <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold rounded-full bg-blue-50 text-blue-600">
                             {selectedGrade}

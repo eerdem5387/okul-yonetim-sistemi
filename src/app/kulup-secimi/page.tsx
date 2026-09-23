@@ -6,6 +6,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  countQuotaSelections,
+  MAX_CLUB_SELECTIONS,
+} from "@/lib/clubs/selection-quota"
 
 type Club = {
   id: string
@@ -15,6 +19,7 @@ type Club = {
   filled: number
   selected: boolean
   demanded?: boolean
+  exemptFromSelectionLimit?: boolean
 }
 
 type StudentBrief = {
@@ -35,6 +40,8 @@ export default function PublicClubSelectionPage() {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [demandBusyId, setDemandBusyId] = useState<string | null>(null)
+
+  const quotaUsed = countQuotaSelections(selected, clubs)
 
   const lookup = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -68,8 +75,11 @@ export default function PublicClubSelectionPage() {
       setSelected(selected.filter((id) => id !== club.id))
       return
     }
-    if (selected.length >= 3) {
-      setError("En fazla 3 kulüp seçebilirsiniz")
+    const next = [...selected, club.id]
+    if (countQuotaSelections(next, clubs) > MAX_CLUB_SELECTIONS) {
+      setError(
+        `En fazla ${MAX_CLUB_SELECTIONS} kulüp seçebilirsiniz (kota dışı kulüpler bu sayıya dahil değildir)`
+      )
       return
     }
     const alreadyMine = club.selected
@@ -78,7 +88,7 @@ export default function PublicClubSelectionPage() {
       return
     }
     setError("")
-    setSelected([...selected, club.id])
+    setSelected(next)
   }
 
   const createDemand = async (club: Club) => {
@@ -286,7 +296,10 @@ export default function PublicClubSelectionPage() {
                 {student.firstName} {student.lastName}
               </CardTitle>
               <CardDescription>
-                {student.grade} · En fazla 3 kulüp ({selected.length}/3)
+                {student.grade} · Kota: {quotaUsed}/{MAX_CLUB_SELECTIONS}
+                {selected.length > quotaUsed
+                  ? ` · Toplam seçim: ${selected.length} (kota dışı dahil)`
+                  : ""}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -350,6 +363,11 @@ export default function PublicClubSelectionPage() {
                               {full && (
                                 <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">
                                   Dolu
+                                </span>
+                              )}
+                              {club.exemptFromSelectionLimit && (
+                                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+                                  Kota dışı
                                 </span>
                               )}
                               {!full && availableSlots > 0 && availableSlots <= 2 && (

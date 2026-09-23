@@ -24,6 +24,7 @@ type ClubDraft = {
   gradeLevels?: number[]
   instructorId?: string | null
   instructor?: TeacherOption | null
+  exemptFromSelectionLimit?: boolean
 }
 
 export function ClubDetailEditor({
@@ -42,6 +43,7 @@ export function ClubDetailEditor({
     capacity: club.capacity,
     gradeLevels: effectiveClubGradeLevels(club.gradeLevels),
     instructorId: club.instructorId || club.instructor?.id || "",
+    exemptFromSelectionLimit: Boolean(club.exemptFromSelectionLimit),
   })
 
   useEffect(() => {
@@ -62,6 +64,7 @@ export function ClubDetailEditor({
       capacity: club.capacity,
       gradeLevels: effectiveClubGradeLevels(club.gradeLevels),
       instructorId: club.instructorId || club.instructor?.id || "",
+      exemptFromSelectionLimit: Boolean(club.exemptFromSelectionLimit),
     })
     setOpen(true)
   }
@@ -83,6 +86,7 @@ export function ClubDetailEditor({
         body: JSON.stringify({
           ...form,
           instructorId: form.instructorId || null,
+          exemptFromSelectionLimit: form.exemptFromSelectionLimit,
         }),
       })
       if (!res.ok) {
@@ -160,6 +164,25 @@ export function ClubDetailEditor({
         value={form.gradeLevels}
         onChange={(gradeLevels) => setForm({ ...form, gradeLevels })}
       />
+      <label className="flex items-start gap-3 rounded-lg border border-amber-100 bg-amber-50/60 p-3 cursor-pointer">
+        <input
+          type="checkbox"
+          className="mt-0.5 h-4 w-4 rounded border-gray-300"
+          checked={form.exemptFromSelectionLimit}
+          onChange={(e) =>
+            setForm({ ...form, exemptFromSelectionLimit: e.target.checked })
+          }
+        />
+        <span>
+          <span className="block text-sm font-medium text-gray-900">
+            Seçim kotasından muaf
+          </span>
+          <span className="block text-xs text-gray-600 mt-0.5">
+            Açıkken bu kulüp öğrencinin 3 kulüp hakkından düşmez (ör. olimpiyat).
+            Kontenjan yine geçerlidir.
+          </span>
+        </span>
+      </label>
       <div className="flex gap-2">
         <Button type="button" size="sm" onClick={() => void save()} disabled={saving}>
           {saving ? "Kaydediliyor..." : "Kaydet"}

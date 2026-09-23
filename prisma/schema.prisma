@@ -78,6 +78,8 @@ model Club {
   capacity     Int
   /// Boş dizi = tüm 5–12. sınıflar. Doluysa yalnızca bu düzeyler kulübü görür.
   gradeLevels  Int[]    @default([])
+  /// true ise öğrenci 3 kulüp seçim kotasından düşmez (ör. olimpiyat).
+  exemptFromSelectionLimit Boolean @default(false)
   /// Sorumlu öğretmen (Staff). Atanan öğretmen yalnızca bu kulübü görür.
   instructorId String?
   instructor   Staff?   @relation("ClubInstructor", fields: [instructorId], references: [id], onDelete: SetNull)
