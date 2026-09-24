@@ -1,521 +1,432 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Calendar, Users, CheckCircle, XCircle, Clock, Loader2, BookOpen } from "lucide-react"
+import {
+  BookOpen,
+  CheckCircle,
+  Clock,
+  Loader2,
+  Users,
+  XCircle,
+  AlertCircle,
+} from "lucide-react"
+import { getAuthHeaders } from "@/components/hr/hr-utils"
 
-interface Student {
+type AttendanceStatus = "PRESENT" | "ABSENT" | "LATE" | "EXCUSED"
+
+type Student = {
   id: string
   firstName: string
   lastName: string
   grade: string
 }
 
-interface Schedule {
+type Session = {
   id: string
-  subjectName: string
+  kind: "CLASS" | "STUDY_GROUP" | "CLUB"
+  scheduleId: string | null
+  classId: string | null
+  studyGroupSessionId: string | null
+  clubScheduleId: string | null
+  title: string
+  subtitle: string
   startTime: string
   endTime: string
-  dayOfWeek: number
-  class: {
-    id: string
-    name: string
-    grade: number
-    section: string
-  }
+  room: string | null
+  students: Student[] | null
+  class: { id: string; name: string; grade: number; section: string } | null
 }
 
-interface AttendanceRecord {
-  studentId: string
-  status: "PRESENT" | "ABSENT"
-  note?: string
+const STATUS_META: Record<
+  AttendanceStatus,
+  { label: string; className: string; icon: typeof CheckCircle }
+> = {
+  PRESENT: {
+    label: "Geldi",
+    className: "bg-emerald-50 text-emerald-800 border-emerald-200",
+    icon: CheckCircle,
+  },
+  ABSENT: {
+    label: "Gelmedi",
+    className: "bg-rose-50 text-rose-800 border-rose-200",
+    icon: XCircle,
+  },
+  LATE: {
+    label: "Geç",
+    className: "bg-amber-50 text-amber-800 border-amber-200",
+    icon: Clock,
+  },
+  EXCUSED: {
+    label: "İzinli",
+    className: "bg-sky-50 text-sky-800 border-sky-200",
+    icon: AlertCircle,
+  },
+}
+
+const KIND_LABEL: Record<Session["kind"], string> = {
+  CLASS: "Ders",
+  STUDY_GROUP: "ÖÇG",
+  CLUB: "Kulüp",
 }
 
 export default function TeacherAttendancePage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [staffId, setStaffId] = useState("")
-  
-  // Form durumu
-  const [selectedClass, setSelectedClass] = useState("")
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0])
-  const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null)
-  
-  // Öğrenciler ve yoklama
+  const [selectedDate, setSelectedDate] = useState(
+    () => new Date().toISOString().split("T")[0]
+  )
+  const [sessions, setSessions] = useState<Session[]>([])
+  const [sessionsLoading, setSessionsLoading] = useState(false)
+  const [selected, setSelected] = useState<Session | null>(null)
   const [students, setStudents] = useState<Student[]>([])
-  const [attendances, setAttendances] = useState<Record<string, AttendanceRecord>>({})
-  
-  // Sınıflar ve ders programı
-  const [classes, setClasses] = useState<Array<{ id: string; name: string }>>([])
-  const [schedules, setSchedules] = useState<Schedule[]>([])
-  const [loadingSchedules, setLoadingSchedules] = useState(false)
-  const [loadingStudents, setLoadingStudents] = useState(false)
-
-  const fetchClasses = useCallback(async (teacherId: string) => {
-    try {
-      const response = await fetch(`/api/teachers/${teacherId}/classes`)
-      if (response.ok) {
-        const data = await response.json()
-        setClasses(data.classes || [])
-      } else {
-        setClasses([])
-      }
-    } catch (error) {
-      console.error("Error fetching classes:", error)
-      setClasses([])
-    }
-  }, [])
+  const [studentsLoading, setStudentsLoading] = useState(false)
+  const [statuses, setStatuses] = useState<Record<string, AttendanceStatus>>({})
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState("")
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const role = localStorage.getItem("auth_role")
-      const id = localStorage.getItem("staff_id")
-
-      if (role !== "teacher" || !id) {
-        router.push("/login")
-        return
-      }
-
-      setStaffId(id)
-      fetchClasses(id)
-      setLoading(false)
+    if (typeof window === "undefined") return
+    const role = localStorage.getItem("auth_role")
+    const id = localStorage.getItem("staff_id")
+    if (role !== "teacher" || !id) {
+      router.push("/login")
+      return
     }
-  }, [router, fetchClasses])
+    setStaffId(id)
+    setLoading(false)
+  }, [router])
 
-  // Tarih değiştiğinde ders programını getir
-  useEffect(() => {
-    if (selectedDate && staffId && selectedClass) {
-      fetchDaySchedule(selectedDate, staffId, selectedClass)
-    } else {
-      setSchedules([])
-      setSelectedSchedule(null)
-    }
-  }, [selectedDate, staffId, selectedClass])
-
-  // Ders seçildiğinde öğrencileri getir
-  useEffect(() => {
-    if (selectedSchedule && selectedClass) {
-      fetchStudents(selectedClass)
-    } else {
-      setStudents([])
-      setAttendances({})
-    }
-  }, [selectedSchedule, selectedClass])
-
-  const fetchDaySchedule = async (date: string, teacherId: string, classId: string) => {
-    setLoadingSchedules(true)
-    try {
-      // Tarihin haftanın hangi günü olduğunu bul (1=Pazartesi, 7=Pazar)
-      const dateObj = new Date(date)
-      const dayOfWeek = dateObj.getDay() === 0 ? 7 : dateObj.getDay() // Pazar = 7, Pazartesi = 1
-
-      // Öğretmenin o günkü ders programını getir (sadece seçilen sınıf için)
-      const response = await fetch(`/api/schedules?teacherId=${teacherId}&dayOfWeek=${dayOfWeek}`)
-      if (response.ok) {
-        const data = await response.json()
-        // Sadece seçilen sınıfa ait dersleri filtrele
-        const classSchedules = (data.schedules || []).filter(
-          (s: Schedule) => s.class.id === classId
-        )
-        setSchedules(classSchedules)
-      } else {
-        setSchedules([])
-      }
-    } catch (error) {
-      console.error("Error fetching schedule:", error)
-      setSchedules([])
-    } finally {
-      setLoadingSchedules(false)
-    }
-  }
-
-  const fetchStudents = async (classId: string) => {
-    setLoadingStudents(true)
-    try {
-      const response = await fetch(`/api/classes/${classId}/students`)
-      if (response.ok) {
-        const data = await response.json()
-        const studentList = data.students || []
-        setStudents(studentList)
-        // Varsayılan durum yok - öğretmen her öğrenci için manuel olarak seçim yapacak
-        setAttendances({})
-      }
-    } catch (error) {
-      console.error("Error fetching students:", error)
-    } finally {
-      setLoadingStudents(false)
-    }
-  }
-
-  const handleClassChange = (classId: string) => {
-    setSelectedClass(classId)
-    setSelectedSchedule(null)
+  const loadSessions = useCallback(async () => {
+    if (!staffId || !selectedDate) return
+    setSessionsLoading(true)
+    setSelected(null)
     setStudents([])
-    setAttendances({})
-  }
-
-  const handleDateChange = (date: string) => {
-    setSelectedDate(date)
-    setSelectedSchedule(null)
-      setStudents([])
-      setAttendances({})
+    setMessage("")
+    try {
+      const res = await fetch(
+        `/api/attendance/sessions?date=${selectedDate}&teacherId=${staffId}`,
+        { headers: getAuthHeaders(), cache: "no-store" }
+      )
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || "Oturumlar alınamadı")
+      setSessions(Array.isArray(data.sessions) ? data.sessions : [])
+    } catch (e) {
+      setSessions([])
+      setMessage(e instanceof Error ? e.message : "Oturumlar yüklenemedi")
+    } finally {
+      setSessionsLoading(false)
     }
+  }, [staffId, selectedDate])
 
-  const handleScheduleSelect = (schedule: Schedule) => {
-    setSelectedSchedule(schedule)
+  useEffect(() => {
+    void loadSessions()
+  }, [loadSessions])
+
+  const openSession = async (session: Session) => {
+    setSelected(session)
+    setMessage("")
+    setStudentsLoading(true)
+    try {
+      let roster: Student[] = []
+      if (session.kind === "CLASS" && session.classId) {
+        const res = await fetch(`/api/classes/${session.classId}/students`, {
+          cache: "no-store",
+        })
+        const data = await res.json().catch(() => ({}))
+        const list = Array.isArray(data.students)
+          ? data.students
+          : Array.isArray(data)
+            ? data
+            : []
+        roster = list.map(
+          (s: Student & { student?: Student }) => s.student || s
+        )
+      } else if (Array.isArray(session.students)) {
+        roster = session.students
+      }
+
+      setStudents(roster)
+
+      const next: Record<string, AttendanceStatus> = {}
+      for (const s of roster) next[s.id] = "PRESENT"
+
+      // Mevcut yoklamayı yükle
+      const params = new URLSearchParams({
+        date: selectedDate,
+        teacherId: staffId,
+        kind: session.kind,
+      })
+      if (session.scheduleId) params.set("scheduleId", session.scheduleId)
+      if (session.studyGroupSessionId)
+        params.set("studyGroupSessionId", session.studyGroupSessionId)
+      if (session.clubScheduleId) params.set("clubScheduleId", session.clubScheduleId)
+
+      const attRes = await fetch(`/api/attendance?${params}`, {
+        headers: getAuthHeaders(),
+        cache: "no-store",
+      })
+      if (attRes.ok) {
+        const attData = await attRes.json()
+        for (const row of Array.isArray(attData.attendances) ? attData.attendances : []) {
+          if (row.studentId && row.status) next[row.studentId] = row.status
+        }
+      }
+      setStatuses(next)
+    } catch {
+      setStudents([])
+      setStatuses({})
+    } finally {
+      setStudentsLoading(false)
+    }
   }
 
-  const handleStatusChange = (studentId: string, status: "PRESENT" | "ABSENT") => {
-    setAttendances({
-      ...attendances,
-      [studentId]: {
-        ...attendances[studentId],
-        status,
-      },
+  const markAll = (status: AttendanceStatus) => {
+    setStatuses((prev) => {
+      const next = { ...prev }
+      for (const s of students) next[s.id] = status
+      return next
     })
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!selectedClass || !selectedDate || !selectedSchedule) {
-      alert("Lütfen sınıf, tarih ve ders seçimini yapın")
-      return
+  const counts = useMemo(() => {
+    const c = { PRESENT: 0, ABSENT: 0, LATE: 0, EXCUSED: 0 }
+    for (const s of students) {
+      const st = statuses[s.id] || "PRESENT"
+      c[st]++
     }
+    return c
+  }, [students, statuses])
 
-    if (students.length === 0) {
-      alert("Öğrenci listesi yüklenemedi")
-      return
-    }
-
-    setLoading(true)
-
+  const save = async () => {
+    if (!selected || !staffId) return
+    setSaving(true)
+    setMessage("")
     try {
-      const attendanceList = Object.values(attendances)
-      
-      const response = await fetch("/api/attendance", {
+      const res = await fetch("/api/attendance", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify({
-          scheduleId: selectedSchedule.id,
-          classId: selectedClass,
+          kind: selected.kind,
           teacherId: staffId,
           date: selectedDate,
-          lessonName: selectedSchedule.subjectName,
-          startTime: selectedSchedule.startTime,
-          endTime: selectedSchedule.endTime,
-          attendances: attendanceList,
+          lessonName: selected.title,
+          startTime: selected.startTime,
+          endTime: selected.endTime,
+          scheduleId: selected.scheduleId,
+          classId: selected.classId,
+          studyGroupSessionId: selected.studyGroupSessionId,
+          clubScheduleId: selected.clubScheduleId,
+          attendances: students.map((s) => ({
+            studentId: s.id,
+            status: statuses[s.id] || "PRESENT",
+          })),
         }),
       })
-
-      if (response.ok) {
-        alert("Yoklama başarıyla kaydedildi!")
-        // Formu sıfırla
-        setSelectedSchedule(null)
-        setStudents([])
-        setAttendances({})
-      } else {
-        const error = await response.json()
-        alert(error.error || "Bir hata oluştu")
-      }
-    } catch (error) {
-      console.error("Error saving attendance:", error)
-      alert("Yoklama kaydedilirken bir hata oluştu")
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || "Kayıt başarısız")
+      setMessage(data.message || "Yoklama kaydedildi")
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Kayıt başarısız")
     } finally {
-      setLoading(false)
+      setSaving(false)
     }
   }
-
-  const getStats = () => {
-    const total = students.length
-    const present = Object.values(attendances).filter((a) => a.status === "PRESENT").length
-    const absent = Object.values(attendances).filter((a) => a.status === "ABSENT").length
-    return { total, present, absent }
-  }
-
-  const stats = getStats()
-  const dayNames = ["", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"]
-  const selectedDateObj = selectedDate ? new Date(selectedDate) : new Date()
-  const dayOfWeek = selectedDateObj.getDay() === 0 ? 7 : selectedDateObj.getDay()
-  const dayName = dayNames[dayOfWeek]
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="flex justify-center py-20 text-gray-500 gap-2">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        Yükleniyor...
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 shadow-lg">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pl-16 lg:pl-4 sm:pl-6">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-3 mb-2">
-                <Calendar className="h-7 w-7 sm:h-8 sm:w-8" />
-                Yoklama Yönetimi
-              </h1>
-              <p className="text-blue-100 text-sm sm:text-base">Öğrenci devam durumunu kaydedin ve takip edin</p>
+    <div className="space-y-6 p-4 md:p-6 max-w-5xl mx-auto">
+      <div>
+        <h1 className="text-2xl font-semibold text-gray-900">Yoklama Al</h1>
+        <p className="text-sm text-gray-600 mt-1">
+          Ders programı, özel çalışma (ÖÇG) ve kulüp oturumları için yoklama alın.
+        </p>
+      </div>
+
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Tarih</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Label htmlFor="att-date" className="sr-only">
+            Tarih
+          </Label>
+          <input
+            id="att-date"
+            type="date"
+            className="rounded-md border border-gray-200 px-3 py-2 text-sm"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+          />
+        </CardContent>
+      </Card>
+
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <BookOpen className="h-4 w-4" />
+            Bugünkü / seçili gün oturumları
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {sessionsLoading ? (
+            <div className="flex justify-center py-8 text-gray-500 gap-2">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Yükleniyor...
             </div>
-          </div>
-        </div>
-
-        <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Sınıf ve Tarih Seçimi */}
-            <Card>
-              <CardHeader>
-              <CardTitle>Yoklama Bilgileri</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="class">Sınıf *</Label>
-                    <select
-                      id="class"
-                      value={selectedClass}
-                      onChange={(e) => handleClassChange(e.target.value)}
-                      className="w-full p-2 border rounded-md"
-                      required
-                    >
-                      <option value="">Sınıf Seçin</option>
-                      {classes.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="date">Tarih *</Label>
-                    <input
-                      id="date"
-                      type="date"
-                      value={selectedDate}
-                    onChange={(e) => handleDateChange(e.target.value)}
-                      className="w-full p-2 border rounded-md"
-                      required
-                    />
-                  {selectedDate && (
-                    <p className="text-sm text-gray-600 mt-1">
-                      {dayName} günü
-                    </p>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Ders Programı */}
-          {selectedClass && selectedDate && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Ders Programı - {dayName}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loadingSchedules ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-                    <span className="ml-2 text-gray-600">Ders programı yükleniyor...</span>
-                  </div>
-                ) : schedules.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <BookOpen className="h-12 w-12 mx-auto mb-2 text-gray-400" />
-                    <p>Bu tarihte bu sınıf için ders bulunmamaktadır.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <p className="text-sm text-gray-600 mb-4">
-                      Yoklama almak istediğiniz ders saatini seçin:
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {schedules.map((schedule) => (
-                        <button
-                          key={schedule.id}
-                          type="button"
-                          onClick={() => handleScheduleSelect(schedule)}
-                          className={`p-4 border-2 rounded-lg text-left transition-all ${
-                            selectedSchedule?.id === schedule.id
-                              ? "border-blue-500 bg-blue-50 shadow-md"
-                              : "border-gray-200 hover:border-blue-300 hover:bg-gray-50"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 mb-2">
-                            <Clock className="h-4 w-4 text-gray-600" />
-                            <span className="font-semibold text-gray-900">
-                              {schedule.startTime} - {schedule.endTime}
-                            </span>
-                          </div>
-                          <div className="text-sm font-medium text-blue-600">
-                            {schedule.subjectName}
-                          </div>
-                          <div className="text-xs text-gray-500 mt-1">
-                            {schedule.class.name}
-                          </div>
-                        </button>
-                      ))}
-                  </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Öğrenci Listesi ve Yoklama */}
-          {selectedSchedule && (
-              <>
-                {/* İstatistikler */}
-              <div className="grid grid-cols-3 gap-4">
-                  <Card>
-                    <CardContent className="p-4 text-center">
-                      <Users className="h-6 w-6 text-gray-600 mx-auto mb-2" />
-                      <div className="text-2xl font-bold">{stats.total}</div>
-                      <div className="text-xs text-gray-600">Toplam</div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="p-4 text-center">
-                      <CheckCircle className="h-6 w-6 text-green-600 mx-auto mb-2" />
-                      <div className="text-2xl font-bold text-green-600">{stats.present}</div>
-                    <div className="text-xs text-gray-600">Katıldı</div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="p-4 text-center">
-                      <XCircle className="h-6 w-6 text-red-600 mx-auto mb-2" />
-                      <div className="text-2xl font-bold text-red-600">{stats.absent}</div>
-                    <div className="text-xs text-gray-600">Katılmadı</div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-              {/* Seçilen Ders Bilgisi */}
-              <Card className="bg-blue-50 border-blue-200">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <BookOpen className="h-5 w-5 text-blue-600" />
-                    <div>
-                      <p className="font-semibold text-blue-900">
-                        {selectedSchedule.subjectName}
-                      </p>
-                      <p className="text-sm text-blue-700">
-                        {selectedSchedule.startTime} - {selectedSchedule.endTime}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-                {/* Yoklama Tablosu */}
-              {loadingStudents ? (
-                <Card>
-                  <CardContent className="p-12 text-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-                    <p className="text-gray-600">Öğrenciler yükleniyor...</p>
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Öğrenci Listesi ({students.length})</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {students.map((student, index) => {
-                        const attendanceStatus = attendances[student.id]?.status
-                        return (
-                        <div
-                          key={student.id}
-                            className={`flex items-center justify-between p-4 border-2 rounded-lg transition-colors ${
-                              attendanceStatus === "PRESENT"
-                                ? "bg-green-50 border-green-200"
-                                : attendanceStatus === "ABSENT"
-                                ? "bg-red-50 border-red-200"
-                                : "bg-white border-gray-200 hover:bg-gray-50"
-                            }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className="text-gray-500 font-mono w-8">{index + 1}.</span>
-                              <div>
-                                <span className="font-medium text-gray-900">
-                              {student.firstName} {student.lastName}
-                            </span>
-                                {student.grade && (
-                                  <span className="text-sm text-gray-500 ml-2">({student.grade})</span>
-                                )}
-                                {!attendanceStatus && (
-                                  <span className="text-xs text-gray-400 ml-2 italic">(İşlem yapılmadı)</span>
-                                )}
-                              </div>
-                          </div>
-                          <div className="flex gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleStatusChange(student.id, "PRESENT")}
-                                className={`px-4 py-2 rounded-md text-sm font-medium border transition-all ${
-                                  attendanceStatus === "PRESENT"
-                                    ? "bg-green-600 text-white border-green-700 shadow-sm font-semibold"
-                                    : "bg-white text-gray-600 border-gray-300 hover:bg-green-50 hover:border-green-300 hover:text-green-700"
-                                }`}
-                              >
-                                <CheckCircle className="h-4 w-4 inline mr-1" />
-                                Katıldı
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleStatusChange(student.id, "ABSENT")}
-                                className={`px-4 py-2 rounded-md text-sm font-medium border transition-all ${
-                                  attendanceStatus === "ABSENT"
-                                    ? "bg-red-600 text-white border-red-700 shadow-sm font-semibold"
-                                    : "bg-white text-gray-600 border-gray-300 hover:bg-red-50 hover:border-red-300 hover:text-red-700"
-                                }`}
-                              >
-                                <XCircle className="h-4 w-4 inline mr-1" />
-                                Katılmadı
-                              </button>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-                {/* Kaydet Butonu */}
-              {students.length > 0 && (
-                <div className="flex justify-end">
-                  <Button 
-                    type="submit" 
-                    size="lg" 
-                    disabled={loading || Object.keys(attendances).length === 0} 
-                    className="min-w-[200px]"
+          ) : sessions.length === 0 ? (
+            <p className="text-sm text-gray-500 py-6 text-center">
+              Bu günde size atanmış ders, ÖÇG veya kulüp yok.
+            </p>
+          ) : (
+            <div className="grid gap-2">
+              {sessions.map((s) => {
+                const active = selected?.id === s.id && selected?.kind === s.kind
+                return (
+                  <button
+                    key={`${s.kind}-${s.id}`}
+                    type="button"
+                    onClick={() => void openSession(s)}
+                    className={`text-left rounded-xl border px-4 py-3 transition-colors ${
+                      active
+                        ? "border-violet-400 bg-violet-50"
+                        : "border-gray-200 bg-white hover:bg-gray-50"
+                    }`}
                   >
-                    {loading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Kaydediliyor...
-                      </>
-                    ) : (
-                      "Yoklamayı Kaydet"
-                    )}
-                  </Button>
-                  {Object.keys(attendances).length === 0 && (
-                    <p className="text-sm text-gray-500 mt-2 text-right w-full">
-                      Lütfen en az bir öğrenci için yoklama durumu seçin
-                    </p>
-                  )}
-                </div>
-              )}
-              </>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-900 truncate">{s.title}</p>
+                        <p className="text-xs text-gray-600 mt-0.5 truncate">{s.subtitle}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="inline-block text-[10px] font-semibold uppercase tracking-wide rounded bg-gray-100 text-gray-700 px-2 py-0.5">
+                          {KIND_LABEL[s.kind]}
+                        </span>
+                        <p className="text-xs text-gray-700 mt-1">
+                          {s.startTime}–{s.endTime}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {selected && (
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  {selected.title}
+                </CardTitle>
+                <p className="text-xs text-gray-600 mt-1">
+                  {KIND_LABEL[selected.kind]} · {selected.startTime}–{selected.endTime}
+                  {selected.subtitle ? ` · ${selected.subtitle}` : ""}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => markAll("PRESENT")}>
+                  Tümü geldi
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => markAll("ABSENT")}>
+                  Tümü gelmedi
+                </Button>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-3 text-xs text-gray-600 mt-2">
+              <span>Geldi: {counts.PRESENT}</span>
+              <span>Gelmedi: {counts.ABSENT}</span>
+              <span>Geç: {counts.LATE}</span>
+              <span>İzinli: {counts.EXCUSED}</span>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {studentsLoading ? (
+              <div className="flex justify-center py-10 text-gray-500 gap-2">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Öğrenciler yükleniyor...
+              </div>
+            ) : students.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-8">Öğrenci listesi boş</p>
+            ) : (
+              <div className="divide-y rounded-xl border border-gray-200 bg-white">
+                {students.map((s) => {
+                  const st = statuses[s.id] || "PRESENT"
+                  return (
+                    <div
+                      key={s.id}
+                      className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-gray-900">
+                          {s.firstName} {s.lastName}
+                        </p>
+                        <p className="text-xs text-gray-500">{s.grade}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {(Object.keys(STATUS_META) as AttendanceStatus[]).map((key) => {
+                          const meta = STATUS_META[key]
+                          const Icon = meta.icon
+                          const active = st === key
+                          return (
+                            <button
+                              key={key}
+                              type="button"
+                              onClick={() =>
+                                setStatuses((prev) => ({ ...prev, [s.id]: key }))
+                              }
+                              className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                                active ? meta.className : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                              }`}
+                            >
+                              <Icon className="h-3.5 w-3.5" />
+                              {meta.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             )}
-          </form>
-        </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              {message && (
+                <p className="text-sm text-gray-600 sm:flex-1 self-center">{message}</p>
+              )}
+              <Button
+                className="sm:ml-auto"
+                onClick={() => void save()}
+                disabled={saving || students.length === 0}
+              >
+                {saving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Yoklamayı kaydet"
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

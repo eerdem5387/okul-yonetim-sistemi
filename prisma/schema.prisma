@@ -1461,6 +1461,7 @@ model StudyGroupSession {
 
   studyGroup StudyGroup @relation(fields: [studyGroupId], references: [id], onDelete: Cascade)
   teacher    Staff      @relation("StudyGroupSessionTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+  attendances Attendance[]
 
   @@index([studyGroupId])
   @@index([teacherId])
@@ -1527,6 +1528,7 @@ model ClubSchedule {
   updatedAt DateTime @updatedAt
 
   club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  attendances Attendance[]
 
   @@unique([clubId, dayOfWeek, startTime, endTime])
   @@index([clubId])
@@ -1689,39 +1691,58 @@ model HomeworkAssignment {
 model Attendance {
   id String @id @default(cuid())
 
-  // Ders bilgileri
-  scheduleId String? // Ders programı ID (opsiyonel)
+  /// CLASS = ders programı, STUDY_GROUP = ÖÇG, CLUB = kulüp
+  kind AttendanceKind @default(CLASS)
+
+  // Ders programı
+  scheduleId String?
   schedule   Schedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
 
-  classId String // Sınıf ID
-  class   Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+  // ÖÇG ataması
+  studyGroupSessionId String?
+  studyGroupSession   StudyGroupSession? @relation(fields: [studyGroupSessionId], references: [id], onDelete: Cascade)
 
-  teacherId String // Öğretmen ID
+  // Kulüp programı
+  clubScheduleId String?
+  clubSchedule   ClubSchedule? @relation(fields: [clubScheduleId], references: [id], onDelete: Cascade)
+
+  classId String? // Sınıf dersleri için; ÖÇG/kulüpte null olabilir
+  class   Class?  @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  teacherId String
   teacher   Staff  @relation("TeacherAttendances", fields: [teacherId], references: [id], onDelete: Cascade)
 
-  // Yoklama bilgileri
-  date       DateTime // Yoklama tarihi
-  lessonName String // Ders adı
-  startTime  String // Ders başlangıç saati (HH:mm)
-  endTime    String // Ders bitiş saati (HH:mm)
+  date       DateTime
+  lessonName String
+  startTime  String
+  endTime    String
 
-  // Öğrenci yoklama durumu
-  studentId String // Öğrenci ID
+  studentId String
   student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
-  status AttendanceStatus @default(PRESENT) // Durum: Geldi, Gelmedi, İzinli, Geç Kaldı
-  note   String? // Not (opsiyonel)
+  status AttendanceStatus @default(PRESENT)
+  note   String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([kind])
   @@index([scheduleId])
+  @@index([studyGroupSessionId])
+  @@index([clubScheduleId])
   @@index([classId])
   @@index([teacherId])
   @@index([studentId])
   @@index([date])
   @@index([status])
+  @@index([kind, date])
   @@map("attendances")
+}
+
+enum AttendanceKind {
+  CLASS
+  STUDY_GROUP
+  CLUB
 }
 
 // Yoklama Durumu

@@ -39,6 +39,7 @@ export const PERMISSION_NAV_CATALOG: PermissionNavItem[] = [
   { module: "students", name: "Öğrenci Yönetimi", href: "/students", icon: UserPlus },
   { module: "classes", name: "Sınıf Yönetimi", href: "/sinif-yonetimi", icon: School },
   { module: "schedules", name: "Ders Programı", href: "/ders-programi", icon: Calendar },
+  { module: "attendance", name: "Devamsızlık", href: "/devamsizlik", icon: ClipboardList },
   { module: "registrations", name: "Yeni Kayıt", href: "/new-registration", icon: FileText },
   { module: "registrations", name: "Kayıt Yenileme", href: "/renewal", icon: FileText },
   { module: "registrations", name: "Forma Sözleşmesi", href: "/uniform", icon: Shirt },
