@@ -53,6 +53,7 @@ type StudySession = {
 type StudyGroup = {
   id: string
   name: string
+  band: "ORTAOKUL" | "LISE"
   notes: string | null
   students: Array<{ student: Student }>
   sessions: StudySession[]
@@ -68,6 +69,7 @@ type BusyBlock = {
 
 type GroupForm = {
   name: string
+  band: "ORTAOKUL" | "LISE"
   notes: string
   studentIds: string[]
 }
@@ -87,6 +89,7 @@ type SlotBand = "ortaokul" | "lise"
 
 const emptyGroupForm = (): GroupForm => ({
   name: "",
+  band: "ORTAOKUL",
   notes: "",
   studentIds: [],
 })
@@ -104,8 +107,6 @@ const emptySessionForm = (slots?: GridSlot[]): SessionForm => {
   }
 }
 
-const GRADE_LEVELS = [5, 6, 7, 8, 9, 10, 11, 12]
-
 /** Teneffüs hariç; aynı başlangıç saati bir kez. */
 function assignableSlots(raw: GridSlot[]): GridSlot[] {
   const out: GridSlot[] = []
@@ -122,21 +123,23 @@ function assignableSlots(raw: GridSlot[]): GridSlot[] {
   return out.sort((a, b) => a.startTime.localeCompare(b.startTime))
 }
 
-/** Grubun öğrenci kademesine göre ortaokul / lise şablonu (öğleden sonra saatleri farklı). */
+function bandLabel(band: "ORTAOKUL" | "LISE" | string | null | undefined): string {
+  return band === "LISE" ? "Lise" : "Ortaokul"
+}
+
+/** Grup kaydındaki kademe alanına göre ders saati şablonu. */
 function bandForStudyGroup(group: StudyGroup | null): SlotBand {
   if (!group) return "ortaokul"
+  if (group.band === "LISE") return "lise"
+  if (group.band === "ORTAOKUL") return "ortaokul"
+  // Eski kayıtlar / eksik alan: öğrencilerden tahmin
   let orta = 0
   let lise = 0
   for (const m of group.students) {
     const level = parseStudentGradeLevel(m.student.grade)
-    const band = level != null ? gradeBandFor(level) : null
-    if (band === "ortaokul") orta++
-    else if (band === "lise") lise++
-  }
-  if (lise === 0 && orta === 0) {
-    const notes = (group.notes || "").toLocaleLowerCase("tr-TR")
-    if (/\b(9|10|11|12)\b/.test(notes) || notes.includes("lise")) return "lise"
-    return "ortaokul"
+    const b = level != null ? gradeBandFor(level) : null
+    if (b === "ortaokul") orta++
+    else if (b === "lise") lise++
   }
   return lise > orta ? "lise" : "ortaokul"
 }
@@ -347,6 +350,7 @@ export function StudyGroupsPanel() {
     setEditingGroup(group)
     setGroupForm({
       name: group.name,
+      band: group.band === "LISE" ? "LISE" : "ORTAOKUL",
       notes: group.notes || "",
       studentIds: group.students.map((m) => m.student.id),
     })
@@ -416,6 +420,10 @@ export function StudyGroupsPanel() {
       alert("Grup adı zorunludur. Öğrenciler şimdi veya sonra eklenebilir.")
       return
     }
+    if (!groupForm.band) {
+      alert("Kademe seçiniz.")
+      return
+    }
     setBusy(true)
     try {
       const url = editingGroup ? `/api/study-groups/${editingGroup.id}` : "/api/study-groups"
@@ -425,6 +433,7 @@ export function StudyGroupsPanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: groupForm.name.trim(),
+          band: groupForm.band,
           notes: groupForm.notes.trim() || null,
           studentIds: groupForm.studentIds,
         }),
@@ -522,8 +531,8 @@ export function StudyGroupsPanel() {
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Özel çalışma grupları</h2>
           <p className="text-sm text-gray-600">
-            Önce grubu ve öğrencileri oluşturun; ardından istediğiniz gün, ders saati, öğretmen ve
-            derslik ile atama yapın. Atamada yazdığınız konu öğretmen takviminde görünür.
+            Grup oluştururken kademe seçin; program atamasında o kademenin ders saatleri kullanılır.
+            Öğrencileri şimdi veya sonra ekleyebilirsiniz.
           </p>
         </div>
         <Button size="sm" onClick={openCreateGroup}>
@@ -557,6 +566,8 @@ export function StudyGroupsPanel() {
                       <span className="truncate">{group.name}</span>
                     </CardTitle>
                     <CardDescription className="mt-1">
+                      {bandLabel(group.band)}
+                      {" · "}
                       {group.students.length === 0
                         ? "Öğrenci yok"
                         : `${group.students.length} öğrenci`}
@@ -675,14 +686,52 @@ export function StudyGroupsPanel() {
           </div>
 
           <div className="px-6 py-5 space-y-5">
-            <div>
-              <Label>Grup adı *</Label>
-              <Input
-                className="mt-1.5"
-                value={groupForm.name}
-                onChange={(e) => setGroupForm({ ...groupForm, name: e.target.value })}
-                placeholder="Örn: Matematik Destek A"
-              />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label>Grup adı *</Label>
+                <Input
+                  className="mt-1.5"
+                  value={groupForm.name}
+                  onChange={(e) => setGroupForm({ ...groupForm, name: e.target.value })}
+                  placeholder="Örn: Matematik Destek A"
+                />
+              </div>
+              <div>
+                <Label>Kademe *</Label>
+                <div className="mt-1.5 flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={groupForm.band === "ORTAOKUL" ? "default" : "outline"}
+                    className="flex-1"
+                    onClick={() => {
+                      setGroupForm({ ...groupForm, band: "ORTAOKUL" })
+                      if (typeof gradeLevelFilter === "number" && gradeLevelFilter >= 9) {
+                        setGradeLevelFilter("all")
+                      }
+                    }}
+                  >
+                    Ortaokul (5–8)
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={groupForm.band === "LISE" ? "default" : "outline"}
+                    className="flex-1"
+                    onClick={() => {
+                      setGroupForm({ ...groupForm, band: "LISE" })
+                      if (typeof gradeLevelFilter === "number" && gradeLevelFilter <= 8) {
+                        setGradeLevelFilter("all")
+                      }
+                    }}
+                  >
+                    Lise (9–12)
+                  </Button>
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  Program atamasında bu kademenin ders saatleri kullanılır.
+                </p>
+              </div>
             </div>
             <div>
               <Label>Not (opsiyonel)</Label>
@@ -771,7 +820,7 @@ export function StudyGroupsPanel() {
                 >
                   Tümü
                 </Button>
-                {GRADE_LEVELS.map((g) => (
+                {(groupForm.band === "LISE" ? [9, 10, 11, 12] : [5, 6, 7, 8]).map((g) => (
                   <Button
                     key={g}
                     type="button"

@@ -34,6 +34,16 @@ function parseStudentIds(raw: unknown): string[] {
   return [...new Set(raw.map((id) => String(id).trim()).filter(Boolean))]
 }
 
+function parseBand(raw: unknown): "ORTAOKUL" | "LISE" | null {
+  const v = String(raw ?? "")
+    .trim()
+    .toUpperCase()
+  if (v === "ORTAOKUL" || v === "LISE") return v
+  if (v === "ORTA" || v === "MIDDLE") return "ORTAOKUL"
+  if (v === "HIGH") return "LISE"
+  return null
+}
+
 export async function GET(
   _request: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -68,6 +78,8 @@ export async function PUT(
 
     const body = await request.json().catch(() => ({}))
     const name = String(body.name ?? existing.name).trim()
+    const band =
+      body.band !== undefined ? parseBand(body.band) : (existing.band as "ORTAOKUL" | "LISE")
     const notes =
       body.notes !== undefined
         ? typeof body.notes === "string"
@@ -80,6 +92,9 @@ export async function PUT(
 
     if (!name) {
       return NextResponse.json({ error: "Grup adı zorunludur" }, { status: 400 })
+    }
+    if (!band) {
+      return NextResponse.json({ error: "Kademe seçiniz (ortaokul / lise)" }, { status: 400 })
     }
 
     if (studentIds) {
@@ -109,7 +124,7 @@ export async function PUT(
       }
       return tx.studyGroup.update({
         where: { id },
-        data: { name, notes },
+        data: { name, band, notes },
         include: groupInclude,
       })
     })

@@ -34,13 +34,23 @@ function parseStudentIds(raw: unknown): string[] {
   return [...new Set(raw.map((id) => String(id).trim()).filter(Boolean))]
 }
 
+function parseBand(raw: unknown): "ORTAOKUL" | "LISE" | null {
+  const v = String(raw ?? "")
+    .trim()
+    .toUpperCase()
+  if (v === "ORTAOKUL" || v === "LISE") return v
+  if (v === "ORTA" || v === "MIDDLE") return "ORTAOKUL"
+  if (v === "HIGH") return "LISE"
+  return null
+}
+
 /** GET /api/study-groups — grup listesi (öğrenci + atamalar) */
 export async function GET() {
   try {
     const groups = await prisma.studyGroup.findMany({
       where: { isActive: true },
       include: groupInclude,
-      orderBy: { name: "asc" },
+      orderBy: [{ band: "asc" }, { name: "asc" }],
     })
     return NextResponse.json({ groups })
   } catch (error) {
@@ -49,16 +59,20 @@ export async function GET() {
   }
 }
 
-/** POST /api/study-groups — yalnızca isim + öğrenciler */
+/** POST /api/study-groups — isim + kademe + öğrenciler */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}))
     const name = String(body.name ?? "").trim()
+    const band = parseBand(body.band)
     const notes = typeof body.notes === "string" ? body.notes.trim() || null : null
     const studentIds = parseStudentIds(body.studentIds)
 
     if (!name) {
       return NextResponse.json({ error: "Grup adı zorunludur" }, { status: 400 })
+    }
+    if (!band) {
+      return NextResponse.json({ error: "Kademe seçiniz (ortaokul / lise)" }, { status: 400 })
     }
 
     if (studentIds.length > 0) {
@@ -78,6 +92,7 @@ export async function POST(request: NextRequest) {
     const group = await prisma.studyGroup.create({
       data: {
         name,
+        band,
         notes,
         ...(studentIds.length > 0
           ? {
