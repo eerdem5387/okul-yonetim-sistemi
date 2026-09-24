@@ -23,63 +23,38 @@ export type TeacherScheduleItem = {
 
 export type TeacherGridSlot = LessonSlot & {
   kind?: "LESSON" | "BREAK" | "ETUT"
-  /** Ortaokul / lise şablonundan geldiyse etiket ayırımı için */
   band?: "ortaokul" | "lise"
 }
 
-function slotKey(start: string, end: string) {
-  return `${start}|${end}`
+type PeriodRow = {
+  key: string
+  label: string
+  /** Bu döneme ait tüm şablon başlangıç saatleri (ortaokul + lise) */
+  startTimes: string[]
+  sortTime: string
 }
 
 function basePeriodLabel(label: string): string {
   return label.replace(/\s*[·\-–]\s*(Ortaokul|Lise)\s*$/i, "").trim()
 }
 
-function bandSuffix(band?: "ortaokul" | "lise"): string | null {
-  if (band === "lise") return "Lise"
-  if (band === "ortaokul") return "Ortaokul"
-  return null
-}
-
-/** Aynı dönem adı (örn. 5. Ders) farklı saatlerdeyse · Lise / · Ortaokul ekle. */
-function disambiguateBandLabels(slots: TeacherGridSlot[]): TeacherGridSlot[] {
-  const groups = new Map<string, TeacherGridSlot[]>()
-  for (const s of slots) {
-    const base = basePeriodLabel(s.label)
-    const list = groups.get(base) ?? []
-    list.push(s)
-    groups.set(base, list)
-  }
-
-  const out: TeacherGridSlot[] = []
-  for (const [base, group] of groups) {
-    const uniqueStarts = new Set(group.map((s) => s.startTime))
-    const needsBand = uniqueStarts.size > 1
-    for (const s of group) {
-      if (!needsBand) {
-        out.push({ ...s, label: base })
-        continue
-      }
-      const suffix = bandSuffix(s.band)
-      out.push({
-        ...s,
-        label: suffix ? `${base} · ${suffix}` : `${base} · ${s.startTime}`,
-      })
-    }
-  }
-  return out
+function periodSortKey(label: string): number {
+  const m = label.match(/(\d+)\s*\.\s*Ders/i)
+  if (m) return Number(m[1])
+  if (/et[uü]t/i.test(label)) return 100
+  return 50
 }
 
 /**
- * Şablon dilimlerini birleştirir; öğretmenin programında geçen saatleri tutar.
- * Ortaokul/lise aynı dönem adı + farklı saatteyse etikete band eklenir.
+ * Ortaokul/lise şablonlarını dönem adına (1. Ders, 5. Ders…) göre birleştirir.
+ * Aynı dönem tek satır olur; hücrede dersin gerçek saati gösterilir.
  */
-function buildSlotRows(
+function buildPeriodRows(
   weekdaySlots: TeacherGridSlot[],
   saturdaySlots: TeacherGridSlot[],
   items: TeacherScheduleItem[],
   includeSaturday: boolean
-): TeacherGridSlot[] {
+): { rows: PeriodRow[]; startToPeriod: Map<string, string> } {
   const source = [
     ...weekdaySlots.filter((s) => (s.kind ?? "LESSON") === "LESSON"),
     ...(includeSaturday
@@ -87,42 +62,57 @@ function buildSlotRows(
       : []),
   ]
 
-  const byStart = new Map<string, TeacherGridSlot>()
+  /** startTime → dönem etiketi (5. Ders) */
+  const startToPeriod = new Map<string, string>()
+  /** dönem etiketi → start times */
+  const periodStarts = new Map<string, Set<string>>()
+
   for (const s of source) {
-    const existing = byStart.get(s.startTime)
-    if (!existing) {
-      byStart.set(s.startTime, { ...s, kind: "LESSON" })
-    } else if (!existing.band && s.band) {
-      byStart.set(s.startTime, { ...existing, band: s.band })
-    }
+    const label = basePeriodLabel(s.label) || `${s.startTime}–${s.endTime}`
+    startToPeriod.set(s.startTime, label)
+    const set = periodStarts.get(label) ?? new Set<string>()
+    set.add(s.startTime)
+    periodStarts.set(label, set)
   }
 
-  // Şablonda olmayan ama öğretmenin programında olan saatler
+  // Şablonda olmayan saatler: kendi etiketiyle dönem
   for (const item of items) {
     if (!includeSaturday && item.dayOfWeek === SATURDAY_INDEX) continue
     if (item.dayOfWeek < 1 || item.dayOfWeek > 6) continue
-    if (!byStart.has(item.startTime)) {
-      byStart.set(item.startTime, {
-        id: byStart.size + 1,
-        label: `${item.startTime}–${item.endTime}`,
-        startTime: item.startTime,
-        endTime: item.endTime,
-        kind: "LESSON",
-      })
-    }
+    if (startToPeriod.has(item.startTime)) continue
+    const label = `${item.startTime}–${item.endTime}`
+    startToPeriod.set(item.startTime, label)
+    const set = periodStarts.get(label) ?? new Set<string>()
+    set.add(item.startTime)
+    periodStarts.set(label, set)
   }
 
-  const usedStarts = new Set(
-    items
-      .filter((i) => includeSaturday || i.dayOfWeek !== SATURDAY_INDEX)
-      .filter((i) => i.dayOfWeek >= 1 && i.dayOfWeek <= 6)
-      .map((i) => i.startTime)
-  )
+  const usedPeriodKeys = new Set<string>()
+  for (const item of items) {
+    if (!includeSaturday && item.dayOfWeek === SATURDAY_INDEX) continue
+    if (item.dayOfWeek < 1 || item.dayOfWeek > 6) continue
+    const key = startToPeriod.get(item.startTime)
+    if (key) usedPeriodKeys.add(key)
+  }
 
-  const filtered = [...byStart.values()].filter((s) => usedStarts.has(s.startTime))
-  return disambiguateBandLabels(filtered).sort((a, b) =>
-    a.startTime.localeCompare(b.startTime)
-  )
+  const rows: PeriodRow[] = [...usedPeriodKeys].map((label) => {
+    const starts = [...(periodStarts.get(label) ?? [])].sort()
+    return {
+      key: label,
+      label,
+      startTimes: starts,
+      sortTime: starts[0] ?? "99:99",
+    }
+  })
+
+  rows.sort((a, b) => {
+    const na = periodSortKey(a.label)
+    const nb = periodSortKey(b.label)
+    if (na !== nb) return na - nb
+    return a.sortTime.localeCompare(b.sortTime)
+  })
+
+  return { rows, startToPeriod }
 }
 
 export function TeacherScheduleGrid({
@@ -145,9 +135,9 @@ export function TeacherScheduleGrid({
     [hasSaturday]
   )
 
-  const slots = useMemo(
+  const { rows, startToPeriod } = useMemo(
     () =>
-      buildSlotRows(
+      buildPeriodRows(
         weekdaySlots && weekdaySlots.length > 0
           ? weekdaySlots
           : DEFAULT_LESSON_SLOTS.map((s) => ({ ...s, kind: "LESSON" as const })),
@@ -164,20 +154,21 @@ export function TeacherScheduleGrid({
     const map = new Map<string, TeacherScheduleItem[]>()
     for (const item of items) {
       if (!dayIndexes.includes(item.dayOfWeek)) continue
-      const key = `${item.dayOfWeek}|${item.startTime}`
+      const period = startToPeriod.get(item.startTime)
+      if (!period) continue
+      const key = `${item.dayOfWeek}|${period}`
       const list = map.get(key) ?? []
       list.push(item)
       map.set(key, list)
     }
     return map
-  }, [items, dayIndexes])
+  }, [items, dayIndexes, startToPeriod])
 
   const unmatched = useMemo(() => {
-    const starts = new Set(slots.map((s) => s.startTime))
     return items.filter(
-      (i) => dayIndexes.includes(i.dayOfWeek) && !starts.has(i.startTime)
+      (i) => dayIndexes.includes(i.dayOfWeek) && !startToPeriod.has(i.startTime)
     )
-  }, [items, slots, dayIndexes])
+  }, [items, dayIndexes, startToPeriod])
 
   if (items.length === 0) {
     return (
@@ -214,20 +205,17 @@ export function TeacherScheduleGrid({
             </tr>
           </thead>
           <tbody>
-            {slots.map((slot) => (
-              <tr key={slotKey(slot.startTime, slot.endTime)}>
+            {rows.map((row) => (
+              <tr key={row.key}>
                 <td className="border-b border-r border-gray-200 p-2 text-xs font-medium text-gray-700 bg-gray-50/80">
-                  <div>{slot.label}</div>
-                  <div className="text-[10px] opacity-70 font-normal">
-                    {slot.startTime}–{slot.endTime}
-                  </div>
+                  <div>{row.label}</div>
                 </td>
                 {dayIndexes.map((day) => {
-                  const cellItems = byCell.get(`${day}|${slot.startTime}`) ?? []
+                  const cellItems = byCell.get(`${day}|${row.key}`) ?? []
                   const isSat = day === SATURDAY_INDEX
                   return (
                     <td
-                      key={`${day}-${slot.startTime}`}
+                      key={`${day}-${row.key}`}
                       className={`border-b border-gray-100 p-1.5 align-top min-h-[3rem] ${
                         cellItems.length > 0
                           ? isSat
@@ -249,12 +237,9 @@ export function TeacherScheduleGrid({
                                 {item.className}
                                 {item.kind === "study" ? " · ÖÇG" : ""}
                               </p>
-                              {(item.startTime !== slot.startTime ||
-                                item.endTime !== slot.endTime) && (
-                                <p className="text-[10px] text-indigo-600">
-                                  {item.startTime}–{item.endTime}
-                                </p>
-                              )}
+                              <p className="text-[10px] text-gray-500 leading-tight">
+                                {item.startTime}–{item.endTime}
+                              </p>
                               {item.room && (
                                 <p className="text-[10px] text-gray-500">{item.room}</p>
                               )}
