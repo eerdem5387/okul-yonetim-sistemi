@@ -140,10 +140,10 @@ export function TeacherScheduleGrid({
       buildPeriodRows(
         weekdaySlots && weekdaySlots.length > 0
           ? weekdaySlots
-          : DEFAULT_LESSON_SLOTS.map((s) => ({ ...s, kind: (s.kind ?? "LESSON") as const })),
+          : [...DEFAULT_LESSON_SLOTS],
         saturdaySlots && saturdaySlots.length > 0
           ? saturdaySlots
-          : DEFAULT_SATURDAY_SLOTS.map((s) => ({ ...s, kind: (s.kind ?? "LESSON") as const })),
+          : [...DEFAULT_SATURDAY_SLOTS],
         items,
         hasSaturday
       ),

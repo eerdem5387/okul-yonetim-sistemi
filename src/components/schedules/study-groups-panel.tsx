@@ -136,9 +136,7 @@ export function StudyGroupsPanel() {
   const [sessionForm, setSessionForm] = useState<SessionForm>(emptySessionForm)
   const [teacherBusy, setTeacherBusy] = useState<BusyBlock[]>([])
   const [teacherBusyLoading, setTeacherBusyLoading] = useState(false)
-  const [slots, setSlots] = useState<GridSlot[]>(
-    DEFAULT_LESSON_SLOTS.map((s) => ({ ...s, kind: (s.kind ?? "LESSON") as const }))
-  )
+  const [slots, setSlots] = useState<GridSlot[]>([...DEFAULT_LESSON_SLOTS])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -168,11 +166,7 @@ export function StudyGroupsPanel() {
         const ortaSlots = (Array.isArray(orta?.slots) ? orta.slots : []) as GridSlot[]
         const liseSlots = (Array.isArray(lise?.slots) ? lise.slots : []) as GridSlot[]
         const merged = mergeAssignableSlots(ortaSlots, liseSlots)
-        setSlots(
-          merged.length > 0
-            ? merged
-            : DEFAULT_LESSON_SLOTS.map((s) => ({ ...s, kind: (s.kind ?? "LESSON") as const }))
-        )
+        setSlots(merged.length > 0 ? merged : [...DEFAULT_LESSON_SLOTS])
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Yüklenemedi")
