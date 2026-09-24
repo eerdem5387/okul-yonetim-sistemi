@@ -137,7 +137,7 @@ export function StudyGroupsPanel() {
   const [teacherBusy, setTeacherBusy] = useState<BusyBlock[]>([])
   const [teacherBusyLoading, setTeacherBusyLoading] = useState(false)
   const [slots, setSlots] = useState<GridSlot[]>(
-    DEFAULT_LESSON_SLOTS.map((s) => ({ ...s, kind: "LESSON" as const }))
+    DEFAULT_LESSON_SLOTS.map((s) => ({ ...s, kind: (s.kind ?? "LESSON") as const }))
   )
 
   const load = useCallback(async () => {
@@ -171,7 +171,7 @@ export function StudyGroupsPanel() {
         setSlots(
           merged.length > 0
             ? merged
-            : DEFAULT_LESSON_SLOTS.map((s) => ({ ...s, kind: "LESSON" as const }))
+            : DEFAULT_LESSON_SLOTS.map((s) => ({ ...s, kind: (s.kind ?? "LESSON") as const }))
         )
       }
     } catch (e) {

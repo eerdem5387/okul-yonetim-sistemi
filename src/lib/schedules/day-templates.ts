@@ -1,6 +1,7 @@
 import type { DayTemplateScope, SchoolBand, SchoolDaySlotKind } from "@prisma/client"
 import {
-  DEFAULT_LESSON_SLOTS,
+  DEFAULT_LISE_WEEKDAY_SLOTS,
+  DEFAULT_ORTAOKUL_WEEKDAY_SLOTS,
   DEFAULT_SATURDAY_SLOTS,
   type LessonSlot,
 } from "@/lib/schedules/lesson-slots"
@@ -55,16 +56,20 @@ export function kindToDb(kind: SlotKind): SchoolDaySlotKind {
   return "LESSON"
 }
 
-/** İlk kurulum için varsayılan ders/etüt satırları. */
+/** İlk kurulum için varsayılan ders/etüt satırları (kademeye göre gerçek okul saatleri). */
 export function defaultSlotsForBand(
   band: SchoolBand,
   scope: DayTemplateScope = "WEEKDAY"
 ): DaySlotInput[] {
-  void band
-  const source = scope === "SATURDAY" ? DEFAULT_SATURDAY_SLOTS : DEFAULT_LESSON_SLOTS
+  const source =
+    scope === "SATURDAY"
+      ? DEFAULT_SATURDAY_SLOTS
+      : band === "LISE"
+        ? DEFAULT_LISE_WEEKDAY_SLOTS
+        : DEFAULT_ORTAOKUL_WEEKDAY_SLOTS
   return source.map((s) => ({
     label: s.label,
-    kind: normalizeSlotKind("LESSON", s.label),
+    kind: normalizeSlotKind(s.kind ?? "LESSON", s.label),
     startTime: s.startTime,
     endTime: s.endTime,
   }))

@@ -30,7 +30,8 @@ import { ScheduleCoursesDialog } from "@/components/schedules/schedule-courses-d
 import { TeacherScheduleGrid } from "@/components/schedules/teacher-schedule-grid"
 import { getAuthHeaders } from "@/components/hr/hr-utils"
 import {
-  DEFAULT_LESSON_SLOTS,
+  DEFAULT_LISE_WEEKDAY_SLOTS,
+  DEFAULT_ORTAOKUL_WEEKDAY_SLOTS,
   DEFAULT_SATURDAY_SLOTS,
   gradeBandFor,
   gradesForBand,
@@ -98,8 +99,8 @@ export default function DersProgramiPage() {
     ortaokulSaturday: Array<LessonSlot & { kind?: SlotKind }>
     liseSaturday: Array<LessonSlot & { kind?: SlotKind }>
   }>({
-    ortaokul: DEFAULT_LESSON_SLOTS,
-    lise: DEFAULT_LESSON_SLOTS,
+    ortaokul: DEFAULT_ORTAOKUL_WEEKDAY_SLOTS,
+    lise: DEFAULT_LISE_WEEKDAY_SLOTS,
     ortaokulSaturday: DEFAULT_SATURDAY_SLOTS,
     liseSaturday: DEFAULT_SATURDAY_SLOTS,
   })
@@ -117,25 +118,21 @@ export default function DersProgramiPage() {
       const data = await res.json()
       const templates = Array.isArray(data.templates) ? data.templates : []
       const next = {
-        ortaokul: DEFAULT_LESSON_SLOTS as Array<LessonSlot & { kind?: SlotKind }>,
-        lise: DEFAULT_LESSON_SLOTS as Array<LessonSlot & { kind?: SlotKind }>,
+        ortaokul: DEFAULT_ORTAOKUL_WEEKDAY_SLOTS as Array<LessonSlot & { kind?: SlotKind }>,
+        lise: DEFAULT_LISE_WEEKDAY_SLOTS as Array<LessonSlot & { kind?: SlotKind }>,
         ortaokulSaturday: DEFAULT_SATURDAY_SLOTS as Array<LessonSlot & { kind?: SlotKind }>,
         liseSaturday: DEFAULT_SATURDAY_SLOTS as Array<LessonSlot & { kind?: SlotKind }>,
       }
       for (const t of templates) {
         const scope = t.scope === "saturday" ? "saturday" : "weekday"
+        const rows = Array.isArray(t.slots) && t.slots.length > 0 ? t.slots : null
+        if (!rows) continue
         if (t.band === "ortaokul") {
-          if (scope === "saturday") {
-            next.ortaokulSaturday = Array.isArray(t.slots) ? t.slots : next.ortaokulSaturday
-          } else {
-            next.ortaokul = Array.isArray(t.slots) ? t.slots : next.ortaokul
-          }
+          if (scope === "saturday") next.ortaokulSaturday = rows
+          else next.ortaokul = rows
         } else if (t.band === "lise") {
-          if (scope === "saturday") {
-            next.liseSaturday = Array.isArray(t.slots) ? t.slots : next.liseSaturday
-          } else {
-            next.lise = Array.isArray(t.slots) ? t.slots : next.lise
-          }
+          if (scope === "saturday") next.liseSaturday = rows
+          else next.lise = rows
         }
       }
       setSlotMap(next)

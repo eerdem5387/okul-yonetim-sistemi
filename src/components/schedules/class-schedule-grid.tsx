@@ -17,11 +17,13 @@ import {
   DEFAULT_LESSON_SLOTS,
   DEFAULT_SATURDAY_SLOTS,
   DENEME_SINAVI_SUBJECT,
+  normalizeTime,
   SATURDAY_INDEX,
   WEEKDAY_INDEXES,
   type ClassSaturdayMode,
   type LessonSlot,
 } from "@/lib/schedules/lesson-slots"
+import { normalizeSlotKind } from "@/lib/schedules/day-templates"
 
 export type ScheduleTeacher = {
   id: string
@@ -62,11 +64,22 @@ const emptyForm = (): ScheduleForm => ({
 })
 
 function slotLabel(slots: GridSlot[], startTime: string, endTime?: string): string {
+  const start = normalizeTime(startTime)
+  const end = endTime ? normalizeTime(endTime) : undefined
   const slot = slots.find(
-    (s) => s.startTime === startTime && (!endTime || s.endTime === endTime)
+    (s) =>
+      normalizeTime(s.startTime) === start &&
+      (!end || normalizeTime(s.endTime) === end)
   )
   if (slot) return slot.label
   return `${startTime}${endTime ? `–${endTime}` : ""}`
+}
+
+function withResolvedKinds(slots: GridSlot[]): GridSlot[] {
+  return slots.map((s) => ({
+    ...s,
+    kind: normalizeSlotKind(s.kind ?? "LESSON", s.label),
+  }))
 }
 
 export function ClassScheduleGrid({
@@ -88,11 +101,14 @@ export function ClassScheduleGrid({
   saturdayMode?: ClassSaturdayMode
   saturdaySlots?: GridSlot[]
 }) {
-  const slots: GridSlot[] = slotsProp && slotsProp.length > 0 ? slotsProp : DEFAULT_LESSON_SLOTS
-  const saturdaySlots: GridSlot[] =
+  const slots: GridSlot[] = withResolvedKinds(
+    slotsProp && slotsProp.length > 0 ? slotsProp : DEFAULT_LESSON_SLOTS
+  )
+  const saturdaySlots: GridSlot[] = withResolvedKinds(
     saturdaySlotsProp && saturdaySlotsProp.length > 0
       ? saturdaySlotsProp
-      : DEFAULT_SATURDAY_SLOTS.map((s) => ({ ...s, kind: "LESSON" as const }))
+      : DEFAULT_SATURDAY_SLOTS
+  )
   // Sınıf programında etüt satırları gösterilmez (kulüp / ÖÇG ayrı sekmede)
   const displaySlots = slots.filter((s) => (s.kind ?? "LESSON") !== "ETUT")
   const lessonSlots = displaySlots.filter((s) => (s.kind ?? "LESSON") === "LESSON")
@@ -165,8 +181,9 @@ export function ClassScheduleGrid({
   }, [modalOpen, loadCourses])
 
   const openCell = (dayOfWeek: number, startTime: string, endTime: string) => {
+    const start = normalizeTime(startTime)
     const existing = schedules.find(
-      (s) => s.dayOfWeek === dayOfWeek && s.startTime === startTime
+      (s) => s.dayOfWeek === dayOfWeek && normalizeTime(s.startTime) === start
     )
     if (existing) {
       setEditing(existing)
@@ -295,12 +312,15 @@ export function ClassScheduleGrid({
   }
 
   const unmatched = useMemo(() => {
-    const weekdayStarts = new Set(lessonSlots.map((s) => s.startTime))
-    const saturdayStarts = new Set(saturdayLessonSlots.map((s) => s.startTime))
+    const weekdayStarts = new Set(lessonSlots.map((s) => normalizeTime(s.startTime)))
+    const saturdayStarts = new Set(
+      saturdayLessonSlots.map((s) => normalizeTime(s.startTime))
+    )
     return schedules.filter((s) => {
       if (!dayIndexes.includes(s.dayOfWeek)) return false
-      if (s.dayOfWeek === SATURDAY_INDEX) return !saturdayStarts.has(s.startTime)
-      return !weekdayStarts.has(s.startTime)
+      const start = normalizeTime(s.startTime)
+      if (s.dayOfWeek === SATURDAY_INDEX) return !saturdayStarts.has(start)
+      return !weekdayStarts.has(start)
     })
   }, [schedules, lessonSlots, saturdayLessonSlots, dayIndexes])
 
@@ -334,8 +354,9 @@ export function ClassScheduleGrid({
         </td>
       )
     }
+    const slotStart = normalizeTime(slot.startTime)
     const row = schedules.find(
-      (s) => s.dayOfWeek === day && s.startTime === slot.startTime
+      (s) => s.dayOfWeek === day && normalizeTime(s.startTime) === slotStart
     )
     return (
       <td
