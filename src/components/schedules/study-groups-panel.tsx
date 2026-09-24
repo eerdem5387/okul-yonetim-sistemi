@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Loader2, Pencil, Plus, Search, Trash2, Users, X } from "lucide-react"
+import { CalendarPlus, Loader2, Pencil, Plus, Search, Trash2, Users, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -37,17 +37,23 @@ type Student = {
   grade: string
 }
 
-type StudyGroup = {
+type StudySession = {
   id: string
-  name: string
-  subjectName: string | null
   dayOfWeek: number
   startTime: string
   endTime: string
   room: string | null
+  topic: string
   notes: string | null
   teacher: Teacher
+}
+
+type StudyGroup = {
+  id: string
+  name: string
+  notes: string | null
   students: Array<{ student: Student }>
+  sessions: StudySession[]
 }
 
 type BusyBlock = {
@@ -58,33 +64,56 @@ type BusyBlock = {
   kind: "class" | "study"
 }
 
-type FormState = {
+type GroupForm = {
   name: string
-  subjectName: string
+  notes: string
+  studentIds: string[]
+}
+
+type SessionForm = {
   teacherId: string
   dayOfWeek: string
   startTime: string
   endTime: string
   room: string
+  topic: string
   notes: string
-  studentIds: string[]
 }
 
 type GridSlot = LessonSlot & { kind?: "LESSON" | "BREAK" | "ETUT" }
 
-const emptyForm = (): FormState => ({
+const emptyGroupForm = (): GroupForm => ({
   name: "",
-  subjectName: "",
+  notes: "",
+  studentIds: [],
+})
+
+const emptySessionForm = (): SessionForm => ({
   teacherId: "",
   dayOfWeek: "1",
   startTime: "08:00",
   endTime: "09:00",
   room: "",
+  topic: "",
   notes: "",
-  studentIds: [],
 })
 
 const GRADE_LEVELS = [5, 6, 7, 8, 9, 10, 11, 12]
+
+function mergeAssignableSlots(orta: GridSlot[], lise: GridSlot[]): GridSlot[] {
+  const merged: GridSlot[] = []
+  const seen = new Set<string>()
+  let id = 1
+  for (const s of [...orta, ...lise]) {
+    const kind = s.kind ?? "LESSON"
+    if (kind === "BREAK") continue
+    const key = `${s.startTime}|${s.endTime}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    merged.push({ ...s, id: id++, kind })
+  }
+  return merged.sort((a, b) => a.startTime.localeCompare(b.startTime))
+}
 
 export function StudyGroupsPanel() {
   const [groups, setGroups] = useState<StudyGroup[]>([])
@@ -92,17 +121,24 @@ export function StudyGroupsPanel() {
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
-  const [modalOpen, setModalOpen] = useState(false)
-  const [editing, setEditing] = useState<StudyGroup | null>(null)
-  const [form, setForm] = useState<FormState>(emptyForm)
+  const [error, setError] = useState("")
+
+  const [groupModalOpen, setGroupModalOpen] = useState(false)
+  const [editingGroup, setEditingGroup] = useState<StudyGroup | null>(null)
+  const [groupForm, setGroupForm] = useState<GroupForm>(emptyGroupForm)
   const [studentSearch, setStudentSearch] = useState("")
   const [gradeLevelFilter, setGradeLevelFilter] = useState<number | "all">("all")
   const [showSelectedOnly, setShowSelectedOnly] = useState(false)
-  const [dayFilter, setDayFilter] = useState<"all" | number>("all")
-  const [error, setError] = useState("")
+
+  const [sessionModalOpen, setSessionModalOpen] = useState(false)
+  const [sessionGroup, setSessionGroup] = useState<StudyGroup | null>(null)
+  const [editingSession, setEditingSession] = useState<StudySession | null>(null)
+  const [sessionForm, setSessionForm] = useState<SessionForm>(emptySessionForm)
   const [teacherBusy, setTeacherBusy] = useState<BusyBlock[]>([])
   const [teacherBusyLoading, setTeacherBusyLoading] = useState(false)
-  const [slots, setSlots] = useState<GridSlot[]>(DEFAULT_LESSON_SLOTS)
+  const [slots, setSlots] = useState<GridSlot[]>(
+    DEFAULT_LESSON_SLOTS.map((s) => ({ ...s, kind: "LESSON" as const }))
+  )
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -111,9 +147,7 @@ export function StudyGroupsPanel() {
       const [groupsRes, teachersRes, studentsRes, templatesRes] = await Promise.all([
         fetch("/api/study-groups", { cache: "no-store" }),
         fetch("/api/staff/pickers?type=teachers", { headers: getAuthHeaders() }),
-        fetch("/api/students?limit=3000&gradeBand=k12", {
-          cache: "no-store",
-        }),
+        fetch("/api/students?limit=3000&gradeBand=k12", { cache: "no-store" }),
         fetch("/api/schedules/day-templates?band=all", { cache: "no-store" }),
       ])
       if (!groupsRes.ok) throw new Error("Gruplar alınamadı")
@@ -133,22 +167,11 @@ export function StudyGroupsPanel() {
         const lise = templates.find((t: { band: string }) => t.band === "lise")
         const ortaSlots = (Array.isArray(orta?.slots) ? orta.slots : []) as GridSlot[]
         const liseSlots = (Array.isArray(lise?.slots) ? lise.slots : []) as GridSlot[]
-        // ÖÇG: her iki kademenin etüt saatlerini birleştir (eşsiz start-end)
-        const merged: GridSlot[] = []
-        const seen = new Set<string>()
-        let id = 1
-        for (const s of [...ortaSlots, ...liseSlots]) {
-          if ((s.kind ?? "LESSON") !== "ETUT") continue
-          const key = `${s.startTime}|${s.endTime}`
-          if (seen.has(key)) continue
-          seen.add(key)
-          merged.push({ ...s, id: id++ })
-        }
-        // Etüt yoksa tüm ortaokul şablonunu tut (uyarı gösterilir)
+        const merged = mergeAssignableSlots(ortaSlots, liseSlots)
         setSlots(
           merged.length > 0
             ? merged
-            : ((ortaSlots.length > 0 ? ortaSlots : liseSlots.length > 0 ? liseSlots : DEFAULT_LESSON_SLOTS) as GridSlot[])
+            : DEFAULT_LESSON_SLOTS.map((s) => ({ ...s, kind: "LESSON" as const }))
         )
       }
     } catch (e) {
@@ -163,20 +186,20 @@ export function StudyGroupsPanel() {
     void load()
   }, [load])
 
-  const loadTeacherBusy = useCallback(async (teacherId: string, excludeGroupId?: string) => {
+  const loadTeacherBusy = useCallback(async (teacherId: string, excludeSessionId?: string) => {
     if (!teacherId) {
       setTeacherBusy([])
       return
     }
     setTeacherBusyLoading(true)
     try {
-      const [schedRes, groupRes, clubRes] = await Promise.all([
+      const [schedRes, sessionRes, clubRes] = await Promise.all([
         fetch(`/api/schedules?teacherId=${teacherId}`, { cache: "no-store" }),
-        fetch(`/api/study-groups?teacherId=${teacherId}`, { cache: "no-store" }),
+        fetch(`/api/study-groups/sessions?teacherId=${teacherId}`, { cache: "no-store" }),
         fetch("/api/schedules/clubs", { cache: "no-store" }),
       ])
       const schedData = schedRes.ok ? await schedRes.json() : { schedules: [] }
-      const groupData = groupRes.ok ? await groupRes.json() : { groups: [] }
+      const sessionData = sessionRes.ok ? await sessionRes.json() : { sessions: [] }
       const clubData = clubRes.ok ? await clubRes.json() : { schedules: [] }
 
       const blocks: BusyBlock[] = []
@@ -189,13 +212,13 @@ export function StudyGroupsPanel() {
           kind: "class",
         })
       }
-      for (const g of Array.isArray(groupData.groups) ? groupData.groups : []) {
-        if (excludeGroupId && g.id === excludeGroupId) continue
+      for (const sess of Array.isArray(sessionData.sessions) ? sessionData.sessions : []) {
+        if (excludeSessionId && sess.id === excludeSessionId) continue
         blocks.push({
-          dayOfWeek: g.dayOfWeek,
-          startTime: g.startTime,
-          endTime: g.endTime,
-          label: `ÖÇG: ${g.name}`,
+          dayOfWeek: sess.dayOfWeek,
+          startTime: sess.startTime,
+          endTime: sess.endTime,
+          label: `ÖÇG: ${sess.studyGroup?.name ?? sess.topic ?? ""}`,
           kind: "study",
         })
       }
@@ -218,18 +241,13 @@ export function StudyGroupsPanel() {
   }, [])
 
   useEffect(() => {
-    if (!modalOpen) return
-    void loadTeacherBusy(form.teacherId, editing?.id)
-  }, [modalOpen, form.teacherId, editing?.id, loadTeacherBusy])
-
-  const filteredGroups = useMemo(() => {
-    if (dayFilter === "all") return groups
-    return groups.filter((g) => g.dayOfWeek === dayFilter)
-  }, [groups, dayFilter])
+    if (!sessionModalOpen) return
+    void loadTeacherBusy(sessionForm.teacherId, editingSession?.id)
+  }, [sessionModalOpen, sessionForm.teacherId, editingSession?.id, loadTeacherBusy])
 
   const studentMatchStats = useMemo(() => {
     const q = studentSearch.trim().toLocaleLowerCase("tr-TR")
-    const selectedSet = new Set(form.studentIds)
+    const selectedSet = new Set(groupForm.studentIds)
 
     const matched = students.filter((s) => {
       if (showSelectedOnly && !selectedSet.has(s.id)) return false
@@ -252,11 +270,7 @@ export function StudyGroupsPanel() {
       const aSel = selectedSet.has(a.id) ? 0 : 1
       const bSel = selectedSet.has(b.id) ? 0 : 1
       if (aSel !== bSel) return aSel - bSel
-      const an = `${a.lastName} ${a.firstName}`.localeCompare(
-        `${b.lastName} ${b.firstName}`,
-        "tr"
-      )
-      return an
+      return `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`, "tr")
     })
 
     const limit = q || gradeLevelFilter !== "all" || showSelectedOnly ? 200 : 80
@@ -265,61 +279,72 @@ export function StudyGroupsPanel() {
       shown: sorted.slice(0, limit),
       limit,
     }
-  }, [students, studentSearch, gradeLevelFilter, showSelectedOnly, form.studentIds])
+  }, [students, studentSearch, gradeLevelFilter, showSelectedOnly, groupForm.studentIds])
 
   const filteredStudents = studentMatchStats.shown
 
   const selectedStudents = useMemo(() => {
     const map = new Map(students.map((s) => [s.id, s]))
-    // Düzenlemede listede olmayan (silinmiş) öğrenci id'leri de korunsun diye group fallback yok;
-    // sadece bilinen öğrencileri chip olarak göster.
-    return form.studentIds
+    return groupForm.studentIds
       .map((id) => map.get(id))
       .filter((s): s is Student => Boolean(s))
-  }, [form.studentIds, students])
-
-  const etutSlots = useMemo(
-    () => slots.filter((s) => s.kind === "ETUT"),
-    [slots]
-  )
+  }, [groupForm.studentIds, students])
 
   const findBusy = (day: number, start: string, end: string) =>
     teacherBusy.find((b) => b.dayOfWeek === day && hasTimeConflict(b.startTime, b.endTime, start, end))
 
   const isSelectedSlot = (day: number, start: string, end: string) =>
-    form.dayOfWeek === String(day) && form.startTime === start && form.endTime === end
+    sessionForm.dayOfWeek === String(day) &&
+    sessionForm.startTime === start &&
+    sessionForm.endTime === end
 
-  const openCreate = () => {
-    setEditing(null)
-    setForm(emptyForm())
+  const openCreateGroup = () => {
+    setEditingGroup(null)
+    setGroupForm(emptyGroupForm())
     setStudentSearch("")
     setGradeLevelFilter("all")
     setShowSelectedOnly(false)
-    setTeacherBusy([])
-    setModalOpen(true)
+    setGroupModalOpen(true)
   }
 
-  const openEdit = (group: StudyGroup) => {
-    setEditing(group)
-    setForm({
+  const openEditGroup = (group: StudyGroup) => {
+    setEditingGroup(group)
+    setGroupForm({
       name: group.name,
-      subjectName: group.subjectName || "",
-      teacherId: group.teacher.id,
-      dayOfWeek: String(group.dayOfWeek),
-      startTime: group.startTime,
-      endTime: group.endTime,
-      room: group.room || "",
       notes: group.notes || "",
       studentIds: group.students.map((m) => m.student.id),
     })
     setStudentSearch("")
     setGradeLevelFilter("all")
     setShowSelectedOnly(false)
-    setModalOpen(true)
+    setGroupModalOpen(true)
+  }
+
+  const openCreateSession = (group: StudyGroup) => {
+    setSessionGroup(group)
+    setEditingSession(null)
+    setSessionForm(emptySessionForm())
+    setTeacherBusy([])
+    setSessionModalOpen(true)
+  }
+
+  const openEditSession = (group: StudyGroup, session: StudySession) => {
+    setSessionGroup(group)
+    setEditingSession(session)
+    setSessionForm({
+      teacherId: session.teacher.id,
+      dayOfWeek: String(session.dayOfWeek),
+      startTime: session.startTime,
+      endTime: session.endTime,
+      room: session.room || "",
+      topic: session.topic,
+      notes: session.notes || "",
+    })
+    setSessionModalOpen(true)
   }
 
   const toggleStudent = (id: string) => {
-    setForm((prev) => ({
+    setGroupForm((prev) => ({
       ...prev,
       studentIds: prev.studentIds.includes(id)
         ? prev.studentIds.filter((x) => x !== id)
@@ -328,7 +353,7 @@ export function StudyGroupsPanel() {
   }
 
   const selectVisibleStudents = () => {
-    setForm((prev) => {
+    setGroupForm((prev) => {
       const next = new Set(prev.studentIds)
       for (const s of filteredStudents) next.add(s.id)
       return { ...prev, studentIds: [...next] }
@@ -337,39 +362,33 @@ export function StudyGroupsPanel() {
 
   const clearVisibleStudents = () => {
     const visible = new Set(filteredStudents.map((s) => s.id))
-    setForm((prev) => ({
+    setGroupForm((prev) => ({
       ...prev,
       studentIds: prev.studentIds.filter((id) => !visible.has(id)),
     }))
   }
 
   const clearAllStudents = () => {
-    setForm((prev) => ({ ...prev, studentIds: [] }))
+    setGroupForm((prev) => ({ ...prev, studentIds: [] }))
     setShowSelectedOnly(false)
   }
 
-  const save = async () => {
-    if (!form.name.trim() || !form.teacherId) {
-      alert("Grup adı ve öğretmen zorunludur. Öğrenciler sonradan eklenebilir.")
+  const saveGroup = async () => {
+    if (!groupForm.name.trim()) {
+      alert("Grup adı zorunludur. Öğrenciler şimdi veya sonra eklenebilir.")
       return
     }
     setBusy(true)
     try {
-      const url = editing ? `/api/study-groups/${editing.id}` : "/api/study-groups"
-      const method = editing ? "PUT" : "POST"
+      const url = editingGroup ? `/api/study-groups/${editingGroup.id}` : "/api/study-groups"
+      const method = editingGroup ? "PUT" : "POST"
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: form.name.trim(),
-          subjectName: form.subjectName.trim() || null,
-          teacherId: form.teacherId,
-          dayOfWeek: parseInt(form.dayOfWeek, 10),
-          startTime: form.startTime,
-          endTime: form.endTime,
-          room: form.room.trim() || null,
-          notes: form.notes.trim() || null,
-          studentIds: form.studentIds,
+          name: groupForm.name.trim(),
+          notes: groupForm.notes.trim() || null,
+          studentIds: groupForm.studentIds,
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -377,15 +396,54 @@ export function StudyGroupsPanel() {
         alert((data as { error?: string }).error || "Kayıt başarısız")
         return
       }
-      setModalOpen(false)
+      setGroupModalOpen(false)
       await load()
     } finally {
       setBusy(false)
     }
   }
 
-  const remove = async (id: string) => {
-    if (!confirm("Bu özel çalışma grubunu silmek istediğinize emin misiniz?")) return
+  const saveSession = async () => {
+    if (!sessionGroup) return
+    if (!sessionForm.teacherId || !sessionForm.topic.trim()) {
+      alert("Öğretmen ve konu zorunludur.")
+      return
+    }
+    setBusy(true)
+    try {
+      const payload = {
+        studyGroupId: sessionGroup.id,
+        teacherId: sessionForm.teacherId,
+        dayOfWeek: parseInt(sessionForm.dayOfWeek, 10),
+        startTime: sessionForm.startTime,
+        endTime: sessionForm.endTime,
+        room: sessionForm.room.trim() || null,
+        topic: sessionForm.topic.trim(),
+        notes: sessionForm.notes.trim() || null,
+      }
+      const url = editingSession
+        ? `/api/study-groups/sessions/${editingSession.id}`
+        : "/api/study-groups/sessions"
+      const method = editingSession ? "PUT" : "POST"
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert((data as { error?: string }).error || "Atama kaydedilemedi")
+        return
+      }
+      setSessionModalOpen(false)
+      await load()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const removeGroup = async (id: string) => {
+    if (!confirm("Bu çalışma grubunu ve tüm atamalarını silmek istediğinize emin misiniz?")) return
     setBusy(true)
     try {
       const res = await fetch(`/api/study-groups/${id}`, { method: "DELETE" })
@@ -394,14 +452,31 @@ export function StudyGroupsPanel() {
         alert((data as { error?: string }).error || "Silinemedi")
         return
       }
-      if (editing?.id === id) setModalOpen(false)
+      if (editingGroup?.id === id) setGroupModalOpen(false)
       await load()
     } finally {
       setBusy(false)
     }
   }
 
-  const selectedTeacher = teachers.find((t) => t.id === form.teacherId)
+  const removeSession = async (sessionId: string) => {
+    if (!confirm("Bu program atamasını silmek istediğinize emin misiniz?")) return
+    setBusy(true)
+    try {
+      const res = await fetch(`/api/study-groups/sessions/${sessionId}`, { method: "DELETE" })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        alert((data as { error?: string }).error || "Atama silinemedi")
+        return
+      }
+      if (editingSession?.id === sessionId) setSessionModalOpen(false)
+      await load()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const selectedTeacher = teachers.find((t) => t.id === sessionForm.teacherId)
 
   return (
     <div className="space-y-4">
@@ -409,33 +484,14 @@ export function StudyGroupsPanel() {
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Özel çalışma grupları</h2>
           <p className="text-sm text-gray-600">
-            Önce grubu oluşturun; öğrencileri şimdi veya sonra ekleyin. Karttan düzenleyerek öğrencileri değiştirebilirsiniz.
+            Önce grubu ve öğrencileri oluşturun; ardından istediğiniz gün, ders saati, öğretmen ve
+            derslik ile atama yapın. Atamada yazdığınız konu öğretmen takviminde görünür.
           </p>
         </div>
-        <Button size="sm" onClick={openCreate}>
+        <Button size="sm" onClick={openCreateGroup}>
           <Plus className="h-4 w-4 mr-2" />
           Yeni grup
         </Button>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <Button
-          size="sm"
-          variant={dayFilter === "all" ? "default" : "outline"}
-          onClick={() => setDayFilter("all")}
-        >
-          Tüm günler
-        </Button>
-        {WEEKDAY_INDEXES.map((d) => (
-          <Button
-            key={d}
-            size="sm"
-            variant={dayFilter === d ? "default" : "outline"}
-            onClick={() => setDayFilter(d)}
-          >
-            {DAY_NAMES[d]}
-          </Button>
-        ))}
       </div>
 
       {loading ? (
@@ -445,7 +501,7 @@ export function StudyGroupsPanel() {
         </div>
       ) : error ? (
         <p className="text-center text-red-600 py-10">{error}</p>
-      ) : filteredGroups.length === 0 ? (
+      ) : groups.length === 0 ? (
         <Card className="border-0 shadow-sm">
           <CardContent className="py-12 text-center text-sm text-gray-500">
             Henüz özel çalışma grubu yok. “Yeni grup” ile oluşturabilirsiniz.
@@ -453,12 +509,8 @@ export function StudyGroupsPanel() {
         </Card>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {filteredGroups.map((group) => (
-            <Card
-              key={group.id}
-              className="border-0 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => openEdit(group)}
-            >
+          {groups.map((group) => (
+            <Card key={group.id} className="border-0 shadow-sm">
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -467,12 +519,23 @@ export function StudyGroupsPanel() {
                       <span className="truncate">{group.name}</span>
                     </CardTitle>
                     <CardDescription className="mt-1">
-                      {DAY_NAMES[group.dayOfWeek]} · {group.startTime}–{group.endTime}
-                      {group.subjectName ? ` · ${group.subjectName}` : ""}
+                      {group.students.length === 0
+                        ? "Öğrenci yok"
+                        : `${group.students.length} öğrenci`}
+                      {" · "}
+                      {group.sessions.length === 0
+                        ? "Atama yok"
+                        : `${group.sessions.length} atama`}
                     </CardDescription>
                   </div>
-                  <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                    <Button size="sm" variant="outline" className="h-8 w-8 p-0" onClick={() => openEdit(group)}>
+                  <div className="flex gap-1 shrink-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 w-8 p-0"
+                      title="Öğrencileri düzenle"
+                      onClick={() => openEditGroup(group)}
+                    >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
                     <Button
@@ -480,28 +543,16 @@ export function StudyGroupsPanel() {
                       variant="outline"
                       className="h-8 w-8 p-0 text-red-600"
                       disabled={busy}
-                      onClick={() => void remove(group.id)}
+                      onClick={() => void removeGroup(group.id)}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <p className="text-gray-700">
-                  Öğretmen:{" "}
-                  <span className="font-medium">
-                    {group.teacher.firstName} {group.teacher.lastName}
-                  </span>
-                </p>
-                {group.room && <p className="text-gray-500 text-xs">Derslik: {group.room}</p>}
-                <p className="text-xs text-violet-700 bg-violet-50 rounded-lg px-2 py-1 inline-block">
-                  {group.students.length === 0
-                    ? "Öğrenci henüz eklenmedi"
-                    : `${group.students.length} öğrenci`}
-                </p>
+              <CardContent className="space-y-3 text-sm">
                 {group.students.length > 0 ? (
-                  <div className="text-xs text-gray-600 line-clamp-3">
+                  <div className="text-xs text-gray-600 line-clamp-2">
                     {group.students
                       .map((m) => `${m.student.firstName} ${m.student.lastName}`)
                       .join(", ")}
@@ -509,201 +560,100 @@ export function StudyGroupsPanel() {
                 ) : (
                   <p className="text-xs text-amber-700">Düzenle → öğrenci ekleyin</p>
                 )}
+
+                {group.sessions.length > 0 && (
+                  <ul className="space-y-1.5">
+                    {group.sessions.map((sess) => (
+                      <li
+                        key={sess.id}
+                        className="rounded-lg border border-violet-100 bg-violet-50/50 px-2.5 py-2 text-xs"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="font-medium text-gray-900">
+                              {DAY_NAMES[sess.dayOfWeek]} · {sess.startTime}–{sess.endTime}
+                            </p>
+                            <p className="text-gray-600 truncate">
+                              {sess.teacher.firstName} {sess.teacher.lastName}
+                              {sess.room ? ` · ${sess.room}` : ""}
+                            </p>
+                            <p className="text-violet-800 mt-0.5 line-clamp-2">Konu: {sess.topic}</p>
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0"
+                              onClick={() => openEditSession(group, sess)}
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 text-red-600"
+                              disabled={busy}
+                              onClick={() => void removeSession(sess.id)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => openCreateSession(group)}
+                >
+                  <CalendarPlus className="h-3.5 w-3.5 mr-1.5" />
+                  Program ata
+                </Button>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
 
+      {/* Grup oluştur / öğrenci düzenle */}
       <Dialog
-        open={modalOpen}
+        open={groupModalOpen}
         onOpenChange={(open) => {
-          if (!open) setModalOpen(false)
-          else setModalOpen(true)
+          if (!open) setGroupModalOpen(false)
+          else setGroupModalOpen(true)
         }}
       >
-        <DialogContent className="max-w-6xl w-[min(96vw,72rem)] max-h-[92vh] overflow-y-auto p-0">
+        <DialogContent className="max-w-3xl w-[min(96vw,48rem)] max-h-[92vh] overflow-y-auto p-0">
           <div className="sticky top-0 z-10 border-b bg-white px-6 pt-6 pb-4">
             <DialogHeader className="pr-8 mb-0">
               <DialogTitle className="text-xl">
-                {editing ? "Grubu düzenle" : "Yeni özel çalışma grubu"}
+                {editingGroup ? "Grubu ve öğrencileri düzenle" : "Yeni çalışma grubu"}
               </DialogTitle>
             </DialogHeader>
           </div>
 
-          <div className="px-6 py-5 space-y-6">
-            <div className="grid gap-4 lg:grid-cols-2">
-              <div>
-                <Label>Grup adı *</Label>
-                <Input
-                  className="mt-1.5"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="Örn: Matematik Destek A"
-                />
-              </div>
-              <div>
-                <Label>Konu / ders (opsiyonel)</Label>
-                <Input
-                  className="mt-1.5"
-                  value={form.subjectName}
-                  onChange={(e) => setForm({ ...form, subjectName: e.target.value })}
-                  placeholder="Örn: Matematik"
-                />
-              </div>
+          <div className="px-6 py-5 space-y-5">
+            <div>
+              <Label>Grup adı *</Label>
+              <Input
+                className="mt-1.5"
+                value={groupForm.name}
+                onChange={(e) => setGroupForm({ ...groupForm, name: e.target.value })}
+                placeholder="Örn: Matematik Destek A"
+              />
             </div>
-
-            <div className="grid gap-4 lg:grid-cols-[1fr_180px]">
-              <div>
-                <Label>Öğretmen *</Label>
-                <select
-                  className="mt-1.5 w-full rounded-md border border-gray-200 bg-white px-3 py-2.5 text-sm"
-                  value={form.teacherId}
-                  onChange={(e) => {
-                    setForm({ ...form, teacherId: e.target.value })
-                  }}
-                >
-                  <option value="">Öğretmen seçiniz</option>
-                  {teachers.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.firstName} {t.lastName}
-                      {t.subject ? ` (${t.subject})` : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <Label>Derslik (opsiyonel)</Label>
-                <Input
-                  className="mt-1.5"
-                  value={form.room}
-                  onChange={(e) => setForm({ ...form, room: e.target.value })}
-                  placeholder="Örn: B203"
-                />
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div>
-                  <p className="font-semibold text-gray-900">Etüt programı — öğretmen müsaitliği</p>
-                  <p className="text-sm text-gray-600">
-                    {selectedTeacher
-                      ? `${selectedTeacher.firstName} ${selectedTeacher.lastName} — boş etüt hücresine tıklayarak saat seçin`
-                      : "Önce öğretmen seçin; ÖÇG yalnızca etüt saatlerine yerleştirilir"}
-                  </p>
-                </div>
-                {form.teacherId && (
-                  <p className="text-xs font-medium text-indigo-800 bg-white/80 border border-indigo-100 rounded-lg px-3 py-1.5">
-                    Seçili: {DAY_NAMES[parseInt(form.dayOfWeek, 10) || 1]} · {form.startTime}–{form.endTime}
-                  </p>
-                )}
-              </div>
-
-              {!form.teacherId ? (
-                <p className="text-sm text-gray-500 py-8 text-center">Öğretmen seçildikten sonra program açılır</p>
-              ) : teacherBusyLoading ? (
-                <div className="flex justify-center py-10 text-gray-500 gap-2">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Program yükleniyor...
-                </div>
-              ) : etutSlots.length === 0 ? (
-                <p className="text-sm text-amber-800 py-6 text-center">
-                  Tanımlı etüt saati yok. Ders saatleri’nden Etüt ekleyin.
-                </p>
-              ) : (
-                <div className="overflow-x-auto rounded-xl border border-white bg-white">
-                  <table className="w-full border-collapse min-w-[640px]">
-                    <thead>
-                      <tr className="bg-gray-50">
-                        <th className="border-b border-r border-gray-200 p-2 text-xs font-semibold text-gray-700 w-28">
-                          Etüt
-                        </th>
-                        {WEEKDAY_INDEXES.map((day) => (
-                          <th
-                            key={day}
-                            className="border-b border-gray-200 p-2 text-xs font-semibold text-gray-700"
-                          >
-                            {DAY_NAMES[day]}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {etutSlots.map((slot) => (
-                        <tr key={`${slot.id}-${slot.startTime}`}>
-                          <td className="border-b border-r border-gray-200 p-2 text-xs font-medium text-emerald-900 bg-emerald-50/80">
-                            <div>{slot.label}</div>
-                            <div className="text-[10px] text-emerald-700/80 font-normal">
-                              {slot.startTime}–{slot.endTime}
-                            </div>
-                          </td>
-                          {WEEKDAY_INDEXES.map((day) => {
-                            const occupied = findBusy(day, slot.startTime, slot.endTime)
-                            const selected = isSelectedSlot(day, slot.startTime, slot.endTime)
-                            if (occupied) {
-                              return (
-                                <td
-                                  key={`${day}-${slot.id}`}
-                                  className="border-b border-gray-100 p-1.5 align-top bg-rose-50"
-                                  title={occupied.label}
-                                >
-                                  <div className="px-1 py-1">
-                                    <p className="text-[10px] font-semibold text-rose-800 leading-tight line-clamp-2">
-                                      {occupied.label}
-                                    </p>
-                                    <p className="text-[9px] text-rose-600 mt-0.5">Dolu</p>
-                                  </div>
-                                </td>
-                              )
-                            }
-                            return (
-                              <td
-                                key={`${day}-${slot.id}`}
-                                className={`border-b border-gray-100 p-1.5 cursor-pointer align-middle transition-colors ${
-                                  selected
-                                    ? "bg-violet-100 ring-2 ring-inset ring-violet-400"
-                                    : "bg-emerald-50/70 hover:bg-emerald-100"
-                                }`}
-                                onClick={() =>
-                                  setForm((prev) => ({
-                                    ...prev,
-                                    dayOfWeek: String(day),
-                                    startTime: slot.startTime,
-                                    endTime: slot.endTime,
-                                  }))
-                                }
-                              >
-                                <div className="h-11 flex items-center justify-center">
-                                  <span
-                                    className={`text-[10px] font-medium ${
-                                      selected ? "text-violet-800" : "text-emerald-700"
-                                    }`}
-                                  >
-                                    {selected ? "Seçildi" : "Boş"}
-                                  </span>
-                                </div>
-                              </td>
-                            )
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              <div className="flex flex-wrap gap-3 text-[11px] text-gray-600">
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="h-3 w-3 rounded bg-emerald-100 border border-emerald-200" /> Boş
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="h-3 w-3 rounded bg-rose-50 border border-rose-200" /> Dolu
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="h-3 w-3 rounded bg-violet-100 border border-violet-300" /> Seçili
-                </span>
-              </div>
+            <div>
+              <Label>Not (opsiyonel)</Label>
+              <Input
+                className="mt-1.5"
+                value={groupForm.notes}
+                onChange={(e) => setGroupForm({ ...groupForm, notes: e.target.value })}
+                placeholder="İç not"
+              />
             </div>
 
             <div className="rounded-2xl border border-violet-100 bg-violet-50/30 p-4 space-y-3">
@@ -712,11 +662,11 @@ export function StudyGroupsPanel() {
                   <Label className="text-base">
                     Öğrenciler{" "}
                     <span className="font-normal text-gray-500">
-                      ({form.studentIds.length} seçili — opsiyonel)
+                      ({groupForm.studentIds.length} seçili)
                     </span>
                   </Label>
                   <p className="mt-0.5 text-xs text-gray-500">
-                    Tüm öğrenciler listelenir. Sınıf düzeyi + arama ile daraltın; grubu boş da kaydedebilirsiniz.
+                    Şimdi veya sonra ekleyebilirsiniz. Karttan düzenleyerek ekleyip çıkarabilirsiniz.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -725,7 +675,7 @@ export function StudyGroupsPanel() {
                     size="sm"
                     variant={showSelectedOnly ? "default" : "outline"}
                     onClick={() => setShowSelectedOnly((v) => !v)}
-                    disabled={form.studentIds.length === 0}
+                    disabled={groupForm.studentIds.length === 0}
                   >
                     Seçilenler
                   </Button>
@@ -747,7 +697,7 @@ export function StudyGroupsPanel() {
                   >
                     Görünenleri kaldır
                   </Button>
-                  {form.studentIds.length > 0 && (
+                  {groupForm.studentIds.length > 0 && (
                     <Button type="button" size="sm" variant="ghost" onClick={clearAllStudents}>
                       Tümünü temizle
                     </Button>
@@ -801,7 +751,7 @@ export function StudyGroupsPanel() {
                 <Input
                   value={studentSearch}
                   onChange={(e) => setStudentSearch(e.target.value)}
-                  placeholder="Ad, soyad, TC veya sınıf yazın (ör. Ayşe, 12345, 9-A)"
+                  placeholder="Ad, soyad, TC veya sınıf yazın"
                   className="pl-9 h-11"
                   autoComplete="off"
                 />
@@ -821,23 +771,16 @@ export function StudyGroupsPanel() {
               <p className="text-xs text-gray-500">
                 {studentMatchStats.totalMatched} sonuç
                 {studentMatchStats.totalMatched > studentMatchStats.limit
-                  ? ` · ilk ${studentMatchStats.limit} gösteriliyor — aramayı daraltın`
-                  : null}
-                {!studentSearch && gradeLevelFilter === "all" && !showSelectedOnly
-                  ? " · sınıf seçin veya arama yapın"
+                  ? ` · ilk ${studentMatchStats.limit} gösteriliyor`
                   : null}
               </p>
 
-              <div className="max-h-80 overflow-y-auto rounded-xl border border-gray-200 divide-y bg-white">
+              <div className="max-h-72 overflow-y-auto rounded-xl border border-gray-200 divide-y bg-white">
                 {filteredStudents.length === 0 ? (
-                  <p className="text-sm text-gray-500 p-6 text-center">
-                    {showSelectedOnly
-                      ? "Seçili öğrenci yok"
-                      : "Öğrenci bulunamadı — arama veya sınıf filtresini değiştirin"}
-                  </p>
+                  <p className="text-sm text-gray-500 p-6 text-center">Öğrenci bulunamadı</p>
                 ) : (
                   filteredStudents.map((s) => {
-                    const checked = form.studentIds.includes(s.id)
+                    const checked = groupForm.studentIds.includes(s.id)
                     return (
                       <label
                         key={s.id}
@@ -869,20 +812,226 @@ export function StudyGroupsPanel() {
 
           <div className="sticky bottom-0 border-t bg-white px-6 py-4 flex flex-col sm:flex-row gap-3">
             <p className="text-xs text-gray-500 sm:flex-1 self-center">
-              {form.studentIds.length === 0
-                ? "Öğrencisiz kaydedilebilir; daha sonra karttan düzenleyerek ekleyin."
-                : `${form.studentIds.length} öğrenci ile kaydedilecek.`}
+              Program ataması grup kartındaki “Program ata” ile yapılır.
             </p>
             <Button
               variant="outline"
               className="sm:w-28"
-              onClick={() => setModalOpen(false)}
+              onClick={() => setGroupModalOpen(false)}
               disabled={busy}
             >
               İptal
             </Button>
-            <Button className="sm:w-36" onClick={() => void save()} disabled={busy}>
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : editing ? "Güncelle" : "Oluştur"}
+            <Button className="sm:w-36" onClick={() => void saveGroup()} disabled={busy}>
+              {busy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : editingGroup ? (
+                "Güncelle"
+              ) : (
+                "Oluştur"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Program ataması */}
+      <Dialog
+        open={sessionModalOpen}
+        onOpenChange={(open) => {
+          if (!open) setSessionModalOpen(false)
+          else setSessionModalOpen(true)
+        }}
+      >
+        <DialogContent className="max-w-6xl w-[min(96vw,72rem)] max-h-[92vh] overflow-y-auto p-0">
+          <div className="sticky top-0 z-10 border-b bg-white px-6 pt-6 pb-4">
+            <DialogHeader className="pr-8 mb-0">
+              <DialogTitle className="text-xl">
+                {editingSession ? "Atamayı düzenle" : "Program ata"}
+                {sessionGroup ? ` — ${sessionGroup.name}` : ""}
+              </DialogTitle>
+            </DialogHeader>
+          </div>
+
+          <div className="px-6 py-5 space-y-6">
+            <div className="grid gap-4 lg:grid-cols-[1fr_1fr_160px]">
+              <div>
+                <Label>Öğretmen *</Label>
+                <select
+                  className="mt-1.5 w-full rounded-md border border-gray-200 bg-white px-3 py-2.5 text-sm"
+                  value={sessionForm.teacherId}
+                  onChange={(e) => setSessionForm({ ...sessionForm, teacherId: e.target.value })}
+                >
+                  <option value="">Öğretmen seçiniz</option>
+                  {teachers.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.firstName} {t.lastName}
+                      {t.subject ? ` (${t.subject})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label>Konu *</Label>
+                <Input
+                  className="mt-1.5"
+                  value={sessionForm.topic}
+                  onChange={(e) => setSessionForm({ ...sessionForm, topic: e.target.value })}
+                  placeholder="Öğretmenin göreceği konu"
+                />
+              </div>
+              <div>
+                <Label>Derslik</Label>
+                <Input
+                  className="mt-1.5"
+                  value={sessionForm.room}
+                  onChange={(e) => setSessionForm({ ...sessionForm, room: e.target.value })}
+                  placeholder="B203"
+                />
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                  <p className="font-semibold text-gray-900">Gün ve ders saati</p>
+                  <p className="text-sm text-gray-600">
+                    {selectedTeacher
+                      ? `${selectedTeacher.firstName} ${selectedTeacher.lastName} — boş hücreye tıklayın`
+                      : "Önce öğretmen seçin"}
+                  </p>
+                </div>
+                {sessionForm.teacherId && (
+                  <p className="text-xs font-medium text-indigo-800 bg-white/80 border border-indigo-100 rounded-lg px-3 py-1.5">
+                    Seçili: {DAY_NAMES[parseInt(sessionForm.dayOfWeek, 10) || 1]} ·{" "}
+                    {sessionForm.startTime}–{sessionForm.endTime}
+                  </p>
+                )}
+              </div>
+
+              {!sessionForm.teacherId ? (
+                <p className="text-sm text-gray-500 py-8 text-center">
+                  Öğretmen seçildikten sonra program açılır
+                </p>
+              ) : teacherBusyLoading ? (
+                <div className="flex justify-center py-10 text-gray-500 gap-2">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Program yükleniyor...
+                </div>
+              ) : slots.length === 0 ? (
+                <p className="text-sm text-amber-800 py-6 text-center">
+                  Tanımlı ders saati yok. Ders saatleri’nden şablon ekleyin.
+                </p>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-white bg-white">
+                  <table className="w-full border-collapse min-w-[640px]">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="border-b border-r border-gray-200 p-2 text-xs font-semibold text-gray-700 w-28">
+                          Saat
+                        </th>
+                        {WEEKDAY_INDEXES.map((day) => (
+                          <th
+                            key={day}
+                            className="border-b border-gray-200 p-2 text-xs font-semibold text-gray-700"
+                          >
+                            {DAY_NAMES[day]}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {slots.map((slot) => (
+                        <tr key={`${slot.id}-${slot.startTime}`}>
+                          <td
+                            className={`border-b border-r border-gray-200 p-2 text-xs font-medium ${
+                              slot.kind === "ETUT"
+                                ? "text-emerald-900 bg-emerald-50/80"
+                                : "text-gray-800 bg-gray-50/80"
+                            }`}
+                          >
+                            <div>{slot.label}</div>
+                            <div className="text-[10px] opacity-70 font-normal">
+                              {slot.startTime}–{slot.endTime}
+                            </div>
+                          </td>
+                          {WEEKDAY_INDEXES.map((day) => {
+                            const occupied = findBusy(day, slot.startTime, slot.endTime)
+                            const selected = isSelectedSlot(day, slot.startTime, slot.endTime)
+                            if (occupied) {
+                              return (
+                                <td
+                                  key={`${day}-${slot.id}`}
+                                  className="border-b border-gray-100 p-1.5 align-top bg-rose-50"
+                                  title={occupied.label}
+                                >
+                                  <div className="px-1 py-1">
+                                    <p className="text-[10px] font-semibold text-rose-800 leading-tight line-clamp-2">
+                                      {occupied.label}
+                                    </p>
+                                    <p className="text-[9px] text-rose-600 mt-0.5">Dolu</p>
+                                  </div>
+                                </td>
+                              )
+                            }
+                            return (
+                              <td
+                                key={`${day}-${slot.id}`}
+                                className={`border-b border-gray-100 p-1.5 cursor-pointer align-middle transition-colors ${
+                                  selected
+                                    ? "bg-violet-100 ring-2 ring-inset ring-violet-400"
+                                    : "bg-emerald-50/70 hover:bg-emerald-100"
+                                }`}
+                                onClick={() =>
+                                  setSessionForm((prev) => ({
+                                    ...prev,
+                                    dayOfWeek: String(day),
+                                    startTime: slot.startTime,
+                                    endTime: slot.endTime,
+                                  }))
+                                }
+                              >
+                                <div className="h-11 flex items-center justify-center">
+                                  <span
+                                    className={`text-[10px] font-medium ${
+                                      selected ? "text-violet-800" : "text-emerald-700"
+                                    }`}
+                                  >
+                                    {selected ? "Seçildi" : "Boş"}
+                                  </span>
+                                </div>
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="sticky bottom-0 border-t bg-white px-6 py-4 flex flex-col sm:flex-row gap-3">
+            <p className="text-xs text-gray-500 sm:flex-1 self-center">
+              Konu, öğretmen takviminde bu grubun yanında görünür.
+            </p>
+            <Button
+              variant="outline"
+              className="sm:w-28"
+              onClick={() => setSessionModalOpen(false)}
+              disabled={busy}
+            >
+              İptal
+            </Button>
+            <Button className="sm:w-36" onClick={() => void saveSession()} disabled={busy}>
+              {busy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : editingSession ? (
+                "Güncelle"
+              ) : (
+                "Ata"
+              )}
             </Button>
           </div>
         </DialogContent>

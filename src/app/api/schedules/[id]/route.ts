@@ -205,22 +205,23 @@ export async function PUT(
         )
       }
 
-      const studyGroups = await prisma.studyGroup.findMany({
+      const studyGroups = await prisma.studyGroupSession.findMany({
         where: {
           teacherId: finalTeacherId,
           dayOfWeek: finalDayOfWeek,
           isActive: true,
         },
+        include: { studyGroup: { select: { name: true } } },
       })
       const overlappingGroups = studyGroups.filter((g) =>
         hasTimeConflict(g.startTime, g.endTime, finalStartTime, finalEndTime)
       )
       if (overlappingGroups.length > 0) {
         const info = overlappingGroups
-          .map((g) => `${g.name} (${g.startTime}–${g.endTime})`)
+          .map((g) => `${g.studyGroup.name} (${g.startTime}–${g.endTime})`)
           .join(", ")
         return NextResponse.json(
-          { error: `Bu öğretmenin aynı saatte özel çalışma grubu var: ${info}` },
+          { error: `Bu öğretmenin aynı saatte özel çalışma ataması var: ${info}` },
           { status: 400 }
         )
       }

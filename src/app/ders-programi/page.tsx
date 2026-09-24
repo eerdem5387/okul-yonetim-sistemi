@@ -283,33 +283,33 @@ export default function DersProgramiPage() {
     setTeacherLoading(true)
     Promise.all([
       fetch(`/api/schedules?teacherId=${selectedTeacherId}`, { cache: "no-store" }),
-      fetch(`/api/study-groups?teacherId=${selectedTeacherId}`, { cache: "no-store" }),
+      fetch(`/api/study-groups/sessions?teacherId=${selectedTeacherId}`, { cache: "no-store" }),
     ])
-      .then(async ([schedRes, groupRes]) => {
+      .then(async ([schedRes, sessionRes]) => {
         const schedData = schedRes.ok ? await schedRes.json() : { schedules: [] }
-        const groupData = groupRes.ok ? await groupRes.json() : { groups: [] }
+        const sessionData = sessionRes.ok ? await sessionRes.json() : { sessions: [] }
         if (cancelled) return
         setTeacherSchedules(Array.isArray(schedData.schedules) ? schedData.schedules : [])
-        const groups = Array.isArray(groupData.groups) ? groupData.groups : []
+        const sessions = Array.isArray(sessionData.sessions) ? sessionData.sessions : []
         setTeacherStudyItems(
-          groups.map(
-            (g: {
+          sessions.map(
+            (s: {
               id: string
-              name: string
-              subjectName?: string | null
+              topic: string
               dayOfWeek: number
               startTime: string
               endTime: string
               room?: string | null
+              studyGroup?: { name?: string } | null
             }) => ({
-              id: `sg-${g.id}`,
+              id: `sgs-${s.id}`,
               classId: "",
-              className: `Özel: ${g.name}`,
-              subjectName: g.subjectName || g.name,
-              dayOfWeek: g.dayOfWeek,
-              startTime: g.startTime,
-              endTime: g.endTime,
-              room: g.room ?? null,
+              className: `Özel: ${s.studyGroup?.name || "Grup"}`,
+              subjectName: s.topic,
+              dayOfWeek: s.dayOfWeek,
+              startTime: s.startTime,
+              endTime: s.endTime,
+              room: s.room ?? null,
             })
           )
         )

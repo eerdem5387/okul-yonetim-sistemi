@@ -690,7 +690,7 @@ model Staff {
   subjectAssignments    SubjectAssignment[]
   assignedClasses       Class[]             @relation("ClassCounselor")
   teacherSchedules      Schedule[]          @relation("TeacherSchedules")
-  studyGroups           StudyGroup[]        @relation("StudyGroupTeacher")
+  studyGroupSessions    StudyGroupSession[] @relation("StudyGroupSessionTeacher")
   homeworks             Homework[]          @relation("TeacherHomeworks")
   attendances           Attendance[]        @relation("TeacherAttendances")
   createdExams          Exam[]              @relation("ExamCreator")
@@ -1410,26 +1410,19 @@ model ScheduleApproval {
 }
 
 // Özel çalışma grubu — sınıf değil, seçilen öğrenciler + öğretmen
+// Özel çalışma grubu — önce isim + öğrenci listesi; program ataması ayrı (StudyGroupSession)
 model StudyGroup {
-  id          String   @id @default(cuid())
-  name        String // Grup adı (örn: "Matematik Destek A")
-  subjectName String? // Ders/konu (opsiyonel)
-  teacherId   String
-  dayOfWeek   Int // 1-7
-  startTime   String // "09:00"
-  endTime     String // "09:45"
-  room        String?
-  notes       String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  name      String // Grup adı (örn: "Matematik Destek A")
+  notes     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  teacher  Staff               @relation("StudyGroupTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
   students StudyGroupStudent[]
+  sessions StudyGroupSession[]
 
-  @@index([teacherId])
-  @@index([dayOfWeek])
-  @@index([teacherId, dayOfWeek])
+  @@index([isActive])
   @@map("study_groups")
 }
 
@@ -1446,6 +1439,32 @@ model StudyGroupStudent {
   @@index([studyGroupId])
   @@index([studentId])
   @@map("study_group_students")
+}
+
+/// Grubun haftalık program ataması (gün / saat / öğretmen / derslik / konu)
+model StudyGroupSession {
+  id           String   @id @default(cuid())
+  studyGroupId String
+  teacherId    String
+  dayOfWeek    Int // 1-7
+  startTime    String // "09:00"
+  endTime      String // "09:45"
+  room         String?
+  /// Öğretmenin bu derste işleyeceği konu
+  topic        String
+  notes        String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  studyGroup StudyGroup @relation(fields: [studyGroupId], references: [id], onDelete: Cascade)
+  teacher    Staff      @relation("StudyGroupSessionTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([studyGroupId])
+  @@index([teacherId])
+  @@index([dayOfWeek])
+  @@index([teacherId, dayOfWeek])
+  @@map("study_group_sessions")
 }
 
 enum SchoolBand {

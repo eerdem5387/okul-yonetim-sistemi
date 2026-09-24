@@ -94,8 +94,9 @@ export async function assertClubSlotFree(options: {
         where: { teacherId: instructorId, dayOfWeek, isActive: true },
         include: { class: { select: { name: true } } },
       }),
-      prisma.studyGroup.findMany({
+      prisma.studyGroupSession.findMany({
         where: { teacherId: instructorId, dayOfWeek, isActive: true },
+        include: { studyGroup: { select: { name: true } } },
       }),
       prisma.clubSchedule.findMany({
         where: {
@@ -123,8 +124,8 @@ export async function assertClubSlotFree(options: {
       hasTimeConflict(g.startTime, g.endTime, startTime, endTime)
     )
     if (groupHit.length > 0) {
-      const info = groupHit.map((g) => g.name).join(", ")
-      return `Sorumlu öğretmenin aynı saatte özel çalışma grubu var: ${info}`
+      const info = groupHit.map((g) => g.studyGroup.name).join(", ")
+      return `Sorumlu öğretmenin aynı saatte özel çalışma ataması var: ${info}`
     }
 
     const clubHit = otherClubs.filter((c) =>
