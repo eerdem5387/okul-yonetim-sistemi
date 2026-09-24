@@ -213,38 +213,68 @@ export function TeacherScheduleGrid({
                 {dayIndexes.map((day) => {
                   const cellItems = byCell.get(`${day}|${row.key}`) ?? []
                   const isSat = day === SATURDAY_INDEX
+                  const allStudy =
+                    cellItems.length > 0 && cellItems.every((i) => i.kind === "study")
+                  const cellBg =
+                    cellItems.length === 0
+                      ? ""
+                      : allStudy
+                        ? "bg-sky-50/90 border-l-2 border-l-sky-400"
+                        : isSat
+                          ? "bg-violet-50/80"
+                          : "bg-emerald-50/80"
                   return (
                     <td
                       key={`${day}-${row.key}`}
-                      className={`border-b border-gray-100 p-1.5 align-top min-h-[3rem] ${
-                        cellItems.length > 0
-                          ? isSat
-                            ? "bg-violet-50/80"
-                            : "bg-emerald-50/80"
-                          : ""
-                      }`}
+                      className={`border-b border-gray-100 p-1.5 align-top min-h-[3rem] ${cellBg}`}
                     >
                       {cellItems.length === 0 ? (
                         <div className="h-12" />
                       ) : (
                         <div className="space-y-1.5">
-                          {cellItems.map((item) => (
-                            <div key={item.id} className="space-y-0.5 px-1 py-0.5">
-                              <p className="text-xs font-semibold text-gray-900 leading-tight">
-                                {item.subjectName}
-                              </p>
-                              <p className="text-[10px] text-gray-600 leading-tight">
-                                {item.className}
-                                {item.kind === "study" ? " · ÖÇG" : ""}
-                              </p>
-                              <p className="text-[10px] text-gray-500 leading-tight">
-                                {item.startTime}–{item.endTime}
-                              </p>
-                              {item.room && (
-                                <p className="text-[10px] text-gray-500">{item.room}</p>
-                              )}
-                            </div>
-                          ))}
+                          {cellItems.map((item) => {
+                            const isStudy = item.kind === "study"
+                            return (
+                              <div
+                                key={item.id}
+                                className={`space-y-0.5 px-1.5 py-1 rounded-md ${
+                                  isStudy && !allStudy ? "bg-sky-100/90 ring-1 ring-sky-200" : ""
+                                }`}
+                              >
+                                <p
+                                  className={`text-xs font-semibold leading-tight ${
+                                    isStudy ? "text-sky-950" : "text-gray-900"
+                                  }`}
+                                >
+                                  {item.subjectName}
+                                </p>
+                                <p
+                                  className={`text-[10px] leading-tight ${
+                                    isStudy ? "text-sky-800 font-medium" : "text-gray-600"
+                                  }`}
+                                >
+                                  {item.className}
+                                  {isStudy ? " · ÖÇG" : ""}
+                                </p>
+                                <p
+                                  className={`text-[10px] leading-tight ${
+                                    isStudy ? "text-sky-700" : "text-gray-500"
+                                  }`}
+                                >
+                                  {item.startTime}–{item.endTime}
+                                </p>
+                                {item.room && (
+                                  <p
+                                    className={`text-[10px] ${
+                                      isStudy ? "text-sky-700" : "text-gray-500"
+                                    }`}
+                                  >
+                                    {item.room}
+                                  </p>
+                                )}
+                              </div>
+                            )
+                          })}
                         </div>
                       )}
                     </td>

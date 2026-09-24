@@ -87,6 +87,16 @@ type SessionForm = {
 type GridSlot = LessonSlot & { kind?: "LESSON" | "BREAK" | "ETUT" }
 type SlotBand = "ortaokul" | "lise"
 
+type SessionSlotPick = {
+  dayOfWeek: number
+  startTime: string
+  endTime: string
+}
+
+function slotPickKey(s: SessionSlotPick) {
+  return `${s.dayOfWeek}|${s.startTime}|${s.endTime}`
+}
+
 const GRADE_LEVELS = [5, 6, 7, 8, 9, 10, 11, 12] as const
 
 const emptyGroupForm = (): GroupForm => ({
@@ -152,6 +162,7 @@ export function StudyGroupsPanel() {
   const [sessionGroup, setSessionGroup] = useState<StudyGroup | null>(null)
   const [editingSession, setEditingSession] = useState<StudySession | null>(null)
   const [sessionForm, setSessionForm] = useState<SessionForm>(() => emptySessionForm())
+  const [selectedSlots, setSelectedSlots] = useState<SessionSlotPick[]>([])
   const [teacherBusy, setTeacherBusy] = useState<BusyBlock[]>([])
   const [teacherBusyLoading, setTeacherBusyLoading] = useState(false)
   const [slotMap, setSlotMap] = useState<{ ortaokul: GridSlot[]; lise: GridSlot[] }>({
@@ -321,10 +332,40 @@ export function StudyGroupsPanel() {
   const findBusy = (day: number, start: string, end: string) =>
     teacherBusy.find((b) => b.dayOfWeek === day && hasTimeConflict(b.startTime, b.endTime, start, end))
 
-  const isSelectedSlot = (day: number, start: string, end: string) =>
-    sessionForm.dayOfWeek === String(day) &&
-    sessionForm.startTime === start &&
-    sessionForm.endTime === end
+  const isSelectedSlot = (day: number, start: string, end: string) => {
+    if (editingSession) {
+      return (
+        sessionForm.dayOfWeek === String(day) &&
+        sessionForm.startTime === start &&
+        sessionForm.endTime === end
+      )
+    }
+    return selectedSlots.some(
+      (s) => s.dayOfWeek === day && s.startTime === start && s.endTime === end
+    )
+  }
+
+  const toggleSlotPick = (day: number, start: string, end: string) => {
+    if (editingSession) {
+      setSessionForm((prev) => ({
+        ...prev,
+        dayOfWeek: String(day),
+        startTime: start,
+        endTime: end,
+      }))
+      return
+    }
+    const pick: SessionSlotPick = { dayOfWeek: day, startTime: start, endTime: end }
+    const key = slotPickKey(pick)
+    setSelectedSlots((prev) => {
+      if (prev.some((s) => slotPickKey(s) === key)) {
+        return prev.filter((s) => slotPickKey(s) !== key)
+      }
+      return [...prev, pick].sort(
+        (a, b) => a.dayOfWeek - b.dayOfWeek || a.startTime.localeCompare(b.startTime)
+      )
+    })
+  }
 
   const openCreateGroup = () => {
     setEditingGroup(null)
@@ -355,6 +396,7 @@ export function StudyGroupsPanel() {
     setSessionGroup(group)
     setEditingSession(null)
     setSessionForm(emptySessionForm(bandSlots))
+    setSelectedSlots([])
     setTeacherBusy([])
     setSessionModalOpen(true)
   }
@@ -362,6 +404,7 @@ export function StudyGroupsPanel() {
   const openEditSession = (group: StudyGroup, session: StudySession) => {
     setSessionGroup(group)
     setEditingSession(session)
+    setSelectedSlots([])
     setSessionForm({
       teacherId: session.teacher.id,
       dayOfWeek: String(session.dayOfWeek),
@@ -445,33 +488,80 @@ export function StudyGroupsPanel() {
       alert("Öğretmen ve konu zorunludur.")
       return
     }
+
+    const slotsToSave: SessionSlotPick[] = editingSession
+      ? [
+          {
+            dayOfWeek: parseInt(sessionForm.dayOfWeek, 10),
+            startTime: sessionForm.startTime,
+            endTime: sessionForm.endTime,
+          },
+        ]
+      : selectedSlots
+
+    if (slotsToSave.length === 0) {
+      alert("En az bir gün/ders saati seçiniz.")
+      return
+    }
+
     setBusy(true)
     try {
-      const payload = {
-        studyGroupId: sessionGroup.id,
-        teacherId: sessionForm.teacherId,
-        dayOfWeek: parseInt(sessionForm.dayOfWeek, 10),
-        startTime: sessionForm.startTime,
-        endTime: sessionForm.endTime,
-        room: sessionForm.room.trim() || null,
-        topic: sessionForm.topic.trim(),
-        notes: sessionForm.notes.trim() || null,
-      }
-      const url = editingSession
-        ? `/api/study-groups/sessions/${editingSession.id}`
-        : "/api/study-groups/sessions"
-      const method = editingSession ? "PUT" : "POST"
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        alert((data as { error?: string }).error || "Atama kaydedilemedi")
-        return
+      if (editingSession) {
+        const res = await fetch(`/api/study-groups/sessions/${editingSession.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            teacherId: sessionForm.teacherId,
+            dayOfWeek: slotsToSave[0].dayOfWeek,
+            startTime: slotsToSave[0].startTime,
+            endTime: slotsToSave[0].endTime,
+            room: sessionForm.room.trim() || null,
+            topic: sessionForm.topic.trim(),
+            notes: sessionForm.notes.trim() || null,
+          }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          alert((data as { error?: string }).error || "Atama kaydedilemedi")
+          return
+        }
+      } else {
+        const errors: string[] = []
+        let okCount = 0
+        for (const slot of slotsToSave) {
+          const res = await fetch("/api/study-groups/sessions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              studyGroupId: sessionGroup.id,
+              teacherId: sessionForm.teacherId,
+              dayOfWeek: slot.dayOfWeek,
+              startTime: slot.startTime,
+              endTime: slot.endTime,
+              room: sessionForm.room.trim() || null,
+              topic: sessionForm.topic.trim(),
+              notes: sessionForm.notes.trim() || null,
+            }),
+          })
+          const data = await res.json().catch(() => ({}))
+          if (!res.ok) {
+            errors.push(
+              `${DAY_NAMES[slot.dayOfWeek]} ${slot.startTime}: ${(data as { error?: string }).error || "hata"}`
+            )
+          } else {
+            okCount++
+          }
+        }
+        if (errors.length > 0) {
+          alert(
+            (okCount > 0 ? `${okCount} atama kaydedildi.\n\n` : "") +
+              `Kaydedilemeyenler:\n${errors.join("\n")}`
+          )
+          if (okCount === 0) return
+        }
       }
       setSessionModalOpen(false)
+      setSelectedSlots([])
       await load()
     } finally {
       setBusy(false)
@@ -962,16 +1052,21 @@ export function StudyGroupsPanel() {
                   <p className="font-semibold text-gray-900">Gün ve ders saati</p>
                   <p className="text-sm text-gray-600">
                     {selectedTeacher
-                      ? `${selectedTeacher.firstName} ${selectedTeacher.lastName} — boş hücreye tıklayın (${
-                          sessionBand === "lise" ? "lise" : "ortaokul"
-                        } saatleri)`
+                      ? editingSession
+                        ? `${selectedTeacher.firstName} ${selectedTeacher.lastName} — bir hücre seçin`
+                        : `${selectedTeacher.firstName} ${selectedTeacher.lastName} — birden fazla boş hücre seçebilirsiniz (${
+                            sessionBand === "lise" ? "lise" : "ortaokul"
+                          } saatleri)`
                       : "Önce öğretmen seçin"}
                   </p>
                 </div>
                 {sessionForm.teacherId && (
                   <p className="text-xs font-medium text-indigo-800 bg-white/80 border border-indigo-100 rounded-lg px-3 py-1.5">
-                    Seçili: {DAY_NAMES[parseInt(sessionForm.dayOfWeek, 10) || 1]} ·{" "}
-                    {sessionForm.startTime}–{sessionForm.endTime}
+                    {editingSession
+                      ? `Seçili: ${DAY_NAMES[parseInt(sessionForm.dayOfWeek, 10) || 1]} · ${sessionForm.startTime}–${sessionForm.endTime}`
+                      : selectedSlots.length === 0
+                        ? "Henüz saat seçilmedi"
+                        : `${selectedSlots.length} saat seçili`}
                   </p>
                 )}
               </div>
@@ -1049,14 +1144,7 @@ export function StudyGroupsPanel() {
                                     ? "bg-violet-100 ring-2 ring-inset ring-violet-400"
                                     : "bg-emerald-50/70 hover:bg-emerald-100"
                                 }`}
-                                onClick={() =>
-                                  setSessionForm((prev) => ({
-                                    ...prev,
-                                    dayOfWeek: String(day),
-                                    startTime: slot.startTime,
-                                    endTime: slot.endTime,
-                                  }))
-                                }
+                                onClick={() => toggleSlotPick(day, slot.startTime, slot.endTime)}
                               >
                                 <div className="h-11 flex items-center justify-center">
                                   <span
@@ -1081,7 +1169,9 @@ export function StudyGroupsPanel() {
 
           <div className="sticky bottom-0 border-t bg-white px-6 py-4 flex flex-col sm:flex-row gap-3">
             <p className="text-xs text-gray-500 sm:flex-1 self-center">
-              Konu, öğretmen takviminde bu grubun yanında görünür.
+              {editingSession
+                ? "Konu, öğretmen takviminde bu grubun yanında görünür."
+                : "Aynı öğretmen ve konu ile birden fazla gün/saat atayabilirsiniz. Karttan tekrar “Program ata” ile de ekleme yapılabilir."}
             </p>
             <Button
               variant="outline"
@@ -1091,11 +1181,13 @@ export function StudyGroupsPanel() {
             >
               İptal
             </Button>
-            <Button className="sm:w-36" onClick={() => void saveSession()} disabled={busy}>
+            <Button className="sm:w-40" onClick={() => void saveSession()} disabled={busy}>
               {busy ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : editingSession ? (
                 "Güncelle"
+              ) : selectedSlots.length > 1 ? (
+                `${selectedSlots.length} atama kaydet`
               ) : (
                 "Ata"
               )}
