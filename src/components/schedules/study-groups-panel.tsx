@@ -15,8 +15,10 @@ import { Label } from "@/components/ui/label"
 import { getAuthHeaders } from "@/components/hr/hr-utils"
 import {
   DAY_NAMES,
-  DEFAULT_LESSON_SLOTS,
+  DEFAULT_LISE_WEEKDAY_SLOTS,
+  DEFAULT_ORTAOKUL_WEEKDAY_SLOTS,
   WEEKDAY_INDEXES,
+  gradeBandFor,
   type LessonSlot,
 } from "@/lib/schedules/lesson-slots"
 import { hasTimeConflict } from "@/lib/schedules/time-conflict"
@@ -81,6 +83,7 @@ type SessionForm = {
 }
 
 type GridSlot = LessonSlot & { kind?: "LESSON" | "BREAK" | "ETUT" }
+type SlotBand = "ortaokul" | "lise"
 
 const emptyGroupForm = (): GroupForm => ({
   name: "",
@@ -88,31 +91,54 @@ const emptyGroupForm = (): GroupForm => ({
   studentIds: [],
 })
 
-const emptySessionForm = (): SessionForm => ({
-  teacherId: "",
-  dayOfWeek: "1",
-  startTime: "08:00",
-  endTime: "09:00",
-  room: "",
-  topic: "",
-  notes: "",
-})
+const emptySessionForm = (slots?: GridSlot[]): SessionForm => {
+  const first = slots?.find((s) => (s.kind ?? "LESSON") !== "BREAK") ?? slots?.[0]
+  return {
+    teacherId: "",
+    dayOfWeek: "1",
+    startTime: first?.startTime ?? "08:40",
+    endTime: first?.endTime ?? "09:20",
+    room: "",
+    topic: "",
+    notes: "",
+  }
+}
 
 const GRADE_LEVELS = [5, 6, 7, 8, 9, 10, 11, 12]
 
-function mergeAssignableSlots(orta: GridSlot[], lise: GridSlot[]): GridSlot[] {
-  const merged: GridSlot[] = []
+/** Teneffüs hariç; aynı başlangıç saati bir kez. */
+function assignableSlots(raw: GridSlot[]): GridSlot[] {
+  const out: GridSlot[] = []
   const seen = new Set<string>()
   let id = 1
-  for (const s of [...orta, ...lise]) {
+  for (const s of raw) {
     const kind = s.kind ?? "LESSON"
     if (kind === "BREAK") continue
     const key = `${s.startTime}|${s.endTime}`
     if (seen.has(key)) continue
     seen.add(key)
-    merged.push({ ...s, id: id++, kind })
+    out.push({ ...s, id: id++, kind })
   }
-  return merged.sort((a, b) => a.startTime.localeCompare(b.startTime))
+  return out.sort((a, b) => a.startTime.localeCompare(b.startTime))
+}
+
+/** Grubun öğrenci kademesine göre ortaokul / lise şablonu (öğleden sonra saatleri farklı). */
+function bandForStudyGroup(group: StudyGroup | null): SlotBand {
+  if (!group) return "ortaokul"
+  let orta = 0
+  let lise = 0
+  for (const m of group.students) {
+    const level = parseStudentGradeLevel(m.student.grade)
+    const band = level != null ? gradeBandFor(level) : null
+    if (band === "ortaokul") orta++
+    else if (band === "lise") lise++
+  }
+  if (lise === 0 && orta === 0) {
+    const notes = (group.notes || "").toLocaleLowerCase("tr-TR")
+    if (/\b(9|10|11|12)\b/.test(notes) || notes.includes("lise")) return "lise"
+    return "ortaokul"
+  }
+  return lise > orta ? "lise" : "ortaokul"
 }
 
 export function StudyGroupsPanel() {
@@ -133,10 +159,19 @@ export function StudyGroupsPanel() {
   const [sessionModalOpen, setSessionModalOpen] = useState(false)
   const [sessionGroup, setSessionGroup] = useState<StudyGroup | null>(null)
   const [editingSession, setEditingSession] = useState<StudySession | null>(null)
-  const [sessionForm, setSessionForm] = useState<SessionForm>(emptySessionForm)
+  const [sessionForm, setSessionForm] = useState<SessionForm>(() => emptySessionForm())
   const [teacherBusy, setTeacherBusy] = useState<BusyBlock[]>([])
   const [teacherBusyLoading, setTeacherBusyLoading] = useState(false)
-  const [slots, setSlots] = useState<GridSlot[]>([...DEFAULT_LESSON_SLOTS])
+  const [slotMap, setSlotMap] = useState<{ ortaokul: GridSlot[]; lise: GridSlot[] }>({
+    ortaokul: assignableSlots([...DEFAULT_ORTAOKUL_WEEKDAY_SLOTS]),
+    lise: assignableSlots([...DEFAULT_LISE_WEEKDAY_SLOTS]),
+  })
+
+  const sessionBand = useMemo(() => bandForStudyGroup(sessionGroup), [sessionGroup])
+  const slots = useMemo(
+    () => (sessionBand === "lise" ? slotMap.lise : slotMap.ortaokul),
+    [sessionBand, slotMap]
+  )
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -163,10 +198,17 @@ export function StudyGroupsPanel() {
         const templates = Array.isArray(tmpl.templates) ? tmpl.templates : []
         const orta = templates.find((t: { band: string }) => t.band === "ortaokul")
         const lise = templates.find((t: { band: string }) => t.band === "lise")
-        const ortaSlots = (Array.isArray(orta?.slots) ? orta.slots : []) as GridSlot[]
-        const liseSlots = (Array.isArray(lise?.slots) ? lise.slots : []) as GridSlot[]
-        const merged = mergeAssignableSlots(ortaSlots, liseSlots)
-        setSlots(merged.length > 0 ? merged : [...DEFAULT_LESSON_SLOTS])
+        const ortaSlots = assignableSlots(
+          (Array.isArray(orta?.slots) && orta.slots.length > 0
+            ? orta.slots
+            : DEFAULT_ORTAOKUL_WEEKDAY_SLOTS) as GridSlot[]
+        )
+        const liseSlots = assignableSlots(
+          (Array.isArray(lise?.slots) && lise.slots.length > 0
+            ? lise.slots
+            : DEFAULT_LISE_WEEKDAY_SLOTS) as GridSlot[]
+        )
+        setSlotMap({ ortaokul: ortaSlots, lise: liseSlots })
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Yüklenemedi")
@@ -315,9 +357,11 @@ export function StudyGroupsPanel() {
   }
 
   const openCreateSession = (group: StudyGroup) => {
+    const band = bandForStudyGroup(group)
+    const bandSlots = band === "lise" ? slotMap.lise : slotMap.ortaokul
     setSessionGroup(group)
     setEditingSession(null)
-    setSessionForm(emptySessionForm())
+    setSessionForm(emptySessionForm(bandSlots))
     setTeacherBusy([])
     setSessionModalOpen(true)
   }
@@ -891,7 +935,9 @@ export function StudyGroupsPanel() {
                   <p className="font-semibold text-gray-900">Gün ve ders saati</p>
                   <p className="text-sm text-gray-600">
                     {selectedTeacher
-                      ? `${selectedTeacher.firstName} ${selectedTeacher.lastName} — boş hücreye tıklayın`
+                      ? `${selectedTeacher.firstName} ${selectedTeacher.lastName} — boş hücreye tıklayın (${
+                          sessionBand === "lise" ? "lise" : "ortaokul"
+                        } saatleri)`
                       : "Önce öğretmen seçin"}
                   </p>
                 </div>
