@@ -1409,22 +1409,22 @@ model ScheduleApproval {
   @@map("schedule_approvals")
 }
 
-// Özel çalışma grubu — önce isim + kademe + öğrenci listesi; program ataması ayrı (StudyGroupSession)
+// Özel çalışma grubu — önce isim + sınıf düzeyi + öğrenci listesi; program ataması ayrı
 model StudyGroup {
-  id        String     @id @default(cuid())
-  name      String // Grup adı (örn: "Matematik Destek A")
-  /// Ders saati şablonu hangi kademeye göre kullanılacak
-  band      SchoolBand @default(ORTAOKUL)
-  notes     String?
-  isActive  Boolean    @default(true)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id         String   @id @default(cuid())
+  name       String // Grup adı (örn: "G 1")
+  /// 5–12; ders saati şablonu bu düzeye göre (5–8 ortaokul, 9–12 lise)
+  gradeLevel Int
+  notes      String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   students StudyGroupStudent[]
   sessions StudyGroupSession[]
 
   @@index([isActive])
-  @@index([band])
+  @@index([gradeLevel])
   @@map("study_groups")
 }
 
