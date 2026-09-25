@@ -1,195 +1,282 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Loader2 } from "lucide-react"
+import { ArrowLeft, Loader2 } from "lucide-react"
 import {
   StudentAttendancePanel,
+  type AttendanceByKind,
   type StudentAttendanceRecord,
 } from "@/components/students/student-attendance-panel"
-import { getAuthHeaders } from "@/components/hr/hr-utils"
+
+type Period = "30days" | "thisMonth" | "all"
 
 export default function VeliYoklamaPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
-  const [attendances, setAttendances] = useState<StudentAttendanceRecord[]>([])
+  const [error, setError] = useState("")
   const [studentName, setStudentName] = useState("")
+  const [period, setPeriod] = useState<Period>("30days")
   const [selectedDate, setSelectedDate] = useState("")
+  const [attendances, setAttendances] = useState<StudentAttendanceRecord[]>([])
+  const [byKind, setByKind] = useState<AttendanceByKind | null>(null)
+  const [overallRate, setOverallRate] = useState(100)
+  const [presentCount, setPresentCount] = useState(0)
+  const [totalCount, setTotalCount] = useState(0)
+  const [absentCount, setAbsentCount] = useState(0)
+  const [lateCount, setLateCount] = useState(0)
+  const [excusedCount, setExcusedCount] = useState(0)
+
+  const load = useCallback(async (studentId: string, p: Period) => {
+    setLoading(true)
+    setError("")
+    try {
+      const res = await fetch(
+        `/api/students/${studentId}/dashboard?period=${p}`,
+        { cache: "no-store" }
+      )
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || "Yoklamalar alınamadı")
+
+      const student = data.student
+      if (student) {
+        setStudentName(`${student.firstName} ${student.lastName}`)
+      }
+      setAttendances(
+        Array.isArray(data.recentData?.attendances)
+          ? data.recentData.attendances
+          : []
+      )
+      setByKind(data.statistics?.attendanceByKind ?? null)
+      setOverallRate(data.statistics?.attendanceRate ?? 100)
+      setPresentCount(data.statistics?.presentCount ?? 0)
+      setTotalCount(data.statistics?.totalAttendances ?? 0)
+      setAbsentCount(data.statistics?.absentCount ?? 0)
+      setLateCount(data.statistics?.lateCount ?? 0)
+      setExcusedCount(data.statistics?.excusedCount ?? 0)
+    } catch (e) {
+      setAttendances([])
+      setError(e instanceof Error ? e.message : "Yüklenemedi")
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     if (typeof window === "undefined") return
     const role = localStorage.getItem("auth_role")
-    const parentId = localStorage.getItem("parent_id")
-    const savedStudentName = localStorage.getItem("student_name")
+    const studentId = localStorage.getItem("student_id")
+    const savedName = localStorage.getItem("student_name")
 
-    if (role !== "parent" || !parentId) {
+    if (role !== "parent" || !studentId) {
       router.push("/veli-login")
       return
     }
 
-    setStudentName(savedStudentName || "Öğrenci")
-    void fetchAttendances(parentId)
-  }, [router])
+    if (savedName) setStudentName(savedName)
+    void load(studentId, period)
+  }, [router, period, load])
 
-  const fetchAttendances = async (parentId: string, date?: string) => {
-    try {
-      const studentsResponse = await fetch(
-        `/api/parents/my-students?parentId=${parentId}`
-      )
-      if (!studentsResponse.ok) return
-      const studentsData = await studentsResponse.json()
-      const student = studentsData.students?.[0]
-      if (!student) return
-
-      let url = `/api/attendance?studentId=${student.id}`
-      if (date) url += `&date=${date}`
-
-      const attendanceResponse = await fetch(url, {
-        headers: getAuthHeaders(),
-        cache: "no-store",
-      })
-      if (attendanceResponse.ok) {
-        const attendanceData = await attendanceResponse.json()
-        setAttendances(
-          Array.isArray(attendanceData.attendances)
-            ? attendanceData.attendances
-            : []
-        )
+  const visibleAttendances = useMemo(() => {
+    if (!selectedDate) return attendances
+    return attendances.filter((a) => {
+      const d = typeof a.date === "string" ? a.date.slice(0, 10) : ""
+      // ISO veya local date karşılaştırması
+      if (d === selectedDate) return true
+      try {
+        const local = new Date(a.date)
+        const y = local.getFullYear()
+        const m = String(local.getMonth() + 1).padStart(2, "0")
+        const day = String(local.getDate()).padStart(2, "0")
+        return `${y}-${m}-${day}` === selectedDate
+      } catch {
+        return false
       }
-    } catch (error) {
-      console.error("Error fetching attendances:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
+    })
+  }, [attendances, selectedDate])
 
-  const handleDateFilter = (date: string) => {
-    setSelectedDate(date)
-    const parentId = localStorage.getItem("parent_id")
-    if (parentId) {
-      setLoading(true)
-      void fetchAttendances(parentId, date || undefined)
+  const filteredStats = useMemo(() => {
+    if (!selectedDate) {
+      return {
+        rate: overallRate,
+        present: presentCount,
+        total: totalCount,
+        absent: absentCount,
+        late: lateCount,
+        excused: excusedCount,
+        byKind,
+      }
     }
-  }
-
-  const stats = useMemo(() => {
-    const c = {
-      PRESENT: 0,
-      ABSENT: 0,
-      LATE: 0,
-      EXCUSED: 0,
-      total: attendances.length,
+    const c = { PRESENT: 0, ABSENT: 0, LATE: 0, EXCUSED: 0, total: visibleAttendances.length }
+    const kindMap: AttendanceByKind = {
+      CLASS: { PRESENT: 0, ABSENT: 0, LATE: 0, EXCUSED: 0, total: 0, rate: null },
+      STUDY_GROUP: { PRESENT: 0, ABSENT: 0, LATE: 0, EXCUSED: 0, total: 0, rate: null },
+      CLUB: { PRESENT: 0, ABSENT: 0, LATE: 0, EXCUSED: 0, total: 0, rate: null },
     }
-    for (const a of attendances) {
-      if (a.status in c) c[a.status as keyof typeof c]++
-    }
-    const byKind = {
-      CLASS: { PRESENT: 0, ABSENT: 0, LATE: 0, EXCUSED: 0, total: 0, rate: null as number | null },
-      STUDY_GROUP: { PRESENT: 0, ABSENT: 0, LATE: 0, EXCUSED: 0, total: 0, rate: null as number | null },
-      CLUB: { PRESENT: 0, ABSENT: 0, LATE: 0, EXCUSED: 0, total: 0, rate: null as number | null },
-    }
-    for (const a of attendances) {
+    for (const a of visibleAttendances) {
+      const st = a.status as keyof typeof c
+      if (st in c && st !== "total") c[st]++
       const kind =
         a.kind === "STUDY_GROUP" || a.kind === "CLUB" ? a.kind : "CLASS"
-      byKind[kind].total++
-      if (a.status === "PRESENT") byKind[kind].PRESENT++
-      else if (a.status === "ABSENT") byKind[kind].ABSENT++
-      else if (a.status === "LATE") byKind[kind].LATE++
-      else if (a.status === "EXCUSED") byKind[kind].EXCUSED++
+      const bucket = kindMap[kind]!
+      bucket.total++
+      if (a.status === "PRESENT") bucket.PRESENT++
+      else if (a.status === "ABSENT") bucket.ABSENT++
+      else if (a.status === "LATE") bucket.LATE++
+      else if (a.status === "EXCUSED") bucket.EXCUSED++
     }
-    for (const k of Object.keys(byKind) as Array<keyof typeof byKind>) {
-      byKind[k].rate =
-        byKind[k].total > 0
-          ? Math.round((byKind[k].PRESENT / byKind[k].total) * 100)
-          : null
+    for (const k of ["CLASS", "STUDY_GROUP", "CLUB"] as const) {
+      const b = kindMap[k]!
+      b.rate = b.total > 0 ? Math.round((b.PRESENT / b.total) * 100) : null
     }
     return {
-      ...c,
       rate: c.total > 0 ? Math.round((c.PRESENT / c.total) * 100) : 100,
-      byKind,
+      present: c.PRESENT,
+      total: c.total,
+      absent: c.ABSENT,
+      late: c.LATE,
+      excused: c.EXCUSED,
+      byKind: kindMap,
     }
-  }, [attendances])
-
-  if (loading) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center gap-2 text-gray-500">
-        <Loader2 className="h-5 w-5 animate-spin" />
-        Yükleniyor...
-      </div>
-    )
-  }
+  }, [
+    selectedDate,
+    visibleAttendances,
+    overallRate,
+    presentCount,
+    totalCount,
+    absentCount,
+    lateCount,
+    excusedCount,
+    byKind,
+  ])
 
   return (
-    <div className="mx-auto max-w-3xl space-y-5 p-4 md:p-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Yoklama</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          {studentName} — ders, ÖÇG ve kulüp yoklamaları
-        </p>
+    <div className="min-h-screen bg-gray-50">
+      <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 px-4 py-5 text-white sm:px-6">
+        <div className="mx-auto max-w-3xl">
+          <Link
+            href="/veli/panel"
+            className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-white/90 hover:text-white"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Panele dön
+          </Link>
+          <h1 className="text-2xl font-semibold">Yoklama</h1>
+          <p className="mt-1 text-sm text-white/85">
+            {studentName || "Öğrenci"} — ders, ÖÇG ve kulüp
+          </p>
+        </div>
       </div>
 
-      <Card className="border-0 shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Filtre</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Label htmlFor="veli-att-date" className="text-xs">
-            Tarih (opsiyonel)
-          </Label>
-          <input
-            id="veli-att-date"
-            type="date"
-            className="mt-1 block w-full rounded-md border border-gray-200 px-3 py-2 text-sm sm:max-w-xs"
-            value={selectedDate}
-            onChange={(e) => handleDateFilter(e.target.value)}
-          />
-        </CardContent>
-      </Card>
+      <div className="mx-auto max-w-3xl space-y-5 p-4 sm:p-6">
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Filtreler</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  { id: "30days" as const, label: "Son 30 gün" },
+                  { id: "thisMonth" as const, label: "Bu ay" },
+                  { id: "all" as const, label: "Tümü" },
+                ] as const
+              ).map((p) => (
+                <Button
+                  key={p.id}
+                  type="button"
+                  size="sm"
+                  variant={period === p.id ? "default" : "outline"}
+                  onClick={() => {
+                    setSelectedDate("")
+                    setPeriod(p.id)
+                  }}
+                >
+                  {p.label}
+                </Button>
+              ))}
+            </div>
+            <div>
+              <Label htmlFor="veli-att-date" className="text-xs">
+                Belirli bir gün (liste içinde)
+              </Label>
+              <input
+                id="veli-att-date"
+                type="date"
+                className="mt-1 block w-full rounded-md border border-gray-200 px-3 py-2 text-sm sm:max-w-xs"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <p className="text-xs text-gray-500">Devam</p>
-            <p className="text-2xl font-bold text-emerald-700">%{stats.rate}</p>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <p className="text-xs text-gray-500">Gelmedi</p>
-            <p className="text-2xl font-bold text-rose-700">{stats.ABSENT}</p>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <p className="text-xs text-gray-500">Geç</p>
-            <p className="text-2xl font-bold text-amber-700">{stats.LATE}</p>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <p className="text-xs text-gray-500">İzinli</p>
-            <p className="text-2xl font-bold text-sky-700">{stats.EXCUSED}</p>
-          </CardContent>
-        </Card>
+        {loading ? (
+          <div className="flex justify-center gap-2 py-16 text-gray-500">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Yükleniyor...
+          </div>
+        ) : error ? (
+          <p className="py-10 text-center text-rose-600">{error}</p>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <Card className="border-0 shadow-sm">
+                <CardContent className="p-4">
+                  <p className="text-xs text-gray-500">Devam</p>
+                  <p className="text-2xl font-bold text-emerald-700">
+                    %{filteredStats.rate}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card className="border-0 shadow-sm">
+                <CardContent className="p-4">
+                  <p className="text-xs text-gray-500">Gelmedi</p>
+                  <p className="text-2xl font-bold text-rose-700">
+                    {filteredStats.absent}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card className="border-0 shadow-sm">
+                <CardContent className="p-4">
+                  <p className="text-xs text-gray-500">Geç</p>
+                  <p className="text-2xl font-bold text-amber-700">
+                    {filteredStats.late}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card className="border-0 shadow-sm">
+                <CardContent className="p-4">
+                  <p className="text-xs text-gray-500">İzinli</p>
+                  <p className="text-2xl font-bold text-sky-700">
+                    {filteredStats.excused}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Kayıtlar</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <StudentAttendancePanel
+                  attendances={visibleAttendances}
+                  byKind={filteredStats.byKind}
+                  overallRate={filteredStats.rate}
+                  presentCount={filteredStats.present}
+                  totalCount={filteredStats.total}
+                  emptyText="Bu dönemde yoklama kaydı yok"
+                />
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
-
-      <Card className="border-0 shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Kayıtlar</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <StudentAttendancePanel
-            attendances={attendances}
-            byKind={stats.byKind}
-            overallRate={stats.rate}
-            presentCount={stats.PRESENT}
-            totalCount={stats.total}
-            emptyText="Henüz yoklama kaydı bulunmuyor"
-          />
-        </CardContent>
-      </Card>
     </div>
   )
 }

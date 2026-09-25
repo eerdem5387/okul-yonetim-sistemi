@@ -268,6 +268,26 @@ export default function VeliPanelPage() {
                     }}
                   />
                 </div>
+                {dashboardData.statistics.attendanceByKind && (
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {([
+                      { key: "CLASS" as const, label: "Ders", cls: "bg-emerald-50 text-emerald-800" },
+                      { key: "STUDY_GROUP" as const, label: "ÖÇG", cls: "bg-sky-50 text-sky-800" },
+                      { key: "CLUB" as const, label: "Kulüp", cls: "bg-violet-50 text-violet-800" },
+                    ]).map((item) => {
+                      const s = dashboardData.statistics.attendanceByKind?.[item.key]
+                      if (!s || s.total === 0) return null
+                      return (
+                        <span
+                          key={item.key}
+                          className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold ${item.cls}`}
+                        >
+                          {item.label} %{s.rate ?? 0}
+                        </span>
+                      )
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </Link>

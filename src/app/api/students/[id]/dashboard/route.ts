@@ -133,7 +133,7 @@ export async function GET(
         orderBy: {
           date: "desc",
         },
-        take: 50,
+        take: 100,
       }),
     ])
 
