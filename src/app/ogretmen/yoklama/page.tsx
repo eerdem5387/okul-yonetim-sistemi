@@ -47,6 +47,7 @@ type Session = {
   room: string | null
   students: Student[] | null
   class: { id: string; name: string; grade: number; section: string } | null
+  hasAttendance?: boolean
 }
 
 const STATUS_META: Record<
@@ -95,6 +96,26 @@ function timeToMinutes(t: string) {
 
 function nowMinutes(d = new Date()) {
   return d.getHours() * 60 + d.getMinutes()
+}
+
+/** Seçili güne göre oturum geçmiş mi? */
+function isSessionPast(
+  session: Session,
+  dateStr: string,
+  now = new Date()
+): boolean {
+  const today = localDateString(now)
+  if (dateStr < today) return true
+  if (dateStr > today) return false
+  return nowMinutes(now) >= timeToMinutes(session.endTime)
+}
+
+function needsAttendanceWarning(
+  session: Session,
+  dateStr: string,
+  now = new Date()
+): boolean {
+  return isSessionPast(session, dateStr, now) && !session.hasAttendance
 }
 
 /** Şu an devam eden oturum; yoksa en yakın sonraki; o da yoksa en son biten. */
@@ -195,6 +216,12 @@ export default function TeacherAttendancePage() {
   )
 
   const livePhase = liveSession ? sessionPhase(liveSession, clock) : null
+
+  const missedSessions = useMemo(
+    () =>
+      sessions.filter((s) => needsAttendanceWarning(s, selectedDate, clock)),
+    [sessions, selectedDate, clock]
+  )
 
   const openSession = useCallback(
     async (session: Session) => {
@@ -340,6 +367,14 @@ export default function TeacherAttendancePage() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || "Kayıt başarısız")
       setMessage(data.message || "Yoklama kaydedildi")
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.kind === selected.kind && s.id === selected.id
+            ? { ...s, hasAttendance: true }
+            : s
+        )
+      )
+      void loadSessions()
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Kayıt başarısız")
     } finally {
@@ -409,6 +444,22 @@ export default function TeacherAttendancePage() {
             }}
           />
         </div>
+      )}
+
+      {mode === "live" && missedSessions.length > 0 && (
+        <button
+          type="button"
+          onClick={enterHistory}
+          className="w-full rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-left touch-manipulation"
+        >
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-rose-800">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            {missedSessions.length} geçmiş oturumda yoklama alınmadı
+          </p>
+          <p className="mt-1 text-xs text-rose-700">
+            Geçmişe dönük yoklama almak için dokunun.
+          </p>
+        </button>
       )}
 
       {mode === "live" && (
@@ -494,29 +545,50 @@ export default function TeacherAttendancePage() {
             </p>
           ) : (
             <div className="grid gap-2">
-              {sessions.map((s) => (
-                <button
-                  key={`${s.kind}-${s.id}`}
-                  type="button"
-                  onClick={() => void openSession(s)}
-                  className="touch-manipulation rounded-xl border border-gray-200 bg-white px-4 py-3.5 text-left transition-colors active:bg-gray-50 hover:bg-gray-50"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate font-medium text-gray-900">{s.title}</p>
-                      <p className="mt-0.5 truncate text-xs text-gray-600">{s.subtitle}</p>
+              {sessions.map((s) => {
+                const missing = needsAttendanceWarning(s, selectedDate, clock)
+                return (
+                  <button
+                    key={`${s.kind}-${s.id}`}
+                    type="button"
+                    onClick={() => void openSession(s)}
+                    className={`touch-manipulation rounded-xl border px-4 py-3.5 text-left transition-colors active:bg-gray-50 hover:bg-gray-50 ${
+                      missing
+                        ? "border-rose-300 bg-rose-50/70"
+                        : "border-gray-200 bg-white"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-gray-900">{s.title}</p>
+                        <p className="mt-0.5 truncate text-xs text-gray-600">
+                          {s.subtitle}
+                        </p>
+                        {missing && (
+                          <p className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-rose-700">
+                            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                            Yoklama alınmadı
+                          </p>
+                        )}
+                        {!missing && s.hasAttendance && isSessionPast(s, selectedDate, clock) && (
+                          <p className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-emerald-700">
+                            <CheckCircle className="h-3.5 w-3.5 shrink-0" />
+                            Yoklama alındı
+                          </p>
+                        )}
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <span className="inline-block rounded bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-700">
+                          {KIND_LABEL[s.kind]}
+                        </span>
+                        <p className="mt-1 text-xs text-gray-700">
+                          {s.startTime}–{s.endTime}
+                        </p>
+                      </div>
                     </div>
-                    <div className="shrink-0 text-right">
-                      <span className="inline-block rounded bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-700">
-                        {KIND_LABEL[s.kind]}
-                      </span>
-                      <p className="mt-1 text-xs text-gray-700">
-                        {s.startTime}–{s.endTime}
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                )
+              })}
             </div>
           )}
           {message && !modalOpen && (

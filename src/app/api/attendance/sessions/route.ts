@@ -35,7 +35,14 @@ export async function GET(request: NextRequest) {
     const jsDay = d.getDay()
     const dayOfWeek = jsDay === 0 ? 7 : jsDay
 
-    const [schedules, studySessions, clubSchedules] = await Promise.all([
+    const { start: dayStart, end: dayEnd } = (() => {
+      const start = new Date(`${dateStr}T00:00:00.000`)
+      const end = new Date(start)
+      end.setDate(end.getDate() + 1)
+      return { start, end }
+    })()
+
+    const [schedules, studySessions, clubSchedules, takenRows] = await Promise.all([
       prisma.schedule.findMany({
         where: { teacherId, dayOfWeek, isActive: true },
         include: {
@@ -96,7 +103,29 @@ export async function GET(request: NextRequest) {
         },
         orderBy: { startTime: "asc" },
       }),
+      prisma.attendance.findMany({
+        where: {
+          teacherId,
+          date: { gte: dayStart, lt: dayEnd },
+        },
+        select: {
+          kind: true,
+          scheduleId: true,
+          studyGroupSessionId: true,
+          clubScheduleId: true,
+        },
+      }),
     ])
+
+    const takenClass = new Set<string>()
+    const takenStudy = new Set<string>()
+    const takenClub = new Set<string>()
+    for (const r of takenRows) {
+      if (r.kind === "CLASS" && r.scheduleId) takenClass.add(r.scheduleId)
+      if (r.kind === "STUDY_GROUP" && r.studyGroupSessionId)
+        takenStudy.add(r.studyGroupSessionId)
+      if (r.kind === "CLUB" && r.clubScheduleId) takenClub.add(r.clubScheduleId)
+    }
 
     const sessions = [
       ...schedules.map((s) => ({
@@ -113,6 +142,7 @@ export async function GET(request: NextRequest) {
         room: s.room,
         students: null as null,
         class: s.class,
+        hasAttendance: takenClass.has(s.id),
       })),
       ...studySessions.map((s) => ({
         id: s.id,
@@ -128,6 +158,7 @@ export async function GET(request: NextRequest) {
         room: s.room,
         students: s.studyGroup.students.map((m) => m.student),
         class: null,
+        hasAttendance: takenStudy.has(s.id),
       })),
       ...clubSchedules.map((s) => ({
         id: s.id,
@@ -143,6 +174,7 @@ export async function GET(request: NextRequest) {
         room: s.room,
         students: s.club.selections.map((m) => m.student),
         class: null,
+        hasAttendance: takenClub.has(s.id),
       })),
     ].sort((a, b) => a.startTime.localeCompare(b.startTime))
 
