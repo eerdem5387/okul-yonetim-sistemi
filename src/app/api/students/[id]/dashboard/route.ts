@@ -85,29 +85,57 @@ export async function GET(
       take: 10,
     })
 
-    // Yoklamalar (son 30 gün veya seçilen period)
-    const attendances = await prisma.attendance.findMany({
-      where: {
-        studentId: id,
-        ...(startDate && {
-          date: {
-            gte: startDate,
-          },
-        }),
-      },
-      include: {
-        teacher: {
-          select: {
-            firstName: true,
-            lastName: true,
-          },
+    // Yoklamalar — istatistik tüm dönem, liste son kayıtlar
+    const attendanceWhere = {
+      studentId: id,
+      ...(startDate && {
+        date: {
+          gte: startDate,
+        },
+      }),
+    }
+
+    const attendanceInclude = {
+      teacher: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
         },
       },
-      orderBy: {
-        date: "desc",
+      class: {
+        select: { id: true, name: true },
       },
-      take: 20,
-    })
+      studyGroupSession: {
+        select: {
+          id: true,
+          topic: true,
+          studyGroup: { select: { id: true, name: true, gradeLevel: true } },
+        },
+      },
+      clubSchedule: {
+        select: {
+          id: true,
+          club: { select: { id: true, name: true } },
+        },
+      },
+    } as const
+
+    const [attendanceGroups, attendances] = await Promise.all([
+      prisma.attendance.groupBy({
+        by: ["kind", "status"],
+        where: attendanceWhere,
+        _count: { _all: true },
+      }),
+      prisma.attendance.findMany({
+        where: attendanceWhere,
+        include: attendanceInclude,
+        orderBy: {
+          date: "desc",
+        },
+        take: 50,
+      }),
+    ])
 
     // Sınavlar (yalnızca yayınlanmış)
     const examResults = await prisma.examResult.findMany({
@@ -200,13 +228,48 @@ export async function GET(
     const homeworkCompletionRate =
       totalHomeworks > 0 ? Math.round((completedHomeworks / totalHomeworks) * 100) : 0
 
-    const totalAttendances = attendances.length
-    const presentCount = attendances.filter((a) => a.status === "PRESENT").length
-    const absentCount = attendances.filter((a) => a.status === "ABSENT").length
-    const lateCount = attendances.filter((a) => a.status === "LATE").length
-    const excusedCount = attendances.filter((a) => a.status === "EXCUSED").length
+    type KindKey = "CLASS" | "STUDY_GROUP" | "CLUB"
+    type StatusKey = "PRESENT" | "ABSENT" | "LATE" | "EXCUSED"
+    const emptyStatus = () => ({
+      PRESENT: 0,
+      ABSENT: 0,
+      LATE: 0,
+      EXCUSED: 0,
+      total: 0,
+    })
+    const byKind: Record<KindKey, ReturnType<typeof emptyStatus>> = {
+      CLASS: emptyStatus(),
+      STUDY_GROUP: emptyStatus(),
+      CLUB: emptyStatus(),
+    }
+    let presentCount = 0
+    let absentCount = 0
+    let lateCount = 0
+    let excusedCount = 0
+    let totalAttendances = 0
+
+    for (const g of attendanceGroups) {
+      const kind = (g.kind || "CLASS") as KindKey
+      const status = g.status as StatusKey
+      const n = g._count._all
+      totalAttendances += n
+      if (status === "PRESENT") presentCount += n
+      else if (status === "ABSENT") absentCount += n
+      else if (status === "LATE") lateCount += n
+      else if (status === "EXCUSED") excusedCount += n
+      if (byKind[kind]) {
+        byKind[kind].total += n
+        byKind[kind][status] += n
+      }
+    }
+
     const attendanceRate =
       totalAttendances > 0 ? Math.round((presentCount / totalAttendances) * 100) : 100
+
+    const kindRate = (k: KindKey) =>
+      byKind[k].total > 0
+        ? Math.round((byKind[k].PRESENT / byKind[k].total) * 100)
+        : null
 
     const totalExams = examResults.length
     const averageScore =
@@ -236,6 +299,11 @@ export async function GET(
         absentCount,
         lateCount,
         excusedCount,
+        attendanceByKind: {
+          CLASS: { ...byKind.CLASS, rate: kindRate("CLASS") },
+          STUDY_GROUP: { ...byKind.STUDY_GROUP, rate: kindRate("STUDY_GROUP") },
+          CLUB: { ...byKind.CLUB, rate: kindRate("CLUB") },
+        },
         averageScore,
         totalExams,
         totalComments: comments.length,

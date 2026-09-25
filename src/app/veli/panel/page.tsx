@@ -20,6 +20,7 @@ import {
   FileText,
   ChevronRight,
 } from "lucide-react"
+import { StudentAttendancePanel } from "@/components/students/student-attendance-panel"
 
 interface Student {
   id: string
@@ -44,6 +45,11 @@ interface DashboardData {
     absentCount: number
     lateCount: number
     excusedCount: number
+    attendanceByKind?: {
+      CLASS?: { PRESENT: number; ABSENT: number; LATE: number; EXCUSED: number; total: number; rate: number | null }
+      STUDY_GROUP?: { PRESENT: number; ABSENT: number; LATE: number; EXCUSED: number; total: number; rate: number | null }
+      CLUB?: { PRESENT: number; ABSENT: number; LATE: number; EXCUSED: number; total: number; rate: number | null }
+    }
     averageScore: number
     totalExams: number
     totalComments: number
@@ -71,13 +77,23 @@ interface DashboardData {
     }>
     attendances: Array<{
       id: string
+      kind?: string | null
       status: string
       date: string
       lessonName: string
-      teacher: {
+      startTime?: string | null
+      endTime?: string | null
+      note?: string | null
+      teacher?: {
         firstName: string
         lastName: string
-      }
+      } | null
+      class?: { name: string } | null
+      studyGroupSession?: {
+        topic?: string | null
+        studyGroup?: { name: string; gradeLevel?: number } | null
+      } | null
+      clubSchedule?: { club?: { name: string } | null } | null
     }>
     examResults: Array<{
       id: string
@@ -397,46 +413,15 @@ export default function VeliPanelPage() {
             </CardHeader>
           </Link>
           <CardContent>
-            {dashboardData.recentData.attendances.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">Henüz yoklama kaydı bulunmuyor</p>
-            ) : (
-              <div className="space-y-2">
-                {dashboardData.recentData.attendances.map((att) => (
-                  <div
-                    key={att.id}
-                    className={`flex items-center justify-between p-4 border-2 rounded-lg ${
-                      att.status === "PRESENT"
-                        ? "border-green-200 bg-green-50/50"
-                        : att.status === "ABSENT"
-                        ? "border-red-200 bg-red-50/50"
-                        : "border-gray-200 bg-gray-50/50"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      {att.status === "PRESENT" ? (
-                        <CheckCircle className="h-5 w-5 text-green-600" />
-                      ) : (
-                        <Clock className="h-5 w-5 text-red-600" />
-                      )}
-                      <div>
-                        <p className="font-medium text-gray-900">{att.lessonName}</p>
-                        <p className="text-sm text-gray-600">
-                          {att.teacher.firstName} {att.teacher.lastName}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-gray-900">
-                        {att.status === "PRESENT" ? "Katıldı" : att.status === "ABSENT" ? "Katılmadı" : att.status}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {new Date(att.date).toLocaleDateString("tr-TR")}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <StudentAttendancePanel
+              attendances={dashboardData.recentData.attendances}
+              byKind={dashboardData.statistics.attendanceByKind}
+              overallRate={dashboardData.statistics.attendanceRate}
+              presentCount={dashboardData.statistics.presentCount}
+              totalCount={dashboardData.statistics.totalAttendances}
+              limit={6}
+              emptyText="Henüz yoklama kaydı bulunmuyor"
+            />
           </CardContent>
         </Card>
 

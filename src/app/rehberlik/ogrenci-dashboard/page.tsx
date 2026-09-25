@@ -21,6 +21,7 @@ import {
   Award,
   MapPin,
 } from "lucide-react"
+import { StudentAttendancePanel } from "@/components/students/student-attendance-panel"
 
 interface Student {
   id: string
@@ -51,6 +52,11 @@ interface DashboardData {
     absentCount: number
     lateCount: number
     excusedCount: number
+    attendanceByKind?: {
+      CLASS?: { PRESENT: number; ABSENT: number; LATE: number; EXCUSED: number; total: number; rate: number | null }
+      STUDY_GROUP?: { PRESENT: number; ABSENT: number; LATE: number; EXCUSED: number; total: number; rate: number | null }
+      CLUB?: { PRESENT: number; ABSENT: number; LATE: number; EXCUSED: number; total: number; rate: number | null }
+    }
     averageScore: number
     totalExams: number
     totalComments: number
@@ -72,9 +78,20 @@ interface DashboardData {
     }>
     attendances: Array<{
       id: string
+      kind?: string | null
       status: string
       date: string
       lessonName: string
+      startTime?: string | null
+      endTime?: string | null
+      note?: string | null
+      teacher?: { firstName: string; lastName: string } | null
+      class?: { name: string } | null
+      studyGroupSession?: {
+        topic?: string | null
+        studyGroup?: { name: string; gradeLevel?: number } | null
+      } | null
+      clubSchedule?: { club?: { name: string } | null } | null
     }>
     examResults: Array<{
       id: string
@@ -578,32 +595,15 @@ export default function RehberlikOgrenciDashboardPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    {dashboardData.recentData.attendances.length === 0 ? (
-                      <p className="text-gray-500 text-center py-4">
-                        Henüz yoklama yok
-                      </p>
-                    ) : (
-                      dashboardData.recentData.attendances.slice(0, 5).map((att) => (
-                        <div
-                          key={att.id}
-                          className="flex items-center justify-between p-3 border rounded-lg"
-                        >
-                          <div>
-                            <p className="font-medium text-sm">{att.lessonName}</p>
-                            <p className="text-xs text-gray-600">
-                              {new Date(att.date).toLocaleDateString("tr-TR")}
-                            </p>
-                          </div>
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                              att.status
-                            )}`}
-                          >
-                            {getStatusLabel(att.status)}
-                          </span>
-                        </div>
-                      ))
-                    )}
+                    <StudentAttendancePanel
+                      attendances={dashboardData.recentData.attendances}
+                      byKind={dashboardData.statistics.attendanceByKind}
+                      overallRate={dashboardData.statistics.attendanceRate}
+                      presentCount={dashboardData.statistics.presentCount}
+                      totalCount={dashboardData.statistics.totalAttendances}
+                      limit={8}
+                      emptyText="Henüz yoklama yok"
+                    />
                   </CardContent>
                 </Card>
 

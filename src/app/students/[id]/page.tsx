@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { StudentAttendancePanel } from "@/components/students/student-attendance-panel"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 
@@ -52,6 +53,11 @@ interface DashboardData {
     absentCount: number
     lateCount: number
     excusedCount: number
+    attendanceByKind?: {
+      CLASS?: { PRESENT: number; ABSENT: number; LATE: number; EXCUSED: number; total: number; rate: number | null }
+      STUDY_GROUP?: { PRESENT: number; ABSENT: number; LATE: number; EXCUSED: number; total: number; rate: number | null }
+      CLUB?: { PRESENT: number; ABSENT: number; LATE: number; EXCUSED: number; total: number; rate: number | null }
+    }
     averageScore: number
     totalExams: number
     totalComments: number
@@ -74,10 +80,20 @@ interface DashboardData {
     }>
     attendances: Array<{
       id: string
+      kind?: string | null
       status: string
       date: string
       lessonName: string
-      teacher: { firstName: string; lastName: string }
+      startTime?: string | null
+      endTime?: string | null
+      note?: string | null
+      teacher?: { firstName: string; lastName: string } | null
+      class?: { name: string } | null
+      studyGroupSession?: {
+        topic?: string | null
+        studyGroup?: { name: string; gradeLevel?: number } | null
+      } | null
+      clubSchedule?: { club?: { name: string } | null } | null
     }>
     examResults: Array<{
       id: string
@@ -881,25 +897,17 @@ export default function StudentDetailDashboardPage() {
               <TabsContent value="attendance">
                 <Card>
                   <CardHeader>
-                    <CardTitle>
-                      Yoklama · %{dashboard.statistics.attendanceRate} devam (
-                      {dashboard.statistics.presentCount}/{dashboard.statistics.totalAttendances})
-                    </CardTitle>
+                    <CardTitle>Yoklama</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-2">
-                    {dashboard.recentData.attendances.map((a) => (
-                      <div key={a.id} className="flex items-center justify-between rounded-lg border p-3 text-sm">
-                        <div>
-                          <p className="font-medium">{a.lessonName}</p>
-                          <p className="text-xs text-gray-500">
-                            {formatDate(a.date)} · {a.teacher.firstName} {a.teacher.lastName}
-                          </p>
-                        </div>
-                        <span className={cn("rounded-full px-2 py-1 text-xs font-medium", attendanceClass(a.status))}>
-                          {attendanceLabel(a.status)}
-                        </span>
-                      </div>
-                    ))}
+                  <CardContent>
+                    <StudentAttendancePanel
+                      attendances={dashboard.recentData.attendances}
+                      byKind={dashboard.statistics.attendanceByKind}
+                      overallRate={dashboard.statistics.attendanceRate}
+                      presentCount={dashboard.statistics.presentCount}
+                      totalCount={dashboard.statistics.totalAttendances}
+                      emptyText="Yoklama kaydı yok"
+                    />
                   </CardContent>
                 </Card>
               </TabsContent>

@@ -20,6 +20,7 @@ import {
   Award,
   MapPin,
 } from "lucide-react"
+import { StudentAttendancePanel } from "@/components/students/student-attendance-panel"
 
 interface Student {
   id: string
@@ -44,6 +45,11 @@ interface DashboardData {
     absentCount: number
     lateCount: number
     excusedCount: number
+    attendanceByKind?: {
+      CLASS?: { PRESENT: number; ABSENT: number; LATE: number; EXCUSED: number; total: number; rate: number | null }
+      STUDY_GROUP?: { PRESENT: number; ABSENT: number; LATE: number; EXCUSED: number; total: number; rate: number | null }
+      CLUB?: { PRESENT: number; ABSENT: number; LATE: number; EXCUSED: number; total: number; rate: number | null }
+    }
     averageScore: number
     totalExams: number
     totalComments: number
@@ -71,13 +77,23 @@ interface DashboardData {
     }>
     attendances: Array<{
       id: string
+      kind?: string | null
       status: string
       date: string
       lessonName: string
-      teacher: {
+      startTime?: string | null
+      endTime?: string | null
+      note?: string | null
+      teacher?: {
         firstName: string
         lastName: string
-      }
+      } | null
+      class?: { name: string } | null
+      studyGroupSession?: {
+        topic?: string | null
+        studyGroup?: { name: string; gradeLevel?: number } | null
+      } | null
+      clubSchedule?: { club?: { name: string } | null } | null
     }>
     examResults: Array<{
       id: string
@@ -625,63 +641,15 @@ export default function OgrenciDashboardPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {dashboardData.recentData.attendances.length === 0 ? (
-                  <p className="text-gray-500 text-center py-4">Henüz yoklama kaydı bulunmuyor</p>
-                ) : (
-                  <div className="space-y-2">
-                    {dashboardData.recentData.attendances.map((att) => (
-                      <div
-                        key={att.id}
-                        className="flex items-center justify-between p-4 border-2 rounded-lg hover:bg-gray-50 transition-all"
-                      >
-                        <div className="flex items-start gap-3 flex-1">
-                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                            att.status === "PRESENT" 
-                              ? "bg-green-100" 
-                              : att.status === "ABSENT"
-                              ? "bg-red-100"
-                              : att.status === "LATE"
-                              ? "bg-orange-100"
-                              : "bg-blue-100"
-                          }`}>
-                            <Calendar className={`h-5 w-5 ${
-                              att.status === "PRESENT" 
-                                ? "text-green-600" 
-                                : att.status === "ABSENT"
-                                ? "text-red-600"
-                                : att.status === "LATE"
-                                ? "text-orange-600"
-                                : "text-blue-600"
-                            }`} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-gray-900 mb-1">{att.lessonName}</p>
-                            <div className="flex flex-wrap gap-2 text-xs text-gray-600">
-                              <span className="flex items-center gap-1">
-                                👤 {att.teacher.firstName} {att.teacher.lastName}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                📅 {new Date(att.date).toLocaleDateString("tr-TR", {
-                              weekday: "long",
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                            })}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <span
-                          className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap ${getStatusColor(
-                            att.status
-                          )}`}
-                        >
-                          {getStatusLabel(att.status)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <StudentAttendancePanel
+                  attendances={dashboardData.recentData.attendances}
+                  byKind={dashboardData.statistics.attendanceByKind}
+                  overallRate={dashboardData.statistics.attendanceRate}
+                  presentCount={dashboardData.statistics.presentCount}
+                  totalCount={dashboardData.statistics.totalAttendances}
+                  limit={10}
+                  emptyText="Henüz yoklama kaydı bulunmuyor"
+                />
               </CardContent>
             </Card>
 
