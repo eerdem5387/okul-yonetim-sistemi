@@ -75,6 +75,19 @@ export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
     }
   }, [permState.me?.subject])
 
+  useEffect(() => {
+    setIsMobileOpen(false)
+  }, [pathname])
+
+  useEffect(() => {
+    if (!isMobileOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [isMobileOpen])
+
   const navigation = useMemo(() => {
     const visible = ALL_NAV.filter((item) => {
       // Atanmış kulüpler öğretmen menüsünde her zaman görünür (yoksa boş durum gösterilir).
@@ -106,40 +119,53 @@ export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
       <MobileMenuButton open={isMobileOpen} onToggle={() => setIsMobileOpen(!isMobileOpen)} />
 
       {isMobileOpen && (
-        <div className="lg:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setIsMobileOpen(false)} />
+        <div
+          className="lg:hidden fixed inset-0 bg-black/50 z-40"
+          onClick={() => setIsMobileOpen(false)}
+          aria-hidden
+        />
       )}
 
       <div
         className={cn(
-          "flex flex-col h-screen bg-gradient-to-b from-blue-600 via-indigo-600 to-purple-600 text-white transition-all duration-300 ease-in-out border-r border-blue-700 z-40",
-          "lg:relative fixed",
-          isCollapsed ? "w-20" : "w-64",
+          "flex flex-col bg-gradient-to-b from-blue-600 via-indigo-600 to-purple-600 text-white transition-all duration-300 ease-in-out border-r border-blue-700 z-50",
+          "fixed inset-y-0 left-0 h-[100dvh] lg:relative lg:h-screen lg:z-40",
+          isCollapsed ? "lg:w-20" : "lg:w-64",
+          "w-[min(18rem,88vw)]",
           isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
           className
         )}
       >
-        <div className="p-4 border-b border-blue-700/50">
+        <div className="p-4 border-b border-blue-700/50 pt-[max(1rem,env(safe-area-inset-top))]">
           <div className="flex items-center justify-between">
-            {!isCollapsed && (
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
-                  <User className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold">Öğretmen Paneli</h2>
-                </div>
+            <div className={cn("flex items-center gap-3", isCollapsed && "lg:hidden")}>
+              <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                <User className="h-6 w-6 text-white" />
               </div>
-            )}
+              <div>
+                <h2 className="text-lg font-bold">Öğretmen Paneli</h2>
+              </div>
+            </div>
             <button
+              type="button"
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+              className="hidden lg:inline-flex p-2 rounded-lg hover:bg-white/10 transition-colors"
+              aria-label={isCollapsed ? "Menüyü genişlet" : "Menüyü daralt"}
             >
               {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsMobileOpen(false)}
+              className="lg:hidden p-2 rounded-lg hover:bg-white/10 transition-colors"
+              aria-label="Menüyü kapat"
+            >
+              <ChevronLeft className="h-5 w-5" />
             </button>
           </div>
         </div>
 
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto overscroll-contain custom-scrollbar">
           {navigation.map((item) => {
             const isActive =
               item.href === "/ogretmen/faaliyet-yonetimi"
@@ -155,48 +181,36 @@ export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
                 href={item.href}
                 onClick={() => setIsMobileOpen(false)}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200",
+                  "flex items-center gap-3 px-3 py-3 min-h-11 rounded-xl transition-all duration-200 touch-manipulation",
                   isActive
                     ? "bg-white/20 text-white shadow-lg backdrop-blur-sm"
-                    : "hover:bg-white/10 text-white/90"
+                    : "hover:bg-white/10 text-white/90 active:bg-white/15"
                 )}
               >
                 <item.icon className="h-5 w-5 flex-shrink-0" />
-                {!isCollapsed && <span className="font-medium truncate flex-1">{item.name}</span>}
-                {item.href === "/mesajlar" && !isCollapsed && <UnreadBadge />}
+                <span
+                  className={cn(
+                    "font-medium truncate flex-1",
+                    isCollapsed && "lg:hidden"
+                  )}
+                >
+                  {item.name}
+                </span>
+                {item.href === "/mesajlar" && (
+                  <span className={cn(isCollapsed && "lg:hidden")}>
+                    <UnreadBadge />
+                  </span>
+                )}
               </Link>
             )
           })}
         </nav>
 
-        <div className="p-4 border-t border-blue-700/50">
-          {!isCollapsed ? (
-            <div className="mb-3 p-3 bg-white/10 rounded-lg backdrop-blur-sm">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-full flex items-center justify-center shadow-lg">
-                  <span className="text-sm font-bold text-white">
-                    {staffName
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .toUpperCase()
-                      .slice(0, 2)}
-                  </span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-white truncate">{staffName}</p>
-                  {staffSubject && (
-                    <span className="inline-block px-2 py-0.5 text-xs bg-white/20 rounded-full mt-1">
-                      {staffSubject}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="mb-3 flex justify-center">
+        <div className="p-4 border-t border-blue-700/50 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div className={cn("mb-3 p-3 bg-white/10 rounded-lg backdrop-blur-sm", isCollapsed && "lg:hidden")}>
+            <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-full flex items-center justify-center shadow-lg">
-                <span className="text-xs font-bold text-white">
+                <span className="text-sm font-bold text-white">
                   {staffName
                     .split(" ")
                     .map((n) => n[0])
@@ -205,17 +219,38 @@ export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
                     .slice(0, 2)}
                 </span>
               </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-white truncate">{staffName}</p>
+                {staffSubject && (
+                  <span className="inline-block px-2 py-0.5 text-xs bg-white/20 rounded-full mt-1">
+                    {staffSubject}
+                  </span>
+                )}
+              </div>
             </div>
-          )}
+          </div>
+          <div className={cn("mb-3 hidden justify-center", isCollapsed && "lg:flex")}>
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-full flex items-center justify-center shadow-lg">
+              <span className="text-xs font-bold text-white">
+                {staffName
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")
+                  .toUpperCase()
+                  .slice(0, 2)}
+              </span>
+            </div>
+          </div>
           <button
+            type="button"
             onClick={handleLogout}
             className={cn(
-              "flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-white/10 transition-colors w-full",
+              "flex items-center gap-3 px-3 py-3 min-h-11 rounded-xl hover:bg-white/10 transition-colors w-full touch-manipulation",
               "text-white/90 hover:text-white"
             )}
           >
             <LogOut className="h-5 w-5 flex-shrink-0" />
-            {!isCollapsed && <span className="font-medium">Çıkış Yap</span>}
+            <span className={cn("font-medium", isCollapsed && "lg:hidden")}>Çıkış Yap</span>
           </button>
         </div>
       </div>

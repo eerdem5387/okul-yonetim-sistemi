@@ -1,14 +1,22 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
+import {
+  ArrowLeft,
   BookOpen,
   CheckCircle,
   Clock,
+  History,
   Loader2,
   Users,
   XCircle,
@@ -73,21 +81,72 @@ const KIND_LABEL: Record<Session["kind"], string> = {
   CLUB: "Kulüp",
 }
 
+function localDateString(d = new Date()) {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, "0")
+  const day = String(d.getDate()).padStart(2, "0")
+  return `${y}-${m}-${day}`
+}
+
+function timeToMinutes(t: string) {
+  const [h, m] = t.split(":").map((x) => parseInt(x, 10) || 0)
+  return h * 60 + m
+}
+
+function nowMinutes(d = new Date()) {
+  return d.getHours() * 60 + d.getMinutes()
+}
+
+/** Şu an devam eden oturum; yoksa en yakın sonraki; o da yoksa en son biten. */
+function pickLiveSession(sessions: Session[], now = new Date()): Session | null {
+  if (sessions.length === 0) return null
+  const mins = nowMinutes(now)
+  const current = sessions.find((s) => {
+    const start = timeToMinutes(s.startTime)
+    const end = timeToMinutes(s.endTime)
+    return mins >= start && mins < end
+  })
+  if (current) return current
+
+  const upcoming = sessions
+    .filter((s) => timeToMinutes(s.startTime) > mins)
+    .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime))
+  if (upcoming[0]) return upcoming[0]
+
+  return [...sessions].sort(
+    (a, b) => timeToMinutes(b.endTime) - timeToMinutes(a.endTime)
+  )[0]
+}
+
+function sessionPhase(
+  session: Session,
+  now = new Date()
+): "current" | "upcoming" | "past" {
+  const mins = nowMinutes(now)
+  const start = timeToMinutes(session.startTime)
+  const end = timeToMinutes(session.endTime)
+  if (mins >= start && mins < end) return "current"
+  if (mins < start) return "upcoming"
+  return "past"
+}
+
 export default function TeacherAttendancePage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [staffId, setStaffId] = useState("")
-  const [selectedDate, setSelectedDate] = useState(
-    () => new Date().toISOString().split("T")[0]
-  )
+  const [mode, setMode] = useState<"live" | "history">("live")
+  const [selectedDate, setSelectedDate] = useState(() => localDateString())
   const [sessions, setSessions] = useState<Session[]>([])
   const [sessionsLoading, setSessionsLoading] = useState(false)
+  const [clock, setClock] = useState(() => new Date())
+  const [modalOpen, setModalOpen] = useState(false)
   const [selected, setSelected] = useState<Session | null>(null)
   const [students, setStudents] = useState<Student[]>([])
   const [studentsLoading, setStudentsLoading] = useState(false)
   const [statuses, setStatuses] = useState<Record<string, AttendanceStatus>>({})
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState("")
+  const autoOpenedKey = useRef<string | null>(null)
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -101,11 +160,14 @@ export default function TeacherAttendancePage() {
     setLoading(false)
   }, [router])
 
+  useEffect(() => {
+    const id = window.setInterval(() => setClock(new Date()), 30_000)
+    return () => window.clearInterval(id)
+  }, [])
+
   const loadSessions = useCallback(async () => {
     if (!staffId || !selectedDate) return
     setSessionsLoading(true)
-    setSelected(null)
-    setStudents([])
     setMessage("")
     try {
       const res = await fetch(
@@ -127,62 +189,110 @@ export default function TeacherAttendancePage() {
     void loadSessions()
   }, [loadSessions])
 
-  const openSession = async (session: Session) => {
-    setSelected(session)
-    setMessage("")
-    setStudentsLoading(true)
-    try {
-      let roster: Student[] = []
-      if (session.kind === "CLASS" && session.classId) {
-        const res = await fetch(`/api/classes/${session.classId}/students`, {
+  const liveSession = useMemo(
+    () => (mode === "live" ? pickLiveSession(sessions, clock) : null),
+    [mode, sessions, clock]
+  )
+
+  const livePhase = liveSession ? sessionPhase(liveSession, clock) : null
+
+  const openSession = useCallback(
+    async (session: Session) => {
+      setSelected(session)
+      setModalOpen(true)
+      setMessage("")
+      setStudentsLoading(true)
+      try {
+        let roster: Student[] = []
+        if (session.kind === "CLASS" && session.classId) {
+          const res = await fetch(`/api/classes/${session.classId}/students`, {
+            cache: "no-store",
+          })
+          const data = await res.json().catch(() => ({}))
+          const list = Array.isArray(data.students)
+            ? data.students
+            : Array.isArray(data)
+              ? data
+              : []
+          roster = list.map(
+            (s: Student & { student?: Student }) => s.student || s
+          )
+        } else if (Array.isArray(session.students)) {
+          roster = session.students
+        }
+
+        setStudents(roster)
+
+        const next: Record<string, AttendanceStatus> = {}
+        for (const s of roster) next[s.id] = "PRESENT"
+
+        const params = new URLSearchParams({
+          date: selectedDate,
+          teacherId: staffId,
+          kind: session.kind,
+        })
+        if (session.scheduleId) params.set("scheduleId", session.scheduleId)
+        if (session.studyGroupSessionId)
+          params.set("studyGroupSessionId", session.studyGroupSessionId)
+        if (session.clubScheduleId)
+          params.set("clubScheduleId", session.clubScheduleId)
+
+        const attRes = await fetch(`/api/attendance?${params}`, {
+          headers: getAuthHeaders(),
           cache: "no-store",
         })
-        const data = await res.json().catch(() => ({}))
-        const list = Array.isArray(data.students)
-          ? data.students
-          : Array.isArray(data)
-            ? data
-            : []
-        roster = list.map(
-          (s: Student & { student?: Student }) => s.student || s
-        )
-      } else if (Array.isArray(session.students)) {
-        roster = session.students
-      }
-
-      setStudents(roster)
-
-      const next: Record<string, AttendanceStatus> = {}
-      for (const s of roster) next[s.id] = "PRESENT"
-
-      // Mevcut yoklamayı yükle
-      const params = new URLSearchParams({
-        date: selectedDate,
-        teacherId: staffId,
-        kind: session.kind,
-      })
-      if (session.scheduleId) params.set("scheduleId", session.scheduleId)
-      if (session.studyGroupSessionId)
-        params.set("studyGroupSessionId", session.studyGroupSessionId)
-      if (session.clubScheduleId) params.set("clubScheduleId", session.clubScheduleId)
-
-      const attRes = await fetch(`/api/attendance?${params}`, {
-        headers: getAuthHeaders(),
-        cache: "no-store",
-      })
-      if (attRes.ok) {
-        const attData = await attRes.json()
-        for (const row of Array.isArray(attData.attendances) ? attData.attendances : []) {
-          if (row.studentId && row.status) next[row.studentId] = row.status
+        if (attRes.ok) {
+          const attData = await attRes.json()
+          for (const row of Array.isArray(attData.attendances)
+            ? attData.attendances
+            : []) {
+            if (row.studentId && row.status) next[row.studentId] = row.status
+          }
         }
+        setStatuses(next)
+      } catch {
+        setStudents([])
+        setStatuses({})
+      } finally {
+        setStudentsLoading(false)
       }
-      setStatuses(next)
-    } catch {
+    },
+    [selectedDate, staffId]
+  )
+
+  // Canlı modda yalnızca şu an devam eden dersi otomatik aç
+  useEffect(() => {
+    if (mode !== "live" || sessionsLoading || !liveSession || !staffId) return
+    if (selectedDate !== localDateString()) return
+    if (sessionPhase(liveSession, clock) !== "current") return
+    const key = `${selectedDate}|${liveSession.kind}|${liveSession.id}`
+    if (autoOpenedKey.current === key) return
+    autoOpenedKey.current = key
+    void openSession(liveSession)
+  }, [mode, sessionsLoading, liveSession, staffId, selectedDate, clock, openSession])
+
+  const closeModal = (open: boolean) => {
+    setModalOpen(open)
+    if (!open) {
+      setSelected(null)
       setStudents([])
       setStatuses({})
-    } finally {
-      setStudentsLoading(false)
+      setMessage("")
     }
+  }
+
+  const enterHistory = () => {
+    autoOpenedKey.current = null
+    closeModal(false)
+    setMode("history")
+    setSelectedDate(localDateString())
+  }
+
+  const exitHistory = () => {
+    autoOpenedKey.current = null
+    closeModal(false)
+    setMode("live")
+    setSelectedDate(localDateString())
   }
 
   const markAll = (status: AttendanceStatus) => {
@@ -247,124 +357,223 @@ export default function TeacherAttendancePage() {
   }
 
   return (
-    <div className="space-y-6 p-4 md:p-6 max-w-5xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Yoklama Al</h1>
-        <p className="text-sm text-gray-600 mt-1">
-          Ders programı, özel çalışma (ÖÇG) ve kulüp oturumları için yoklama alın.
-        </p>
+    <div className="mx-auto max-w-lg space-y-4 px-3 pb-8 pt-3 sm:max-w-2xl sm:px-4 md:max-w-3xl md:p-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          {mode === "history" && (
+            <button
+              type="button"
+              onClick={exitHistory}
+              className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium text-blue-700 touch-manipulation"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Bugüne dön
+            </button>
+          )}
+          <h1 className="text-xl font-semibold text-gray-900 sm:text-2xl">
+            {mode === "live" ? "Yoklama Al" : "Geçmişe dönük yoklama"}
+          </h1>
+          <p className="mt-1 text-sm text-gray-600">
+            {mode === "live"
+              ? "Bulunduğunuz ders saati otomatik açılır."
+              : "Tarih seçip oturuma dokunarak yoklama alın."}
+          </p>
+        </div>
+        {mode === "live" && (
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full shrink-0 touch-manipulation sm:w-auto"
+            onClick={enterHistory}
+          >
+            <History className="mr-2 h-4 w-4" />
+            Geçmişe dönük yoklama al
+          </Button>
+        )}
       </div>
 
-      <Card className="border-0 shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Tarih</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Label htmlFor="att-date" className="sr-only">
+      {mode === "history" && (
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+          <Label htmlFor="att-date" className="mb-2 block text-sm font-medium text-gray-700">
             Tarih
           </Label>
           <input
             id="att-date"
             type="date"
-            className="rounded-md border border-gray-200 px-3 py-2 text-sm"
+            className="w-full rounded-xl border border-gray-200 px-3 py-3 text-base touch-manipulation sm:max-w-xs sm:text-sm"
             value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
+            max={localDateString()}
+            onChange={(e) => {
+              autoOpenedKey.current = null
+              setSelectedDate(e.target.value)
+            }}
           />
-        </CardContent>
-      </Card>
+        </div>
+      )}
 
-      <Card className="border-0 shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <BookOpen className="h-4 w-4" />
-            Bugünkü / seçili gün oturumları
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      {mode === "live" && (
+        <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50 p-4 shadow-sm">
           {sessionsLoading ? (
-            <div className="flex justify-center py-8 text-gray-500 gap-2">
+            <div className="flex items-center justify-center gap-2 py-8 text-gray-500">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Oturumlar yükleniyor...
+            </div>
+          ) : !liveSession ? (
+            <div className="space-y-3 py-4 text-center">
+              <p className="text-sm text-gray-600">
+                Bugün size atanmış ders, ÖÇG veya kulüp yok.
+              </p>
+              <Button type="button" variant="outline" onClick={enterHistory}>
+                Geçmişe dönük yoklama al
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <span
+                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${
+                    livePhase === "current"
+                      ? "bg-emerald-100 text-emerald-800"
+                      : livePhase === "upcoming"
+                        ? "bg-amber-100 text-amber-900"
+                        : "bg-gray-100 text-gray-700"
+                  }`}
+                >
+                  {livePhase === "current"
+                    ? "Şu anki ders"
+                    : livePhase === "upcoming"
+                      ? "Sıradaki ders"
+                      : "Son ders"}
+                </span>
+                <span className="text-xs text-gray-500">
+                  {clock.toLocaleTimeString("tr-TR", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </div>
+              <div>
+                <p className="text-lg font-semibold text-gray-900">{liveSession.title}</p>
+                <p className="mt-0.5 text-sm text-gray-600">{liveSession.subtitle}</p>
+                <p className="mt-2 text-sm font-medium text-gray-800">
+                  {KIND_LABEL[liveSession.kind]} · {liveSession.startTime}–
+                  {liveSession.endTime}
+                  {liveSession.room ? ` · ${liveSession.room}` : ""}
+                </p>
+              </div>
+              <Button
+                type="button"
+                className="h-12 w-full touch-manipulation text-base"
+                onClick={() => void openSession(liveSession)}
+              >
+                <Users className="mr-2 h-4 w-4" />
+                Yoklama al
+              </Button>
+            </div>
+          )}
+          {message && !modalOpen && (
+            <p className="mt-3 text-center text-sm text-rose-600">{message}</p>
+          )}
+        </div>
+      )}
+
+      {mode === "history" && (
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900">
+            <BookOpen className="h-4 w-4" />
+            Oturumlar
+          </div>
+          {sessionsLoading ? (
+            <div className="flex justify-center gap-2 py-8 text-gray-500">
               <Loader2 className="h-5 w-5 animate-spin" />
               Yükleniyor...
             </div>
           ) : sessions.length === 0 ? (
-            <p className="text-sm text-gray-500 py-6 text-center">
+            <p className="py-6 text-center text-sm text-gray-500">
               Bu günde size atanmış ders, ÖÇG veya kulüp yok.
             </p>
           ) : (
             <div className="grid gap-2">
-              {sessions.map((s) => {
-                const active = selected?.id === s.id && selected?.kind === s.kind
-                return (
-                  <button
-                    key={`${s.kind}-${s.id}`}
-                    type="button"
-                    onClick={() => void openSession(s)}
-                    className={`text-left rounded-xl border px-4 py-3 transition-colors ${
-                      active
-                        ? "border-violet-400 bg-violet-50"
-                        : "border-gray-200 bg-white hover:bg-gray-50"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="font-medium text-gray-900 truncate">{s.title}</p>
-                        <p className="text-xs text-gray-600 mt-0.5 truncate">{s.subtitle}</p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <span className="inline-block text-[10px] font-semibold uppercase tracking-wide rounded bg-gray-100 text-gray-700 px-2 py-0.5">
-                          {KIND_LABEL[s.kind]}
-                        </span>
-                        <p className="text-xs text-gray-700 mt-1">
-                          {s.startTime}–{s.endTime}
-                        </p>
-                      </div>
+              {sessions.map((s) => (
+                <button
+                  key={`${s.kind}-${s.id}`}
+                  type="button"
+                  onClick={() => void openSession(s)}
+                  className="touch-manipulation rounded-xl border border-gray-200 bg-white px-4 py-3.5 text-left transition-colors active:bg-gray-50 hover:bg-gray-50"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-gray-900">{s.title}</p>
+                      <p className="mt-0.5 truncate text-xs text-gray-600">{s.subtitle}</p>
                     </div>
-                  </button>
-                )
-              })}
+                    <div className="shrink-0 text-right">
+                      <span className="inline-block rounded bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-700">
+                        {KIND_LABEL[s.kind]}
+                      </span>
+                      <p className="mt-1 text-xs text-gray-700">
+                        {s.startTime}–{s.endTime}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+          {message && !modalOpen && (
+            <p className="mt-3 text-center text-sm text-rose-600">{message}</p>
+          )}
+        </div>
+      )}
 
-      {selected && (
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-3">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  {selected.title}
-                </CardTitle>
-                <p className="text-xs text-gray-600 mt-1">
-                  {KIND_LABEL[selected.kind]} · {selected.startTime}–{selected.endTime}
-                  {selected.subtitle ? ` · ${selected.subtitle}` : ""}
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="outline" onClick={() => markAll("PRESENT")}>
-                  Tümü geldi
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => markAll("ABSENT")}>
-                  Tümü gelmedi
-                </Button>
-              </div>
+      <Dialog open={modalOpen} onOpenChange={closeModal}>
+        <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-full max-w-none flex-col overflow-hidden rounded-none p-0 m-0 sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-2xl sm:m-4">
+          <DialogHeader className="shrink-0 border-b border-gray-100 px-4 pb-3 pt-4 pr-12 text-left sm:px-6 sm:pt-5">
+            <DialogTitle className="text-base sm:text-lg">
+              {selected?.title || "Yoklama"}
+            </DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
+              {selected
+                ? `${KIND_LABEL[selected.kind]} · ${selected.startTime}–${selected.endTime}${
+                    selected.subtitle ? ` · ${selected.subtitle}` : ""
+                  }`
+                : ""}
+            </DialogDescription>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="touch-manipulation"
+                onClick={() => markAll("PRESENT")}
+              >
+                Tümü geldi
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="touch-manipulation"
+                onClick={() => markAll("ABSENT")}
+              >
+                Tümü gelmedi
+              </Button>
             </div>
-            <div className="flex flex-wrap gap-3 text-xs text-gray-600 mt-2">
+            <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-600">
               <span>Geldi: {counts.PRESENT}</span>
               <span>Gelmedi: {counts.ABSENT}</span>
               <span>Geç: {counts.LATE}</span>
               <span>İzinli: {counts.EXCUSED}</span>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
+          </DialogHeader>
+
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-6">
             {studentsLoading ? (
-              <div className="flex justify-center py-10 text-gray-500 gap-2">
+              <div className="flex justify-center gap-2 py-16 text-gray-500">
                 <Loader2 className="h-5 w-5 animate-spin" />
                 Öğrenciler yükleniyor...
               </div>
             ) : students.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-8">Öğrenci listesi boş</p>
+              <p className="py-12 text-center text-sm text-gray-500">
+                Öğrenci listesi boş
+              </p>
             ) : (
               <div className="divide-y rounded-xl border border-gray-200 bg-white">
                 {students.map((s) => {
@@ -372,7 +581,7 @@ export default function TeacherAttendancePage() {
                   return (
                     <div
                       key={s.id}
-                      className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3"
+                      className="flex flex-col gap-2.5 px-3 py-3 sm:flex-row sm:items-center sm:gap-3 sm:px-4"
                     >
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-gray-900">
@@ -380,53 +589,62 @@ export default function TeacherAttendancePage() {
                         </p>
                         <p className="text-xs text-gray-500">{s.grade}</p>
                       </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {(Object.keys(STATUS_META) as AttendanceStatus[]).map((key) => {
-                          const meta = STATUS_META[key]
-                          const Icon = meta.icon
-                          const active = st === key
-                          return (
-                            <button
-                              key={key}
-                              type="button"
-                              onClick={() =>
-                                setStatuses((prev) => ({ ...prev, [s.id]: key }))
-                              }
-                              className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                                active ? meta.className : "border-gray-200 text-gray-600 hover:bg-gray-50"
-                              }`}
-                            >
-                              <Icon className="h-3.5 w-3.5" />
-                              {meta.label}
-                            </button>
-                          )
-                        })}
+                      <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap">
+                        {(Object.keys(STATUS_META) as AttendanceStatus[]).map(
+                          (key) => {
+                            const meta = STATUS_META[key]
+                            const Icon = meta.icon
+                            const active = st === key
+                            return (
+                              <button
+                                key={key}
+                                type="button"
+                                onClick={() =>
+                                  setStatuses((prev) => ({
+                                    ...prev,
+                                    [s.id]: key,
+                                  }))
+                                }
+                                className={`inline-flex min-h-10 items-center justify-center gap-1 rounded-lg border px-2.5 py-2 text-xs font-medium touch-manipulation transition-colors ${
+                                  active
+                                    ? meta.className
+                                    : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                                }`}
+                              >
+                                <Icon className="h-3.5 w-3.5" />
+                                {meta.label}
+                              </button>
+                            )
+                          }
+                        )}
                       </div>
                     </div>
                   )
                 })}
               </div>
             )}
+          </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 pt-2">
-              {message && (
-                <p className="text-sm text-gray-600 sm:flex-1 self-center">{message}</p>
+          <div className="shrink-0 border-t border-gray-100 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
+            {message && (
+              <p className="mb-2 text-center text-sm text-gray-600 sm:text-left">
+                {message}
+              </p>
+            )}
+            <Button
+              className="h-12 w-full touch-manipulation text-base"
+              onClick={() => void save()}
+              disabled={saving || students.length === 0}
+            >
+              {saving ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Yoklamayı kaydet"
               )}
-              <Button
-                className="sm:ml-auto"
-                onClick={() => void save()}
-                disabled={saving || students.length === 0}
-              >
-                {saving ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "Yoklamayı kaydet"
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -50,10 +50,19 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
   ({ className, children, ...props }, ref) => {
     const { open, onOpenChange } = React.useContext(DialogContext)
 
+    React.useEffect(() => {
+      if (!open) return
+      const prev = document.body.style.overflow
+      document.body.style.overflow = "hidden"
+      return () => {
+        document.body.style.overflow = prev
+      }
+    }, [open])
+
     if (!open) return null
 
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="fixed inset-0 z-[80] flex items-end justify-center sm:items-center">
         {/* Overlay */}
         <div
           className="fixed inset-0 bg-black/50 backdrop-blur-sm"
@@ -64,14 +73,15 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
         <div
           ref={ref}
           className={cn(
-            "relative z-50 w-full max-w-lg bg-white rounded-lg shadow-xl p-6 m-4 max-h-[90vh] overflow-y-auto",
+            "relative z-50 w-full max-w-lg bg-white rounded-t-2xl sm:rounded-lg shadow-xl p-6 m-0 sm:m-4 max-h-[92dvh] overflow-y-auto",
             className
           )}
           {...props}
         >
           <button
+            type="button"
             onClick={() => onOpenChange(false)}
-            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:pointer-events-none"
+            className="absolute right-3 top-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-700 opacity-90 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-400 sm:right-4 sm:top-4 sm:h-8 sm:w-8 sm:rounded-sm sm:bg-transparent"
           >
             <X className="h-4 w-4" />
             <span className="sr-only">Close</span>
