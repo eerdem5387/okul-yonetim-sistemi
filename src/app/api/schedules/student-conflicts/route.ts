@@ -1,19 +1,55 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import {
-  findStudentActivityConflicts,
+  assignStudentToClubGroup,
+  findStudentConflictDetails,
+  removeStudentFromAssignment,
   resolveStudentConflict,
 } from "@/lib/schedules/student-activity-conflicts"
 
 export const dynamic = "force-dynamic"
 
-/** GET /api/schedules/student-conflicts — kulüp ↔ kulüp ve kulüp ↔ ÖÇG öğrenci çakışmaları */
-export async function GET() {
+/**
+ * GET /api/schedules/student-conflicts?grade=7
+ * Öğrenci merkezli çakışmalar: başvurular, çakışan atamalar, güvenli alternatifler.
+ */
+export async function GET(request: NextRequest) {
   try {
-    const conflicts = await findStudentActivityConflicts()
+    const gradeParam = request.nextUrl.searchParams.get("grade")
+    const gradeFilter = gradeParam ? parseInt(gradeParam, 10) : null
+
+    const all = await findStudentConflictDetails()
+    const students =
+      gradeFilter && Number.isFinite(gradeFilter)
+        ? all.filter((s) => s.gradeLevel === gradeFilter)
+        : all
+
+    const gradeCounts: Record<string, number> = {}
+    for (let g = 5; g <= 12; g++) gradeCounts[String(g)] = 0
+    for (const s of all) {
+      if (s.gradeLevel != null && s.gradeLevel >= 5 && s.gradeLevel <= 12) {
+        gradeCounts[String(s.gradeLevel)] += 1
+      }
+    }
+
     return NextResponse.json({
-      count: conflicts.length,
-      conflicts,
+      count: students.length,
+      totalCount: all.length,
+      gradeCounts,
+      students,
+      // Eski UI uyumluluğu
+      conflicts: students.flatMap((s) =>
+        s.clusters.map((c) => ({
+          studentId: s.studentId,
+          firstName: s.firstName,
+          lastName: s.lastName,
+          grade: s.grade,
+          dayOfWeek: c.dayOfWeek,
+          dayLabel: c.dayLabel,
+          timeLabel: c.timeLabel,
+          assignments: c.assignments,
+        }))
+      ),
     })
   } catch (error) {
     console.error("Error finding student conflicts:", error)
@@ -23,29 +59,19 @@ export async function GET() {
 
 /**
  * POST /api/schedules/student-conflicts
- * { studentId, keepKey, removeKeys: string[] }
- * keepKey dışındaki atamalardan öğrenciyi çıkarır.
+ *
+ * action: "remove"  → { studentId, assignmentKey }
+ * action: "assign"  → { studentId, clubGroupId }
+ * (eski) keep/remove → { studentId, keepKey, removeKeys }
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}))
+    const action = String(body.action ?? "").trim()
     const studentId = String(body.studentId ?? "").trim()
-    const keepKey = String(body.keepKey ?? "").trim()
-    const removeKeys = Array.isArray(body.removeKeys)
-      ? body.removeKeys.map((k: unknown) => String(k).trim()).filter(Boolean)
-      : []
 
-    if (!studentId || !keepKey) {
-      return NextResponse.json(
-        { error: "studentId ve keepKey zorunludur" },
-        { status: 400 }
-      )
-    }
-    if (removeKeys.length === 0) {
-      return NextResponse.json(
-        { error: "Çıkarılacak en az bir atama seçin" },
-        { status: 400 }
-      )
+    if (!studentId) {
+      return NextResponse.json({ error: "studentId zorunludur" }, { status: 400 })
     }
 
     const student = await prisma.student.findUnique({
@@ -54,6 +80,49 @@ export async function POST(request: NextRequest) {
     })
     if (!student) {
       return NextResponse.json({ error: "Öğrenci bulunamadı" }, { status: 404 })
+    }
+
+    if (action === "remove") {
+      const assignmentKey = String(body.assignmentKey ?? "").trim()
+      if (!assignmentKey) {
+        return NextResponse.json({ error: "assignmentKey zorunludur" }, { status: 400 })
+      }
+      const result = await removeStudentFromAssignment({ studentId, assignmentKey })
+      if (result.error) {
+        return NextResponse.json({ error: result.error }, { status: 400 })
+      }
+      return NextResponse.json({ success: true, message: result.removed })
+    }
+
+    if (action === "assign") {
+      const clubGroupId = String(body.clubGroupId ?? "").trim()
+      if (!clubGroupId) {
+        return NextResponse.json({ error: "clubGroupId zorunludur" }, { status: 400 })
+      }
+      const result = await assignStudentToClubGroup({ studentId, clubGroupId })
+      if (result.error) {
+        return NextResponse.json({ error: result.error }, { status: 400 })
+      }
+      return NextResponse.json({ success: true, message: result.assigned })
+    }
+
+    // Eski akış
+    const keepKey = String(body.keepKey ?? "").trim()
+    const removeKeys = Array.isArray(body.removeKeys)
+      ? body.removeKeys.map((k: unknown) => String(k).trim()).filter(Boolean)
+      : []
+
+    if (!keepKey) {
+      return NextResponse.json(
+        { error: "action (remove|assign) veya keepKey zorunludur" },
+        { status: 400 }
+      )
+    }
+    if (removeKeys.length === 0) {
+      return NextResponse.json(
+        { error: "Çıkarılacak en az bir atama seçin" },
+        { status: 400 }
+      )
     }
 
     const result = await resolveStudentConflict({

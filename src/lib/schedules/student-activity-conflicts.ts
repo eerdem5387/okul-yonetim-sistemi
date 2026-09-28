@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { DAY_LABELS, hasTimeConflict } from "@/lib/schedules/time-conflict"
+import { parseStudentGradeLevel } from "@/lib/student-grade-level"
 
 export type ConflictAssignmentKind = "CLUB" | "STUDY_GROUP"
 
@@ -18,16 +19,45 @@ export type ConflictAssignment = {
   teacherName: string | null
 }
 
-export type StudentConflictRow = {
+export type StudentConflictCluster = {
+  dayOfWeek: number
+  dayLabel: string
+  timeLabel: string
+  assignments: ConflictAssignment[]
+}
+
+export type ClubApplication = {
+  clubId: string
+  clubName: string
+}
+
+export type SafeClubOption = {
+  clubId: string
+  clubName: string
+  clubGroupId: string
+  clubGroupName: string
+  teacherName: string | null
+  memberCount: number
+  schedules: Array<{
+    dayOfWeek: number
+    dayLabel: string
+    startTime: string
+    endTime: string
+  }>
+}
+
+export type StudentConflictDetail = {
   studentId: string
   firstName: string
   lastName: string
   grade: string
-  dayOfWeek: number
-  dayLabel: string
-  /** Bu çakışma kümesindeki zaman aralığı özeti */
-  timeLabel: string
-  assignments: ConflictAssignment[]
+  gradeLevel: number | null
+  applications: ClubApplication[]
+  clusters: StudentConflictCluster[]
+  /** Çakışan atamaların düz listesi (Çıkar butonları için) */
+  conflictingAssignments: ConflictAssignment[]
+  /** Başvurularından, mevcut çakışmasız programla uyumlu kulüp grupları */
+  safeAlternatives: SafeClubOption[]
 }
 
 type FlatEntry = ConflictAssignment & {
@@ -44,8 +74,55 @@ function assignmentKey(a: {
   return `${a.kind}:${a.scheduleOrSessionId}`
 }
 
-/** Kulüp programı + ÖÇG oturumları arasında öğrenci zaman çakışmaları */
-export async function findStudentActivityConflicts(): Promise<StudentConflictRow[]> {
+type TimeBlock = { dayOfWeek: number; startTime: string; endTime: string }
+
+function blocksConflict(a: TimeBlock, b: TimeBlock) {
+  return a.dayOfWeek === b.dayOfWeek && hasTimeConflict(a.startTime, a.endTime, b.startTime, b.endTime)
+}
+
+/** Kulüp programı + ÖÇG oturumları arasında öğrenci zaman çakışmaları (eski satır formatı) */
+export async function findStudentActivityConflicts(): Promise<
+  Array<{
+    studentId: string
+    firstName: string
+    lastName: string
+    grade: string
+    dayOfWeek: number
+    dayLabel: string
+    timeLabel: string
+    assignments: ConflictAssignment[]
+  }>
+> {
+  const details = await findStudentConflictDetails()
+  const rows: Array<{
+    studentId: string
+    firstName: string
+    lastName: string
+    grade: string
+    dayOfWeek: number
+    dayLabel: string
+    timeLabel: string
+    assignments: ConflictAssignment[]
+  }> = []
+  for (const d of details) {
+    for (const c of d.clusters) {
+      rows.push({
+        studentId: d.studentId,
+        firstName: d.firstName,
+        lastName: d.lastName,
+        grade: d.grade,
+        dayOfWeek: c.dayOfWeek,
+        dayLabel: c.dayLabel,
+        timeLabel: c.timeLabel,
+        assignments: c.assignments,
+      })
+    }
+  }
+  return rows
+}
+
+/** Öğrenci merkezli çakışma detayı: başvurular, çakışanlar, güvenli alternatifler */
+export async function findStudentConflictDetails(): Promise<StudentConflictDetail[]> {
   const [clubSchedules, studySessions] = await Promise.all([
     prisma.clubSchedule.findMany({
       where: { isActive: true },
@@ -179,7 +256,6 @@ export async function findStudentActivityConflicts(): Promise<StudentConflictRow
     }
   }
 
-  // studentId + day → entries
   const byStudentDay = new Map<string, FlatEntry[]>()
   for (const e of entries) {
     const k = `${e.studentId}|${e.dayOfWeek}`
@@ -188,12 +264,22 @@ export async function findStudentActivityConflicts(): Promise<StudentConflictRow
     byStudentDay.set(k, list)
   }
 
-  const conflicts: StudentConflictRow[] = []
+  type ClusterDraft = {
+    studentId: string
+    firstName: string
+    lastName: string
+    grade: string
+    dayOfWeek: number
+    dayLabel: string
+    timeLabel: string
+    assignments: ConflictAssignment[]
+  }
+
+  const clusterDrafts: ClusterDraft[] = []
 
   for (const list of byStudentDay.values()) {
     if (list.length < 2) continue
 
-    // Connected components of overlapping assignments
     const n = list.length
     const parent = list.map((_, i) => i)
     const find = (i: number): number => {
@@ -230,7 +316,6 @@ export async function findStudentActivityConflicts(): Promise<StudentConflictRow
     }
 
     for (const cluster of clusters.values()) {
-      // Unique assignments in cluster
       const unique = new Map<string, ConflictAssignment>()
       for (const e of cluster) {
         if (!unique.has(e.key)) {
@@ -257,7 +342,7 @@ export async function findStudentActivityConflicts(): Promise<StudentConflictRow
       const first = cluster[0]
       const starts = assignments.map((a) => a.startTime).sort()
       const ends = assignments.map((a) => a.endTime).sort()
-      conflicts.push({
+      clusterDrafts.push({
         studentId: first.studentId,
         firstName: first.firstName,
         lastName: first.lastName,
@@ -270,19 +355,319 @@ export async function findStudentActivityConflicts(): Promise<StudentConflictRow
     }
   }
 
-  conflicts.sort((a, b) => {
-    const name = `${a.lastName} ${a.firstName}`.localeCompare(
+  if (clusterDrafts.length === 0) return []
+
+  const byStudent = new Map<
+    string,
+    {
+      studentId: string
+      firstName: string
+      lastName: string
+      grade: string
+      clusters: StudentConflictCluster[]
+      conflictingKeys: Set<string>
+    }
+  >()
+
+  for (const c of clusterDrafts) {
+    let row = byStudent.get(c.studentId)
+    if (!row) {
+      row = {
+        studentId: c.studentId,
+        firstName: c.firstName,
+        lastName: c.lastName,
+        grade: c.grade,
+        clusters: [],
+        conflictingKeys: new Set(),
+      }
+      byStudent.set(c.studentId, row)
+    }
+    row.clusters.push({
+      dayOfWeek: c.dayOfWeek,
+      dayLabel: c.dayLabel,
+      timeLabel: c.timeLabel,
+      assignments: c.assignments,
+    })
+    for (const a of c.assignments) row.conflictingKeys.add(a.key)
+  }
+
+  const studentIds = [...byStudent.keys()]
+
+  const [selections, candidateGroups] = await Promise.all([
+    prisma.clubSelection.findMany({
+      where: { studentId: { in: studentIds } },
+      include: { club: { select: { id: true, name: true } } },
+      orderBy: { createdAt: "asc" },
+    }),
+    prisma.clubGroup.findMany({
+      where: {
+        isActive: true,
+        schedules: { some: { isActive: true } },
+      },
+      include: {
+        club: {
+          select: {
+            id: true,
+            name: true,
+            instructor: { select: { firstName: true, lastName: true } },
+          },
+        },
+        students: { select: { studentId: true } },
+        schedules: {
+          where: { isActive: true },
+          orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
+        },
+        _count: { select: { students: true } },
+      },
+      orderBy: [{ club: { name: "asc" } }, { name: "asc" }],
+    }),
+  ])
+
+  const selectionsByStudent = new Map<string, ClubApplication[]>()
+  for (const s of selections) {
+    const list = selectionsByStudent.get(s.studentId) ?? []
+    list.push({ clubId: s.club.id, clubName: s.club.name })
+    selectionsByStudent.set(s.studentId, list)
+  }
+
+  const entriesByStudent = new Map<string, FlatEntry[]>()
+  for (const e of entries) {
+    const list = entriesByStudent.get(e.studentId) ?? []
+    list.push(e)
+    entriesByStudent.set(e.studentId, list)
+  }
+
+  const details: StudentConflictDetail[] = []
+
+  for (const row of byStudent.values()) {
+    const applications = selectionsByStudent.get(row.studentId) ?? []
+    const appliedClubIds = new Set(applications.map((a) => a.clubId))
+
+    const conflictingAssignmentsMap = new Map<string, ConflictAssignment>()
+    for (const cluster of row.clusters) {
+      for (const a of cluster.assignments) {
+        if (!conflictingAssignmentsMap.has(a.key)) {
+          conflictingAssignmentsMap.set(a.key, a)
+        }
+      }
+    }
+    const conflictingAssignments = [...conflictingAssignmentsMap.values()].sort(
+      (a, b) =>
+        a.dayOfWeek - b.dayOfWeek ||
+        a.startTime.localeCompare(b.startTime) ||
+        a.label.localeCompare(b.label, "tr")
+    )
+
+    // Çakışmayan mevcut program (alternatif uygunluğu için taban)
+    const studentEntries = entriesByStudent.get(row.studentId) ?? []
+    const baselineBlocks: TimeBlock[] = []
+    const seenBaseline = new Set<string>()
+    for (const e of studentEntries) {
+      if (row.conflictingKeys.has(e.key)) continue
+      const bk = `${e.dayOfWeek}|${e.startTime}|${e.endTime}|${e.key}`
+      if (seenBaseline.has(bk)) continue
+      seenBaseline.add(bk)
+      baselineBlocks.push({
+        dayOfWeek: e.dayOfWeek,
+        startTime: e.startTime,
+        endTime: e.endTime,
+      })
+    }
+
+    const memberGroupIds = new Set(
+      studentEntries
+        .filter((e) => e.kind === "CLUB" && e.clubGroupId)
+        .map((e) => e.clubGroupId as string)
+    )
+
+    const safeAlternatives: SafeClubOption[] = []
+    for (const g of candidateGroups) {
+      if (!appliedClubIds.has(g.clubId)) continue
+      if (memberGroupIds.has(g.id)) continue
+      if (g.schedules.length === 0) continue
+
+      const groupBlocks = g.schedules.map((s) => ({
+        dayOfWeek: s.dayOfWeek,
+        startTime: s.startTime,
+        endTime: s.endTime,
+      }))
+      const conflictsWithBaseline = groupBlocks.some((gb) =>
+        baselineBlocks.some((bb) => blocksConflict(gb, bb))
+      )
+      if (conflictsWithBaseline) continue
+
+      safeAlternatives.push({
+        clubId: g.clubId,
+        clubName: g.club.name,
+        clubGroupId: g.id,
+        clubGroupName: g.name,
+        teacherName: g.club.instructor
+          ? `${g.club.instructor.firstName} ${g.club.instructor.lastName}`
+          : null,
+        memberCount: g._count.students,
+        schedules: g.schedules.map((s) => ({
+          dayOfWeek: s.dayOfWeek,
+          dayLabel: DAY_LABELS[s.dayOfWeek] || String(s.dayOfWeek),
+          startTime: s.startTime,
+          endTime: s.endTime,
+        })),
+      })
+    }
+
+    row.clusters.sort(
+      (a, b) => a.dayOfWeek - b.dayOfWeek || a.timeLabel.localeCompare(b.timeLabel)
+    )
+
+    details.push({
+      studentId: row.studentId,
+      firstName: row.firstName,
+      lastName: row.lastName,
+      grade: row.grade,
+      gradeLevel: parseStudentGradeLevel(row.grade),
+      applications,
+      clusters: row.clusters,
+      conflictingAssignments,
+      safeAlternatives,
+    })
+  }
+
+  details.sort((a, b) => {
+    const gl = (a.gradeLevel ?? 99) - (b.gradeLevel ?? 99)
+    if (gl !== 0) return gl
+    return `${a.lastName} ${a.firstName}`.localeCompare(
       `${b.lastName} ${b.firstName}`,
       "tr"
     )
-    if (name !== 0) return name
-    return a.dayOfWeek - b.dayOfWeek || a.timeLabel.localeCompare(b.timeLabel)
   })
 
-  return conflicts
+  return details
 }
 
-/** Öğrenciyi tutulan atama dışındaki çakışan gruplardan çıkarır */
+/** Tek bir çakışan atamadan öğrenciyi çıkarır */
+export async function removeStudentFromAssignment(options: {
+  studentId: string
+  assignmentKey: string
+}): Promise<{ removed: string; error?: string }> {
+  const { studentId, assignmentKey } = options
+  const [kind, id] = assignmentKey.split(":")
+  if (!kind || !id) {
+    return { removed: "", error: `Geçersiz anahtar: ${assignmentKey}` }
+  }
+
+  if (kind === "CLUB") {
+    const schedule = await prisma.clubSchedule.findUnique({
+      where: { id },
+      select: { clubGroupId: true, clubId: true, club: { select: { name: true } } },
+    })
+    if (!schedule) {
+      return { removed: "", error: "Kulüp programı bulunamadı" }
+    }
+    if (schedule.clubGroupId) {
+      const del = await prisma.clubGroupStudent.deleteMany({
+        where: { clubGroupId: schedule.clubGroupId, studentId },
+      })
+      if (del.count === 0) {
+        return { removed: "", error: `${schedule.club.name}: öğrenci bu grupta değil` }
+      }
+      return { removed: `${schedule.club.name} grubundan çıkarıldı` }
+    }
+    const del = await prisma.clubSelection.deleteMany({
+      where: { clubId: schedule.clubId, studentId },
+    })
+    if (del.count === 0) {
+      return { removed: "", error: `${schedule.club.name}: seçim kaydı yok` }
+    }
+    return { removed: `${schedule.club.name} seçiminden çıkarıldı` }
+  }
+
+  if (kind === "STUDY_GROUP") {
+    const session = await prisma.studyGroupSession.findUnique({
+      where: { id },
+      select: {
+        studyGroupId: true,
+        studyGroup: { select: { name: true } },
+      },
+    })
+    if (!session) {
+      return { removed: "", error: "ÖÇG oturumu bulunamadı" }
+    }
+    const del = await prisma.studyGroupStudent.deleteMany({
+      where: { studyGroupId: session.studyGroupId, studentId },
+    })
+    if (del.count === 0) {
+      return { removed: "", error: `${session.studyGroup.name}: öğrenci bu grupta değil` }
+    }
+    return { removed: `${session.studyGroup.name} ÖÇG grubundan çıkarıldı` }
+  }
+
+  return { removed: "", error: `Bilinmeyen tür: ${kind}` }
+}
+
+/** Öğrenciyi kulüp grubuna ekler (aynı kulübün diğer gruplarından çıkarır) */
+export async function assignStudentToClubGroup(options: {
+  studentId: string
+  clubGroupId: string
+}): Promise<{ assigned: string; error?: string }> {
+  const { studentId, clubGroupId } = options
+
+  const group = await prisma.clubGroup.findUnique({
+    where: { id: clubGroupId },
+    select: {
+      id: true,
+      name: true,
+      isActive: true,
+      clubId: true,
+      club: { select: { id: true, name: true } },
+    },
+  })
+  if (!group || !group.isActive) {
+    return { assigned: "", error: "Kulüp grubu bulunamadı" }
+  }
+
+  const student = await prisma.student.findUnique({
+    where: { id: studentId },
+    select: { id: true },
+  })
+  if (!student) {
+    return { assigned: "", error: "Öğrenci bulunamadı" }
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.clubSelection.upsert({
+      where: {
+        studentId_clubId: { studentId, clubId: group.clubId },
+      },
+      create: { studentId, clubId: group.clubId },
+      update: {},
+    })
+
+    // Aynı kulübün diğer gruplarından çıkar
+    const otherGroups = await tx.clubGroup.findMany({
+      where: { clubId: group.clubId, id: { not: group.id } },
+      select: { id: true },
+    })
+    if (otherGroups.length > 0) {
+      await tx.clubGroupStudent.deleteMany({
+        where: {
+          studentId,
+          clubGroupId: { in: otherGroups.map((g) => g.id) },
+        },
+      })
+    }
+
+    await tx.clubGroupStudent.upsert({
+      where: {
+        clubGroupId_studentId: { clubGroupId: group.id, studentId },
+      },
+      create: { clubGroupId: group.id, studentId },
+      update: {},
+    })
+  })
+
+  return { assigned: `${group.club.name} / ${group.name} grubuna eklendi` }
+}
+
+/** @deprecated Eski keep/remove akışı — geriye uyumluluk */
 export async function resolveStudentConflict(options: {
   studentId: string
   keepKey: string
@@ -294,64 +679,9 @@ export async function resolveStudentConflict(options: {
 
   for (const key of removeKeys) {
     if (key === keepKey) continue
-    const [kind, id] = key.split(":")
-    if (!kind || !id) {
-      errors.push(`Geçersiz anahtar: ${key}`)
-      continue
-    }
-
-    if (kind === "CLUB") {
-      const schedule = await prisma.clubSchedule.findUnique({
-        where: { id },
-        select: { clubGroupId: true, clubId: true, club: { select: { name: true } } },
-      })
-      if (!schedule) {
-        errors.push(`Kulüp programı bulunamadı: ${id}`)
-        continue
-      }
-      if (schedule.clubGroupId) {
-        const del = await prisma.clubGroupStudent.deleteMany({
-          where: { clubGroupId: schedule.clubGroupId, studentId },
-        })
-        if (del.count > 0) {
-          removed.push(`Kulüp grubundan çıkarıldı (${schedule.club.name})`)
-        } else {
-          errors.push(`${schedule.club.name}: öğrenci bu grupta değil`)
-        }
-      } else {
-        // Grup yoksa kulüp seçiminden çıkar
-        const del = await prisma.clubSelection.deleteMany({
-          where: { clubId: schedule.clubId, studentId },
-        })
-        if (del.count > 0) {
-          removed.push(`Kulüp seçiminden çıkarıldı (${schedule.club.name})`)
-        } else {
-          errors.push(`${schedule.club.name}: seçim kaydı yok`)
-        }
-      }
-    } else if (kind === "STUDY_GROUP") {
-      const session = await prisma.studyGroupSession.findUnique({
-        where: { id },
-        select: {
-          studyGroupId: true,
-          studyGroup: { select: { name: true } },
-        },
-      })
-      if (!session) {
-        errors.push(`ÖÇG oturumu bulunamadı: ${id}`)
-        continue
-      }
-      const del = await prisma.studyGroupStudent.deleteMany({
-        where: { studyGroupId: session.studyGroupId, studentId },
-      })
-      if (del.count > 0) {
-        removed.push(`ÖÇG grubundan çıkarıldı (${session.studyGroup.name})`)
-      } else {
-        errors.push(`${session.studyGroup.name}: öğrenci bu grupta değil`)
-      }
-    } else {
-      errors.push(`Bilinmeyen tür: ${kind}`)
-    }
+    const result = await removeStudentFromAssignment({ studentId, assignmentKey: key })
+    if (result.error) errors.push(result.error)
+    else if (result.removed) removed.push(result.removed)
   }
 
   return { removed, errors }
