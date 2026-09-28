@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}))
     let clubId = String(body.clubId ?? "").trim()
-    let clubGroupId = body.clubGroupId ? String(body.clubGroupId).trim() : null
+    const clubGroupId = body.clubGroupId ? String(body.clubGroupId).trim() : null
     const dayOfWeek = parseInt(String(body.dayOfWeek ?? ""), 10)
     const startTime = String(body.startTime ?? "").trim()
     const endTime = String(body.endTime ?? "").trim()

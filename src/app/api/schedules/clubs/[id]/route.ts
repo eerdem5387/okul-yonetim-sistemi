@@ -40,7 +40,7 @@ export async function PUT(
 
     const body = await request.json().catch(() => ({}))
     let clubId = String(body.clubId ?? existing.clubId).trim()
-    let clubGroupId =
+    const clubGroupId =
       body.clubGroupId !== undefined
         ? body.clubGroupId
           ? String(body.clubGroupId).trim()
