@@ -1,17 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Loader2, Pencil, Plus, Trash2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { getAuthHeaders } from "@/components/hr/hr-utils"
+import { Loader2 } from "lucide-react"
 import { DAY_NAMES, WEEKDAY_INDEXES } from "@/lib/schedules/lesson-slots"
 
 type Instructor = {
@@ -65,39 +55,27 @@ type ClubScheduleRow = {
   clubGroup?: { id: string; name: string; _count: { students: number } } | null
 }
 
-export function ClubSchedulesPanel() {
+type Props = {
+  refreshKey?: number
+}
+
+export function ClubSchedulesPanel({ refreshKey = 0 }: Props) {
   const [groups, setGroups] = useState<ClubGroupRow[]>([])
   const [schedules, setSchedules] = useState<ClubScheduleRow[]>([])
   const [etutSlots, setEtutSlots] = useState<EtutSlot[]>([])
-  const [teachers, setTeachers] = useState<Instructor[]>([])
   const [loading, setLoading] = useState(true)
-  const [busy, setBusy] = useState(false)
-  const [modalOpen, setModalOpen] = useState(false)
-  const [editing, setEditing] = useState<ClubScheduleRow | null>(null)
-  const [selectedGroupId, setSelectedGroupId] = useState("")
-  const [instructorId, setInstructorId] = useState("")
-  const [dayOfWeek, setDayOfWeek] = useState(1)
-  const [startTime, setStartTime] = useState("")
-  const [endTime, setEndTime] = useState("")
-  const [slotLabel, setSlotLabel] = useState("")
-  const [room, setRoom] = useState("")
   const [error, setError] = useState("")
 
   const load = useCallback(async () => {
     setLoading(true)
     setError("")
     try {
-      const [res, teachersRes] = await Promise.all([
-        fetch("/api/schedules/clubs", { cache: "no-store" }),
-        fetch("/api/staff/pickers?type=teachers", { headers: getAuthHeaders() }),
-      ])
+      const res = await fetch("/api/schedules/clubs", { cache: "no-store" })
       if (!res.ok) throw new Error("Kulüp programları alınamadı")
       const data = await res.json()
       setGroups(Array.isArray(data.groups) ? data.groups : [])
       setSchedules(Array.isArray(data.schedules) ? data.schedules : [])
       setEtutSlots(Array.isArray(data.etutSlots) ? data.etutSlots : [])
-      const tData = teachersRes.ok ? await teachersRes.json() : { staff: [] }
-      setTeachers(Array.isArray(tData.staff) ? tData.staff : [])
     } catch (e) {
       setError(e instanceof Error ? e.message : "Yüklenemedi")
       setGroups([])
@@ -109,7 +87,7 @@ export function ClubSchedulesPanel() {
 
   useEffect(() => {
     void load()
-  }, [load])
+  }, [load, refreshKey])
 
   const cellEntries = useCallback(
     (day: number, start: string, end: string) =>
@@ -118,97 +96,6 @@ export function ClubSchedulesPanel() {
       ),
     [schedules]
   )
-
-  const slotKey = (start: string, end: string) => `${start}|${end}`
-
-  const openCell = (day: number, slot: EtutSlot) => {
-    setEditing(null)
-    setDayOfWeek(day)
-    setStartTime(slot.startTime)
-    setEndTime(slot.endTime)
-    setSlotLabel(slot.label)
-    setSelectedGroupId("")
-    setInstructorId("")
-    setRoom("")
-    setModalOpen(true)
-  }
-
-  const openEdit = (row: ClubScheduleRow) => {
-    setEditing(row)
-    setDayOfWeek(row.dayOfWeek)
-    setStartTime(row.startTime)
-    setEndTime(row.endTime)
-    const match = etutSlots.find(
-      (s) => s.startTime === row.startTime && s.endTime === row.endTime
-    )
-    setSlotLabel(match?.label || `${row.startTime}–${row.endTime}`)
-    setSelectedGroupId(row.clubGroupId || row.clubGroup?.id || "")
-    setInstructorId(row.club.instructorId || row.club.instructor?.id || "")
-    setRoom(row.room || "")
-    setModalOpen(true)
-  }
-
-  const onGroupChange = (groupId: string) => {
-    setSelectedGroupId(groupId)
-    const group = groups.find((g) => g.id === groupId)
-    setInstructorId(
-      group?.club.instructorId || group?.club.instructor?.id || ""
-    )
-  }
-
-  const save = async () => {
-    if (!selectedGroupId || !startTime || !endTime) {
-      alert("Kulüp grubu ve etüt saati seçin.")
-      return
-    }
-    setBusy(true)
-    try {
-      const url = editing ? `/api/schedules/clubs/${editing.id}` : "/api/schedules/clubs"
-      const method = editing ? "PUT" : "POST"
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clubGroupId: selectedGroupId,
-          dayOfWeek,
-          startTime,
-          endTime,
-          room: room.trim() || null,
-          instructorId: instructorId || null,
-        }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        alert((data as { error?: string }).error || "Kayıt başarısız")
-        return
-      }
-      setModalOpen(false)
-      setEditing(null)
-      await load()
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const remove = async (id: string) => {
-    if (!confirm("Bu kulübü etütten kaldırmak istiyor musunuz?")) return
-    setBusy(true)
-    try {
-      const res = await fetch(`/api/schedules/clubs/${id}`, { method: "DELETE" })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        alert((data as { error?: string }).error || "Silinemedi")
-        return
-      }
-      if (editing?.id === id) {
-        setModalOpen(false)
-        setEditing(null)
-      }
-      await load()
-    } finally {
-      setBusy(false)
-    }
-  }
 
   const unassignedGroups = useMemo(() => {
     const assigned = new Set(
@@ -231,8 +118,8 @@ export function ClubSchedulesPanel() {
       <div>
         <h2 className="text-lg font-semibold text-gray-900">Haftalık etüt programı — Kulüpler</h2>
         <p className="text-sm text-gray-600">
-          Hücreye tıklayarak <strong>kulüp grubu</strong> atayın; atanmış kayda tıklayarak
-          düzenleyin.
+          Özet görünüm. Atama ve düzenleme grup kartındaki <strong>Program ata</strong> ile
+          yapılır.
         </p>
       </div>
 
@@ -275,84 +162,39 @@ export function ClubSchedulesPanel() {
                     return (
                       <td
                         key={`${day}-${slot.startTime}`}
-                        className="border-b border-gray-100 p-1.5 align-top cursor-pointer hover:bg-emerald-50/80 transition-colors min-h-[4rem]"
-                        onClick={() => openCell(day, slot)}
+                        className="border-b border-gray-100 p-1.5 align-top min-h-[4rem]"
                       >
                         {entries.length === 0 ? (
-                          <div className="flex h-14 items-center justify-center text-gray-300">
-                            <Plus className="h-4 w-4" />
+                          <div className="flex h-14 items-center justify-center text-gray-200 text-xs">
+                            —
                           </div>
                         ) : (
                           <div className="space-y-1">
                             {entries.map((row) => (
                               <div
                                 key={row.id}
-                                className="rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-1 cursor-pointer hover:bg-emerald-100"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  openEdit(row)
-                                }}
+                                className="rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-1"
                               >
-                                <div className="flex items-start justify-between gap-1">
-                                  <div className="min-w-0">
-                                    <p className="text-xs font-semibold text-gray-900 leading-tight truncate">
-                                      {row.clubGroup
-                                        ? `${row.club.name} · ${row.clubGroup.name}`
-                                        : row.club.name}
-                                    </p>
-                                    <p className="text-[10px] text-gray-600">
-                                      {row.clubGroup
-                                        ? `${row.clubGroup._count.students} öğrenci`
-                                        : `${row.club._count.selections}/${row.club.capacity} üye`}
-                                    </p>
-                                    {row.club.instructor && (
-                                      <p className="text-[10px] text-indigo-700 truncate">
-                                        {row.club.instructor.firstName}{" "}
-                                        {row.club.instructor.lastName}
-                                      </p>
-                                    )}
-                                    {row.room && (
-                                      <p className="text-[10px] text-gray-500">{row.room}</p>
-                                    )}
-                                  </div>
-                                  <div className="flex shrink-0 gap-0.5">
-                                    <button
-                                      type="button"
-                                      className="text-indigo-600 p-0.5"
-                                      title="Düzenle"
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        openEdit(row)
-                                      }}
-                                    >
-                                      <Pencil className="h-3.5 w-3.5" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="text-red-600 p-0.5"
-                                      disabled={busy}
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        void remove(row.id)
-                                      }}
-                                      title="Kaldır"
-                                    >
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    </button>
-                                  </div>
-                                </div>
+                                <p className="text-xs font-semibold text-gray-900 leading-tight truncate">
+                                  {row.clubGroup
+                                    ? `${row.club.name} · ${row.clubGroup.name}`
+                                    : row.club.name}
+                                </p>
+                                <p className="text-[10px] text-gray-600">
+                                  {row.clubGroup
+                                    ? `${row.clubGroup._count.students} öğrenci`
+                                    : `${row.club._count.selections}/${row.club.capacity} üye`}
+                                </p>
+                                {row.club.instructor && (
+                                  <p className="text-[10px] text-indigo-700 truncate">
+                                    {row.club.instructor.firstName} {row.club.instructor.lastName}
+                                  </p>
+                                )}
+                                {row.room && (
+                                  <p className="text-[10px] text-gray-500">{row.room}</p>
+                                )}
                               </div>
                             ))}
-                            <button
-                              type="button"
-                              className="w-full text-[10px] text-emerald-700 py-0.5 hover:underline"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                openCell(day, slot)
-                              }}
-                            >
-                              + Ekle
-                            </button>
                           </div>
                         )}
                       </td>
@@ -378,132 +220,10 @@ export function ClubSchedulesPanel() {
 
       {groups.length === 0 && (
         <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-          Önce yukarıdan kulüp gruplarını oluşturun; ardından etüt ataması yapabilirsiniz.
+          Önce yukarıdan kulüp gruplarını oluşturun; ardından karttan Program ata ile etüt
+          yerleştirin.
         </p>
       )}
-
-      <Dialog
-        open={modalOpen}
-        onOpenChange={(open) => {
-          setModalOpen(open)
-          if (!open) setEditing(null)
-        }}
-      >
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {editing ? "Grup atamasını düzenle" : "Kulüp grubunu etüte yerleştir"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <Label>Gün *</Label>
-              <select
-                className="mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
-                value={dayOfWeek}
-                onChange={(e) => setDayOfWeek(parseInt(e.target.value, 10))}
-              >
-                {WEEKDAY_INDEXES.map((d) => (
-                  <option key={d} value={d}>
-                    {DAY_NAMES[d]}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label>Etüt saati *</Label>
-              <select
-                className="mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
-                value={slotKey(startTime, endTime)}
-                onChange={(e) => {
-                  const [s, en] = e.target.value.split("|")
-                  setStartTime(s)
-                  setEndTime(en)
-                  const match = etutSlots.find((x) => x.startTime === s && x.endTime === en)
-                  setSlotLabel(match?.label || "")
-                }}
-              >
-                {etutSlots.map((s) => (
-                  <option key={slotKey(s.startTime, s.endTime)} value={slotKey(s.startTime, s.endTime)}>
-                    {s.label} · {s.startTime}–{s.endTime}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label>Kulüp grubu *</Label>
-              <select
-                className="mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
-                value={selectedGroupId}
-                onChange={(e) => onGroupChange(e.target.value)}
-              >
-                <option value="">Seçiniz</option>
-                {groups.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.club.name} · {g.name} ({g._count.students} öğrenci)
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label>Öğretmen</Label>
-              <select
-                className="mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
-                value={instructorId}
-                onChange={(e) => setInstructorId(e.target.value)}
-              >
-                <option value="">Öğretmen seçiniz</option>
-                {teachers.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.firstName} {t.lastName}
-                    {t.subject ? ` (${t.subject})` : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label>Derslik (opsiyonel)</Label>
-              <Input
-                className="mt-1"
-                value={room}
-                onChange={(e) => setRoom(e.target.value)}
-                placeholder="Örn: Spor salonu"
-              />
-            </div>
-            <div className="flex gap-2 pt-2">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => {
-                  setModalOpen(false)
-                  setEditing(null)
-                }}
-              >
-                İptal
-              </Button>
-              {editing && (
-                <Button
-                  variant="outline"
-                  className="text-red-600"
-                  disabled={busy}
-                  onClick={() => void remove(editing.id)}
-                >
-                  Sil
-                </Button>
-              )}
-              <Button className="flex-1" onClick={() => void save()} disabled={busy}>
-                {busy ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : editing ? (
-                  "Güncelle"
-                ) : (
-                  "Kaydet"
-                )}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

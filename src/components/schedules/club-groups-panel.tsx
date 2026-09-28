@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Loader2, Pencil, Plus, Search, Trash2, Users, X } from "lucide-react"
+import { CalendarPlus, Loader2, Pencil, Plus, Search, Trash2, Users, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -12,6 +12,16 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { getAuthHeaders } from "@/components/hr/hr-utils"
+import { DAY_NAMES, WEEKDAY_INDEXES } from "@/lib/schedules/lesson-slots"
+import { hasTimeConflict } from "@/lib/schedules/time-conflict"
+
+type Teacher = {
+  id: string
+  firstName: string
+  lastName: string
+  subject?: string | null
+}
 
 type Student = {
   id: string
@@ -25,6 +35,7 @@ type ClubOption = {
   id: string
   name: string
   capacity: number
+  instructorId?: string | null
   _count: { selections: number }
   selections: Array<{ student: Student }>
 }
@@ -46,7 +57,8 @@ type ClubGroup = {
     id: string
     name: string
     capacity: number
-    instructor: { firstName: string; lastName: string } | null
+    instructorId?: string | null
+    instructor: Teacher | null
   }
   students: Array<{ student: Student }>
   schedules: ClubGroupSchedule[]
@@ -59,15 +71,60 @@ type GroupForm = {
   studentIds: string[]
 }
 
-const DAY_SHORT = ["", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
+type SessionForm = {
+  teacherId: string
+  dayOfWeek: string
+  startTime: string
+  endTime: string
+  room: string
+}
+
+type EtutSlot = {
+  label: string
+  startTime: string
+  endTime: string
+}
+
+type BusyBlock = {
+  dayOfWeek: number
+  startTime: string
+  endTime: string
+  label: string
+}
+
+type SlotPick = {
+  dayOfWeek: number
+  startTime: string
+  endTime: string
+}
+
+function slotPickKey(s: SlotPick) {
+  return `${s.dayOfWeek}|${s.startTime}|${s.endTime}`
+}
 
 function emptyForm(): GroupForm {
   return { clubId: "", name: "", notes: "", studentIds: [] }
 }
 
-export function ClubGroupsPanel() {
+function emptySessionForm(): SessionForm {
+  return {
+    teacherId: "",
+    dayOfWeek: "1",
+    startTime: "",
+    endTime: "",
+    room: "",
+  }
+}
+
+type Props = {
+  onSchedulesChanged?: () => void
+}
+
+export function ClubGroupsPanel({ onSchedulesChanged }: Props = {}) {
   const [groups, setGroups] = useState<ClubGroup[]>([])
   const [clubs, setClubs] = useState<ClubOption[]>([])
+  const [teachers, setTeachers] = useState<Teacher[]>([])
+  const [etutSlots, setEtutSlots] = useState<EtutSlot[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
@@ -77,15 +134,33 @@ export function ClubGroupsPanel() {
   const [showSelectedOnly, setShowSelectedOnly] = useState(false)
   const [error, setError] = useState("")
 
+  const [sessionModalOpen, setSessionModalOpen] = useState(false)
+  const [sessionGroup, setSessionGroup] = useState<ClubGroup | null>(null)
+  const [editingSchedule, setEditingSchedule] = useState<ClubGroupSchedule | null>(null)
+  const [sessionForm, setSessionForm] = useState<SessionForm>(emptySessionForm)
+  const [selectedSlots, setSelectedSlots] = useState<SlotPick[]>([])
+  const [teacherBusy, setTeacherBusy] = useState<BusyBlock[]>([])
+  const [teacherBusyLoading, setTeacherBusyLoading] = useState(false)
+
   const load = useCallback(async () => {
     setLoading(true)
     setError("")
     try {
-      const res = await fetch("/api/club-groups", { cache: "no-store" })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || "Gruplar alınamadı")
+      const [groupsRes, teachersRes, clubsSchedRes] = await Promise.all([
+        fetch("/api/club-groups", { cache: "no-store" }),
+        fetch("/api/staff/pickers?type=teachers", { headers: getAuthHeaders() }),
+        fetch("/api/schedules/clubs", { cache: "no-store" }),
+      ])
+      const data = await groupsRes.json().catch(() => ({}))
+      if (!groupsRes.ok) throw new Error(data.error || "Gruplar alınamadı")
       setGroups(Array.isArray(data.groups) ? data.groups : [])
       setClubs(Array.isArray(data.clubs) ? data.clubs : [])
+
+      const tData = teachersRes.ok ? await teachersRes.json() : { staff: [] }
+      setTeachers(Array.isArray(tData.staff) ? tData.staff : [])
+
+      const schedData = clubsSchedRes.ok ? await clubsSchedRes.json() : {}
+      setEtutSlots(Array.isArray(schedData.etutSlots) ? schedData.etutSlots : [])
     } catch (e) {
       setGroups([])
       setClubs([])
@@ -99,9 +174,77 @@ export function ClubGroupsPanel() {
     void load()
   }, [load])
 
+  const notifySchedulesChanged = useCallback(() => {
+    onSchedulesChanged?.()
+  }, [onSchedulesChanged])
+
+  const loadTeacherBusy = useCallback(
+    async (teacherId: string, excludeScheduleId?: string) => {
+      if (!teacherId) {
+        setTeacherBusy([])
+        return
+      }
+      setTeacherBusyLoading(true)
+      try {
+        const [schedRes, sessionRes, clubRes] = await Promise.all([
+          fetch(`/api/schedules?teacherId=${teacherId}`, { cache: "no-store" }),
+          fetch(`/api/study-groups/sessions?teacherId=${teacherId}`, { cache: "no-store" }),
+          fetch("/api/schedules/clubs", { cache: "no-store" }),
+        ])
+        const schedData = schedRes.ok ? await schedRes.json() : { schedules: [] }
+        const sessionData = sessionRes.ok ? await sessionRes.json() : { sessions: [] }
+        const clubData = clubRes.ok ? await clubRes.json() : { schedules: [] }
+
+        const blocks: BusyBlock[] = []
+        for (const s of Array.isArray(schedData.schedules) ? schedData.schedules : []) {
+          blocks.push({
+            dayOfWeek: s.dayOfWeek,
+            startTime: s.startTime,
+            endTime: s.endTime,
+            label: `${s.subjectName}${s.class?.name ? ` · ${s.class.name}` : ""}`,
+          })
+        }
+        for (const sess of Array.isArray(sessionData.sessions) ? sessionData.sessions : []) {
+          blocks.push({
+            dayOfWeek: sess.dayOfWeek,
+            startTime: sess.startTime,
+            endTime: sess.endTime,
+            label: `ÖÇG: ${sess.studyGroup?.name ?? sess.topic ?? ""}`,
+          })
+        }
+        for (const c of Array.isArray(clubData.schedules) ? clubData.schedules : []) {
+          if (excludeScheduleId && c.id === excludeScheduleId) continue
+          if (c.club?.instructorId !== teacherId && c.club?.instructor?.id !== teacherId) continue
+          blocks.push({
+            dayOfWeek: c.dayOfWeek,
+            startTime: c.startTime,
+            endTime: c.endTime,
+            label: `Kulüp: ${c.clubGroup?.name ? `${c.club?.name} · ${c.clubGroup.name}` : c.club?.name ?? ""}`,
+          })
+        }
+        setTeacherBusy(blocks)
+      } catch {
+        setTeacherBusy([])
+      } finally {
+        setTeacherBusyLoading(false)
+      }
+    },
+    []
+  )
+
+  useEffect(() => {
+    if (!sessionModalOpen) return
+    void loadTeacherBusy(sessionForm.teacherId, editingSchedule?.id)
+  }, [sessionModalOpen, sessionForm.teacherId, editingSchedule?.id, loadTeacherBusy])
+
   const selectedClub = useMemo(
     () => clubs.find((c) => c.id === form.clubId) || null,
     [clubs, form.clubId]
+  )
+
+  const selectedTeacher = useMemo(
+    () => teachers.find((t) => t.id === sessionForm.teacherId) || null,
+    [teachers, sessionForm.teacherId]
   )
 
   const poolStudents = useMemo(() => {
@@ -142,6 +285,32 @@ export function ClubGroupsPanel() {
     setModalOpen(true)
   }
 
+  const openCreateSession = (group: ClubGroup) => {
+    setSessionGroup(group)
+    setEditingSchedule(null)
+    setSessionForm({
+      ...emptySessionForm(),
+      teacherId: group.club.instructorId || group.club.instructor?.id || "",
+    })
+    setSelectedSlots([])
+    setTeacherBusy([])
+    setSessionModalOpen(true)
+  }
+
+  const openEditSession = (group: ClubGroup, schedule: ClubGroupSchedule) => {
+    setSessionGroup(group)
+    setEditingSchedule(schedule)
+    setSelectedSlots([])
+    setSessionForm({
+      teacherId: group.club.instructorId || group.club.instructor?.id || "",
+      dayOfWeek: String(schedule.dayOfWeek),
+      startTime: schedule.startTime,
+      endTime: schedule.endTime,
+      room: schedule.room || "",
+    })
+    setSessionModalOpen(true)
+  }
+
   const toggleStudent = (id: string) => {
     setForm((prev) => ({
       ...prev,
@@ -160,6 +329,44 @@ export function ClubGroupsPanel() {
 
   const clearStudents = () => {
     setForm((prev) => ({ ...prev, studentIds: [] }))
+  }
+
+  const findBusy = (day: number, start: string, end: string) =>
+    teacherBusy.find((b) => b.dayOfWeek === day && hasTimeConflict(b.startTime, b.endTime, start, end))
+
+  const isSelectedSlot = (day: number, start: string, end: string) => {
+    if (editingSchedule) {
+      return (
+        sessionForm.dayOfWeek === String(day) &&
+        sessionForm.startTime === start &&
+        sessionForm.endTime === end
+      )
+    }
+    return selectedSlots.some(
+      (s) => s.dayOfWeek === day && s.startTime === start && s.endTime === end
+    )
+  }
+
+  const toggleSlotPick = (day: number, start: string, end: string) => {
+    if (editingSchedule) {
+      setSessionForm((prev) => ({
+        ...prev,
+        dayOfWeek: String(day),
+        startTime: start,
+        endTime: end,
+      }))
+      return
+    }
+    const pick: SlotPick = { dayOfWeek: day, startTime: start, endTime: end }
+    const key = slotPickKey(pick)
+    setSelectedSlots((prev) => {
+      if (prev.some((s) => slotPickKey(s) === key)) {
+        return prev.filter((s) => slotPickKey(s) !== key)
+      }
+      return [...prev, pick].sort(
+        (a, b) => a.dayOfWeek - b.dayOfWeek || a.startTime.localeCompare(b.startTime)
+      )
+    })
   }
 
   const save = async () => {
@@ -197,6 +404,90 @@ export function ClubGroupsPanel() {
     }
   }
 
+  const saveSession = async () => {
+    if (!sessionGroup) return
+    if (!sessionForm.teacherId) {
+      alert("Öğretmen seçiniz.")
+      return
+    }
+
+    const slotsToSave: SlotPick[] = editingSchedule
+      ? [
+          {
+            dayOfWeek: parseInt(sessionForm.dayOfWeek, 10),
+            startTime: sessionForm.startTime,
+            endTime: sessionForm.endTime,
+          },
+        ]
+      : selectedSlots
+
+    if (slotsToSave.length === 0 || !slotsToSave[0].startTime || !slotsToSave[0].endTime) {
+      alert("En az bir etüt saati seçiniz.")
+      return
+    }
+
+    setBusy(true)
+    try {
+      if (editingSchedule) {
+        const res = await fetch(`/api/schedules/clubs/${editingSchedule.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            clubGroupId: sessionGroup.id,
+            dayOfWeek: slotsToSave[0].dayOfWeek,
+            startTime: slotsToSave[0].startTime,
+            endTime: slotsToSave[0].endTime,
+            room: sessionForm.room.trim() || null,
+            instructorId: sessionForm.teacherId,
+          }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          alert((data as { error?: string }).error || "Atama kaydedilemedi")
+          return
+        }
+      } else {
+        const errors: string[] = []
+        let okCount = 0
+        for (const slot of slotsToSave) {
+          const res = await fetch("/api/schedules/clubs", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              clubGroupId: sessionGroup.id,
+              dayOfWeek: slot.dayOfWeek,
+              startTime: slot.startTime,
+              endTime: slot.endTime,
+              room: sessionForm.room.trim() || null,
+              instructorId: sessionForm.teacherId,
+            }),
+          })
+          const data = await res.json().catch(() => ({}))
+          if (!res.ok) {
+            errors.push(
+              `${DAY_NAMES[slot.dayOfWeek]} ${slot.startTime}: ${(data as { error?: string }).error || "hata"}`
+            )
+          } else {
+            okCount++
+          }
+        }
+        if (errors.length > 0) {
+          alert(
+            (okCount > 0 ? `${okCount} atama kaydedildi.\n\n` : "") +
+              `Kaydedilemeyenler:\n${errors.join("\n")}`
+          )
+          if (okCount === 0) return
+        }
+      }
+      setSessionModalOpen(false)
+      setSelectedSlots([])
+      await load()
+      notifySchedulesChanged()
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const remove = async (group: ClubGroup) => {
     if (!confirm(`"${group.name}" grubunu silmek istiyor musunuz?`)) return
     setBusy(true)
@@ -208,6 +499,24 @@ export function ClubGroupsPanel() {
         return
       }
       await load()
+      notifySchedulesChanged()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const removeSchedule = async (id: string) => {
+    if (!confirm("Bu etüt atamasını kaldırmak istiyor musunuz?")) return
+    setBusy(true)
+    try {
+      const res = await fetch(`/api/schedules/clubs/${id}`, { method: "DELETE" })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert((data as { error?: string }).error || "Silinemedi")
+        return
+      }
+      await load()
+      notifySchedulesChanged()
     } finally {
       setBusy(false)
     }
@@ -228,8 +537,7 @@ export function ClubGroupsPanel() {
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Kulüp grupları</h2>
           <p className="text-sm text-gray-600">
-            ÖÇG gibi önce grubu ve başvuran öğrencileri oluşturun; etüt atamasını Kulüp
-            programından yapın.
+            ÖÇG gibi önce grubu oluşturun; karttan öğretmen seçip etüt saatini atayın.
           </p>
         </div>
         <Button type="button" onClick={openCreate} className="shrink-0">
@@ -280,7 +588,7 @@ export function ClubGroupsPanel() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-2 text-sm">
+              <CardContent className="space-y-3 text-sm">
                 <p className="flex items-center gap-1.5 text-gray-700">
                   <Users className="h-4 w-4 text-gray-500" />
                   {g.students.length} öğrenci
@@ -288,21 +596,68 @@ export function ClubGroupsPanel() {
                     ? ` · ${g.club.instructor.firstName} ${g.club.instructor.lastName}`
                     : ""}
                 </p>
-                {g.schedules.length > 0 ? (
-                  <div className="flex flex-wrap gap-1">
-                    {g.schedules.map((s) => (
-                      <span
-                        key={s.id}
-                        className="rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-800"
-                      >
-                        {DAY_SHORT[s.dayOfWeek] || s.dayOfWeek} {s.startTime}–{s.endTime}
-                      </span>
-                    ))}
+                {g.students.length > 0 ? (
+                  <div className="text-xs text-gray-600 line-clamp-2">
+                    {g.students
+                      .map((m) => `${m.student.firstName} ${m.student.lastName}`)
+                      .join(", ")}
                   </div>
+                ) : (
+                  <p className="text-xs text-amber-700">Düzenle → öğrenci ekleyin</p>
+                )}
+
+                {g.schedules.length > 0 ? (
+                  <ul className="space-y-1.5">
+                    {g.schedules.map((sess) => (
+                      <li
+                        key={sess.id}
+                        className="rounded-lg border border-emerald-100 bg-emerald-50/50 px-2.5 py-2 text-xs"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="font-medium text-gray-900">
+                              {DAY_NAMES[sess.dayOfWeek]} · {sess.startTime}–{sess.endTime}
+                            </p>
+                            {sess.room ? (
+                              <p className="text-gray-600 truncate">{sess.room}</p>
+                            ) : null}
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0"
+                              onClick={() => openEditSession(g, sess)}
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 text-red-600"
+                              disabled={busy}
+                              onClick={() => void removeSchedule(sess.id)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
                 ) : (
                   <p className="text-xs text-amber-700">Henüz etüt ataması yok</p>
                 )}
-                {g.notes && <p className="text-xs text-gray-500 line-clamp-2">{g.notes}</p>}
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => openCreateSession(g)}
+                >
+                  <CalendarPlus className="h-3.5 w-3.5 mr-1.5" />
+                  Program ata
+                </Button>
               </CardContent>
             </Card>
           ))}
@@ -458,6 +813,195 @@ export function ClubGroupsPanel() {
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : editing ? "Güncelle" : "Oluştur"}
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Program ataması — öğretmen seç → etüt grid (konu yok) */}
+      <Dialog
+        open={sessionModalOpen}
+        onOpenChange={(open) => {
+          if (!open) setSessionModalOpen(false)
+          else setSessionModalOpen(true)
+        }}
+      >
+        <DialogContent className="max-w-6xl w-[min(96vw,72rem)] max-h-[92vh] overflow-y-auto p-0">
+          <div className="sticky top-0 z-10 border-b bg-white px-6 pt-6 pb-4">
+            <DialogHeader className="pr-8 mb-0">
+              <DialogTitle className="text-xl">
+                {editingSchedule ? "Atamayı düzenle" : "Program ata"}
+                {sessionGroup ? ` — ${sessionGroup.club.name} · ${sessionGroup.name}` : ""}
+              </DialogTitle>
+            </DialogHeader>
+          </div>
+
+          <div className="px-6 py-5 space-y-6">
+            <div className="grid gap-4 sm:grid-cols-[1fr_160px]">
+              <div>
+                <Label>Öğretmen *</Label>
+                <select
+                  className="mt-1.5 w-full rounded-md border border-gray-200 bg-white px-3 py-2.5 text-sm"
+                  value={sessionForm.teacherId}
+                  onChange={(e) => setSessionForm({ ...sessionForm, teacherId: e.target.value })}
+                >
+                  <option value="">Öğretmen seçiniz</option>
+                  {teachers.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.firstName} {t.lastName}
+                      {t.subject ? ` (${t.subject})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label>Derslik</Label>
+                <Input
+                  className="mt-1.5"
+                  value={sessionForm.room}
+                  onChange={(e) => setSessionForm({ ...sessionForm, room: e.target.value })}
+                  placeholder="B203"
+                />
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                  <p className="font-semibold text-gray-900">Gün ve etüt saati</p>
+                  <p className="text-sm text-gray-600">
+                    {selectedTeacher
+                      ? editingSchedule
+                        ? `${selectedTeacher.firstName} ${selectedTeacher.lastName} — bir hücre seçin`
+                        : `${selectedTeacher.firstName} ${selectedTeacher.lastName} — birden fazla boş hücre seçebilirsiniz`
+                      : "Önce öğretmen seçin"}
+                  </p>
+                </div>
+                {sessionForm.teacherId && (
+                  <p className="text-xs font-medium text-emerald-800 bg-white/80 border border-emerald-100 rounded-lg px-3 py-1.5">
+                    {editingSchedule
+                      ? `Seçili: ${DAY_NAMES[parseInt(sessionForm.dayOfWeek, 10) || 1]} · ${sessionForm.startTime}–${sessionForm.endTime}`
+                      : selectedSlots.length === 0
+                        ? "Henüz saat seçilmedi"
+                        : `${selectedSlots.length} saat seçili`}
+                  </p>
+                )}
+              </div>
+
+              {!sessionForm.teacherId ? (
+                <p className="text-sm text-gray-500 py-8 text-center">
+                  Öğretmen seçildikten sonra program açılır
+                </p>
+              ) : teacherBusyLoading ? (
+                <div className="flex justify-center py-10 text-gray-500 gap-2">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Program yükleniyor...
+                </div>
+              ) : etutSlots.length === 0 ? (
+                <p className="text-sm text-amber-800 py-6 text-center">
+                  Tanımlı etüt saati yok. Ders saatleri’nden türü Etüt olan satırlar ekleyin.
+                </p>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-white bg-white">
+                  <table className="w-full border-collapse min-w-[640px]">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="border-b border-r border-gray-200 p-2 text-xs font-semibold text-gray-700 w-28">
+                          Etüt
+                        </th>
+                        {WEEKDAY_INDEXES.map((day) => (
+                          <th
+                            key={day}
+                            className="border-b border-gray-200 p-2 text-xs font-semibold text-gray-700"
+                          >
+                            {DAY_NAMES[day]}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {etutSlots.map((slot) => (
+                        <tr key={`${slot.startTime}-${slot.endTime}`}>
+                          <td className="border-b border-r border-gray-200 p-2 text-xs font-medium text-emerald-900 bg-emerald-50/80">
+                            <div>{slot.label}</div>
+                            <div className="text-[10px] opacity-70 font-normal">
+                              {slot.startTime}–{slot.endTime}
+                            </div>
+                          </td>
+                          {WEEKDAY_INDEXES.map((day) => {
+                            const occupied = findBusy(day, slot.startTime, slot.endTime)
+                            const selected = isSelectedSlot(day, slot.startTime, slot.endTime)
+                            if (occupied) {
+                              return (
+                                <td
+                                  key={`${day}-${slot.startTime}`}
+                                  className="border-b border-gray-100 p-1.5 align-top bg-rose-50"
+                                  title={occupied.label}
+                                >
+                                  <div className="px-1 py-1">
+                                    <p className="text-[10px] font-semibold text-rose-800 leading-tight line-clamp-2">
+                                      {occupied.label}
+                                    </p>
+                                    <p className="text-[9px] text-rose-600 mt-0.5">Dolu</p>
+                                  </div>
+                                </td>
+                              )
+                            }
+                            return (
+                              <td
+                                key={`${day}-${slot.startTime}`}
+                                className={`border-b border-gray-100 p-1.5 cursor-pointer align-middle transition-colors ${
+                                  selected
+                                    ? "bg-emerald-100 ring-2 ring-inset ring-emerald-500"
+                                    : "bg-emerald-50/70 hover:bg-emerald-100"
+                                }`}
+                                onClick={() => toggleSlotPick(day, slot.startTime, slot.endTime)}
+                              >
+                                <div className="h-11 flex items-center justify-center">
+                                  <span
+                                    className={`text-[10px] font-medium ${
+                                      selected ? "text-emerald-900" : "text-emerald-700"
+                                    }`}
+                                  >
+                                    {selected ? "Seçildi" : "Boş"}
+                                  </span>
+                                </div>
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="sticky bottom-0 border-t bg-white px-6 py-4 flex flex-col sm:flex-row gap-3">
+            <p className="text-xs text-gray-500 sm:flex-1 self-center">
+              {editingSchedule
+                ? "Öğretmen ve etüt saatini güncelleyebilirsiniz."
+                : "Aynı öğretmen ile birden fazla gün/etüt atayabilirsiniz."}
+            </p>
+            <Button
+              variant="outline"
+              className="sm:w-28"
+              onClick={() => setSessionModalOpen(false)}
+              disabled={busy}
+            >
+              İptal
+            </Button>
+            <Button className="sm:w-40" onClick={() => void saveSession()} disabled={busy}>
+              {busy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : editingSchedule ? (
+                "Güncelle"
+              ) : selectedSlots.length > 1 ? (
+                `${selectedSlots.length} atama kaydet`
+              ) : (
+                "Ata"
+              )}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

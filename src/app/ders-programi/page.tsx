@@ -96,6 +96,7 @@ export default function DersProgramiPage() {
   const [coursesOpen, setCoursesOpen] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
   const [conflictsOpen, setConflictsOpen] = useState(false)
+  const [clubSchedulesRefreshKey, setClubSchedulesRefreshKey] = useState(0)
   const [saturdaySaving, setSaturdaySaving] = useState(false)
   const [slotMap, setSlotMap] = useState<{
     ortaokul: Array<LessonSlot & { kind?: SlotKind }>
@@ -442,12 +443,12 @@ export default function DersProgramiPage() {
         <div className={`space-y-4 ${fullscreen ? "h-full overflow-y-auto" : ""}`}>
           <Card className="border-0 shadow-sm">
             <CardContent className="p-4 sm:p-6">
-              <ClubGroupsPanel />
+              <ClubGroupsPanel onSchedulesChanged={() => setClubSchedulesRefreshKey((n) => n + 1)} />
             </CardContent>
           </Card>
           <Card className="border-0 shadow-sm">
             <CardContent className="p-4 sm:p-6">
-              <ClubSchedulesPanel />
+              <ClubSchedulesPanel refreshKey={clubSchedulesRefreshKey} />
             </CardContent>
           </Card>
         </div>
