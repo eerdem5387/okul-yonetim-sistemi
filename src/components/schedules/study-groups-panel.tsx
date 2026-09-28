@@ -346,6 +346,16 @@ export function StudyGroupsPanel() {
   const findBusy = (day: number, start: string, end: string) =>
     teacherBusy.find((b) => b.dayOfWeek === day && hasTimeConflict(b.startTime, b.endTime, start, end))
 
+  /** Grubun o hücredeki mevcut ataması (diğer öğretmenler dahil) */
+  const groupSessionAt = (day: number, start: string, end: string) => {
+    if (!sessionGroup) return null
+    return (
+      sessionGroup.sessions.find(
+        (s) => s.dayOfWeek === day && s.startTime === start && s.endTime === end
+      ) ?? null
+    )
+  }
+
   const isSelectedSlot = (day: number, start: string, end: string) => {
     if (editingSession) {
       return (
@@ -1013,7 +1023,7 @@ export function StudyGroupsPanel() {
           else setSessionModalOpen(true)
         }}
       >
-        <DialogContent className="max-w-6xl w-[min(96vw,72rem)] max-h-[92vh] overflow-y-auto p-0">
+        <DialogContent className="max-w-[96vw] w-[96vw] max-h-[94vh] overflow-y-auto p-0">
           <div className="sticky top-0 z-10 border-b bg-white px-6 pt-6 pb-4">
             <DialogHeader className="pr-8 mb-0">
               <DialogTitle className="text-xl">
@@ -1061,136 +1071,218 @@ export function StudyGroupsPanel() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div>
-                  <p className="font-semibold text-gray-900">Gün ve ders saati</p>
-                  <p className="text-sm text-gray-600">
-                    {selectedTeacher
-                      ? editingSession
-                        ? `${selectedTeacher.firstName} ${selectedTeacher.lastName} — bir hücre seçin`
-                        : `${selectedTeacher.firstName} ${selectedTeacher.lastName} — birden fazla boş hücre seçebilirsiniz (${
-                            sessionBand === "mixed"
-                              ? "ortaokul + lise"
-                              : sessionBand === "lise"
-                                ? "lise"
-                                : "ortaokul"
-                          } saatleri)`
-                      : "Önce öğretmen seçin"}
-                  </p>
-                </div>
-                {sessionForm.teacherId && (
-                  <p className="text-xs font-medium text-indigo-800 bg-white/80 border border-indigo-100 rounded-lg px-3 py-1.5">
-                    {editingSession
-                      ? `Seçili: ${DAY_NAMES[parseInt(sessionForm.dayOfWeek, 10) || 1]} · ${sessionForm.startTime}–${sessionForm.endTime}`
-                      : selectedSlots.length === 0
-                        ? "Henüz saat seçilmedi"
-                        : `${selectedSlots.length} saat seçili`}
-                  </p>
-                )}
-              </div>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <p className="text-sm text-gray-600">
+                Sol: seçili öğretmenin programı (atama buradan). Sağ:{" "}
+                <strong>{sessionGroup?.name ?? "grup"}</strong> grubunun mevcut programı.
+              </p>
+              {sessionForm.teacherId && (
+                <p className="text-xs font-medium text-indigo-800 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-1.5">
+                  {editingSession
+                    ? `Seçili: ${DAY_NAMES[parseInt(sessionForm.dayOfWeek, 10) || 1]} · ${sessionForm.startTime}–${sessionForm.endTime}`
+                    : selectedSlots.length === 0
+                      ? "Henüz saat seçilmedi"
+                      : `${selectedSlots.length} saat seçili`}
+                </p>
+              )}
+            </div>
 
-              {!sessionForm.teacherId ? (
-                <p className="text-sm text-gray-500 py-8 text-center">
-                  Öğretmen seçildikten sonra program açılır
-                </p>
-              ) : teacherBusyLoading ? (
-                <div className="flex justify-center py-10 text-gray-500 gap-2">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Program yükleniyor...
-                </div>
-              ) : slots.length === 0 ? (
-                <p className="text-sm text-amber-800 py-6 text-center">
-                  Tanımlı ders saati yok. Ders saatleri’nden şablon ekleyin.
-                </p>
-              ) : (
-                <div className="overflow-x-auto rounded-xl border border-white bg-white">
-                  <table className="w-full border-collapse min-w-[640px]">
-                    <thead>
-                      <tr className="bg-gray-50">
-                        <th className="border-b border-r border-gray-200 p-2 text-xs font-semibold text-gray-700 w-28">
-                          Saat
-                        </th>
-                        {WEEKDAY_INDEXES.map((day) => (
-                          <th
-                            key={day}
-                            className="border-b border-gray-200 p-2 text-xs font-semibold text-gray-700"
-                          >
-                            {DAY_NAMES[day]}
+            {!sessionForm.teacherId ? (
+              <p className="text-sm text-gray-500 py-10 text-center rounded-2xl border border-dashed border-gray-200">
+                Öğretmen seçildikten sonra her iki program yan yana açılır
+              </p>
+            ) : teacherBusyLoading ? (
+              <div className="flex justify-center py-10 text-gray-500 gap-2">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Program yükleniyor...
+              </div>
+            ) : slots.length === 0 ? (
+              <p className="text-sm text-amber-800 py-6 text-center">
+                Tanımlı ders saati yok. Ders saatleri’nden şablon ekleyin.
+              </p>
+            ) : (
+              <div className="grid gap-4 xl:grid-cols-2">
+                {/* Sol: öğretmen */}
+                <div className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-3 space-y-2 min-w-0">
+                  <div>
+                    <p className="font-semibold text-gray-900 text-sm">
+                      Öğretmen · {selectedTeacher?.firstName} {selectedTeacher?.lastName}
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      {editingSession
+                        ? "Bir hücre seçin"
+                        : "Boş hücrelere tıklayarak atayın"}
+                    </p>
+                  </div>
+                  <div className="overflow-x-auto rounded-xl border border-white bg-white">
+                    <table className="w-full border-collapse min-w-[520px]">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th className="border-b border-r border-gray-200 p-1.5 text-[10px] font-semibold text-gray-700 w-24">
+                            Saat
                           </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {slots.map((slot) => (
-                        <tr key={`${slot.id}-${slot.startTime}`}>
-                          <td
-                            className={`border-b border-r border-gray-200 p-2 text-xs font-medium ${
-                              slot.kind === "ETUT"
-                                ? "text-emerald-900 bg-emerald-50/80"
-                                : "text-gray-800 bg-gray-50/80"
-                            }`}
-                          >
-                            <div>{slot.label}</div>
-                            <div className="text-[10px] opacity-70 font-normal">
-                              {slot.startTime}–{slot.endTime}
-                            </div>
-                          </td>
-                          {WEEKDAY_INDEXES.map((day) => {
-                            const occupied = findBusy(day, slot.startTime, slot.endTime)
-                            const selected = isSelectedSlot(day, slot.startTime, slot.endTime)
-                            if (occupied) {
-                              return (
-                                <td
-                                  key={`${day}-${slot.id}`}
-                                  className="border-b border-gray-100 p-1.5 align-top bg-rose-50"
-                                  title={occupied.label}
-                                >
-                                  <div className="px-1 py-1">
-                                    <p className="text-[10px] font-semibold text-rose-800 leading-tight line-clamp-2">
+                          {WEEKDAY_INDEXES.map((day) => (
+                            <th
+                              key={day}
+                              className="border-b border-gray-200 p-1.5 text-[10px] font-semibold text-gray-700"
+                            >
+                              {DAY_NAMES[day].slice(0, 3)}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {slots.map((slot) => (
+                          <tr key={`t-${slot.id}-${slot.startTime}`}>
+                            <td
+                              className={`border-b border-r border-gray-200 p-1.5 text-[10px] font-medium ${
+                                slot.kind === "ETUT"
+                                  ? "text-emerald-900 bg-emerald-50/80"
+                                  : "text-gray-800 bg-gray-50/80"
+                              }`}
+                            >
+                              <div>{slot.label}</div>
+                              <div className="text-[9px] opacity-70 font-normal">
+                                {slot.startTime}–{slot.endTime}
+                              </div>
+                            </td>
+                            {WEEKDAY_INDEXES.map((day) => {
+                              const occupied = findBusy(day, slot.startTime, slot.endTime)
+                              const selected = isSelectedSlot(day, slot.startTime, slot.endTime)
+                              if (occupied) {
+                                return (
+                                  <td
+                                    key={`t-${day}-${slot.id}`}
+                                    className="border-b border-gray-100 p-1 align-top bg-rose-50"
+                                    title={occupied.label}
+                                  >
+                                    <p className="text-[9px] font-semibold text-rose-800 leading-tight line-clamp-2 px-0.5">
                                       {occupied.label}
                                     </p>
-                                    <p className="text-[9px] text-rose-600 mt-0.5">Dolu</p>
+                                    <p className="text-[8px] text-rose-600 px-0.5">Dolu</p>
+                                  </td>
+                                )
+                              }
+                              return (
+                                <td
+                                  key={`t-${day}-${slot.id}`}
+                                  className={`border-b border-gray-100 p-1 cursor-pointer align-middle transition-colors ${
+                                    selected
+                                      ? "bg-violet-100 ring-2 ring-inset ring-violet-400"
+                                      : "bg-emerald-50/70 hover:bg-emerald-100"
+                                  }`}
+                                  onClick={() => toggleSlotPick(day, slot.startTime, slot.endTime)}
+                                >
+                                  <div className="h-9 flex items-center justify-center">
+                                    <span
+                                      className={`text-[9px] font-medium ${
+                                        selected ? "text-violet-800" : "text-emerald-700"
+                                      }`}
+                                    >
+                                      {selected ? "Seçildi" : "Boş"}
+                                    </span>
                                   </div>
                                 </td>
                               )
-                            }
-                            return (
-                              <td
-                                key={`${day}-${slot.id}`}
-                                className={`border-b border-gray-100 p-1.5 cursor-pointer align-middle transition-colors ${
-                                  selected
-                                    ? "bg-violet-100 ring-2 ring-inset ring-violet-400"
-                                    : "bg-emerald-50/70 hover:bg-emerald-100"
-                                }`}
-                                onClick={() => toggleSlotPick(day, slot.startTime, slot.endTime)}
-                              >
-                                <div className="h-11 flex items-center justify-center">
-                                  <span
-                                    className={`text-[10px] font-medium ${
-                                      selected ? "text-violet-800" : "text-emerald-700"
-                                    }`}
-                                  >
-                                    {selected ? "Seçildi" : "Boş"}
-                                  </span>
-                                </div>
-                              </td>
-                            )
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              )}
-            </div>
+
+                {/* Sağ: grup */}
+                <div className="rounded-2xl border border-violet-100 bg-violet-50/40 p-3 space-y-2 min-w-0">
+                  <div>
+                    <p className="font-semibold text-gray-900 text-sm">
+                      Grup · {sessionGroup?.name}
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      Bu grubun mevcut atamaları (tüm öğretmenler) — salt görüntü
+                    </p>
+                  </div>
+                  <div className="overflow-x-auto rounded-xl border border-white bg-white">
+                    <table className="w-full border-collapse min-w-[520px]">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th className="border-b border-r border-gray-200 p-1.5 text-[10px] font-semibold text-gray-700 w-24">
+                            Saat
+                          </th>
+                          {WEEKDAY_INDEXES.map((day) => (
+                            <th
+                              key={day}
+                              className="border-b border-gray-200 p-1.5 text-[10px] font-semibold text-gray-700"
+                            >
+                              {DAY_NAMES[day].slice(0, 3)}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {slots.map((slot) => (
+                          <tr key={`g-${slot.id}-${slot.startTime}`}>
+                            <td
+                              className={`border-b border-r border-gray-200 p-1.5 text-[10px] font-medium ${
+                                slot.kind === "ETUT"
+                                  ? "text-emerald-900 bg-emerald-50/80"
+                                  : "text-gray-800 bg-gray-50/80"
+                              }`}
+                            >
+                              <div>{slot.label}</div>
+                              <div className="text-[9px] opacity-70 font-normal">
+                                {slot.startTime}–{slot.endTime}
+                              </div>
+                            </td>
+                            {WEEKDAY_INDEXES.map((day) => {
+                              const sess = groupSessionAt(day, slot.startTime, slot.endTime)
+                              const isEditingHere = editingSession && sess?.id === editingSession.id
+                              if (sess) {
+                                return (
+                                  <td
+                                    key={`g-${day}-${slot.id}`}
+                                    className={`border-b border-gray-100 p-1 align-top ${
+                                      isEditingHere
+                                        ? "bg-violet-100 ring-2 ring-inset ring-violet-400"
+                                        : "bg-violet-50"
+                                    }`}
+                                    title={`${sess.teacher.firstName} ${sess.teacher.lastName} · ${sess.topic}`}
+                                  >
+                                    <p className="text-[9px] font-semibold text-violet-900 leading-tight line-clamp-2 px-0.5">
+                                      {sess.teacher.firstName} {sess.teacher.lastName}
+                                    </p>
+                                    <p className="text-[8px] text-violet-700 line-clamp-1 px-0.5">
+                                      {sess.topic || "Konu yok"}
+                                    </p>
+                                  </td>
+                                )
+                              }
+                              return (
+                                <td
+                                  key={`g-${day}-${slot.id}`}
+                                  className="border-b border-gray-100 p-1 align-middle bg-gray-50/50"
+                                >
+                                  <div className="h-9 flex items-center justify-center">
+                                    <span className="text-[9px] text-gray-300">—</span>
+                                  </div>
+                                </td>
+                              )
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="sticky bottom-0 border-t bg-white px-6 py-4 flex flex-col sm:flex-row gap-3">
             <p className="text-xs text-gray-500 sm:flex-1 self-center">
               {editingSession
-                ? "Konu, öğretmen takviminde bu grubun yanında görünür."
-                : "Aynı öğretmen ve konu ile birden fazla gün/saat atayabilirsiniz. Karttan tekrar “Program ata” ile de ekleme yapılabilir."}
+                ? "Soldaki tablodan yeni saat seçebilirsiniz; sağdaki tabloda grubun diğer atamalarını görün."
+                : "Soldan öğretmen için boş saat seçin; sağda grubun halihazırdaki programını karşılaştırın."}
             </p>
             <Button
               variant="outline"
