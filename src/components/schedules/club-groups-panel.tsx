@@ -406,10 +406,6 @@ export function ClubGroupsPanel({ onSchedulesChanged }: Props = {}) {
 
   const saveSession = async () => {
     if (!sessionGroup) return
-    if (!sessionForm.teacherId) {
-      alert("Öğretmen seçiniz.")
-      return
-    }
 
     const slotsToSave: SlotPick[] = editingSchedule
       ? [
@@ -426,6 +422,8 @@ export function ClubGroupsPanel({ onSchedulesChanged }: Props = {}) {
       return
     }
 
+    const instructorId = sessionForm.teacherId.trim() || null
+
     setBusy(true)
     try {
       if (editingSchedule) {
@@ -438,7 +436,7 @@ export function ClubGroupsPanel({ onSchedulesChanged }: Props = {}) {
             startTime: slotsToSave[0].startTime,
             endTime: slotsToSave[0].endTime,
             room: sessionForm.room.trim() || null,
-            instructorId: sessionForm.teacherId,
+            instructorId,
           }),
         })
         const data = await res.json().catch(() => ({}))
@@ -459,7 +457,7 @@ export function ClubGroupsPanel({ onSchedulesChanged }: Props = {}) {
               startTime: slot.startTime,
               endTime: slot.endTime,
               room: sessionForm.room.trim() || null,
-              instructorId: sessionForm.teacherId,
+              instructorId,
             }),
           })
           const data = await res.json().catch(() => ({}))
@@ -838,13 +836,13 @@ export function ClubGroupsPanel({ onSchedulesChanged }: Props = {}) {
           <div className="px-6 py-5 space-y-6">
             <div className="grid gap-4 sm:grid-cols-[1fr_160px]">
               <div>
-                <Label>Öğretmen *</Label>
+                <Label>Öğretmen (opsiyonel)</Label>
                 <select
                   className="mt-1.5 w-full rounded-md border border-gray-200 bg-white px-3 py-2.5 text-sm"
                   value={sessionForm.teacherId}
                   onChange={(e) => setSessionForm({ ...sessionForm, teacherId: e.target.value })}
                 >
-                  <option value="">Öğretmen seçiniz</option>
+                  <option value="">Sonra atanacak</option>
                   {teachers.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.firstName} {t.lastName}
@@ -873,25 +871,21 @@ export function ClubGroupsPanel({ onSchedulesChanged }: Props = {}) {
                       ? editingSchedule
                         ? `${selectedTeacher.firstName} ${selectedTeacher.lastName} — bir hücre seçin`
                         : `${selectedTeacher.firstName} ${selectedTeacher.lastName} — birden fazla boş hücre seçebilirsiniz`
-                      : "Önce öğretmen seçin"}
+                      : editingSchedule
+                        ? "Öğretmen sonra atanabilir — bir hücre seçin"
+                        : "Öğretmen sonra atanabilir — birden fazla boş hücre seçebilirsiniz"}
                   </p>
                 </div>
-                {sessionForm.teacherId && (
-                  <p className="text-xs font-medium text-emerald-800 bg-white/80 border border-emerald-100 rounded-lg px-3 py-1.5">
-                    {editingSchedule
-                      ? `Seçili: ${DAY_NAMES[parseInt(sessionForm.dayOfWeek, 10) || 1]} · ${sessionForm.startTime}–${sessionForm.endTime}`
-                      : selectedSlots.length === 0
-                        ? "Henüz saat seçilmedi"
-                        : `${selectedSlots.length} saat seçili`}
-                  </p>
-                )}
+                <p className="text-xs font-medium text-emerald-800 bg-white/80 border border-emerald-100 rounded-lg px-3 py-1.5">
+                  {editingSchedule
+                    ? `Seçili: ${DAY_NAMES[parseInt(sessionForm.dayOfWeek, 10) || 1]} · ${sessionForm.startTime}–${sessionForm.endTime}`
+                    : selectedSlots.length === 0
+                      ? "Henüz saat seçilmedi"
+                      : `${selectedSlots.length} saat seçili`}
+                </p>
               </div>
 
-              {!sessionForm.teacherId ? (
-                <p className="text-sm text-gray-500 py-8 text-center">
-                  Öğretmen seçildikten sonra program açılır
-                </p>
-              ) : teacherBusyLoading ? (
+              {teacherBusyLoading ? (
                 <div className="flex justify-center py-10 text-gray-500 gap-2">
                   <Loader2 className="h-5 w-5 animate-spin" />
                   Program yükleniyor...
@@ -980,8 +974,8 @@ export function ClubGroupsPanel({ onSchedulesChanged }: Props = {}) {
           <div className="sticky bottom-0 border-t bg-white px-6 py-4 flex flex-col sm:flex-row gap-3">
             <p className="text-xs text-gray-500 sm:flex-1 self-center">
               {editingSchedule
-                ? "Öğretmen ve etüt saatini güncelleyebilirsiniz."
-                : "Aynı öğretmen ile birden fazla gün/etüt atayabilirsiniz."}
+                ? "Öğretmeni şimdi veya sonra atayabilirsiniz."
+                : "Öğretmen olmadan da etüt yerleştirebilirsiniz; sonra karttan düzenleyerek öğretmen ekleyin."}
             </p>
             <Button
               variant="outline"
