@@ -110,7 +110,7 @@ export async function GET(
         select: {
           id: true,
           topic: true,
-          studyGroup: { select: { id: true, name: true, gradeLevel: true } },
+          studyGroup: { select: { id: true, name: true, gradeLevels: true } },
         },
       },
       clubSchedule: {

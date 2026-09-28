@@ -84,7 +84,7 @@ interface DashboardData {
       class?: { name: string } | null
       studyGroupSession?: {
         topic?: string | null
-        studyGroup?: { name: string; gradeLevel?: number } | null
+        studyGroup?: { name: string; gradeLevels?: number[] } | null
       } | null
       clubSchedule?: { club?: { name: string } | null } | null
     }>

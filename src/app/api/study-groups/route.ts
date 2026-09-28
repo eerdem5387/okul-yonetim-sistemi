@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { normalizeClubGradeLevels } from "@/lib/club-grade-levels"
 
 export const dynamic = "force-dynamic"
 
@@ -33,10 +34,15 @@ function parseStudentIds(raw: unknown): string[] {
   return [...new Set(raw.map((id) => String(id).trim()).filter(Boolean))]
 }
 
-function parseGradeLevel(raw: unknown): number | null {
-  const n = typeof raw === "number" ? raw : parseInt(String(raw ?? ""), 10)
-  if (!Number.isFinite(n) || n < 5 || n > 12) return null
-  return n
+/** gradeLevels[] veya eski tekil gradeLevel */
+function parseGradeLevels(body: Record<string, unknown>): number[] {
+  if (body.gradeLevels !== undefined) {
+    return normalizeClubGradeLevels(body.gradeLevels)
+  }
+  if (body.gradeLevel !== undefined) {
+    return normalizeClubGradeLevels([body.gradeLevel])
+  }
+  return []
 }
 
 /** GET /api/study-groups — grup listesi (öğrenci + atamalar) */
@@ -45,7 +51,7 @@ export async function GET() {
     const groups = await prisma.studyGroup.findMany({
       where: { isActive: true },
       include: groupInclude,
-      orderBy: [{ gradeLevel: "asc" }, { name: "asc" }],
+      orderBy: [{ name: "asc" }],
     })
     return NextResponse.json({ groups })
   } catch (error) {
@@ -54,20 +60,17 @@ export async function GET() {
   }
 }
 
-/** POST /api/study-groups — isim + sınıf düzeyi + öğrenciler */
+/** POST /api/study-groups — isim + sınıf düzeyleri + öğrenciler */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}))
     const name = String(body.name ?? "").trim()
-    const gradeLevel = parseGradeLevel(body.gradeLevel)
+    const gradeLevels = parseGradeLevels(body)
     const notes = typeof body.notes === "string" ? body.notes.trim() || null : null
     const studentIds = parseStudentIds(body.studentIds)
 
     if (!name) {
       return NextResponse.json({ error: "Grup adı zorunludur" }, { status: 400 })
-    }
-    if (gradeLevel == null) {
-      return NextResponse.json({ error: "Sınıf düzeyi seçiniz (5–12)" }, { status: 400 })
     }
 
     if (studentIds.length > 0) {
@@ -83,7 +86,7 @@ export async function POST(request: NextRequest) {
     const group = await prisma.studyGroup.create({
       data: {
         name,
-        gradeLevel,
+        gradeLevels,
         notes,
         ...(studentIds.length > 0
           ? {

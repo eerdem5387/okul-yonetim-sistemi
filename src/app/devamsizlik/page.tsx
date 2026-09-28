@@ -14,6 +14,7 @@ import {
   Users,
 } from "lucide-react"
 import { getAuthHeaders } from "@/components/hr/hr-utils"
+import { formatClubGradeLevels } from "@/lib/club-grade-levels"
 import { useStaffPermissions, checkNavPermission } from "@/hooks/use-staff-permissions"
 
 type Kind = "CLASS" | "STUDY_GROUP" | "CLUB"
@@ -38,7 +39,7 @@ type AttendanceRow = {
   studyGroupSession?: {
     id?: string
     topic: string
-    studyGroup?: { id?: string; name: string; gradeLevel: number } | null
+    studyGroup?: { id?: string; name: string; gradeLevels?: number[] } | null
   } | null
   clubSchedule?: {
     id?: string
@@ -139,7 +140,7 @@ function categoryKey(r: AttendanceRow, kind: Kind): { key: string; label: string
     return {
       key: g?.id || name,
       label: name,
-      meta: g?.gradeLevel ? `${g.gradeLevel}. sınıf` : "ÖÇG",
+      meta: g?.gradeLevels?.length ? formatClubGradeLevels(g.gradeLevels) : "ÖÇG",
     }
   }
   const name = r.clubSchedule?.club?.name || r.lessonName || "Kulüp"

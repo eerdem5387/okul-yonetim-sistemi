@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { normalizeClubGradeLevels } from "@/lib/club-grade-levels"
 
 export const dynamic = "force-dynamic"
 
@@ -33,10 +34,17 @@ function parseStudentIds(raw: unknown): string[] {
   return [...new Set(raw.map((id) => String(id).trim()).filter(Boolean))]
 }
 
-function parseGradeLevel(raw: unknown): number | null {
-  const n = typeof raw === "number" ? raw : parseInt(String(raw ?? ""), 10)
-  if (!Number.isFinite(n) || n < 5 || n > 12) return null
-  return n
+function parseGradeLevels(
+  body: Record<string, unknown>,
+  fallback: number[]
+): number[] | null {
+  if (body.gradeLevels !== undefined) {
+    return normalizeClubGradeLevels(body.gradeLevels)
+  }
+  if (body.gradeLevel !== undefined) {
+    return normalizeClubGradeLevels([body.gradeLevel])
+  }
+  return fallback
 }
 
 export async function GET(
@@ -59,7 +67,7 @@ export async function GET(
   }
 }
 
-/** PUT — grup adı / sınıf düzeyi / notlar / öğrenci listesi */
+/** PUT — grup adı / sınıf düzeyleri / notlar / öğrenci listesi */
 export async function PUT(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -73,10 +81,7 @@ export async function PUT(
 
     const body = await request.json().catch(() => ({}))
     const name = String(body.name ?? existing.name).trim()
-    const gradeLevel =
-      body.gradeLevel !== undefined
-        ? parseGradeLevel(body.gradeLevel)
-        : existing.gradeLevel
+    const gradeLevels = parseGradeLevels(body, existing.gradeLevels)
     const notes =
       body.notes !== undefined
         ? typeof body.notes === "string"
@@ -90,8 +95,8 @@ export async function PUT(
     if (!name) {
       return NextResponse.json({ error: "Grup adı zorunludur" }, { status: 400 })
     }
-    if (gradeLevel == null) {
-      return NextResponse.json({ error: "Sınıf düzeyi seçiniz (5–12)" }, { status: 400 })
+    if (!gradeLevels) {
+      return NextResponse.json({ error: "Sınıf düzeyleri geçersiz" }, { status: 400 })
     }
 
     if (studentIds) {
@@ -115,7 +120,7 @@ export async function PUT(
       }
       return tx.studyGroup.update({
         where: { id },
-        data: { name, gradeLevel, notes },
+        data: { name, gradeLevels, notes },
         include: groupInclude,
       })
     })

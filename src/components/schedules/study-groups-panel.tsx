@@ -13,6 +13,12 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { getAuthHeaders } from "@/components/hr/hr-utils"
+import { ClubGradeLevelField } from "@/components/clubs/club-grade-level-field"
+import {
+  CLUB_GRADE_LEVELS,
+  effectiveClubGradeLevels,
+  formatClubGradeLevels,
+} from "@/lib/club-grade-levels"
 import {
   DAY_NAMES,
   DEFAULT_LISE_WEEKDAY_SLOTS,
@@ -53,7 +59,7 @@ type StudySession = {
 type StudyGroup = {
   id: string
   name: string
-  gradeLevel: number
+  gradeLevels: number[]
   notes: string | null
   students: Array<{ student: Student }>
   sessions: StudySession[]
@@ -69,7 +75,7 @@ type BusyBlock = {
 
 type GroupForm = {
   name: string
-  gradeLevel: number
+  gradeLevels: number[]
   notes: string
   studentIds: string[]
 }
@@ -85,7 +91,7 @@ type SessionForm = {
 }
 
 type GridSlot = LessonSlot & { kind?: "LESSON" | "BREAK" | "ETUT" }
-type SlotBand = "ortaokul" | "lise"
+type SlotBand = "ortaokul" | "lise" | "mixed"
 
 type SessionSlotPick = {
   dayOfWeek: number
@@ -97,11 +103,11 @@ function slotPickKey(s: SessionSlotPick) {
   return `${s.dayOfWeek}|${s.startTime}|${s.endTime}`
 }
 
-const GRADE_LEVELS = [5, 6, 7, 8, 9, 10, 11, 12] as const
+const GRADE_LEVELS = [...CLUB_GRADE_LEVELS]
 
 const emptyGroupForm = (): GroupForm => ({
   name: "",
-  gradeLevel: 8,
+  gradeLevels: [...CLUB_GRADE_LEVELS],
   notes: "",
   studentIds: [],
 })
@@ -135,12 +141,23 @@ function assignableSlots(raw: GridSlot[]): GridSlot[] {
   return out.sort((a, b) => a.startTime.localeCompare(b.startTime))
 }
 
-/** Sınıf düzeyine göre ders saati şablonu (5–8 ortaokul, 9–12 lise). */
+/** Sınıf düzeylerine göre ders saati şablonu. */
 function bandForStudyGroup(group: StudyGroup | null): SlotBand {
   if (!group) return "ortaokul"
-  const level = Number(group.gradeLevel)
-  const band = Number.isFinite(level) ? gradeBandFor(level) : null
-  return band === "lise" ? "lise" : "ortaokul"
+  const levels = effectiveClubGradeLevels(group.gradeLevels)
+  const hasOrta = levels.some((l) => gradeBandFor(l) === "ortaokul")
+  const hasLise = levels.some((l) => gradeBandFor(l) === "lise")
+  if (hasOrta && hasLise) return "mixed"
+  return hasLise ? "lise" : "ortaokul"
+}
+
+function slotsForBand(
+  band: SlotBand,
+  slotMap: { ortaokul: GridSlot[]; lise: GridSlot[] }
+): GridSlot[] {
+  if (band === "lise") return slotMap.lise
+  if (band === "ortaokul") return slotMap.ortaokul
+  return assignableSlots([...slotMap.ortaokul, ...slotMap.lise])
 }
 
 export function StudyGroupsPanel() {
@@ -171,10 +188,7 @@ export function StudyGroupsPanel() {
   })
 
   const sessionBand = useMemo(() => bandForStudyGroup(sessionGroup), [sessionGroup])
-  const slots = useMemo(
-    () => (sessionBand === "lise" ? slotMap.lise : slotMap.ortaokul),
-    [sessionBand, slotMap]
-  )
+  const slots = useMemo(() => slotsForBand(sessionBand, slotMap), [sessionBand, slotMap])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -377,22 +391,23 @@ export function StudyGroupsPanel() {
   }
 
   const openEditGroup = (group: StudyGroup) => {
+    const levels = effectiveClubGradeLevels(group.gradeLevels)
     setEditingGroup(group)
     setGroupForm({
       name: group.name,
-      gradeLevel: group.gradeLevel >= 5 && group.gradeLevel <= 12 ? group.gradeLevel : 8,
+      gradeLevels: levels,
       notes: group.notes || "",
       studentIds: group.students.map((m) => m.student.id),
     })
     setStudentSearch("")
-    setGradeLevelFilter(group.gradeLevel >= 5 && group.gradeLevel <= 12 ? group.gradeLevel : "all")
+    setGradeLevelFilter("all")
     setShowSelectedOnly(false)
     setGroupModalOpen(true)
   }
 
   const openCreateSession = (group: StudyGroup) => {
     const band = bandForStudyGroup(group)
-    const bandSlots = band === "lise" ? slotMap.lise : slotMap.ortaokul
+    const bandSlots = slotsForBand(band, slotMap)
     setSessionGroup(group)
     setEditingSession(null)
     setSessionForm(emptySessionForm(bandSlots))
@@ -452,8 +467,8 @@ export function StudyGroupsPanel() {
       alert("Grup adı zorunludur. Öğrenciler şimdi veya sonra eklenebilir.")
       return
     }
-    if (!groupForm.gradeLevel) {
-      alert("Sınıf düzeyi seçiniz.")
+    if (groupForm.gradeLevels.length === 0) {
+      alert("En az bir sınıf düzeyi seçiniz (veya Tümü).")
       return
     }
     setBusy(true)
@@ -465,7 +480,7 @@ export function StudyGroupsPanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: groupForm.name.trim(),
-          gradeLevel: groupForm.gradeLevel,
+          gradeLevels: groupForm.gradeLevels,
           notes: groupForm.notes.trim() || null,
           studentIds: groupForm.studentIds,
         }),
@@ -644,7 +659,7 @@ export function StudyGroupsPanel() {
                       <Users className="h-4 w-4 text-violet-600 shrink-0" />
                       <span className="truncate">{group.name}</span>
                       <span className="shrink-0 rounded-md bg-violet-100 text-violet-800 px-2 py-0.5 text-xs font-semibold">
-                        {group.gradeLevel}. sınıf
+                        {formatClubGradeLevels(group.gradeLevels)}
                       </span>
                     </CardTitle>
                     <CardDescription className="mt-1">
@@ -777,26 +792,26 @@ export function StudyGroupsPanel() {
                 />
               </div>
               <div>
-                <Label>Sınıf düzeyi *</Label>
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {GRADE_LEVELS.map((g) => (
-                    <Button
-                      key={g}
-                      type="button"
-                      size="sm"
-                      variant={groupForm.gradeLevel === g ? "default" : "outline"}
-                      className="h-8 min-w-10"
-                      onClick={() => {
-                        setGroupForm({ ...groupForm, gradeLevel: g })
-                        setGradeLevelFilter(g)
-                      }}
-                    >
-                      {g}.
-                    </Button>
-                  ))}
-                </div>
+                <ClubGradeLevelField
+                  value={groupForm.gradeLevels}
+                  onChange={(gradeLevels) => setGroupForm({ ...groupForm, gradeLevels })}
+                  label="Sınıf düzeyi *"
+                  hint="Tümü veya birden fazla sınıf seçebilirsiniz."
+                />
                 <p className="mt-1 text-xs text-gray-500">
-                  Kartta görünür; program atamasında {groupForm.gradeLevel <= 8 ? "ortaokul" : "lise"}{" "}
+                  Kartta görünür; program atamasında{" "}
+                  {(() => {
+                    const band = bandForStudyGroup({
+                      id: "",
+                      name: "",
+                      gradeLevels: groupForm.gradeLevels,
+                      notes: null,
+                      students: [],
+                      sessions: [],
+                    })
+                    if (band === "mixed") return "ortaokul + lise"
+                    return band === "lise" ? "lise" : "ortaokul"
+                  })()}{" "}
                   ders saatleri kullanılır.
                 </p>
               </div>
@@ -1055,7 +1070,11 @@ export function StudyGroupsPanel() {
                       ? editingSession
                         ? `${selectedTeacher.firstName} ${selectedTeacher.lastName} — bir hücre seçin`
                         : `${selectedTeacher.firstName} ${selectedTeacher.lastName} — birden fazla boş hücre seçebilirsiniz (${
-                            sessionBand === "lise" ? "lise" : "ortaokul"
+                            sessionBand === "mixed"
+                              ? "ortaokul + lise"
+                              : sessionBand === "lise"
+                                ? "lise"
+                                : "ortaokul"
                           } saatleri)`
                       : "Önce öğretmen seçin"}
                   </p>

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "lucide-react"
+import { formatClubGradeLevels } from "@/lib/club-grade-levels"
 
 export type AttendanceKind = "CLASS" | "STUDY_GROUP" | "CLUB"
 export type AttendanceStatus = "PRESENT" | "ABSENT" | "LATE" | "EXCUSED"
@@ -20,7 +21,7 @@ export type StudentAttendanceRecord = {
   class?: { name: string } | null
   studyGroupSession?: {
     topic?: string | null
-    studyGroup?: { name: string; gradeLevel?: number } | null
+    studyGroup?: { name: string; gradeLevels?: number[] } | null
   } | null
   clubSchedule?: { club?: { name: string } | null } | null
 }
@@ -84,13 +85,13 @@ export function attendanceContextLabel(a: StudentAttendanceRecord): {
   if (kind === "STUDY_GROUP") {
     const group = a.studyGroupSession?.studyGroup?.name
     const topic = a.studyGroupSession?.topic || a.lessonName
-    const grade = a.studyGroupSession?.studyGroup?.gradeLevel
+    const grade = a.studyGroupSession?.studyGroup?.gradeLevels
     return {
       title: topic,
       subtitle: [
         "ÖÇG",
         group,
-        grade ? `${grade}. sınıf` : null,
+        grade && grade.length > 0 ? formatClubGradeLevels(grade) : null,
       ]
         .filter(Boolean)
         .join(" · "),

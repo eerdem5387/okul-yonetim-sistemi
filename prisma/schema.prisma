@@ -1415,8 +1415,8 @@ model ScheduleApproval {
 model StudyGroup {
   id         String   @id @default(cuid())
   name       String // Grup adı (örn: "G 1")
-  /// 5–12; ders saati şablonu bu düzeye göre (5–8 ortaokul, 9–12 lise)
-  gradeLevel Int
+  /// 5–12; boş dizi = tüm sınıflar. Ders saati şablonu düzeylere göre.
+  gradeLevels Int[]   @default([])
   notes      String?
   isActive   Boolean  @default(true)
   createdAt  DateTime @default(now())
@@ -1426,7 +1426,6 @@ model StudyGroup {
   sessions StudyGroupSession[]
 
   @@index([isActive])
-  @@index([gradeLevel])
   @@map("study_groups")
 }
 

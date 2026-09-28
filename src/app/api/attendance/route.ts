@@ -23,7 +23,7 @@ const attendanceInclude = {
       id: true,
       topic: true,
       dayOfWeek: true,
-      studyGroup: { select: { id: true, name: true, gradeLevel: true } },
+      studyGroup: { select: { id: true, name: true, gradeLevels: true } },
     },
   },
   clubSchedule: {

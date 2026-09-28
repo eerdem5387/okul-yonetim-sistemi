@@ -10,9 +10,13 @@ const LISE = [9, 10, 11, 12]
 export function ClubGradeLevelField({
   value,
   onChange,
+  label = "Aktif sınıf düzeyleri",
+  hint = "Öğrenci yalnızca kendi sınıfına açık kulüpleri görür.",
 }: {
   value: number[]
   onChange: (next: number[]) => void
+  label?: string
+  hint?: string
 }) {
   const toggle = (level: number) => {
     if (value.includes(level)) onChange(value.filter((n) => n !== level).sort((a, b) => a - b))
@@ -27,10 +31,10 @@ export function ClubGradeLevelField({
 
   return (
     <div>
-      <Label className="text-xs sm:text-sm">Aktif sınıf düzeyleri</Label>
-      <p className="mt-1 text-[11px] sm:text-xs text-gray-500">
-        Öğrenci yalnızca kendi sınıfına açık kulüpleri görür.
-      </p>
+      <Label className="text-xs sm:text-sm">{label}</Label>
+      {hint ? (
+        <p className="mt-1 text-[11px] sm:text-xs text-gray-500">{hint}</p>
+      ) : null}
       <div className="mt-2 flex flex-wrap gap-1.5">
         <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => onChange([...CLUB_GRADE_LEVELS])}>
           Tümü

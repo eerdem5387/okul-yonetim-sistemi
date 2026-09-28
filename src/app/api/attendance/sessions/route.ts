@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { formatClubGradeLevels } from "@/lib/club-grade-levels"
 import { isSuperAdmin, resolveActorWithPermission } from "@/lib/permissions"
 
 export const dynamic = "force-dynamic"
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
             select: {
               id: true,
               name: true,
-              gradeLevel: true,
+              gradeLevels: true,
               students: {
                 include: {
                   student: {
@@ -170,7 +171,7 @@ export async function GET(request: NextRequest) {
         studyGroupSessionId: s.id,
         clubScheduleId: null as string | null,
         title: s.studyGroup.name,
-        subtitle: `ÖÇG · ${s.studyGroup.gradeLevel}. sınıf · ${s.topic}`,
+        subtitle: `ÖÇG · ${formatClubGradeLevels(s.studyGroup.gradeLevels)} · ${s.topic}`,
         startTime: s.startTime,
         endTime: s.endTime,
         room: s.room,
