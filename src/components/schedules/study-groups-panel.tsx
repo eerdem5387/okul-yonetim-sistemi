@@ -97,9 +97,12 @@ type SessionSlotPick = {
   dayOfWeek: number
   startTime: string
   endTime: string
+  teacherId: string
+  topic: string
+  room: string
 }
 
-function slotPickKey(s: SessionSlotPick) {
+function slotPickKey(s: Pick<SessionSlotPick, "dayOfWeek" | "startTime" | "endTime">) {
   return `${s.dayOfWeek}|${s.startTime}|${s.endTime}`
 }
 
@@ -356,6 +359,11 @@ export function StudyGroupsPanel() {
     )
   }
 
+  const pendingAt = (day: number, start: string, end: string) =>
+    selectedSlots.find(
+      (s) => s.dayOfWeek === day && s.startTime === start && s.endTime === end
+    ) ?? null
+
   const isSelectedSlot = (day: number, start: string, end: string) => {
     if (editingSession) {
       return (
@@ -364,9 +372,9 @@ export function StudyGroupsPanel() {
         sessionForm.endTime === end
       )
     }
-    return selectedSlots.some(
-      (s) => s.dayOfWeek === day && s.startTime === start && s.endTime === end
-    )
+    const pending = pendingAt(day, start, end)
+    // Sol tabloda yalnızca şu an seçili öğretmenin bekleyen hücreleri “Seçildi”
+    return Boolean(pending && pending.teacherId === sessionForm.teacherId)
   }
 
   const toggleSlotPick = (day: number, start: string, end: string) => {
@@ -379,17 +387,68 @@ export function StudyGroupsPanel() {
       }))
       return
     }
-    const pick: SessionSlotPick = { dayOfWeek: day, startTime: start, endTime: end }
-    const key = slotPickKey(pick)
-    setSelectedSlots((prev) => {
-      if (prev.some((s) => slotPickKey(s) === key)) {
-        return prev.filter((s) => slotPickKey(s) !== key)
+
+    if (!sessionForm.teacherId) {
+      alert("Önce öğretmen seçiniz.")
+      return
+    }
+    if (!sessionForm.topic.trim()) {
+      alert("Önce konu yazınız. Her öğretmen için konu, hücre seçmeden önce girilir.")
+      return
+    }
+
+    const existingGroup = groupSessionAt(day, start, end)
+    if (existingGroup) {
+      alert(
+        `Bu saatte grubun zaten ataması var: ${existingGroup.teacher.firstName} ${existingGroup.teacher.lastName}. ` +
+          `Değiştirmek için karttaki atamayı düzenleyin.`
+      )
+      return
+    }
+
+    const key = slotPickKey({ dayOfWeek: day, startTime: start, endTime: end })
+    const existingPending = selectedSlots.find((s) => slotPickKey(s) === key)
+
+    // Aynı hücreye tekrar tıklama: aynı öğretmense kaldır, değilse yeni öğretmene çevir
+    if (existingPending) {
+      if (existingPending.teacherId === sessionForm.teacherId) {
+        setSelectedSlots((prev) => prev.filter((s) => slotPickKey(s) !== key))
+        return
       }
-      return [...prev, pick].sort(
+    }
+
+    const pick: SessionSlotPick = {
+      dayOfWeek: day,
+      startTime: start,
+      endTime: end,
+      teacherId: sessionForm.teacherId,
+      topic: sessionForm.topic.trim(),
+      room: sessionForm.room.trim(),
+    }
+    setSelectedSlots((prev) => {
+      const without = prev.filter((s) => slotPickKey(s) !== key)
+      return [...without, pick].sort(
         (a, b) => a.dayOfWeek - b.dayOfWeek || a.startTime.localeCompare(b.startTime)
       )
     })
   }
+
+  const teacherNameById = (id: string) => {
+    const t = teachers.find((x) => x.id === id)
+    return t ? `${t.firstName} ${t.lastName}` : "Öğretmen"
+  }
+
+  const pendingSummary = useMemo(() => {
+    const byTeacher = new Map<string, number>()
+    for (const s of selectedSlots) {
+      byTeacher.set(s.teacherId, (byTeacher.get(s.teacherId) ?? 0) + 1)
+    }
+    return [...byTeacher.entries()].map(([id, n]) => {
+      const t = teachers.find((x) => x.id === id)
+      const name = t ? `${t.firstName} ${t.lastName}` : "Öğretmen"
+      return `${name} ×${n}`
+    })
+  }, [selectedSlots, teachers])
 
   const openCreateGroup = () => {
     setEditingGroup(null)
@@ -509,37 +568,22 @@ export function StudyGroupsPanel() {
 
   const saveSession = async () => {
     if (!sessionGroup) return
-    if (!sessionForm.teacherId || !sessionForm.topic.trim()) {
-      alert("Öğretmen ve konu zorunludur.")
-      return
-    }
 
-    const slotsToSave: SessionSlotPick[] = editingSession
-      ? [
-          {
-            dayOfWeek: parseInt(sessionForm.dayOfWeek, 10),
-            startTime: sessionForm.startTime,
-            endTime: sessionForm.endTime,
-          },
-        ]
-      : selectedSlots
-
-    if (slotsToSave.length === 0) {
-      alert("En az bir gün/ders saati seçiniz.")
-      return
-    }
-
-    setBusy(true)
-    try {
-      if (editingSession) {
+    if (editingSession) {
+      if (!sessionForm.teacherId || !sessionForm.topic.trim()) {
+        alert("Öğretmen ve konu zorunludur.")
+        return
+      }
+      setBusy(true)
+      try {
         const res = await fetch(`/api/study-groups/sessions/${editingSession.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             teacherId: sessionForm.teacherId,
-            dayOfWeek: slotsToSave[0].dayOfWeek,
-            startTime: slotsToSave[0].startTime,
-            endTime: slotsToSave[0].endTime,
+            dayOfWeek: parseInt(sessionForm.dayOfWeek, 10),
+            startTime: sessionForm.startTime,
+            endTime: sessionForm.endTime,
             room: sessionForm.room.trim() || null,
             topic: sessionForm.topic.trim(),
             notes: sessionForm.notes.trim() || null,
@@ -550,40 +594,61 @@ export function StudyGroupsPanel() {
           alert((data as { error?: string }).error || "Atama kaydedilemedi")
           return
         }
-      } else {
-        const errors: string[] = []
-        let okCount = 0
-        for (const slot of slotsToSave) {
-          const res = await fetch("/api/study-groups/sessions", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              studyGroupId: sessionGroup.id,
-              teacherId: sessionForm.teacherId,
-              dayOfWeek: slot.dayOfWeek,
-              startTime: slot.startTime,
-              endTime: slot.endTime,
-              room: sessionForm.room.trim() || null,
-              topic: sessionForm.topic.trim(),
-              notes: sessionForm.notes.trim() || null,
-            }),
-          })
-          const data = await res.json().catch(() => ({}))
-          if (!res.ok) {
-            errors.push(
-              `${DAY_NAMES[slot.dayOfWeek]} ${slot.startTime}: ${(data as { error?: string }).error || "hata"}`
-            )
-          } else {
-            okCount++
-          }
-        }
-        if (errors.length > 0) {
-          alert(
-            (okCount > 0 ? `${okCount} atama kaydedildi.\n\n` : "") +
-              `Kaydedilemeyenler:\n${errors.join("\n")}`
+        setSessionModalOpen(false)
+        setSelectedSlots([])
+        await load()
+      } finally {
+        setBusy(false)
+      }
+      return
+    }
+
+    if (selectedSlots.length === 0) {
+      alert("En az bir gün/ders saati seçiniz.")
+      return
+    }
+
+    const missing = selectedSlots.filter((s) => !s.teacherId || !s.topic.trim())
+    if (missing.length > 0) {
+      alert("Bazı seçimlerde öğretmen veya konu eksik. Öğretmen ve konuyu seçip hücreleri yeniden işaretleyin.")
+      return
+    }
+
+    setBusy(true)
+    try {
+      const errors: string[] = []
+      let okCount = 0
+      for (const slot of selectedSlots) {
+        const res = await fetch("/api/study-groups/sessions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            studyGroupId: sessionGroup.id,
+            teacherId: slot.teacherId,
+            dayOfWeek: slot.dayOfWeek,
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+            room: slot.room.trim() || null,
+            topic: slot.topic.trim(),
+          }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          errors.push(
+            `${DAY_NAMES[slot.dayOfWeek]} ${slot.startTime} (${teacherNameById(slot.teacherId)}): ${
+              (data as { error?: string }).error || "hata"
+            }`
           )
-          if (okCount === 0) return
+        } else {
+          okCount++
         }
+      }
+      if (errors.length > 0) {
+        alert(
+          (okCount > 0 ? `${okCount} atama kaydedildi.\n\n` : "") +
+            `Kaydedilemeyenler:\n${errors.join("\n")}`
+        )
+        if (okCount === 0) return
       }
       setSessionModalOpen(false)
       setSelectedSlots([])
@@ -1073,16 +1138,30 @@ export function StudyGroupsPanel() {
 
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <p className="text-sm text-gray-600">
-                Sol: seçili öğretmenin programı (atama buradan). Sağ:{" "}
-                <strong>{sessionGroup?.name ?? "grup"}</strong> grubunun mevcut programı.
+                Öğretmen + konu seç → boş hücrelere tıkla → öğretmen değiştir → başka hücreler seç → tek
+                seferde kaydet. Sol: seçili öğretmen; sağ: grup programı + bekleyen seçimler.
               </p>
-              {sessionForm.teacherId && (
+              {!editingSession && selectedSlots.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-xs font-medium text-indigo-800 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-1.5">
+                    {selectedSlots.length} atama hazır
+                    {pendingSummary.length > 0 ? ` · ${pendingSummary.join(", ")}` : ""}
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 text-xs"
+                    onClick={() => setSelectedSlots([])}
+                  >
+                    Seçimleri temizle
+                  </Button>
+                </div>
+              )}
+              {editingSession && sessionForm.teacherId && (
                 <p className="text-xs font-medium text-indigo-800 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-1.5">
-                  {editingSession
-                    ? `Seçili: ${DAY_NAMES[parseInt(sessionForm.dayOfWeek, 10) || 1]} · ${sessionForm.startTime}–${sessionForm.endTime}`
-                    : selectedSlots.length === 0
-                      ? "Henüz saat seçilmedi"
-                      : `${selectedSlots.length} saat seçili`}
+                  Seçili: {DAY_NAMES[parseInt(sessionForm.dayOfWeek, 10) || 1]} · {sessionForm.startTime}
+                  –{sessionForm.endTime}
                 </p>
               )}
             </div>
@@ -1111,7 +1190,7 @@ export function StudyGroupsPanel() {
                     <p className="text-xs text-gray-600">
                       {editingSession
                         ? "Bir hücre seçin"
-                        : "Boş hücrelere tıklayarak atayın"}
+                        : "Boş hücrelere tıklayın (mevcut seçimler öğretmen değişince korunur)"}
                     </p>
                   </div>
                   <div className="overflow-x-auto rounded-xl border border-white bg-white">
@@ -1149,6 +1228,8 @@ export function StudyGroupsPanel() {
                             {WEEKDAY_INDEXES.map((day) => {
                               const occupied = findBusy(day, slot.startTime, slot.endTime)
                               const selected = isSelectedSlot(day, slot.startTime, slot.endTime)
+                              const pendingOther = pendingAt(day, slot.startTime, slot.endTime)
+                              const groupOcc = groupSessionAt(day, slot.startTime, slot.endTime)
                               if (occupied) {
                                 return (
                                   <td
@@ -1160,6 +1241,41 @@ export function StudyGroupsPanel() {
                                       {occupied.label}
                                     </p>
                                     <p className="text-[8px] text-rose-600 px-0.5">Dolu</p>
+                                  </td>
+                                )
+                              }
+                              if (!editingSession && groupOcc) {
+                                return (
+                                  <td
+                                    key={`t-${day}-${slot.id}`}
+                                    className="border-b border-gray-100 p-1 align-top bg-amber-50"
+                                    title="Grupta zaten atama var"
+                                  >
+                                    <p className="text-[9px] font-semibold text-amber-900 leading-tight line-clamp-2 px-0.5">
+                                      Grup dolu
+                                    </p>
+                                    <p className="text-[8px] text-amber-700 px-0.5">
+                                      {groupOcc.teacher.firstName}
+                                    </p>
+                                  </td>
+                                )
+                              }
+                              if (
+                                !editingSession &&
+                                pendingOther &&
+                                pendingOther.teacherId !== sessionForm.teacherId
+                              ) {
+                                return (
+                                  <td
+                                    key={`t-${day}-${slot.id}`}
+                                    className="border-b border-gray-100 p-1 cursor-pointer align-top bg-sky-50 hover:bg-sky-100"
+                                    title="Başka öğretmen için seçildi — tıklayınca bu öğretmene geçer"
+                                    onClick={() => toggleSlotPick(day, slot.startTime, slot.endTime)}
+                                  >
+                                    <p className="text-[9px] font-semibold text-sky-900 leading-tight line-clamp-2 px-0.5">
+                                      {teacherNameById(pendingOther.teacherId)}
+                                    </p>
+                                    <p className="text-[8px] text-sky-700 px-0.5">Bekliyor</p>
                                   </td>
                                 )
                               }
@@ -1199,7 +1315,7 @@ export function StudyGroupsPanel() {
                       Grup · {sessionGroup?.name}
                     </p>
                     <p className="text-xs text-gray-600">
-                      Bu grubun mevcut atamaları (tüm öğretmenler) — salt görüntü
+                      Kayıtlı atamalar + henüz kaydedilmemiş seçimler
                     </p>
                   </div>
                   <div className="overflow-x-auto rounded-xl border border-white bg-white">
@@ -1236,6 +1352,7 @@ export function StudyGroupsPanel() {
                             </td>
                             {WEEKDAY_INDEXES.map((day) => {
                               const sess = groupSessionAt(day, slot.startTime, slot.endTime)
+                              const pending = pendingAt(day, slot.startTime, slot.endTime)
                               const isEditingHere = editingSession && sess?.id === editingSession.id
                               if (sess) {
                                 return (
@@ -1253,6 +1370,22 @@ export function StudyGroupsPanel() {
                                     </p>
                                     <p className="text-[8px] text-violet-700 line-clamp-1 px-0.5">
                                       {sess.topic || "Konu yok"}
+                                    </p>
+                                  </td>
+                                )
+                              }
+                              if (pending) {
+                                return (
+                                  <td
+                                    key={`g-${day}-${slot.id}`}
+                                    className="border-b border-gray-100 p-1 align-top bg-sky-50 ring-1 ring-inset ring-sky-300"
+                                    title={`Bekleyen: ${teacherNameById(pending.teacherId)} · ${pending.topic}`}
+                                  >
+                                    <p className="text-[9px] font-semibold text-sky-900 leading-tight line-clamp-2 px-0.5">
+                                      {teacherNameById(pending.teacherId)}
+                                    </p>
+                                    <p className="text-[8px] text-sky-700 line-clamp-1 px-0.5">
+                                      {pending.topic} · bekliyor
                                     </p>
                                   </td>
                                 )
@@ -1282,7 +1415,7 @@ export function StudyGroupsPanel() {
             <p className="text-xs text-gray-500 sm:flex-1 self-center">
               {editingSession
                 ? "Soldaki tablodan yeni saat seçebilirsiniz; sağdaki tabloda grubun diğer atamalarını görün."
-                : "Soldan öğretmen için boş saat seçin; sağda grubun halihazırdaki programını karşılaştırın."}
+                : "Farklı öğretmenlerle haftanın etütlerini biriktirip tek Kaydet ile yazabilirsiniz."}
             </p>
             <Button
               variant="outline"
