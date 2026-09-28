@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { assertStudentsWithoutClubSelection } from "@/lib/schedules/club-selection-guard"
 
 export const dynamic = "force-dynamic"
 
@@ -102,12 +101,6 @@ export async function PUT(
       })
       if (studentIds.length > 0 && found.length !== studentIds.length) {
         return NextResponse.json({ error: "Bazı öğrenciler bulunamadı" }, { status: 400 })
-      }
-      if (studentIds.length > 0) {
-        const clubBlock = await assertStudentsWithoutClubSelection(studentIds)
-        if (clubBlock) {
-          return NextResponse.json({ error: clubBlock }, { status: 400 })
-        }
       }
     }
 
