@@ -36,12 +36,32 @@ const scheduleInclude = {
       },
     },
   },
+  clubGroup: {
+    select: {
+      id: true,
+      name: true,
+      _count: { select: { students: true } },
+      students: {
+        include: {
+          student: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              grade: true,
+            },
+          },
+        },
+        take: 80,
+      },
+    },
+  },
 } as const
 
-/** GET /api/schedules/clubs — kulüp programları + etüt slotları + kulüp listesi */
+/** GET /api/schedules/clubs — kulüp programları + etüt slotları + kulüp/grup listesi */
 export async function GET() {
   try {
-    const [schedules, clubs, etutSlots] = await Promise.all([
+    const [schedules, clubs, groups, etutSlots] = await Promise.all([
       prisma.clubSchedule.findMany({
         where: { isActive: true },
         include: scheduleInclude,
@@ -61,21 +81,48 @@ export async function GET() {
           _count: { select: { selections: true } },
         },
       }),
+      prisma.clubGroup.findMany({
+        where: { isActive: true },
+        orderBy: [{ club: { name: "asc" } }, { name: "asc" }],
+        select: {
+          id: true,
+          name: true,
+          clubId: true,
+          club: {
+            select: {
+              id: true,
+              name: true,
+              capacity: true,
+              instructorId: true,
+              instructor: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  subject: true,
+                },
+              },
+            },
+          },
+          _count: { select: { students: true, schedules: true } },
+        },
+      }),
       loadEtutSlots(),
     ])
 
-    return NextResponse.json({ schedules, clubs, etutSlots })
+    return NextResponse.json({ schedules, clubs, groups, etutSlots })
   } catch (error) {
     console.error("Error fetching club schedules:", error)
     return NextResponse.json({ error: "Kulüp programları alınamadı" }, { status: 500 })
   }
 }
 
-/** POST /api/schedules/clubs — { clubId, dayOfWeek, startTime, endTime, room?, notes?, instructorId? } */
+/** POST /api/schedules/clubs — { clubGroupId? | clubId, dayOfWeek, startTime, endTime, room?, notes?, instructorId? } */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}))
-    const clubId = String(body.clubId ?? "").trim()
+    let clubId = String(body.clubId ?? "").trim()
+    let clubGroupId = body.clubGroupId ? String(body.clubGroupId).trim() : null
     const dayOfWeek = parseInt(String(body.dayOfWeek ?? ""), 10)
     const startTime = String(body.startTime ?? "").trim()
     const endTime = String(body.endTime ?? "").trim()
@@ -88,9 +135,20 @@ export async function POST(request: NextRequest) {
         : null
       : undefined
 
+    if (clubGroupId) {
+      const group = await prisma.clubGroup.findUnique({
+        where: { id: clubGroupId },
+        select: { id: true, clubId: true, isActive: true },
+      })
+      if (!group || !group.isActive) {
+        return NextResponse.json({ error: "Kulüp grubu bulunamadı" }, { status: 404 })
+      }
+      clubId = group.clubId
+    }
+
     if (!clubId || !dayOfWeek || !startTime || !endTime) {
       return NextResponse.json(
-        { error: "Kulüp, gün ve etüt saati zorunludur" },
+        { error: "Kulüp/grup, gün ve etüt saati zorunludur" },
         { status: 400 }
       )
     }
@@ -112,6 +170,7 @@ export async function POST(request: NextRequest) {
 
     const freeErr = await assertClubSlotFree({
       clubId,
+      clubGroupId,
       dayOfWeek,
       startTime,
       endTime,
@@ -129,7 +188,7 @@ export async function POST(request: NextRequest) {
         })
       }
       return tx.clubSchedule.create({
-        data: { clubId, dayOfWeek, startTime, endTime, room, notes },
+        data: { clubId, clubGroupId, dayOfWeek, startTime, endTime, room, notes },
         include: scheduleInclude,
       })
     })

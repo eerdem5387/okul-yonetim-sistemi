@@ -31,6 +31,20 @@ type ClubRow = {
   _count: { selections: number }
 }
 
+type ClubGroupRow = {
+  id: string
+  name: string
+  clubId: string
+  club: {
+    id: string
+    name: string
+    capacity: number
+    instructorId?: string | null
+    instructor: Instructor | null
+  }
+  _count: { students: number; schedules: number }
+}
+
 type EtutSlot = {
   label: string
   startTime: string
@@ -41,16 +55,18 @@ type EtutSlot = {
 type ClubScheduleRow = {
   id: string
   clubId: string
+  clubGroupId?: string | null
   dayOfWeek: number
   startTime: string
   endTime: string
   room: string | null
   notes: string | null
   club: ClubRow
+  clubGroup?: { id: string; name: string; _count: { students: number } } | null
 }
 
 export function ClubSchedulesPanel() {
-  const [clubs, setClubs] = useState<ClubRow[]>([])
+  const [groups, setGroups] = useState<ClubGroupRow[]>([])
   const [schedules, setSchedules] = useState<ClubScheduleRow[]>([])
   const [etutSlots, setEtutSlots] = useState<EtutSlot[]>([])
   const [teachers, setTeachers] = useState<Instructor[]>([])
@@ -58,7 +74,7 @@ export function ClubSchedulesPanel() {
   const [busy, setBusy] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<ClubScheduleRow | null>(null)
-  const [selectedClubId, setSelectedClubId] = useState("")
+  const [selectedGroupId, setSelectedGroupId] = useState("")
   const [instructorId, setInstructorId] = useState("")
   const [dayOfWeek, setDayOfWeek] = useState(1)
   const [startTime, setStartTime] = useState("")
@@ -77,14 +93,14 @@ export function ClubSchedulesPanel() {
       ])
       if (!res.ok) throw new Error("Kulüp programları alınamadı")
       const data = await res.json()
-      setClubs(Array.isArray(data.clubs) ? data.clubs : [])
+      setGroups(Array.isArray(data.groups) ? data.groups : [])
       setSchedules(Array.isArray(data.schedules) ? data.schedules : [])
       setEtutSlots(Array.isArray(data.etutSlots) ? data.etutSlots : [])
       const tData = teachersRes.ok ? await teachersRes.json() : { staff: [] }
       setTeachers(Array.isArray(tData.staff) ? tData.staff : [])
     } catch (e) {
       setError(e instanceof Error ? e.message : "Yüklenemedi")
-      setClubs([])
+      setGroups([])
       setSchedules([])
     } finally {
       setLoading(false)
@@ -111,7 +127,7 @@ export function ClubSchedulesPanel() {
     setStartTime(slot.startTime)
     setEndTime(slot.endTime)
     setSlotLabel(slot.label)
-    setSelectedClubId("")
+    setSelectedGroupId("")
     setInstructorId("")
     setRoom("")
     setModalOpen(true)
@@ -126,21 +142,23 @@ export function ClubSchedulesPanel() {
       (s) => s.startTime === row.startTime && s.endTime === row.endTime
     )
     setSlotLabel(match?.label || `${row.startTime}–${row.endTime}`)
-    setSelectedClubId(row.clubId)
+    setSelectedGroupId(row.clubGroupId || row.clubGroup?.id || "")
     setInstructorId(row.club.instructorId || row.club.instructor?.id || "")
     setRoom(row.room || "")
     setModalOpen(true)
   }
 
-  const onClubChange = (clubId: string) => {
-    setSelectedClubId(clubId)
-    const club = clubs.find((c) => c.id === clubId)
-    setInstructorId(club?.instructorId || club?.instructor?.id || "")
+  const onGroupChange = (groupId: string) => {
+    setSelectedGroupId(groupId)
+    const group = groups.find((g) => g.id === groupId)
+    setInstructorId(
+      group?.club.instructorId || group?.club.instructor?.id || ""
+    )
   }
 
   const save = async () => {
-    if (!selectedClubId || !startTime || !endTime) {
-      alert("Kulüp ve etüt saati seçin.")
+    if (!selectedGroupId || !startTime || !endTime) {
+      alert("Kulüp grubu ve etüt saati seçin.")
       return
     }
     setBusy(true)
@@ -151,7 +169,7 @@ export function ClubSchedulesPanel() {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          clubId: selectedClubId,
+          clubGroupId: selectedGroupId,
           dayOfWeek,
           startTime,
           endTime,
@@ -192,10 +210,12 @@ export function ClubSchedulesPanel() {
     }
   }
 
-  const unassignedClubs = useMemo(() => {
-    const assigned = new Set(schedules.map((s) => s.clubId))
-    return clubs.filter((c) => !assigned.has(c.id))
-  }, [clubs, schedules])
+  const unassignedGroups = useMemo(() => {
+    const assigned = new Set(
+      schedules.map((s) => s.clubGroupId || s.clubGroup?.id).filter(Boolean) as string[]
+    )
+    return groups.filter((g) => !assigned.has(g.id))
+  }, [groups, schedules])
 
   if (loading) {
     return (
@@ -211,7 +231,8 @@ export function ClubSchedulesPanel() {
       <div>
         <h2 className="text-lg font-semibold text-gray-900">Haftalık etüt programı — Kulüpler</h2>
         <p className="text-sm text-gray-600">
-          Hücreye tıklayarak ekleyin; atanmış kulübe tıklayarak düzenleyin (öğretmen, derslik, saat).
+          Hücreye tıklayarak <strong>kulüp grubu</strong> atayın; atanmış kayda tıklayarak
+          düzenleyin.
         </p>
       </div>
 
@@ -275,10 +296,14 @@ export function ClubSchedulesPanel() {
                                 <div className="flex items-start justify-between gap-1">
                                   <div className="min-w-0">
                                     <p className="text-xs font-semibold text-gray-900 leading-tight truncate">
-                                      {row.club.name}
+                                      {row.clubGroup
+                                        ? `${row.club.name} · ${row.clubGroup.name}`
+                                        : row.club.name}
                                     </p>
                                     <p className="text-[10px] text-gray-600">
-                                      {row.club._count.selections}/{row.club.capacity} üye
+                                      {row.clubGroup
+                                        ? `${row.clubGroup._count.students} öğrenci`
+                                        : `${row.club._count.selections}/${row.club.capacity} üye`}
                                     </p>
                                     {row.club.instructor && (
                                       <p className="text-[10px] text-indigo-700 truncate">
@@ -340,14 +365,20 @@ export function ClubSchedulesPanel() {
         </div>
       )}
 
-      {unassignedClubs.length > 0 && (
+      {unassignedGroups.length > 0 && (
         <p className="text-xs text-gray-500">
-          Henüz programa alınmayan kulüp: {unassignedClubs.length} (
-          {unassignedClubs
+          Henüz programa alınmayan grup: {unassignedGroups.length} (
+          {unassignedGroups
             .slice(0, 5)
-            .map((c) => c.name)
+            .map((g) => `${g.club.name}/${g.name}`)
             .join(", ")}
-          {unassignedClubs.length > 5 ? "…" : ""})
+          {unassignedGroups.length > 5 ? "…" : ""})
+        </p>
+      )}
+
+      {groups.length === 0 && (
+        <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+          Önce yukarıdan kulüp gruplarını oluşturun; ardından etüt ataması yapabilirsiniz.
         </p>
       )}
 
@@ -361,7 +392,7 @@ export function ClubSchedulesPanel() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {editing ? "Kulüp atamasını düzenle" : "Kulübü etüte yerleştir"}
+              {editing ? "Grup atamasını düzenle" : "Kulüp grubunu etüte yerleştir"}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
@@ -400,16 +431,16 @@ export function ClubSchedulesPanel() {
               </select>
             </div>
             <div>
-              <Label>Kulüp *</Label>
+              <Label>Kulüp grubu *</Label>
               <select
                 className="mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
-                value={selectedClubId}
-                onChange={(e) => onClubChange(e.target.value)}
+                value={selectedGroupId}
+                onChange={(e) => onGroupChange(e.target.value)}
               >
                 <option value="">Seçiniz</option>
-                {clubs.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c._count.selections}/{c.capacity})
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.club.name} · {g.name} ({g._count.students} öğrenci)
                   </option>
                 ))}
               </select>

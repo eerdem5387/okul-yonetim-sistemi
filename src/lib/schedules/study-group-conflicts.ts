@@ -56,39 +56,8 @@ export async function assertStudentsFreeForStudySession(options: {
   endTime: string
   excludeSessionId?: string
 }): Promise<string | null> {
-  const { studentIds, dayOfWeek, startTime, endTime, excludeSessionId } = options
-  if (studentIds.length === 0) return null
-
-  const memberships = await prisma.studyGroupStudent.findMany({
-    where: { studentId: { in: studentIds } },
-    include: {
-      student: { select: { firstName: true, lastName: true } },
-      studyGroup: {
-        select: {
-          name: true,
-          sessions: {
-            where: {
-              dayOfWeek,
-              isActive: true,
-              ...(excludeSessionId ? { id: { not: excludeSessionId } } : {}),
-            },
-            select: { startTime: true, endTime: true },
-          },
-        },
-      },
-    },
-  })
-
-  const conflicts: string[] = []
-  for (const m of memberships) {
-    for (const session of m.studyGroup.sessions) {
-      if (hasTimeConflict(session.startTime, session.endTime, startTime, endTime)) {
-        conflicts.push(
-          `${m.student.firstName} ${m.student.lastName} → ${m.studyGroup.name} (${session.startTime}–${session.endTime})`
-        )
-      }
-    }
-  }
-  if (conflicts.length === 0) return null
-  return `Bazı öğrenciler aynı saatte başka grupta: ${conflicts.join("; ")}`
+  // Öğrenci çakışmaları program atamasını engellemez.
+  // Kulüp ↔ ÖÇG / grup ↔ grup çakışmaları "Çakışan Öğrenciler" paneli ile çözülür.
+  void options
+  return null
 }

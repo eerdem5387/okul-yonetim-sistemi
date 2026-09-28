@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import {
+  AlertTriangle,
   BookOpen,
   Calendar,
   ClipboardList,
@@ -25,8 +26,10 @@ import {
 } from "@/components/schedules/class-schedule-grid"
 import { StudyGroupsPanel } from "@/components/schedules/study-groups-panel"
 import { ClubSchedulesPanel } from "@/components/schedules/club-schedules-panel"
+import { ClubGroupsPanel } from "@/components/schedules/club-groups-panel"
 import { DayTemplateEditorDialog } from "@/components/schedules/day-template-editor-dialog"
 import { ScheduleCoursesDialog } from "@/components/schedules/schedule-courses-dialog"
+import { StudentConflictsDialog } from "@/components/schedules/student-conflicts-dialog"
 import { TeacherScheduleGrid } from "@/components/schedules/teacher-schedule-grid"
 import { getAuthHeaders } from "@/components/hr/hr-utils"
 import {
@@ -92,6 +95,7 @@ export default function DersProgramiPage() {
   const [hoursOpen, setHoursOpen] = useState(false)
   const [coursesOpen, setCoursesOpen] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
+  const [conflictsOpen, setConflictsOpen] = useState(false)
   const [saturdaySaving, setSaturdaySaving] = useState(false)
   const [slotMap, setSlotMap] = useState<{
     ortaokul: Array<LessonSlot & { kind?: SlotKind }>
@@ -435,11 +439,18 @@ export default function DersProgramiPage() {
           </CardContent>
         </Card>
       ) : viewMode === "club" ? (
-        <Card className={`border-0 shadow-sm ${fullscreen ? "h-full overflow-y-auto" : ""}`}>
-          <CardContent className="p-4 sm:p-6">
-            <ClubSchedulesPanel />
-          </CardContent>
-        </Card>
+        <div className={`space-y-4 ${fullscreen ? "h-full overflow-y-auto" : ""}`}>
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-4 sm:p-6">
+              <ClubGroupsPanel />
+            </CardContent>
+          </Card>
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-4 sm:p-6">
+              <ClubSchedulesPanel />
+            </CardContent>
+          </Card>
+        </div>
       ) : viewMode === "class" ? (
         <div
           className={
@@ -740,6 +751,15 @@ export default function DersProgramiPage() {
             <div className="w-px bg-gray-200 mx-1 hidden sm:block self-stretch" />
             {viewModeButtons}
             <div className="w-px bg-gray-200 mx-1 hidden sm:block self-stretch" />
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-amber-300 text-amber-900 hover:bg-amber-50"
+              onClick={() => setConflictsOpen(true)}
+            >
+              <AlertTriangle className="h-4 w-4 mr-1" />
+              Çakışan Öğrenciler
+            </Button>
             <Button size="sm" variant="outline" onClick={() => setFullscreen(true)}>
               <Maximize2 className="h-4 w-4 mr-1" />
               Tam ekran
@@ -768,6 +788,15 @@ export default function DersProgramiPage() {
               <Button
                 size="sm"
                 variant="outline"
+                className="border-amber-300 text-amber-900 hover:bg-amber-50"
+                onClick={() => setConflictsOpen(true)}
+              >
+                <AlertTriangle className="h-4 w-4 mr-1" />
+                Çakışan Öğrenciler
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
                 onClick={() => setFullscreen(false)}
                 title="Tam ekrandan çık"
               >
@@ -786,6 +815,7 @@ export default function DersProgramiPage() {
         onSaved={() => void loadDayTemplates()}
       />
       <ScheduleCoursesDialog open={coursesOpen} onOpenChange={setCoursesOpen} />
+      <StudentConflictsDialog open={conflictsOpen} onOpenChange={setConflictsOpen} />
     </div>
   )
 }

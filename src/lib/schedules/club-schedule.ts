@@ -57,8 +57,18 @@ export async function assertClubSlotFree(options: {
   excludeId?: string
   /** Atama sırasında seçilen öğretmen (kulüp instructor güncellenmeden önce) */
   instructorIdOverride?: string | null
+  /** Varsa çakışma kontrolü bu grubun öğrencilerine göre yapılır */
+  clubGroupId?: string | null
 }): Promise<string | null> {
-  const { clubId, dayOfWeek, startTime, endTime, excludeId, instructorIdOverride } = options
+  const {
+    clubId,
+    dayOfWeek,
+    startTime,
+    endTime,
+    excludeId,
+    instructorIdOverride,
+    clubGroupId,
+  } = options
 
   const club = await prisma.club.findUnique({
     where: { id: clubId },
@@ -66,10 +76,22 @@ export async function assertClubSlotFree(options: {
       id: true,
       name: true,
       instructorId: true,
-      selections: { select: { studentId: true } },
     },
   })
   if (!club) return "Kulüp bulunamadı"
+
+  if (clubGroupId) {
+    const group = await prisma.clubGroup.findUnique({
+      where: { id: clubGroupId },
+      select: {
+        id: true,
+        clubId: true,
+        isActive: true,
+      },
+    })
+    if (!group || !group.isActive) return "Kulüp grubu bulunamadı"
+    if (group.clubId !== clubId) return "Grup bu kulübe ait değil"
+  }
 
   const instructorId =
     instructorIdOverride !== undefined ? instructorIdOverride : club.instructorId
@@ -137,45 +159,8 @@ export async function assertClubSlotFree(options: {
     }
   }
 
-  const studentIds = club.selections.map((s) => s.studentId)
-  if (studentIds.length > 0) {
-    const memberConflicts = await prisma.clubSchedule.findMany({
-      where: {
-        dayOfWeek,
-        isActive: true,
-        clubId: { not: clubId },
-        ...(excludeId ? { id: { not: excludeId } } : {}),
-        club: { selections: { some: { studentId: { in: studentIds } } } },
-      },
-      include: {
-        club: {
-          select: {
-            name: true,
-            selections: {
-              where: { studentId: { in: studentIds } },
-              select: {
-                student: { select: { firstName: true, lastName: true } },
-              },
-            },
-          },
-        },
-      },
-    })
-    const overlap = memberConflicts.filter((c) =>
-      hasTimeConflict(c.startTime, c.endTime, startTime, endTime)
-    )
-    if (overlap.length > 0) {
-      const info = overlap
-        .map((c) => {
-          const names = c.club.selections
-            .map((s) => `${s.student.firstName} ${s.student.lastName}`)
-            .join(", ")
-          return `${names} → ${c.club.name}`
-        })
-        .join("; ")
-      return `Bazı öğrenciler aynı etütte başka kulüpte: ${info}`
-    }
-  }
+  // Öğrenci çakışmaları engellemez; "Çakışan Öğrenciler" paneli ile çözülür.
+  // Öğretmen / aynı kulüp aynı saat çakışmaları hâlâ engellenir.
 
   return null
 }

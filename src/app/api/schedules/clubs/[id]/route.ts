@@ -18,6 +18,13 @@ const scheduleInclude = {
       _count: { select: { selections: true } },
     },
   },
+  clubGroup: {
+    select: {
+      id: true,
+      name: true,
+      _count: { select: { students: true } },
+    },
+  },
 } as const
 
 export async function PUT(
@@ -32,7 +39,25 @@ export async function PUT(
     }
 
     const body = await request.json().catch(() => ({}))
-    const clubId = String(body.clubId ?? existing.clubId).trim()
+    let clubId = String(body.clubId ?? existing.clubId).trim()
+    let clubGroupId =
+      body.clubGroupId !== undefined
+        ? body.clubGroupId
+          ? String(body.clubGroupId).trim()
+          : null
+        : existing.clubGroupId
+
+    if (clubGroupId) {
+      const group = await prisma.clubGroup.findUnique({
+        where: { id: clubGroupId },
+        select: { id: true, clubId: true, isActive: true },
+      })
+      if (!group || !group.isActive) {
+        return NextResponse.json({ error: "Kulüp grubu bulunamadı" }, { status: 404 })
+      }
+      clubId = group.clubId
+    }
+
     const dayOfWeek = parseInt(String(body.dayOfWeek ?? existing.dayOfWeek), 10)
     const startTime = String(body.startTime ?? existing.startTime).trim()
     const endTime = String(body.endTime ?? existing.endTime).trim()
@@ -69,6 +94,7 @@ export async function PUT(
 
     const freeErr = await assertClubSlotFree({
       clubId,
+      clubGroupId,
       dayOfWeek,
       startTime,
       endTime,
@@ -88,7 +114,7 @@ export async function PUT(
       }
       return tx.clubSchedule.update({
         where: { id },
-        data: { clubId, dayOfWeek, startTime, endTime, room, notes },
+        data: { clubId, clubGroupId, dayOfWeek, startTime, endTime, room, notes },
         include: scheduleInclude,
       })
     })

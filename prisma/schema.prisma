@@ -50,6 +50,7 @@ model Student {
   clubSelections         ClubSelection[]
   clubMembershipRequests ClubMembershipRequest[]
   clubDemandRequests     ClubDemandRequest[]
+  clubGroupMemberships   ClubGroupStudent[]
   studyGroupMemberships  StudyGroupStudent[]
   newRegistrations     NewRegistration[]
   renewals             Renewal[]
@@ -91,6 +92,7 @@ model Club {
   membershipRequests ClubMembershipRequest[]
   demandRequests     ClubDemandRequest[]
   schedules          ClubSchedule[]
+  groups             ClubGroup[]
 
   @@index([instructorId])
   @@map("clubs")
@@ -1514,26 +1516,65 @@ model SchoolDaySlot {
   @@map("school_day_slots")
 }
 
-/// Kulüp haftalık programı — yalnızca ETUT saatlerine atanır
+/// Kulüp haftalık programı — yalnızca ETUT saatlerine atanır; tercihen bir ClubGroup’a bağlanır
 model ClubSchedule {
+  id          String  @id @default(cuid())
+  clubId      String
+  /// ÖÇG’deki session gibi: program ataması gruba yapılır (eski kayıtlar null olabilir)
+  clubGroupId String?
+  dayOfWeek   Int // 1-7 (Pazartesi=1)
+  startTime   String // "16:10"
+  endTime     String // "16:40"
+  room        String?
+  notes       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  club      Club       @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  clubGroup ClubGroup? @relation(fields: [clubGroupId], references: [id], onDelete: SetNull)
+  attendances Attendance[]
+
+  @@unique([clubId, dayOfWeek, startTime, endTime])
+  @@index([clubId])
+  @@index([clubGroupId])
+  @@index([dayOfWeek, startTime])
+  @@map("club_schedules")
+}
+
+/// Kulüp içi çalışma grubu — ÖÇG gibi önce isim + başvuranlardan öğrenci listesi; program ataması ayrı
+model ClubGroup {
   id        String   @id @default(cuid())
   clubId    String
-  dayOfWeek Int // 1-7 (Pazartesi=1)
-  startTime String // "16:10"
-  endTime   String // "16:40"
-  room      String?
+  name      String
   notes     String?
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
-  attendances Attendance[]
+  club      Club              @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  students  ClubGroupStudent[]
+  schedules ClubSchedule[]
 
-  @@unique([clubId, dayOfWeek, startTime, endTime])
+  @@unique([clubId, name])
   @@index([clubId])
-  @@index([dayOfWeek, startTime])
-  @@map("club_schedules")
+  @@index([isActive])
+  @@map("club_groups")
+}
+
+model ClubGroupStudent {
+  id          String   @id @default(cuid())
+  clubGroupId String
+  studentId   String
+  createdAt   DateTime @default(now())
+
+  clubGroup ClubGroup @relation(fields: [clubGroupId], references: [id], onDelete: Cascade)
+  student   Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([clubGroupId, studentId])
+  @@index([clubGroupId])
+  @@index([studentId])
+  @@map("club_group_students")
 }
 
 /// Ders programında seçilen ders adları (Matematik, Fizik vb.) — Branş ile bağlı

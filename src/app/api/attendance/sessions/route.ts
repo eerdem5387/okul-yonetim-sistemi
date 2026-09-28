@@ -100,6 +100,24 @@ export async function GET(request: NextRequest) {
               },
             },
           },
+          clubGroup: {
+            select: {
+              id: true,
+              name: true,
+              students: {
+                include: {
+                  student: {
+                    select: {
+                      id: true,
+                      firstName: true,
+                      lastName: true,
+                      grade: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
         orderBy: { startTime: "asc" },
       }),
@@ -167,12 +185,14 @@ export async function GET(request: NextRequest) {
         classId: null as string | null,
         studyGroupSessionId: null as string | null,
         clubScheduleId: s.id,
-        title: s.club.name,
-        subtitle: "Kulüp",
+        title: s.clubGroup ? `${s.club.name} · ${s.clubGroup.name}` : s.club.name,
+        subtitle: s.clubGroup ? "Kulüp grubu" : "Kulüp",
         startTime: s.startTime,
         endTime: s.endTime,
         room: s.room,
-        students: s.club.selections.map((m) => m.student),
+        students: s.clubGroup
+          ? s.clubGroup.students.map((m) => m.student)
+          : s.club.selections.map((m) => m.student),
         class: null,
         hasAttendance: takenClub.has(s.id),
       })),
