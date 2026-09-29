@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { AlertTriangle, Loader2, Plus, UserMinus } from "lucide-react"
+import { AlertTriangle, Download, Loader2, Plus, UserMinus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -74,6 +74,7 @@ export function StudentConflictsDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const [loading, setLoading] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const [busyKey, setBusyKey] = useState<string | null>(null)
   const [error, setError] = useState("")
   const [students, setStudents] = useState<StudentConflictDetail[]>([])
@@ -190,6 +191,35 @@ export function StudentConflictsDialog({
 
   const dismissStudent = (studentId: string) => {
     setStudents((prev) => prev.filter((s) => s.studentId !== studentId))
+  }
+
+  const exportExcel = async () => {
+    setExporting(true)
+    try {
+      const res = await fetch("/api/schedules/student-conflicts/export", {
+        cache: "no-store",
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        alert((data as { error?: string }).error || "Excel indirilemedi")
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      const cd = res.headers.get("Content-Disposition") || ""
+      const match = cd.match(/filename="([^"]+)"/)
+      a.download = match?.[1] || `cakisan-ogrenciler.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch {
+      alert("Excel indirilemedi")
+    } finally {
+      setExporting(false)
+    }
   }
 
   return (
@@ -506,16 +536,32 @@ export function StudentConflictsDialog({
           )}
         </div>
 
-        <div className="shrink-0 border-t border-gray-100 px-5 py-3 flex justify-between gap-2 sm:px-6">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => void load(gradeFilter)}
-            disabled={loading}
-          >
-            Yenile
-          </Button>
+        <div className="shrink-0 border-t border-gray-100 px-5 py-3 flex flex-wrap justify-between gap-2 sm:px-6">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void load(gradeFilter)}
+              disabled={loading}
+            >
+              Yenile
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void exportExcel()}
+              disabled={exporting || loading}
+            >
+              {exporting ? (
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-1.5 h-4 w-4" />
+              )}
+              Excel indir
+            </Button>
+          </div>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Kapat
           </Button>
