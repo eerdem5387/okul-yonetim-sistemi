@@ -33,6 +33,14 @@ const groupInclude = {
   schedules: {
     where: { isActive: true },
     orderBy: [{ dayOfWeek: "asc" as const }, { startTime: "asc" as const }],
+    include: {
+      exclusions: {
+        select: {
+          studentId: true,
+          student: { select: { firstName: true, lastName: true } },
+        },
+      },
+    },
   },
 }
 

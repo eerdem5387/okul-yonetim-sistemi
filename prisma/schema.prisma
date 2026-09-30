@@ -51,6 +51,7 @@ model Student {
   clubMembershipRequests ClubMembershipRequest[]
   clubDemandRequests     ClubDemandRequest[]
   clubGroupMemberships   ClubGroupStudent[]
+  clubScheduleExclusions ClubScheduleExclusion[]
   studyGroupMemberships  StudyGroupStudent[]
   newRegistrations     NewRegistration[]
   renewals             Renewal[]
@@ -1533,12 +1534,31 @@ model ClubSchedule {
   club      Club       @relation(fields: [clubId], references: [id], onDelete: Cascade)
   clubGroup ClubGroup? @relation(fields: [clubGroupId], references: [id], onDelete: SetNull)
   attendances Attendance[]
+  exclusions  ClubScheduleExclusion[]
 
   @@unique([clubId, dayOfWeek, startTime, endTime])
   @@index([clubId])
   @@index([clubGroupId])
   @@index([dayOfWeek, startTime])
   @@map("club_schedules")
+}
+
+/// Öğrenci kulüp grubunda kalır; yalnızca belirli program saatinde (gün/etüt) yok sayılır
+model ClubScheduleExclusion {
+  id             String   @id @default(cuid())
+  clubScheduleId String
+  studentId      String
+  /// Opsiyonel not (örn. çakışma çözümü)
+  note           String?
+  createdAt      DateTime @default(now())
+
+  clubSchedule ClubSchedule @relation(fields: [clubScheduleId], references: [id], onDelete: Cascade)
+  student      Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([clubScheduleId, studentId])
+  @@index([clubScheduleId])
+  @@index([studentId])
+  @@map("club_schedule_exclusions")
 }
 
 /// Kulüp içi çalışma grubu — ÖÇG gibi önce isim + başvuranlardan öğrenci listesi; program ataması ayrı

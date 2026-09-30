@@ -119,6 +119,9 @@ export async function GET(request: NextRequest) {
               },
             },
           },
+          exclusions: {
+            select: { studentId: true },
+          },
         },
         orderBy: { startTime: "asc" },
       }),
@@ -179,24 +182,29 @@ export async function GET(request: NextRequest) {
         class: null,
         hasAttendance: takenStudy.has(s.id),
       })),
-      ...clubSchedules.map((s) => ({
-        id: s.id,
-        kind: "CLUB" as const,
-        scheduleId: null as string | null,
-        classId: null as string | null,
-        studyGroupSessionId: null as string | null,
-        clubScheduleId: s.id,
-        title: s.clubGroup ? `${s.club.name} · ${s.clubGroup.name}` : s.club.name,
-        subtitle: s.clubGroup ? "Kulüp grubu" : "Kulüp",
-        startTime: s.startTime,
-        endTime: s.endTime,
-        room: s.room,
-        students: s.clubGroup
+      ...clubSchedules.map((s) => {
+        const excludedIds = new Set(s.exclusions.map((e) => e.studentId))
+        const raw = s.clubGroup
           ? s.clubGroup.students.map((m) => m.student)
-          : s.club.selections.map((m) => m.student),
-        class: null,
-        hasAttendance: takenClub.has(s.id),
-      })),
+          : s.club.selections.map((m) => m.student)
+        const students = raw.filter((st) => !excludedIds.has(st.id))
+        return {
+          id: s.id,
+          kind: "CLUB" as const,
+          scheduleId: null as string | null,
+          classId: null as string | null,
+          studyGroupSessionId: null as string | null,
+          clubScheduleId: s.id,
+          title: s.clubGroup ? `${s.club.name} · ${s.clubGroup.name}` : s.club.name,
+          subtitle: s.clubGroup ? "Kulüp grubu" : "Kulüp",
+          startTime: s.startTime,
+          endTime: s.endTime,
+          room: s.room,
+          students,
+          class: null,
+          hasAttendance: takenClub.has(s.id),
+        }
+      }),
     ].sort((a, b) => a.startTime.localeCompare(b.startTime))
 
     return NextResponse.json({ dayOfWeek, sessions })

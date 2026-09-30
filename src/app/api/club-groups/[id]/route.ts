@@ -33,6 +33,14 @@ const groupInclude = {
   schedules: {
     where: { isActive: true },
     orderBy: [{ dayOfWeek: "asc" as const }, { startTime: "asc" as const }],
+    include: {
+      exclusions: {
+        select: {
+          studentId: true,
+          student: { select: { firstName: true, lastName: true } },
+        },
+      },
+    },
   },
 }
 
@@ -134,6 +142,15 @@ export async function PUT(
             data: studentIds.map((studentId) => ({ clubGroupId: id, studentId })),
           })
         }
+        // Gruptan çıkan öğrencilerin bu grubun saat muafiyetlerini temizle
+        await tx.clubScheduleExclusion.deleteMany({
+          where: {
+            clubSchedule: { clubGroupId: id },
+            ...(studentIds.length > 0
+              ? { studentId: { notIn: studentIds } }
+              : {}),
+          },
+        })
       }
       return tx.clubGroup.update({
         where: { id },

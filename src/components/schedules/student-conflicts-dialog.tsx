@@ -1,7 +1,15 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { AlertTriangle, Download, Loader2, Plus, UserMinus } from "lucide-react"
+import {
+  AlertTriangle,
+  CalendarOff,
+  CheckCircle2,
+  Download,
+  Loader2,
+  Plus,
+  UserX,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -17,12 +25,15 @@ type ConflictAssignment = {
   kind: "CLUB" | "STUDY_GROUP"
   label: string
   dayOfWeek: number
+  dayLabel: string
   startTime: string
   endTime: string
   teacherName: string | null
   clubId: string | null
   clubGroupId: string | null
   studyGroupId: string | null
+  canExcludeDay: boolean
+  otherDaysKeep: string[]
 }
 
 type ClubApplication = {
@@ -77,38 +88,53 @@ export function StudentConflictsDialog({
   const [exporting, setExporting] = useState(false)
   const [busyKey, setBusyKey] = useState<string | null>(null)
   const [error, setError] = useState("")
+  const [flash, setFlash] = useState<string | null>(null)
   const [students, setStudents] = useState<StudentConflictDetail[]>([])
   const [gradeCounts, setGradeCounts] = useState<Record<string, number>>({})
   const [totalCount, setTotalCount] = useState(0)
   const [gradeFilter, setGradeFilter] = useState<number | "all">("all")
   const [search, setSearch] = useState("")
 
-  const load = useCallback(async (grade: number | "all" = gradeFilter) => {
-    setLoading(true)
-    setError("")
-    try {
-      const qs = grade === "all" ? "" : `?grade=${grade}`
-      const res = await fetch(`/api/schedules/student-conflicts${qs}`, {
-        cache: "no-store",
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || "Çakışmalar alınamadı")
-      setStudents(Array.isArray(data.students) ? data.students : [])
-      setGradeCounts(
-        data.gradeCounts && typeof data.gradeCounts === "object" ? data.gradeCounts : {}
-      )
-      setTotalCount(typeof data.totalCount === "number" ? data.totalCount : 0)
-    } catch (e) {
-      setStudents([])
-      setError(e instanceof Error ? e.message : "Yüklenemedi")
-    } finally {
-      setLoading(false)
-    }
-  }, [gradeFilter])
+  const load = useCallback(
+    async (grade: number | "all" = gradeFilter) => {
+      setLoading(true)
+      setError("")
+      try {
+        const qs = grade === "all" ? "" : `?grade=${grade}`
+        const res = await fetch(`/api/schedules/student-conflicts${qs}`, {
+          cache: "no-store",
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(data.error || "Çakışmalar alınamadı")
+        setStudents(Array.isArray(data.students) ? data.students : [])
+        setGradeCounts(
+          data.gradeCounts && typeof data.gradeCounts === "object"
+            ? data.gradeCounts
+            : {}
+        )
+        setTotalCount(typeof data.totalCount === "number" ? data.totalCount : 0)
+      } catch (e) {
+        setStudents([])
+        setError(e instanceof Error ? e.message : "Yüklenemedi")
+      } finally {
+        setLoading(false)
+      }
+    },
+    [gradeFilter]
+  )
 
   useEffect(() => {
-    if (open) void load(gradeFilter)
+    if (open) {
+      setFlash(null)
+      void load(gradeFilter)
+    }
   }, [open, gradeFilter, load])
+
+  useEffect(() => {
+    if (!flash) return
+    const t = window.setTimeout(() => setFlash(null), 4500)
+    return () => window.clearTimeout(t)
+  }, [flash])
 
   const filteredStudents = useMemo(() => {
     const q = search.trim().toLocaleLowerCase("tr")
@@ -119,46 +145,30 @@ export function StudentConflictsDialog({
     })
   }, [students, search])
 
-  const removeAssignment = async (studentId: string, assignmentKey: string) => {
-    const busy = `remove:${studentId}:${assignmentKey}`
+  const resolveAssignment = async (
+    studentId: string,
+    assignmentKey: string,
+    action: "exclude_day" | "leave_group"
+  ) => {
+    const busy = `${action}:${studentId}:${assignmentKey}`
     setBusyKey(busy)
     try {
       const res = await fetch("/api/schedules/student-conflicts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "remove",
-          studentId,
-          assignmentKey,
-        }),
+        body: JSON.stringify({ action, studentId, assignmentKey }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert((data as { error?: string }).error || "Çıkarma başarısız")
+        alert((data as { error?: string }).error || "İşlem başarısız")
         return
       }
-      // Kartı yerinde tut: çıkar → sonra alternatif ata akışı bozulmasın
-      setStudents((prev) =>
-        prev.map((s) => {
-          if (s.studentId !== studentId) return s
-          const clusters = s.clusters
-            .map((c) => ({
-              ...c,
-              assignments: c.assignments.filter((a) => a.key !== assignmentKey),
-            }))
-            .filter((c) => c.assignments.length >= 2)
-          const seen = new Set<string>()
-          const conflictingAssignments: ConflictAssignment[] = []
-          for (const c of clusters) {
-            for (const a of c.assignments) {
-              if (seen.has(a.key)) continue
-              seen.add(a.key)
-              conflictingAssignments.push(a)
-            }
-          }
-          return { ...s, conflictingAssignments, clusters }
-        })
+      setFlash(
+        typeof (data as { message?: string }).message === "string"
+          ? (data as { message: string }).message
+          : "Kaydedildi"
       )
+      await load(gradeFilter)
     } finally {
       setBusyKey(null)
     }
@@ -182,7 +192,11 @@ export function StudentConflictsDialog({
         alert((data as { error?: string }).error || "Atama başarısız")
         return
       }
-      // Atama sonrası listeden taze veri
+      setFlash(
+        typeof (data as { message?: string }).message === "string"
+          ? (data as { message: string }).message
+          : "Atandı"
+      )
       await load(gradeFilter)
     } finally {
       setBusyKey(null)
@@ -231,13 +245,20 @@ export function StudentConflictsDialog({
             Çakışan öğrenciler
           </DialogTitle>
           <DialogDescription className="text-sm leading-relaxed">
-            Sınıfa göre filtreleyin. Öğrenciyle konuşurken başvurularını, çakışan kulüpleri ve
-            çakışmasız gidebileceği alternatifleri görün. Çakışandan{" "}
-            <strong>Çıkar</strong>, alternatife <strong>Ata</strong>.
+            Aynı saatte iki programa düşen öğrenciler. Kulüpte{" "}
+            <strong>Bu günden çıkar</strong> yalnızca çakışan günü kaldırır;
+            diğer günler ve grup üyeliği devam eder.{" "}
+            <strong>Tüm gruptan çıkar</strong> üyeliği tamamen siler.
           </DialogDescription>
         </DialogHeader>
 
         <div className="shrink-0 space-y-3 border-b border-gray-100 bg-gray-50/80 px-5 py-3 sm:px-6">
+          {flash ? (
+            <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{flash}</span>
+            </div>
+          ) : null}
           <div className="flex flex-wrap gap-1.5">
             <Button
               type="button"
@@ -310,7 +331,7 @@ export function StudentConflictsDialog({
                 return (
                   <article
                     key={s.studentId}
-                    className={`rounded-2xl border shadow-sm overflow-hidden ${
+                    className={`overflow-hidden rounded-2xl border shadow-sm ${
                       conflictCleared
                         ? "border-emerald-200 bg-white"
                         : "border-amber-200/80 bg-white"
@@ -330,7 +351,8 @@ export function StudentConflictsDialog({
                         <p className="text-sm text-gray-600">{s.grade}</p>
                         {conflictCleared ? (
                           <p className="mt-1 text-xs font-medium text-emerald-800">
-                            Çakışma kalmadı — isterseniz aşağıdaki alternatiflerden atayın
+                            Çakışma kalmadı — isterseniz aşağıdaki alternatiflerden
+                            atayın
                           </p>
                         ) : null}
                       </div>
@@ -347,13 +369,14 @@ export function StudentConflictsDialog({
                     </header>
 
                     <div className="grid gap-0 lg:grid-cols-3">
-                      {/* Başvurular */}
                       <section className="border-b border-gray-100 p-4 sm:p-5 lg:border-b-0 lg:border-r">
                         <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                           Başvurduğu kulüpler
                         </h3>
                         {s.applications.length === 0 ? (
-                          <p className="mt-3 text-sm text-gray-500">Başvuru kaydı yok</p>
+                          <p className="mt-3 text-sm text-gray-500">
+                            Başvuru kaydı yok
+                          </p>
                         ) : (
                           <ul className="mt-3 space-y-1.5">
                             {s.applications.map((app) => {
@@ -363,8 +386,8 @@ export function StudentConflictsDialog({
                                   key={app.clubId}
                                   className={`rounded-lg px-3 py-2 text-sm ${
                                     isConflict
-                                      ? "bg-rose-50 text-rose-900 border border-rose-200"
-                                      : "bg-gray-50 text-gray-800 border border-gray-100"
+                                      ? "border border-rose-200 bg-rose-50 text-rose-900"
+                                      : "border border-gray-100 bg-gray-50 text-gray-800"
                                   }`}
                                 >
                                   <span className="font-medium">{app.clubName}</span>
@@ -380,13 +403,13 @@ export function StudentConflictsDialog({
                         )}
                       </section>
 
-                      {/* Çakışanlar */}
                       <section className="border-b border-gray-100 p-4 sm:p-5 lg:border-b-0 lg:border-r">
                         <h3 className="text-xs font-semibold uppercase tracking-wide text-rose-700">
                           Çakışan atamalar
                         </h3>
-                        <p className="mt-1 text-[11px] text-gray-500">
-                          Vazgeçilecek kulübün yanındaki Çıkar’a basın.
+                        <p className="mt-1 text-[11px] leading-relaxed text-gray-500">
+                          Tercih: çakışan <em>günü</em> çıkarın. Diğer günler
+                          otomatik devam eder.
                         </p>
 
                         {conflictCleared ? (
@@ -395,55 +418,137 @@ export function StudentConflictsDialog({
                           </p>
                         ) : (
                           s.clusters.map((cluster) => (
-                            <div key={`${cluster.dayOfWeek}-${cluster.timeLabel}`} className="mt-3">
+                            <div
+                              key={`${cluster.dayOfWeek}-${cluster.timeLabel}`}
+                              className="mt-3"
+                            >
                               <p className="mb-1.5 text-xs font-medium text-gray-700">
                                 {cluster.dayLabel} · {cluster.timeLabel}
                               </p>
-                              <ul className="space-y-2">
+                              <ul className="space-y-2.5">
                                 {cluster.assignments.map((a) => {
-                                  const busy =
-                                    busyKey === `remove:${s.studentId}:${a.key}`
+                                  const excludeBusy =
+                                    busyKey ===
+                                    `exclude_day:${s.studentId}:${a.key}`
+                                  const leaveBusy =
+                                    busyKey ===
+                                    `leave_group:${s.studentId}:${a.key}`
+                                  const hasOtherDays = a.otherDaysKeep.length > 0
+                                  const showDayExclude =
+                                    a.kind === "CLUB" && a.canExcludeDay
+
                                   return (
                                     <li
                                       key={a.key}
-                                      className="flex items-start justify-between gap-2 rounded-xl border border-rose-200 bg-rose-50/70 px-3 py-2.5"
+                                      className="rounded-xl border border-rose-200 bg-rose-50/70 px-3 py-2.5"
                                     >
                                       <div className="min-w-0">
-                                        <p className="text-sm font-medium text-gray-900 leading-snug">
+                                        <p className="text-sm font-medium leading-snug text-gray-900">
                                           {a.label}
                                         </p>
                                         <p className="mt-0.5 text-[11px] text-gray-600">
-                                          {a.startTime}–{a.endTime}
-                                          {a.teacherName ? ` · ${a.teacherName}` : ""}
+                                          {a.dayLabel} {a.startTime}–{a.endTime}
+                                          {a.teacherName
+                                            ? ` · ${a.teacherName}`
+                                            : ""}
                                           {a.kind === "STUDY_GROUP" ? " · ÖÇG" : ""}
                                         </p>
+                                        {showDayExclude && hasOtherDays ? (
+                                          <p className="mt-1.5 rounded-md bg-white/80 px-2 py-1 text-[11px] leading-snug text-slate-700 ring-1 ring-slate-200/80">
+                                            <span className="font-medium text-slate-900">
+                                              Bu günden çıkarılırsa devam eder:{" "}
+                                            </span>
+                                            {a.otherDaysKeep.join(" · ")}
+                                          </p>
+                                        ) : null}
+                                        {showDayExclude && !hasOtherDays ? (
+                                          <p className="mt-1.5 text-[11px] text-amber-800">
+                                            Bu kulübün tek program günü — gün
+                                            çıkarmak fiilen kulüpten ayırır; gerekirse
+                                            tüm gruptan çıkarın.
+                                          </p>
+                                        ) : null}
                                       </div>
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        variant="outline"
-                                        className="shrink-0 border-rose-300 text-rose-700 hover:bg-rose-100"
-                                        disabled={busy || busyKey !== null}
-                                        onClick={() => {
-                                          if (
-                                            !confirm(
-                                              `${s.firstName} ${s.lastName} bu atamadan çıkarılsın mı?\n\n${a.label}`
+
+                                      <div className="mt-2.5 flex flex-wrap gap-1.5">
+                                        {showDayExclude ? (
+                                          <Button
+                                            type="button"
+                                            size="sm"
+                                            className="h-8 bg-amber-700 hover:bg-amber-800"
+                                            disabled={busyKey !== null}
+                                            onClick={() => {
+                                              const keepHint = hasOtherDays
+                                                ? `\n\nGrup üyeliği kalır.\nDevam eden günler: ${a.otherDaysKeep.join(", ")}`
+                                                : "\n\nBu kulübün başka aktif günü yok; öğrenci bu saate gelmez ama kayıt grupta kalabilir."
+                                              if (
+                                                !confirm(
+                                                  `${s.firstName} ${s.lastName} — yalnızca ${a.dayLabel} ${a.startTime} saatinden çıkarılsın mı?\n\n${a.label}${keepHint}`
+                                                )
+                                              ) {
+                                                return
+                                              }
+                                              void resolveAssignment(
+                                                s.studentId,
+                                                a.key,
+                                                "exclude_day"
+                                              )
+                                            }}
+                                          >
+                                            {excludeBusy ? (
+                                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                            ) : (
+                                              <>
+                                                <CalendarOff className="mr-1 h-3.5 w-3.5" />
+                                                Bu günden çıkar
+                                              </>
+                                            )}
+                                          </Button>
+                                        ) : null}
+
+                                        <Button
+                                          type="button"
+                                          size="sm"
+                                          variant="outline"
+                                          className={`h-8 ${
+                                            showDayExclude
+                                              ? "border-rose-300 text-rose-800 hover:bg-rose-100"
+                                              : "border-rose-300 text-rose-700 hover:bg-rose-100"
+                                          }`}
+                                          disabled={busyKey !== null}
+                                          onClick={() => {
+                                            const what =
+                                              a.kind === "STUDY_GROUP"
+                                                ? "ÖÇG grubundan tamamen çıkarılsın mı?"
+                                                : hasOtherDays
+                                                  ? `Tüm gruptan çıkarılsın mı?\n\nDikkat: ${a.otherDaysKeep.join(", ")} dahil tüm günler iptal olur.`
+                                                  : "Kulüp grubundan / seçiminden tamamen çıkarılsın mı?"
+                                            if (
+                                              !confirm(
+                                                `${s.firstName} ${s.lastName}\n\n${a.label}\n\n${what}`
+                                              )
+                                            ) {
+                                              return
+                                            }
+                                            void resolveAssignment(
+                                              s.studentId,
+                                              a.key,
+                                              "leave_group"
                                             )
-                                          ) {
-                                            return
-                                          }
-                                          void removeAssignment(s.studentId, a.key)
-                                        }}
-                                      >
-                                        {busy ? (
-                                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                        ) : (
-                                          <>
-                                            <UserMinus className="mr-1 h-3.5 w-3.5" />
-                                            Çıkar
-                                          </>
-                                        )}
-                                      </Button>
+                                          }}
+                                        >
+                                          {leaveBusy ? (
+                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                          ) : (
+                                            <>
+                                              <UserX className="mr-1 h-3.5 w-3.5" />
+                                              {a.kind === "STUDY_GROUP"
+                                                ? "Gruptan çıkar"
+                                                : "Tüm gruptan çıkar"}
+                                            </>
+                                          )}
+                                        </Button>
+                                      </div>
                                     </li>
                                   )
                                 })}
@@ -453,7 +558,6 @@ export function StudentConflictsDialog({
                         )}
                       </section>
 
-                      {/* Alternatifler */}
                       <section className="p-4 sm:p-5">
                         <h3 className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
                           Çakışmasız gidebileceği kulüpler
@@ -464,14 +568,15 @@ export function StudentConflictsDialog({
 
                         {s.safeAlternatives.length === 0 ? (
                           <p className="mt-3 text-sm text-gray-500">
-                            Şu an çakışmasız alternatif yok. Önce bir çakışandan çıkarın veya
-                            başvurularına bakın.
+                            Şu an çakışmasız alternatif yok. Önce bir çakışan günü
+                            çıkarın veya başvurularına bakın.
                           </p>
                         ) : (
                           <ul className="mt-3 space-y-2">
                             {s.safeAlternatives.map((opt) => {
                               const busy =
-                                busyKey === `assign:${s.studentId}:${opt.clubGroupId}`
+                                busyKey ===
+                                `assign:${s.studentId}:${opt.clubGroupId}`
                               return (
                                 <li
                                   key={opt.clubGroupId}
@@ -492,7 +597,9 @@ export function StudentConflictsDialog({
                                               `${sch.dayLabel} ${sch.startTime}–${sch.endTime}`
                                           )
                                           .join(" · ")}
-                                        {opt.teacherName ? ` · ${opt.teacherName}` : ""}
+                                        {opt.teacherName
+                                          ? ` · ${opt.teacherName}`
+                                          : ""}
                                         {` · ${opt.memberCount} öğrenci`}
                                       </p>
                                     </div>
@@ -509,7 +616,10 @@ export function StudentConflictsDialog({
                                         ) {
                                           return
                                         }
-                                        void assignToGroup(s.studentId, opt.clubGroupId)
+                                        void assignToGroup(
+                                          s.studentId,
+                                          opt.clubGroupId
+                                        )
                                       }}
                                     >
                                       {busy ? (
@@ -536,7 +646,7 @@ export function StudentConflictsDialog({
           )}
         </div>
 
-        <div className="shrink-0 border-t border-gray-100 px-5 py-3 flex flex-wrap justify-between gap-2 sm:px-6">
+        <div className="flex shrink-0 flex-wrap justify-between gap-2 border-t border-gray-100 px-5 py-3 sm:px-6">
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"

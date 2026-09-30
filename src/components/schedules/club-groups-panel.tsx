@@ -46,6 +46,10 @@ type ClubGroupSchedule = {
   startTime: string
   endTime: string
   room: string | null
+  exclusions?: Array<{
+    studentId: string
+    student: { firstName: string; lastName: string }
+  }>
 }
 
 type ClubGroup = {
@@ -606,7 +610,9 @@ export function ClubGroupsPanel({ onSchedulesChanged }: Props = {}) {
 
                 {g.schedules.length > 0 ? (
                   <ul className="space-y-1.5">
-                    {g.schedules.map((sess) => (
+                    {g.schedules.map((sess) => {
+                      const exclusions = sess.exclusions ?? []
+                      return (
                       <li
                         key={sess.id}
                         className="rounded-lg border border-emerald-100 bg-emerald-50/50 px-2.5 py-2 text-xs"
@@ -618,6 +624,27 @@ export function ClubGroupsPanel({ onSchedulesChanged }: Props = {}) {
                             </p>
                             {sess.room ? (
                               <p className="text-gray-600 truncate">{sess.room}</p>
+                            ) : null}
+                            {exclusions.length > 0 ? (
+                              <p
+                                className="mt-1 text-[11px] leading-snug text-amber-800"
+                                title={exclusions
+                                  .map(
+                                    (e) =>
+                                      `${e.student.firstName} ${e.student.lastName}`
+                                  )
+                                  .join(", ")}
+                              >
+                                {exclusions.length} öğrenci bu günden muaf
+                                {exclusions.length <= 3
+                                  ? `: ${exclusions
+                                      .map(
+                                        (e) =>
+                                          `${e.student.firstName} ${e.student.lastName}`
+                                      )
+                                      .join(", ")}`
+                                  : ""}
+                              </p>
                             ) : null}
                           </div>
                           <div className="flex gap-1 shrink-0">
@@ -641,7 +668,8 @@ export function ClubGroupsPanel({ onSchedulesChanged }: Props = {}) {
                           </div>
                         </div>
                       </li>
-                    ))}
+                      )
+                    })}
                   </ul>
                 ) : (
                   <p className="text-xs text-amber-700">Henüz etüt ataması yok</p>

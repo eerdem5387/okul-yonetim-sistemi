@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { excludeStudentFromClubSchedule } from "@/lib/schedules/club-schedule-exclusions"
 import { DAY_LABELS, hasTimeConflict } from "@/lib/schedules/time-conflict"
 import { parseStudentGradeLevel } from "@/lib/student-grade-level"
 
@@ -14,9 +15,17 @@ export type ConflictAssignment = {
   studyGroupId: string | null
   label: string
   dayOfWeek: number
+  dayLabel: string
   startTime: string
   endTime: string
   teacherName: string | null
+  /**
+   * Kulüp: bu saatten muaf tutma mümkün (grup üyeliği kalır).
+   * true ise UI “Bu günden çıkar” gösterir.
+   */
+  canExcludeDay: boolean
+  /** Aynı grubun/kulübün diğer aktif günleri — muaf sonrası bunlar devam eder */
+  otherDaysKeep: string[]
 }
 
 export type StudentConflictCluster = {
@@ -121,9 +130,18 @@ export async function findStudentActivityConflicts(): Promise<
   return rows
 }
 
+function formatDayKeep(s: {
+  dayOfWeek: number
+  startTime: string
+  endTime: string
+}): string {
+  const day = DAY_LABELS[s.dayOfWeek] || `Gün ${s.dayOfWeek}`
+  return `${day} ${s.startTime}–${s.endTime}`
+}
+
 /** Öğrenci merkezli çakışma detayı: başvurular, çakışanlar, güvenli alternatifler */
 export async function findStudentConflictDetails(): Promise<StudentConflictDetail[]> {
-  const [clubSchedules, studySessions] = await Promise.all([
+  const [clubSchedules, studySessions, exclusions] = await Promise.all([
     prisma.clubSchedule.findMany({
       where: { isActive: true },
       include: {
@@ -190,7 +208,28 @@ export async function findStudentConflictDetails(): Promise<StudentConflictDetai
         },
       },
     }),
+    prisma.clubScheduleExclusion.findMany({
+      select: { clubScheduleId: true, studentId: true },
+    }),
   ])
+
+  const excludedPairs = new Set(
+    exclusions.map((e) => `${e.clubScheduleId}:${e.studentId}`)
+  )
+
+  // Aynı grup (veya grupsuz kulüp) için kardeş günler
+  const siblingsBySchedule = new Map<string, string[]>()
+  for (const s of clubSchedules) {
+    const others = clubSchedules
+      .filter((o) => {
+        if (o.id === s.id || !o.isActive) return false
+        if (s.clubGroupId) return o.clubGroupId === s.clubGroupId
+        return !o.clubGroupId && o.clubId === s.clubId
+      })
+      .map(formatDayKeep)
+      .sort((a, b) => a.localeCompare(b, "tr"))
+    siblingsBySchedule.set(s.id, others)
+  }
 
   const entries: FlatEntry[] = []
 
@@ -204,6 +243,7 @@ export async function findStudentConflictDetails(): Promise<StudentConflictDetai
     const label = s.clubGroup
       ? `Kulüp · ${s.club.name} / ${s.clubGroup.name}`
       : `Kulüp · ${s.club.name}`
+    const otherDaysKeep = siblingsBySchedule.get(s.id) ?? []
     const base = {
       kind: "CLUB" as const,
       scheduleOrSessionId: s.id,
@@ -212,11 +252,15 @@ export async function findStudentConflictDetails(): Promise<StudentConflictDetai
       studyGroupId: null as string | null,
       label,
       dayOfWeek: s.dayOfWeek,
+      dayLabel: DAY_LABELS[s.dayOfWeek] || String(s.dayOfWeek),
       startTime: s.startTime,
       endTime: s.endTime,
       teacherName,
+      canExcludeDay: true,
+      otherDaysKeep,
     }
     for (const st of students) {
+      if (excludedPairs.has(`${s.id}:${st.id}`)) continue
       entries.push({
         ...base,
         key: assignmentKey(base),
@@ -239,9 +283,12 @@ export async function findStudentConflictDetails(): Promise<StudentConflictDetai
       studyGroupId: s.studyGroupId,
       label,
       dayOfWeek: s.dayOfWeek,
+      dayLabel: DAY_LABELS[s.dayOfWeek] || String(s.dayOfWeek),
       startTime: s.startTime,
       endTime: s.endTime,
       teacherName,
+      canExcludeDay: false,
+      otherDaysKeep: [] as string[],
     }
     for (const m of s.studyGroup.students) {
       const st = m.student
@@ -328,9 +375,12 @@ export async function findStudentConflictDetails(): Promise<StudentConflictDetai
             studyGroupId: e.studyGroupId,
             label: e.label,
             dayOfWeek: e.dayOfWeek,
+            dayLabel: e.dayLabel,
             startTime: e.startTime,
             endTime: e.endTime,
             teacherName: e.teacherName,
+            canExcludeDay: e.canExcludeDay,
+            otherDaysKeep: e.otherDaysKeep,
           })
         }
       }
@@ -543,10 +593,17 @@ export async function findStudentConflictDetails(): Promise<StudentConflictDetai
   return details
 }
 
-/** Tek bir çakışan atamadan öğrenciyi çıkarır */
+/** Çakışan atamadan çıkar: kulüpte gün muafiyeti veya gruptan tam çıkış */
+export type RemoveAssignmentMode = "exclude_day" | "leave_group"
+
 export async function removeStudentFromAssignment(options: {
   studentId: string
   assignmentKey: string
+  /**
+   * exclude_day: yalnızca o ClubSchedule saatinden muaf (varsayılan kulüp)
+   * leave_group: gruptan / seçimden tamamen çıkar
+   */
+  mode?: RemoveAssignmentMode
 }): Promise<{ removed: string; error?: string }> {
   const { studentId, assignmentKey } = options
   const [kind, id] = assignmentKey.split(":")
@@ -555,13 +612,30 @@ export async function removeStudentFromAssignment(options: {
   }
 
   if (kind === "CLUB") {
+    const mode: RemoveAssignmentMode = options.mode ?? "exclude_day"
+
+    if (mode === "exclude_day") {
+      const result = await excludeStudentFromClubSchedule({
+        studentId,
+        clubScheduleId: id,
+        note: "Çakışma paneli: bu günden çıkarıldı",
+      })
+      if (result.error) return { removed: "", error: result.error }
+      return { removed: result.excluded }
+    }
+
     const schedule = await prisma.clubSchedule.findUnique({
       where: { id },
-      select: { clubGroupId: true, clubId: true, club: { select: { name: true } } },
+      select: {
+        clubGroupId: true,
+        clubId: true,
+        club: { select: { name: true } },
+      },
     })
     if (!schedule) {
       return { removed: "", error: "Kulüp programı bulunamadı" }
     }
+
     if (schedule.clubGroupId) {
       const del = await prisma.clubGroupStudent.deleteMany({
         where: { clubGroupId: schedule.clubGroupId, studentId },
@@ -569,14 +643,28 @@ export async function removeStudentFromAssignment(options: {
       if (del.count === 0) {
         return { removed: "", error: `${schedule.club.name}: öğrenci bu grupta değil` }
       }
-      return { removed: `${schedule.club.name} grubundan çıkarıldı` }
+      // Bu grubun saat muafiyetlerini temizle
+      await prisma.clubScheduleExclusion.deleteMany({
+        where: {
+          studentId,
+          clubSchedule: { clubGroupId: schedule.clubGroupId },
+        },
+      })
+      return { removed: `${schedule.club.name} grubundan tamamen çıkarıldı` }
     }
+
     const del = await prisma.clubSelection.deleteMany({
       where: { clubId: schedule.clubId, studentId },
     })
     if (del.count === 0) {
       return { removed: "", error: `${schedule.club.name}: seçim kaydı yok` }
     }
+    await prisma.clubScheduleExclusion.deleteMany({
+      where: {
+        studentId,
+        clubSchedule: { clubId: schedule.clubId, clubGroupId: null },
+      },
+    })
     return { removed: `${schedule.club.name} seçiminden çıkarıldı` }
   }
 
@@ -662,6 +750,14 @@ export async function assignStudentToClubGroup(options: {
       create: { clubGroupId: group.id, studentId },
       update: {},
     })
+
+    // Yeni atamada eski gün muafiyetlerini sıfırla (temiz başlangıç)
+    await tx.clubScheduleExclusion.deleteMany({
+      where: {
+        studentId,
+        clubSchedule: { clubGroupId: group.id },
+      },
+    })
   })
 
   return { assigned: `${group.club.name} / ${group.name} grubuna eklendi` }
@@ -679,7 +775,11 @@ export async function resolveStudentConflict(options: {
 
   for (const key of removeKeys) {
     if (key === keepKey) continue
-    const result = await removeStudentFromAssignment({ studentId, assignmentKey: key })
+    const result = await removeStudentFromAssignment({
+      studentId,
+      assignmentKey: key,
+      mode: "leave_group",
+    })
     if (result.error) errors.push(result.error)
     else if (result.removed) removed.push(result.removed)
   }
