@@ -88,6 +88,7 @@ export default function DersProgramiPage() {
       startTime: string
       endTime: string
       room: string | null
+      kind: "study" | "club"
     }>
   >([])
   const [teacherLoading, setTeacherLoading] = useState(false)
@@ -285,36 +286,80 @@ export default function DersProgramiPage() {
     setTeacherLoading(true)
     Promise.all([
       fetch(`/api/schedules?teacherId=${selectedTeacherId}`, { cache: "no-store" }),
-      fetch(`/api/study-groups/sessions?teacherId=${selectedTeacherId}`, { cache: "no-store" }),
+      fetch(`/api/study-groups/sessions?teacherId=${selectedTeacherId}`, {
+        cache: "no-store",
+      }),
+      fetch("/api/schedules/clubs", { cache: "no-store" }),
     ])
-      .then(async ([schedRes, sessionRes]) => {
+      .then(async ([schedRes, sessionRes, clubRes]) => {
         const schedData = schedRes.ok ? await schedRes.json() : { schedules: [] }
         const sessionData = sessionRes.ok ? await sessionRes.json() : { sessions: [] }
+        const clubData = clubRes.ok ? await clubRes.json() : { schedules: [] }
         if (cancelled) return
         setTeacherSchedules(Array.isArray(schedData.schedules) ? schedData.schedules : [])
+
         const sessions = Array.isArray(sessionData.sessions) ? sessionData.sessions : []
-        setTeacherStudyItems(
-          sessions.map(
-            (s: {
+        const studyItems = sessions.map(
+          (s: {
+            id: string
+            topic?: string | null
+            dayOfWeek: number
+            startTime: string
+            endTime: string
+            room?: string | null
+            studyGroup?: { name?: string } | null
+          }) => ({
+            id: `sgs-${s.id}`,
+            classId: "",
+            className: s.topic?.trim() ? s.topic.trim() : "Özel çalışma",
+            subjectName: s.studyGroup?.name || "ÖÇG",
+            dayOfWeek: s.dayOfWeek,
+            startTime: s.startTime,
+            endTime: s.endTime,
+            room: s.room ?? null,
+            kind: "study" as const,
+          })
+        )
+
+        const clubSchedules = Array.isArray(clubData.schedules) ? clubData.schedules : []
+        const clubItems = clubSchedules
+          .filter(
+            (c: {
+              club?: {
+                instructorId?: string | null
+                instructor?: { id?: string } | null
+              } | null
+            }) =>
+              c.club?.instructorId === selectedTeacherId ||
+              c.club?.instructor?.id === selectedTeacherId
+          )
+          .map(
+            (c: {
               id: string
-              topic: string
               dayOfWeek: number
               startTime: string
               endTime: string
               room?: string | null
-              studyGroup?: { name?: string } | null
+              club?: { name?: string } | null
+              clubGroup?: { name?: string } | null
             }) => ({
-              id: `sgs-${s.id}`,
+              id: `club-${c.id}`,
               classId: "",
-              className: `Özel: ${s.studyGroup?.name || "Grup"}`,
-              subjectName: s.topic,
-              dayOfWeek: s.dayOfWeek,
-              startTime: s.startTime,
-              endTime: s.endTime,
-              room: s.room ?? null,
+              className: c.clubGroup?.name
+                ? c.clubGroup.name !== c.club?.name
+                  ? c.clubGroup.name
+                  : "Kulüp grubu"
+                : "Kulüp",
+              subjectName: c.club?.name || "Kulüp",
+              dayOfWeek: c.dayOfWeek,
+              startTime: c.startTime,
+              endTime: c.endTime,
+              room: c.room ?? null,
+              kind: "club" as const,
             })
           )
-        )
+
+        setTeacherStudyItems([...studyItems, ...clubItems])
       })
       .catch(() => {
         if (!cancelled) {
@@ -350,7 +395,7 @@ export default function DersProgramiPage() {
         startTime: g.startTime,
         endTime: g.endTime,
         room: g.room,
-        kind: "study" as const,
+        kind: g.kind,
       })),
     ],
     [teacherSchedules, teacherStudyItems]
@@ -359,11 +404,13 @@ export default function DersProgramiPage() {
   const teacherWeekdaySlots = useMemo(() => {
     const map = new Map<string, LessonSlot & { kind?: SlotKind; band?: "ortaokul" | "lise" }>()
     for (const s of slotMap.ortaokul) {
-      if ((s.kind ?? "LESSON") === "ETUT") continue
+      const kind = s.kind ?? "LESSON"
+      if (kind === "BREAK") continue
       if (!map.has(s.startTime)) map.set(s.startTime, { ...s, band: "ortaokul" })
     }
     for (const s of slotMap.lise) {
-      if ((s.kind ?? "LESSON") === "ETUT") continue
+      const kind = s.kind ?? "LESSON"
+      if (kind === "BREAK") continue
       if (!map.has(s.startTime)) map.set(s.startTime, { ...s, band: "lise" })
     }
     return [...map.values()].sort((a, b) => a.startTime.localeCompare(b.startTime))
@@ -372,11 +419,13 @@ export default function DersProgramiPage() {
   const teacherSaturdaySlots = useMemo(() => {
     const map = new Map<string, LessonSlot & { kind?: SlotKind; band?: "ortaokul" | "lise" }>()
     for (const s of slotMap.ortaokulSaturday) {
-      if ((s.kind ?? "LESSON") === "ETUT") continue
+      const kind = s.kind ?? "LESSON"
+      if (kind === "BREAK") continue
       if (!map.has(s.startTime)) map.set(s.startTime, { ...s, band: "ortaokul" })
     }
     for (const s of slotMap.liseSaturday) {
-      if ((s.kind ?? "LESSON") === "ETUT") continue
+      const kind = s.kind ?? "LESSON"
+      if (kind === "BREAK") continue
       if (!map.has(s.startTime)) map.set(s.startTime, { ...s, band: "lise" })
     }
     return [...map.values()].sort((a, b) => a.startTime.localeCompare(b.startTime))
@@ -619,7 +668,9 @@ export default function DersProgramiPage() {
         <Card className={`border-0 shadow-sm ${fullscreen ? "h-full overflow-y-auto" : ""}`}>
           <CardHeader>
             <CardTitle className="text-lg">Öğretmen programı</CardTitle>
-            <CardDescription>Öğretmen seçerek haftalık yükünü görüntüleyin</CardDescription>
+            <CardDescription>
+              Haftalık ders + etüt yükü (ÖÇG ve kulüp atamaları dahil)
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <select
@@ -642,8 +693,6 @@ export default function DersProgramiPage() {
                 <Loader2 className="h-5 w-5 animate-spin" />
                 Yükleniyor...
               </div>
-            ) : teacherCalendarItems.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-10">Bu öğretmene atanmış ders yok.</p>
             ) : (
               <TeacherScheduleGrid
                 items={teacherCalendarItems}

@@ -5,6 +5,7 @@ import {
   DAY_NAMES,
   DEFAULT_LESSON_SLOTS,
   DEFAULT_SATURDAY_SLOTS,
+  normalizeTime,
   SATURDAY_INDEX,
   WEEKDAY_INDEXES,
   type LessonSlot,
@@ -18,7 +19,8 @@ export type TeacherScheduleItem = {
   endTime: string
   room?: string | null
   className: string
-  kind?: "class" | "study"
+  /** class = ders, study = ÖÇG, club = kulüp etüdü */
+  kind?: "class" | "study" | "club"
 }
 
 export type TeacherGridSlot = LessonSlot & {
@@ -32,6 +34,7 @@ type PeriodRow = {
   /** Bu döneme ait tüm şablon başlangıç saatleri (ortaokul + lise) */
   startTimes: string[]
   sortTime: string
+  isEtut: boolean
 }
 
 function basePeriodLabel(label: string): string {
@@ -39,15 +42,22 @@ function basePeriodLabel(label: string): string {
 }
 
 function periodSortKey(label: string): number {
-  const m = label.match(/(\d+)\s*\.\s*Ders/i)
-  if (m) return Number(m[1])
+  const ders = label.match(/(\d+)\s*\.\s*Ders/i)
+  if (ders) return Number(ders[1])
+  const etut = label.match(/(\d+)\s*\.\s*Et[uü]t/i)
+  if (etut) return 100 + Number(etut[1])
   if (/et[uü]t/i.test(label)) return 100
   return 50
 }
 
+function isEtutLabel(label: string): boolean {
+  return /et[uü]t/i.test(label)
+}
+
 /**
- * Ortaokul/lise şablonlarını dönem adına (1. Ders, 5. Ders…) göre birleştirir.
+ * Ortaokul/lise şablonlarını dönem adına (1. Ders, 1. Etüt…) göre birleştirir.
  * Aynı dönem tek satır olur; hücrede dersin gerçek saati gösterilir.
+ * Etüt satırları her zaman gösterilir (boş = o saatte serbest).
  */
 function buildPeriodRows(
   weekdaySlots: TeacherGridSlot[],
@@ -56,22 +66,29 @@ function buildPeriodRows(
   includeSaturday: boolean
 ): { rows: PeriodRow[]; startToPeriod: Map<string, string> } {
   const source = [
-    ...weekdaySlots.filter((s) => (s.kind ?? "LESSON") === "LESSON"),
+    ...weekdaySlots.filter((s) => {
+      const k = s.kind ?? "LESSON"
+      return k === "LESSON" || k === "ETUT"
+    }),
     ...(includeSaturday
-      ? saturdaySlots.filter((s) => (s.kind ?? "LESSON") === "LESSON")
+      ? saturdaySlots.filter((s) => {
+          const k = s.kind ?? "LESSON"
+          return k === "LESSON" || k === "ETUT"
+        })
       : []),
   ]
 
-  /** startTime → dönem etiketi (5. Ders) */
+  /** normalizeTime(start) → dönem etiketi */
   const startToPeriod = new Map<string, string>()
   /** dönem etiketi → start times */
   const periodStarts = new Map<string, Set<string>>()
 
   for (const s of source) {
     const label = basePeriodLabel(s.label) || `${s.startTime}–${s.endTime}`
-    startToPeriod.set(s.startTime, label)
+    const start = normalizeTime(s.startTime)
+    startToPeriod.set(start, label)
     const set = periodStarts.get(label) ?? new Set<string>()
-    set.add(s.startTime)
+    set.add(start)
     periodStarts.set(label, set)
   }
 
@@ -79,11 +96,12 @@ function buildPeriodRows(
   for (const item of items) {
     if (!includeSaturday && item.dayOfWeek === SATURDAY_INDEX) continue
     if (item.dayOfWeek < 1 || item.dayOfWeek > 6) continue
-    if (startToPeriod.has(item.startTime)) continue
-    const label = `${item.startTime}–${item.endTime}`
-    startToPeriod.set(item.startTime, label)
+    const start = normalizeTime(item.startTime)
+    if (startToPeriod.has(start)) continue
+    const label = `${normalizeTime(item.startTime)}–${normalizeTime(item.endTime)}`
+    startToPeriod.set(start, label)
     const set = periodStarts.get(label) ?? new Set<string>()
-    set.add(item.startTime)
+    set.add(start)
     periodStarts.set(label, set)
   }
 
@@ -91,8 +109,12 @@ function buildPeriodRows(
   for (const item of items) {
     if (!includeSaturday && item.dayOfWeek === SATURDAY_INDEX) continue
     if (item.dayOfWeek < 1 || item.dayOfWeek > 6) continue
-    const key = startToPeriod.get(item.startTime)
+    const key = startToPeriod.get(normalizeTime(item.startTime))
     if (key) usedPeriodKeys.add(key)
+  }
+  // Etüt satırlarını her zaman göster (boş hücre = öğretmen o saatte serbest)
+  for (const label of periodStarts.keys()) {
+    if (isEtutLabel(label)) usedPeriodKeys.add(label)
   }
 
   const rows: PeriodRow[] = [...usedPeriodKeys].map((label) => {
@@ -102,6 +124,7 @@ function buildPeriodRows(
       label,
       startTimes: starts,
       sortTime: starts[0] ?? "99:99",
+      isEtut: isEtutLabel(label),
     }
   })
 
@@ -113,6 +136,34 @@ function buildPeriodRows(
   })
 
   return { rows, startToPeriod }
+}
+
+function itemKindStyles(kind: TeacherScheduleItem["kind"]) {
+  if (kind === "study") {
+    return {
+      block: "bg-sky-100/90 ring-1 ring-sky-200",
+      title: "text-sky-950",
+      meta: "text-sky-800 font-medium",
+      time: "text-sky-700",
+      badge: "ÖÇG",
+    }
+  }
+  if (kind === "club") {
+    return {
+      block: "bg-amber-100/90 ring-1 ring-amber-200",
+      title: "text-amber-950",
+      meta: "text-amber-800 font-medium",
+      time: "text-amber-700",
+      badge: "Kulüp",
+    }
+  }
+  return {
+    block: "",
+    title: "text-gray-900",
+    meta: "text-gray-600",
+    time: "text-gray-500",
+    badge: "",
+  }
 }
 
 export function TeacherScheduleGrid({
@@ -154,7 +205,7 @@ export function TeacherScheduleGrid({
     const map = new Map<string, TeacherScheduleItem[]>()
     for (const item of items) {
       if (!dayIndexes.includes(item.dayOfWeek)) continue
-      const period = startToPeriod.get(item.startTime)
+      const period = startToPeriod.get(normalizeTime(item.startTime))
       if (!period) continue
       const key = `${item.dayOfWeek}|${period}`
       const list = map.get(key) ?? []
@@ -166,15 +217,22 @@ export function TeacherScheduleGrid({
 
   const unmatched = useMemo(() => {
     return items.filter(
-      (i) => dayIndexes.includes(i.dayOfWeek) && !startToPeriod.has(i.startTime)
+      (i) =>
+        dayIndexes.includes(i.dayOfWeek) &&
+        !startToPeriod.has(normalizeTime(i.startTime))
     )
   }, [items, dayIndexes, startToPeriod])
 
-  if (items.length === 0) {
+  if (items.length === 0 && rows.every((r) => !r.isEtut)) {
     return (
-      <p className="text-sm text-gray-500 text-center py-10">Bu öğretmene atanmış ders yok.</p>
+      <p className="text-sm text-gray-500 text-center py-10">
+        Bu öğretmene atanmış ders / etüt yok.
+      </p>
     )
   }
+
+  const hasEtutItems = items.some((i) => i.kind === "study" || i.kind === "club")
+  const hasClassItems = items.some((i) => !i.kind || i.kind === "class")
 
   return (
     <div className="space-y-3">
@@ -183,6 +241,23 @@ export function TeacherScheduleGrid({
           <span className="font-semibold text-gray-900">{title}</span> haftalık ders programı
           {hasSaturday ? " (cumartesi dahil)" : ""}
         </p>
+      )}
+
+      {(hasClassItems || hasEtutItems || rows.some((r) => r.isEtut)) && (
+        <div className="flex flex-wrap gap-3 text-[11px] text-gray-600">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-sm bg-emerald-400" />
+            Ders
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-sm bg-sky-400" />
+            ÖÇG etüdü
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-sm bg-amber-400" />
+            Kulüp etüdü
+          </span>
+        </div>
       )}
 
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
@@ -206,23 +281,33 @@ export function TeacherScheduleGrid({
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.key}>
-                <td className="border-b border-r border-gray-200 p-2 text-xs font-medium text-gray-700 bg-gray-50/80">
+              <tr key={row.key} className={row.isEtut ? "bg-amber-50/30" : undefined}>
+                <td
+                  className={`border-b border-r border-gray-200 p-2 text-xs font-medium ${
+                    row.isEtut
+                      ? "bg-amber-50/80 text-amber-900"
+                      : "bg-gray-50/80 text-gray-700"
+                  }`}
+                >
                   <div>{row.label}</div>
                 </td>
                 {dayIndexes.map((day) => {
                   const cellItems = byCell.get(`${day}|${row.key}`) ?? []
                   const isSat = day === SATURDAY_INDEX
-                  const allStudy =
+                  const onlyStudy =
                     cellItems.length > 0 && cellItems.every((i) => i.kind === "study")
+                  const onlyClub =
+                    cellItems.length > 0 && cellItems.every((i) => i.kind === "club")
                   const cellBg =
                     cellItems.length === 0
                       ? ""
-                      : allStudy
+                      : onlyStudy
                         ? "bg-sky-50/90 border-l-2 border-l-sky-400"
-                        : isSat
-                          ? "bg-violet-50/80"
-                          : "bg-emerald-50/80"
+                        : onlyClub
+                          ? "bg-amber-50/90 border-l-2 border-l-amber-400"
+                          : isSat
+                            ? "bg-violet-50/80"
+                            : "bg-emerald-50/80"
                   return (
                     <td
                       key={`${day}-${row.key}`}
@@ -233,44 +318,31 @@ export function TeacherScheduleGrid({
                       ) : (
                         <div className="space-y-1.5">
                           {cellItems.map((item) => {
-                            const isStudy = item.kind === "study"
+                            const styles = itemKindStyles(item.kind)
+                            const accent =
+                              (item.kind === "study" || item.kind === "club") &&
+                              !(onlyStudy || onlyClub)
                             return (
                               <div
                                 key={item.id}
                                 className={`space-y-0.5 px-1.5 py-1 rounded-md ${
-                                  isStudy && !allStudy ? "bg-sky-100/90 ring-1 ring-sky-200" : ""
+                                  accent ? styles.block : ""
                                 }`}
                               >
                                 <p
-                                  className={`text-xs font-semibold leading-tight ${
-                                    isStudy ? "text-sky-950" : "text-gray-900"
-                                  }`}
+                                  className={`text-xs font-semibold leading-tight ${styles.title}`}
                                 >
                                   {item.subjectName}
                                 </p>
-                                <p
-                                  className={`text-[10px] leading-tight ${
-                                    isStudy ? "text-sky-800 font-medium" : "text-gray-600"
-                                  }`}
-                                >
+                                <p className={`text-[10px] leading-tight ${styles.meta}`}>
                                   {item.className}
-                                  {isStudy ? " · ÖÇG" : ""}
+                                  {styles.badge ? ` · ${styles.badge}` : ""}
                                 </p>
-                                <p
-                                  className={`text-[10px] leading-tight ${
-                                    isStudy ? "text-sky-700" : "text-gray-500"
-                                  }`}
-                                >
-                                  {item.startTime}–{item.endTime}
+                                <p className={`text-[10px] leading-tight ${styles.time}`}>
+                                  {normalizeTime(item.startTime)}–{normalizeTime(item.endTime)}
                                 </p>
                                 {item.room && (
-                                  <p
-                                    className={`text-[10px] ${
-                                      isStudy ? "text-sky-700" : "text-gray-500"
-                                    }`}
-                                  >
-                                    {item.room}
-                                  </p>
+                                  <p className={`text-[10px] ${styles.time}`}>{item.room}</p>
                                 )}
                               </div>
                             )
