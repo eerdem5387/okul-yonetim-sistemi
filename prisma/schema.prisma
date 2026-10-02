@@ -399,9 +399,8 @@ model HrJobApplication {
   experienceLevels         Json // string[] — Ortaokul, Lise
   totalExperience          String
   hasPrivateSchoolExperience Boolean
-  pedagogicalApproach      String              @db.Text
-  clubsAndActivities       String              @db.Text
-  references               Json // { firstName, lastName, title, phone }[]
+  clubsAndActivities       Json // string[] — kulüp seçimleri
+  workHistory              Json // { institutionName, phone, directorName }[]
   cvUrl                    String
   cvFileName               String
   status                   HrApplicationStatus @default(YENI)

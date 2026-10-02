@@ -3,34 +3,36 @@ import { headers } from "next/headers"
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 
-type ReferencePayload = {
-  firstName: string
-  lastName: string
-  title: string
+type WorkHistoryPayload = {
+  institutionName: string
   phone: string
+  directorName: string
 }
 
 function phoneDigits(value: string): number {
   return value.replace(/\D/g, "").length
 }
 
-function isValidReferences(refs: unknown): refs is ReferencePayload[] {
-  if (!Array.isArray(refs)) return false
-  if (refs.length === 0) return true
-  return refs.every((r) => {
-    if (!r || typeof r !== "object") return false
-    const ref = r as ReferencePayload
+function isValidWorkHistory(entries: unknown): entries is WorkHistoryPayload[] {
+  if (!Array.isArray(entries)) return false
+  if (entries.length === 0) return true
+  return entries.every((e) => {
+    if (!e || typeof e !== "object") return false
+    const entry = e as WorkHistoryPayload
     return (
-      typeof ref.firstName === "string" &&
-      ref.firstName.trim().length >= 2 &&
-      typeof ref.lastName === "string" &&
-      ref.lastName.trim().length >= 2 &&
-      typeof ref.title === "string" &&
-      ref.title.trim().length >= 2 &&
-      typeof ref.phone === "string" &&
-      phoneDigits(ref.phone) >= 10
+      typeof entry.institutionName === "string" &&
+      entry.institutionName.trim().length >= 2 &&
+      typeof entry.directorName === "string" &&
+      entry.directorName.trim().length >= 2 &&
+      typeof entry.phone === "string" &&
+      phoneDigits(entry.phone) >= 10
     )
   })
+}
+
+function isValidClubs(clubs: unknown): clubs is string[] {
+  if (!Array.isArray(clubs) || clubs.length === 0) return false
+  return clubs.every((c) => typeof c === "string" && c.trim().length > 0)
 }
 
 export async function POST(request: NextRequest) {
@@ -68,9 +70,8 @@ export async function POST(request: NextRequest) {
       "experienceLevels",
       "totalExperience",
       "hasPrivateSchoolExperience",
-      "pedagogicalApproach",
       "clubsAndActivities",
-      "references",
+      "workHistory",
       "cvUrl",
       "cvFileName",
       "createdAt",
@@ -84,7 +85,12 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         )
       }
-      if (key !== "references" && val === "") {
+      if (
+        key !== "workHistory" &&
+        key !== "clubsAndActivities" &&
+        key !== "experienceLevels" &&
+        val === ""
+      ) {
         return NextResponse.json(
           { error: `Invalid payload - missing field: ${key}` },
           { status: 400 }
@@ -92,16 +98,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (!Array.isArray(payload.references)) {
-      return NextResponse.json({ error: "Invalid references" }, { status: 400 })
+    if (!Array.isArray(payload.workHistory)) {
+      return NextResponse.json({ error: "Invalid workHistory" }, { status: 400 })
     }
 
     if (!Array.isArray(payload.experienceLevels) || payload.experienceLevels.length === 0) {
       return NextResponse.json({ error: "Invalid experienceLevels" }, { status: 400 })
     }
 
-    if (!isValidReferences(payload.references)) {
-      return NextResponse.json({ error: "Invalid references" }, { status: 400 })
+    if (!isValidClubs(payload.clubsAndActivities)) {
+      return NextResponse.json({ error: "Invalid clubsAndActivities" }, { status: 400 })
+    }
+
+    if (!isValidWorkHistory(payload.workHistory)) {
+      return NextResponse.json({ error: "Invalid workHistory" }, { status: 400 })
     }
 
     const existing = await prisma.hrJobApplication.findUnique({
@@ -129,9 +139,8 @@ export async function POST(request: NextRequest) {
         experienceLevels: payload.experienceLevels as Prisma.InputJsonValue,
         totalExperience: String(payload.totalExperience).trim(),
         hasPrivateSchoolExperience: Boolean(payload.hasPrivateSchoolExperience),
-        pedagogicalApproach: String(payload.pedagogicalApproach).trim(),
-        clubsAndActivities: String(payload.clubsAndActivities).trim(),
-        references: payload.references as Prisma.InputJsonValue,
+        clubsAndActivities: payload.clubsAndActivities as Prisma.InputJsonValue,
+        workHistory: payload.workHistory as Prisma.InputJsonValue,
         cvUrl: String(payload.cvUrl).trim(),
         cvFileName: String(payload.cvFileName).trim(),
         createdAt: new Date(payload.createdAt),

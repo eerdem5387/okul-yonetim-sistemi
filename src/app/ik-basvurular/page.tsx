@@ -40,11 +40,10 @@ import {
 } from "@/lib/permissions/client"
 import type { HrApplicationStatus } from "@prisma/client"
 
-type ReferenceRow = {
-  firstName: string
-  lastName: string
-  title: string
+type WorkHistoryRow = {
+  institutionName: string
   phone: string
+  directorName: string
 }
 
 interface HrApplication {
@@ -61,9 +60,8 @@ interface HrApplication {
   experienceLevels: unknown
   totalExperience: string
   hasPrivateSchoolExperience: boolean
-  pedagogicalApproach: string
-  clubsAndActivities: string
-  references: unknown
+  clubsAndActivities: unknown
+  workHistory: unknown
   cvUrl: string
   cvFileName: string
   status: HrApplicationStatus
@@ -89,6 +87,9 @@ const BRANCH_FILTER_OPTIONS = [
   "Fen Bilimleri",
   "Türkçe",
   "Bilişim Teknolojileri",
+  "Kimya",
+  "Biyoloji",
+  "Fizik",
 ]
 
 function formatLevels(levels: unknown): string {
@@ -96,9 +97,14 @@ function formatLevels(levels: unknown): string {
   return levels.join(", ")
 }
 
-function formatReferences(refs: unknown): ReferenceRow[] {
-  if (!Array.isArray(refs)) return []
-  return refs as ReferenceRow[]
+function formatClubs(clubs: unknown): string {
+  if (!Array.isArray(clubs) || clubs.length === 0) return "—"
+  return clubs.join(", ")
+}
+
+function formatWorkHistory(entries: unknown): WorkHistoryRow[] {
+  if (!Array.isArray(entries)) return []
+  return entries as WorkHistoryRow[]
 }
 
 export default function IkBasvurularPage() {
@@ -760,19 +766,24 @@ export default function IkBasvurularPage() {
                 label="Özel okul deneyimi"
                 value={selected.hasPrivateSchoolExperience ? "Evet" : "Hayır"}
               />
-              <DetailRow label="Pedagojik yaklaşım" value={selected.pedagogicalApproach} multiline />
-              <DetailRow label="Kulüp / faaliyetler" value={selected.clubsAndActivities} multiline />
+              <DetailRow label="Kulüp / faaliyetler" value={formatClubs(selected.clubsAndActivities)} />
               <div>
-                <p className="font-medium text-gray-700 mb-2">Referanslar</p>
-                <ul className="space-y-2">
-                  {formatReferences(selected.references).map((ref, i) => (
-                    <li key={i} className="rounded-lg bg-gray-50 p-3 text-gray-800">
-                      {ref.firstName} {ref.lastName} — {ref.title}
-                      <br />
-                      <span className="text-gray-600">{ref.phone}</span>
-                    </li>
-                  ))}
-                </ul>
+                <p className="font-medium text-gray-700 mb-2">Çalışma geçmişi</p>
+                {formatWorkHistory(selected.workHistory).length === 0 ? (
+                  <p className="text-gray-500">Belirtilmemiş</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {formatWorkHistory(selected.workHistory).map((entry, i) => (
+                      <li key={i} className="rounded-lg bg-gray-50 p-3 text-gray-800">
+                        {entry.institutionName}
+                        <br />
+                        <span className="text-gray-600">
+                          Müdür: {entry.directorName} — {entry.phone}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
               {selected.cvUrl && (
                 <div>

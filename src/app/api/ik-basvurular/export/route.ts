@@ -4,19 +4,18 @@ import { requireHrRecruitmentAccess } from "@/lib/hr-recruitment/access"
 import { HR_SOURCE_LABELS, HR_STATUS_LABELS } from "@/lib/hr-recruitment/constants"
 import type { HrApplicationStatus, Prisma } from "@prisma/client"
 
-type ReferenceRow = {
-  firstName?: string
-  lastName?: string
-  title?: string
+type WorkHistoryRow = {
+  institutionName?: string
   phone?: string
+  directorName?: string
 }
 
-function formatReferences(refs: unknown): string {
-  if (!Array.isArray(refs)) return ""
-  return refs
-    .map((r, i) => {
-      const ref = r as ReferenceRow
-      return `${i + 1}. ${ref.firstName ?? ""} ${ref.lastName ?? ""} (${ref.title ?? ""}) — ${ref.phone ?? ""}`
+function formatWorkHistory(entries: unknown): string {
+  if (!Array.isArray(entries)) return ""
+  return entries
+    .map((e, i) => {
+      const entry = e as WorkHistoryRow
+      return `${i + 1}. ${entry.institutionName ?? ""} — Müdür: ${entry.directorName ?? ""} — ${entry.phone ?? ""}`
     })
     .join(" | ")
 }
@@ -24,6 +23,11 @@ function formatReferences(refs: unknown): string {
 function formatLevels(levels: unknown): string {
   if (!Array.isArray(levels)) return ""
   return levels.join(", ")
+}
+
+function formatClubs(clubs: unknown): string {
+  if (!Array.isArray(clubs)) return ""
+  return clubs.join(", ")
 }
 
 export async function GET(request: NextRequest) {
@@ -70,9 +74,8 @@ export async function GET(request: NextRequest) {
       "Kademeler": formatLevels(a.experienceLevels),
       "Deneyim": a.totalExperience,
       "Özel Okul Deneyimi": a.hasPrivateSchoolExperience ? "Evet" : "Hayır",
-      "Pedagojik Yaklaşım": a.pedagogicalApproach,
-      "Kulüp / Faaliyetler": a.clubsAndActivities,
-      "Referanslar": formatReferences(a.references),
+      "Kulüp / Faaliyetler": formatClubs(a.clubsAndActivities),
+      "Çalışma Geçmişi": formatWorkHistory(a.workHistory),
       "Durum": HR_STATUS_LABELS[a.status],
       "İç Not": a.internalNote || "",
       "CV": a.cvUrl,
