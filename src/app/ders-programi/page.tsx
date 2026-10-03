@@ -31,6 +31,7 @@ import { DayTemplateEditorDialog } from "@/components/schedules/day-template-edi
 import { ScheduleCoursesDialog } from "@/components/schedules/schedule-courses-dialog"
 import { StudentConflictsDialog } from "@/components/schedules/student-conflicts-dialog"
 import { TeacherScheduleGrid } from "@/components/schedules/teacher-schedule-grid"
+import { SchoolWideScheduleBoard } from "@/components/schedules/school-wide-schedule-board"
 import { getAuthHeaders } from "@/components/hr/hr-utils"
 import {
   DEFAULT_LISE_WEEKDAY_SLOTS,
@@ -825,25 +826,32 @@ export default function DersProgramiPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-3 border-b bg-white shrink-0">
             <div className="min-w-0">
               <p className="font-semibold text-gray-900 truncate">
-                Ders programı — tam ekran
-                {viewMode === "class" && selectedClass ? ` · ${selectedClass.name}` : ""}
-                {viewMode === "teacher" ? " · Öğretmen" : ""}
-                {viewMode === "study" ? " · Özel Çalışma" : ""}
-                {viewMode === "club" ? " · Kulüp" : ""}
+                Tüm okul ders programı
               </p>
-              <p className="text-xs text-gray-500">Esc ile çıkabilirsiniz</p>
+              <p className="text-xs text-gray-500">
+                Kaydırarak gezin · Esc veya Küçült ile çıkın
+              </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {viewModeButtons}
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-amber-300 text-amber-900 hover:bg-amber-50"
-                onClick={() => setConflictsOpen(true)}
-              >
-                <AlertTriangle className="h-4 w-4 mr-1" />
-                Çakışan Öğrenciler
-              </Button>
+              {(
+                [
+                  { id: "all" as const, label: "Tümü" },
+                  { id: "ortaokul" as const, label: "Ortaokul" },
+                  { id: "lise" as const, label: "Lise" },
+                ] as const
+              ).map((opt) => (
+                <Button
+                  key={opt.id}
+                  size="sm"
+                  variant={band === opt.id ? "default" : "outline"}
+                  onClick={() => {
+                    setBand(opt.id)
+                    setGradeFilter("all")
+                  }}
+                >
+                  {opt.label}
+                </Button>
+              ))}
               <Button
                 size="sm"
                 variant="outline"
@@ -855,7 +863,19 @@ export default function DersProgramiPage() {
               </Button>
             </div>
           </div>
-          <div className="flex-1 min-h-0 overflow-hidden p-4">{workspace}</div>
+          <div className="flex-1 min-h-0 overflow-hidden p-3 sm:p-4">
+            <SchoolWideScheduleBoard
+              classes={classes.map((c) => ({
+                id: c.id,
+                name: c.name,
+                grade: c.grade,
+                section: c.section,
+              }))}
+              band={band}
+              ortaokulSlots={slotMap.ortaokul}
+              liseSlots={slotMap.lise}
+            />
+          </div>
         </div>
       )}
 
