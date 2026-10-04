@@ -25,6 +25,7 @@ import {
   type ScheduleRow,
 } from "@/components/schedules/class-schedule-grid"
 import { StudyGroupsPanel } from "@/components/schedules/study-groups-panel"
+import { StudySchedulesPanel } from "@/components/schedules/study-schedules-panel"
 import { ClubSchedulesPanel } from "@/components/schedules/club-schedules-panel"
 import { ClubGroupsPanel } from "@/components/schedules/club-groups-panel"
 import { DayTemplateEditorDialog } from "@/components/schedules/day-template-editor-dialog"
@@ -101,6 +102,7 @@ export default function DersProgramiPage() {
   const [fullscreen, setFullscreen] = useState(false)
   const [conflictsOpen, setConflictsOpen] = useState(false)
   const [clubSchedulesRefreshKey, setClubSchedulesRefreshKey] = useState(0)
+  const [studySchedulesRefreshKey, setStudySchedulesRefreshKey] = useState(0)
   const [gradeEtutExams, setGradeEtutExams] = useState<
     Array<{
       id: string
@@ -508,11 +510,20 @@ export default function DersProgramiPage() {
   const workspace = (
     <>
       {viewMode === "study" ? (
-        <Card className={`border-0 shadow-sm ${fullscreen ? "h-full overflow-y-auto" : ""}`}>
-          <CardContent className="p-4 sm:p-6">
-            <StudyGroupsPanel />
-          </CardContent>
-        </Card>
+        <div className={`space-y-4 ${fullscreen ? "h-full overflow-y-auto" : ""}`}>
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-4 sm:p-6">
+              <StudyGroupsPanel
+                onSessionsChanged={() => setStudySchedulesRefreshKey((n) => n + 1)}
+              />
+            </CardContent>
+          </Card>
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-4 sm:p-6">
+              <StudySchedulesPanel refreshKey={studySchedulesRefreshKey} />
+            </CardContent>
+          </Card>
+        </div>
       ) : viewMode === "club" ? (
         <div className={`space-y-4 ${fullscreen ? "h-full overflow-y-auto" : ""}`}>
           <Card className="border-0 shadow-sm">

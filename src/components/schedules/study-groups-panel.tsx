@@ -165,7 +165,11 @@ function slotsForBand(
   return assignableSlots([...slotMap.ortaokul, ...slotMap.lise])
 }
 
-export function StudyGroupsPanel() {
+export function StudyGroupsPanel({
+  onSessionsChanged,
+}: {
+  onSessionsChanged?: () => void
+} = {}) {
   const [groups, setGroups] = useState<StudyGroup[]>([])
   const [teachers, setTeachers] = useState<Teacher[]>([])
   const [students, setStudents] = useState<Student[]>([])
@@ -599,6 +603,7 @@ export function StudyGroupsPanel() {
         setSessionModalOpen(false)
         setSelectedSlots([])
         await load()
+        onSessionsChanged?.()
       } finally {
         setBusy(false)
       }
@@ -655,6 +660,7 @@ export function StudyGroupsPanel() {
       setSessionModalOpen(false)
       setSelectedSlots([])
       await load()
+      onSessionsChanged?.()
     } finally {
       setBusy(false)
     }
@@ -689,6 +695,7 @@ export function StudyGroupsPanel() {
       }
       if (editingSession?.id === sessionId) setSessionModalOpen(false)
       await load()
+      onSessionsChanged?.()
     } finally {
       setBusy(false)
     }
