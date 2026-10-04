@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import type { Prisma, StaffDepartment } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
-import { CLASS_COUNSELOR_DEPARTMENTS } from "@/lib/staff-counseling"
+import {
+  CLASS_COUNSELOR_DEPARTMENTS,
+  SCHEDULE_INSTRUCTOR_DEPARTMENTS,
+} from "@/lib/staff-counseling"
 import { resolveStaffPickerActor } from "@/lib/staff/picker-access"
 
 /**
@@ -23,17 +26,32 @@ export async function GET(request: NextRequest) {
   } else if (type === "counselors") {
     departments = [...CLASS_COUNSELOR_DEPARTMENTS]
   } else if (type === "teachers-and-counselors") {
-    departments = ["OGRETMEN", ...CLASS_COUNSELOR_DEPARTMENTS]
+    departments = [...SCHEDULE_INSTRUCTOR_DEPARTMENTS]
   } else {
     return NextResponse.json({ error: "Geçersiz type parametresi" }, { status: 400 })
   }
 
   const where: Prisma.StaffWhereInput = {
     isActive: true,
-    department: { in: departments },
   }
-  if (branchId) {
-    where.branchLinks = { some: { branchId } }
+
+  // Branş filtresi: öğretmenlerde branş zorunlu; rehberlik branşsız da listelenir
+  // (etüt/ders atamasında rehberlik personeli kaçmasın)
+  if (branchId && type === "teachers-and-counselors") {
+    where.OR = [
+      {
+        department: "OGRETMEN",
+        branchLinks: { some: { branchId } },
+      },
+      {
+        department: { in: [...CLASS_COUNSELOR_DEPARTMENTS] },
+      },
+    ]
+  } else {
+    where.department = { in: departments }
+    if (branchId) {
+      where.branchLinks = { some: { branchId } }
+    }
   }
 
   const staff = await prisma.staff.findMany({

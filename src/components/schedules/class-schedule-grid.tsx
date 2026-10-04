@@ -24,12 +24,14 @@ import {
   type LessonSlot,
 } from "@/lib/schedules/lesson-slots"
 import { normalizeSlotKind } from "@/lib/schedules/day-templates"
+import { scheduleInstructorDeptLabel } from "@/lib/staff-counseling"
 
 export type ScheduleTeacher = {
   id: string
   firstName: string
   lastName: string
   subject?: string | null
+  department?: string | null
   branches?: Array<{ id: string; name: string }>
 }
 
@@ -142,8 +144,8 @@ export function ClassScheduleGrid({
 
   const loadTeachers = useCallback((branchId?: string | null) => {
     const qs = branchId
-      ? `/api/staff/pickers?type=teachers&branchId=${encodeURIComponent(branchId)}`
-      : "/api/staff/pickers?type=teachers"
+      ? `/api/staff/pickers?type=teachers-and-counselors&branchId=${encodeURIComponent(branchId)}`
+      : "/api/staff/pickers?type=teachers-and-counselors"
     fetch(qs, { headers: getAuthHeaders() })
       .then((r) => (r.ok ? r.json() : { staff: [] }))
       .then((data) => setTeachers(Array.isArray(data.staff) ? data.staff : []))
@@ -738,7 +740,12 @@ export function ClassScheduleGrid({
                               <span className="font-medium text-gray-900">
                                 {t.firstName} {t.lastName}
                               </span>
-                              {t.subject ? (
+                              {t.department && t.department !== "OGRETMEN" ? (
+                                <span className="text-violet-700">
+                                  {" "}
+                                  ({scheduleInstructorDeptLabel(t.department)})
+                                </span>
+                              ) : t.subject ? (
                                 <span className="text-gray-500"> ({t.subject})</span>
                               ) : null}
                             </button>

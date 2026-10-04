@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { assertClubSlotFree, assertEtutSlot } from "@/lib/schedules/club-schedule"
+import { isStaffEligibleAsScheduleInstructor } from "@/lib/staff-counseling"
 
 export const dynamic = "force-dynamic"
 
@@ -82,8 +83,11 @@ export async function PUT(
 
     if (instructorId) {
       const teacher = await prisma.staff.findUnique({ where: { id: instructorId } })
-      if (!teacher || teacher.department !== "OGRETMEN") {
-        return NextResponse.json({ error: "Geçerli bir öğretmen seçiniz" }, { status: 400 })
+      if (!teacher || !isStaffEligibleAsScheduleInstructor(teacher.department)) {
+        return NextResponse.json(
+          { error: "Geçerli bir öğretmen veya rehberlik personeli seçiniz" },
+          { status: 400 }
+        )
       }
     }
 

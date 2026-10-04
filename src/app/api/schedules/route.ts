@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
+import { isStaffEligibleAsScheduleInstructor } from "@/lib/staff-counseling"
 
 /**
  * İki zaman aralığının çakışıp çakışmadığını kontrol eder
@@ -157,9 +158,9 @@ export async function POST(request: NextRequest) {
       where: { id: teacherId },
     })
 
-    if (!teacher || teacher.department !== "OGRETMEN") {
+    if (!teacher || !isStaffEligibleAsScheduleInstructor(teacher.department)) {
       return NextResponse.json(
-        { error: "Geçerli bir öğretmen seçiniz" },
+        { error: "Geçerli bir öğretmen veya rehberlik personeli seçiniz" },
         { status: 400 }
       )
     }

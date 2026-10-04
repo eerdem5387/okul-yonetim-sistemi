@@ -48,7 +48,7 @@ export function ClubDetailEditor({
 
   useEffect(() => {
     if (!open) return
-    fetch("/api/staff/pickers?type=teachers", {
+    fetch("/api/staff/pickers?type=teachers-and-counselors", {
       headers: staffAuthHeaders(),
       cache: "no-store",
     })

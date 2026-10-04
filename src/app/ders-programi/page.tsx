@@ -172,7 +172,7 @@ export default function DersProgramiPage() {
   useEffect(() => {
     void loadClasses()
     void loadDayTemplates()
-    fetch("/api/staff/pickers?type=teachers", { headers: getAuthHeaders() })
+    fetch("/api/staff/pickers?type=teachers-and-counselors", { headers: getAuthHeaders() })
       .then((r) => (r.ok ? r.json() : { staff: [] }))
       .then((data) => setTeachers(Array.isArray(data.staff) ? data.staff : []))
       .catch(() => setTeachers([]))

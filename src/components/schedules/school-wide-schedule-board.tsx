@@ -279,7 +279,7 @@ export function SchoolWideScheduleBoard({
     setError("")
     Promise.all([
       loadSchedules(),
-      fetch("/api/staff/pickers?type=teachers", { headers: getAuthHeaders() }).then((r) =>
+      fetch("/api/staff/pickers?type=teachers-and-counselors", { headers: getAuthHeaders() }).then((r) =>
         r.ok ? r.json() : { staff: [] }
       ),
       fetch("/api/schedules/courses", { cache: "no-store" }).then((r) =>

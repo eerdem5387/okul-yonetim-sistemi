@@ -15,12 +15,14 @@ import { Label } from "@/components/ui/label"
 import { getAuthHeaders } from "@/components/hr/hr-utils"
 import { DAY_NAMES, WEEKDAY_INDEXES } from "@/lib/schedules/lesson-slots"
 import { hasTimeConflict } from "@/lib/schedules/time-conflict"
+import { scheduleInstructorDeptLabel } from "@/lib/staff-counseling"
 
 type Teacher = {
   id: string
   firstName: string
   lastName: string
   subject?: string | null
+  department?: string | null
 }
 
 type Student = {
@@ -152,7 +154,7 @@ export function ClubGroupsPanel({ onSchedulesChanged }: Props = {}) {
     try {
       const [groupsRes, teachersRes, clubsSchedRes] = await Promise.all([
         fetch("/api/club-groups", { cache: "no-store" }),
-        fetch("/api/staff/pickers?type=teachers", { headers: getAuthHeaders() }),
+        fetch("/api/staff/pickers?type=teachers-and-counselors", { headers: getAuthHeaders() }),
         fetch("/api/schedules/clubs", { cache: "no-store" }),
       ])
       const data = await groupsRes.json().catch(() => ({}))
@@ -864,7 +866,7 @@ export function ClubGroupsPanel({ onSchedulesChanged }: Props = {}) {
           <div className="px-6 py-5 space-y-6">
             <div className="grid gap-4 sm:grid-cols-[1fr_160px]">
               <div>
-                <Label>Öğretmen (opsiyonel)</Label>
+                <Label>Öğretmen / Rehberlik (opsiyonel)</Label>
                 <select
                   className="mt-1.5 w-full rounded-md border border-gray-200 bg-white px-3 py-2.5 text-sm"
                   value={sessionForm.teacherId}
@@ -874,7 +876,11 @@ export function ClubGroupsPanel({ onSchedulesChanged }: Props = {}) {
                   {teachers.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.firstName} {t.lastName}
-                      {t.subject ? ` (${t.subject})` : ""}
+                      {t.department && t.department !== "OGRETMEN"
+                        ? ` (${scheduleInstructorDeptLabel(t.department)})`
+                        : t.subject
+                          ? ` (${t.subject})`
+                          : ""}
                     </option>
                   ))}
                 </select>

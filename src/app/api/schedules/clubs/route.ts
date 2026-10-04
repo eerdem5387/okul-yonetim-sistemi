@@ -6,6 +6,7 @@ import {
   DAY_LABELS,
   loadEtutSlots,
 } from "@/lib/schedules/club-schedule"
+import { isStaffEligibleAsScheduleInstructor } from "@/lib/staff-counseling"
 
 export const dynamic = "force-dynamic"
 
@@ -158,8 +159,11 @@ export async function POST(request: NextRequest) {
 
     if (instructorId) {
       const teacher = await prisma.staff.findUnique({ where: { id: instructorId } })
-      if (!teacher || teacher.department !== "OGRETMEN") {
-        return NextResponse.json({ error: "Geçerli bir öğretmen seçiniz" }, { status: 400 })
+      if (!teacher || !isStaffEligibleAsScheduleInstructor(teacher.department)) {
+        return NextResponse.json(
+          { error: "Geçerli bir öğretmen veya rehberlik personeli seçiniz" },
+          { status: 400 }
+        )
       }
     }
 

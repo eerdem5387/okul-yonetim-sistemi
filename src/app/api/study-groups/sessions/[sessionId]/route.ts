@@ -4,6 +4,7 @@ import {
   assertStudentsFreeForStudySession,
   assertTeacherFreeForStudySession,
 } from "@/lib/schedules/study-group-conflicts"
+import { isStaffEligibleAsScheduleInstructor } from "@/lib/staff-counseling"
 
 export const dynamic = "force-dynamic"
 
@@ -64,8 +65,11 @@ export async function PUT(
     }
 
     const teacher = await prisma.staff.findUnique({ where: { id: teacherId } })
-    if (!teacher || teacher.department !== "OGRETMEN") {
-      return NextResponse.json({ error: "Geçerli bir öğretmen seçiniz" }, { status: 400 })
+    if (!teacher || !isStaffEligibleAsScheduleInstructor(teacher.department)) {
+      return NextResponse.json(
+        { error: "Geçerli bir öğretmen veya rehberlik personeli seçiniz" },
+        { status: 400 }
+      )
     }
 
     const teacherConflict = await assertTeacherFreeForStudySession({
