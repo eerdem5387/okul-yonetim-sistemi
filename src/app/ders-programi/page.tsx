@@ -30,6 +30,7 @@ import { ClubGroupsPanel } from "@/components/schedules/club-groups-panel"
 import { DayTemplateEditorDialog } from "@/components/schedules/day-template-editor-dialog"
 import { ScheduleCoursesDialog } from "@/components/schedules/schedule-courses-dialog"
 import { StudentConflictsDialog } from "@/components/schedules/student-conflicts-dialog"
+import { GradeEtutExamsDialog } from "@/components/schedules/grade-etut-exams-dialog"
 import { TeacherScheduleGrid } from "@/components/schedules/teacher-schedule-grid"
 import { SchoolWideScheduleBoard } from "@/components/schedules/school-wide-schedule-board"
 import { getAuthHeaders } from "@/components/hr/hr-utils"
@@ -96,9 +97,20 @@ export default function DersProgramiPage() {
   const [userRole, setUserRole] = useState<string | null>(null)
   const [hoursOpen, setHoursOpen] = useState(false)
   const [coursesOpen, setCoursesOpen] = useState(false)
+  const [denemeOpen, setDenemeOpen] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
   const [conflictsOpen, setConflictsOpen] = useState(false)
   const [clubSchedulesRefreshKey, setClubSchedulesRefreshKey] = useState(0)
+  const [gradeEtutExams, setGradeEtutExams] = useState<
+    Array<{
+      id: string
+      grade: number
+      dayOfWeek: number
+      startTime: string
+      endTime: string
+      title: string
+    }>
+  >([])
   const [saturdaySaving, setSaturdaySaving] = useState(false)
   const [slotMap, setSlotMap] = useState<{
     ortaokul: Array<LessonSlot & { kind?: SlotKind }>
@@ -169,14 +181,26 @@ export default function DersProgramiPage() {
     }
   }, [])
 
+  const loadGradeEtutExams = useCallback(async () => {
+    try {
+      const res = await fetch("/api/schedules/grade-etut-exams", { cache: "no-store" })
+      if (!res.ok) return
+      const data = await res.json()
+      setGradeEtutExams(Array.isArray(data.exams) ? data.exams : [])
+    } catch {
+      setGradeEtutExams([])
+    }
+  }, [])
+
   useEffect(() => {
     void loadClasses()
     void loadDayTemplates()
+    void loadGradeEtutExams()
     fetch("/api/staff/pickers?type=teachers-and-counselors", { headers: getAuthHeaders() })
       .then((r) => (r.ok ? r.json() : { staff: [] }))
       .then((data) => setTeachers(Array.isArray(data.staff) ? data.staff : []))
       .catch(() => setTeachers([]))
-  }, [loadClasses, loadDayTemplates])
+  }, [loadClasses, loadDayTemplates, loadGradeEtutExams])
 
   useEffect(() => {
     if (!fullscreen) return
@@ -666,6 +690,8 @@ export default function DersProgramiPage() {
                     selectedClass?.saturdayMode === "EXAM_ONLY" ? "EXAM_ONLY" : "FULL"
                   }
                   saturdaySlots={activeSaturdaySlots}
+                  grade={selectedClass?.grade}
+                  gradeEtutExams={gradeEtutExams}
                 />
               )}
             </CardContent>
@@ -740,6 +766,15 @@ export default function DersProgramiPage() {
               <Button variant="outline" size="sm" onClick={() => setHoursOpen(true)}>
                 <Clock className="h-4 w-4 mr-2" />
                 Ders saatleri
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-rose-300 text-rose-900 hover:bg-rose-50"
+                onClick={() => setDenemeOpen(true)}
+              >
+                <ClipboardList className="h-4 w-4 mr-2" />
+                Etüt denemesi
               </Button>
               {(userRole === "admin" || userRole === "principal") && (
                 <Link href="/onay-paneli">
@@ -880,6 +915,7 @@ export default function DersProgramiPage() {
               band={band}
               ortaokulSlots={slotMap.ortaokul}
               liseSlots={slotMap.lise}
+              gradeEtutExams={gradeEtutExams}
             />
           </div>
         </div>
@@ -891,6 +927,14 @@ export default function DersProgramiPage() {
         onSaved={() => void loadDayTemplates()}
       />
       <ScheduleCoursesDialog open={coursesOpen} onOpenChange={setCoursesOpen} />
+      <GradeEtutExamsDialog
+        open={denemeOpen}
+        onOpenChange={setDenemeOpen}
+        onChanged={() => {
+          void loadGradeEtutExams()
+          setClubSchedulesRefreshKey((n) => n + 1)
+        }}
+      />
       <StudentConflictsDialog open={conflictsOpen} onOpenChange={setConflictsOpen} />
     </div>
   )

@@ -6,6 +6,10 @@ import {
   DAY_LABELS,
   loadEtutSlots,
 } from "@/lib/schedules/club-schedule"
+import {
+  assertNoGradeEtutExamConflict,
+  listGradeEtutExams,
+} from "@/lib/schedules/grade-etut-exams"
 import { isStaffEligibleAsScheduleInstructor } from "@/lib/staff-counseling"
 
 export const dynamic = "force-dynamic"
@@ -65,7 +69,7 @@ const scheduleInclude = {
 /** GET /api/schedules/clubs — kulüp programları + etüt slotları + kulüp/grup listesi */
 export async function GET() {
   try {
-    const [schedules, clubs, groups, etutSlots] = await Promise.all([
+    const [schedules, clubs, groups, etutSlots, gradeEtutExams] = await Promise.all([
       prisma.clubSchedule.findMany({
         where: { isActive: true },
         include: scheduleInclude,
@@ -112,9 +116,10 @@ export async function GET() {
         },
       }),
       loadEtutSlots(),
+      listGradeEtutExams(),
     ])
 
-    return NextResponse.json({ schedules, clubs, groups, etutSlots })
+    return NextResponse.json({ schedules, clubs, groups, etutSlots, gradeEtutExams })
   } catch (error) {
     console.error("Error fetching club schedules:", error)
     return NextResponse.json({ error: "Kulüp programları alınamadı" }, { status: 500 })
@@ -173,6 +178,20 @@ export async function POST(request: NextRequest) {
     const etutErr = await assertEtutSlot(startTime, endTime)
     if (etutErr) {
       return NextResponse.json({ error: etutErr }, { status: 400 })
+    }
+
+    const clubMeta = await prisma.club.findUnique({
+      where: { id: clubId },
+      select: { gradeLevels: true },
+    })
+    const denemeErr = await assertNoGradeEtutExamConflict({
+      gradeLevels: clubMeta?.gradeLevels ?? [],
+      dayOfWeek,
+      startTime,
+      endTime,
+    })
+    if (denemeErr) {
+      return NextResponse.json({ error: denemeErr }, { status: 400 })
     }
 
     const freeErr = await assertClubSlotFree({

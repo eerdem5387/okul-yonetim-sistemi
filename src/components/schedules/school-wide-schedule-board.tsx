@@ -15,6 +15,7 @@ import {
 import { getAuthHeaders } from "@/components/hr/hr-utils"
 import {
   DAY_NAMES,
+  DENEME_SINAVI_SUBJECT,
   WEEKDAY_INDEXES,
   gradeBandFor,
   normalizeTime,
@@ -194,7 +195,10 @@ function detectEntryKind(subjectName: string): SlotKindChoice {
   return "lesson"
 }
 
-function cellStyles(kind: SlotKindChoice) {
+function cellStyles(kind: SlotKindChoice | "deneme") {
+  if (kind === "deneme") {
+    return "bg-rose-50 ring-1 ring-rose-200 hover:bg-rose-100 text-rose-950"
+  }
   if (kind === "club") {
     return "bg-amber-50 ring-1 ring-amber-200 hover:bg-amber-100 text-amber-950"
   }
@@ -209,11 +213,20 @@ export function SchoolWideScheduleBoard({
   band,
   ortaokulSlots,
   liseSlots,
+  gradeEtutExams = [],
 }: {
   classes: ClassRow[]
   band: GradeBand
   ortaokulSlots: Array<LessonSlot & { kind?: SlotKind }>
   liseSlots: Array<LessonSlot & { kind?: SlotKind }>
+  gradeEtutExams?: Array<{
+    id: string
+    grade: number
+    dayOfWeek: number
+    startTime: string
+    endTime: string
+    title: string
+  }>
 }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -584,6 +597,9 @@ export function SchoolWideScheduleBoard({
         <span className="inline-flex items-center gap-1">
           <span className="h-2.5 w-2.5 rounded-sm bg-sky-400" /> ÖÇG
         </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="h-2.5 w-2.5 rounded-sm bg-rose-400" /> Deneme
+        </span>
         <span className="text-gray-400">· hücreye tıklayarak düzenleyin</span>
       </div>
 
@@ -643,9 +659,24 @@ export function SchoolWideScheduleBoard({
                       cellMap.get(`${c.id}|${period.dayOfWeek}|${period.periodLabel}`) ??
                       []
                     const primary = cells[0] ?? null
+                    const times = period.isEtut
+                      ? resolveSlotTimes(c.grade, period.periodLabel, ortaokulSlots, liseSlots)
+                      : null
+                    const deneme =
+                      period.isEtut && times
+                        ? gradeEtutExams.find(
+                            (e) =>
+                              e.grade === c.grade &&
+                              e.dayOfWeek === period.dayOfWeek &&
+                              normalizeTime(e.startTime) === times.startTime &&
+                              normalizeTime(e.endTime) === times.endTime
+                          )
+                        : null
                     const kind = primary
                       ? detectEntryKind(primary.subjectName)
-                      : null
+                      : deneme
+                        ? ("deneme" as const)
+                        : null
                     return (
                       <td
                         key={`${c.id}|${period.key}`}
@@ -655,9 +686,17 @@ export function SchoolWideScheduleBoard({
                       >
                         <button
                           type="button"
-                          onClick={() => openCell(c, period, primary)}
+                          onClick={() => {
+                            if (deneme && !primary) {
+                              alert(
+                                `${c.grade}. sınıf bu etütte “${deneme.title || DENEME_SINAVI_SUBJECT}” olarak işaretli. Değiştirmek için Ders Programı → Etüt denemesi.`
+                              )
+                              return
+                            }
+                            openCell(c, period, primary)
+                          }}
                           className={`w-full min-h-[2.75rem] rounded-md px-1 py-0.5 text-left transition ${
-                            primary
+                            primary || deneme
                               ? cellStyles(kind!)
                               : "hover:bg-slate-100/80 border border-dashed border-transparent hover:border-slate-300"
                           }`}
@@ -666,7 +705,9 @@ export function SchoolWideScheduleBoard({
                               ? `${primary.subjectName}${
                                   primary.teacherName ? ` · ${primary.teacherName}` : ""
                                 }`
-                              : `${c.name} · ${period.dayLabel} ${period.periodLabel} — ekle`
+                              : deneme
+                                ? `${deneme.title || DENEME_SINAVI_SUBJECT} · ${c.grade}. sınıf`
+                                : `${c.name} · ${period.dayLabel} ${period.periodLabel} — ekle`
                           }
                         >
                           {primary ? (
@@ -679,11 +720,20 @@ export function SchoolWideScheduleBoard({
                                   {shortTeacher(primary.teacherName)}
                                 </p>
                               ) : null}
-                              {kind && kind !== "lesson" ? (
+                              {kind && kind !== "lesson" && kind !== "deneme" ? (
                                 <p className="text-[8px] font-medium uppercase tracking-wide mt-0.5 opacity-70">
                                   {kind === "club" ? "Kulüp" : "ÖÇG"}
                                 </p>
                               ) : null}
+                            </>
+                          ) : deneme ? (
+                            <>
+                              <p className="text-[10px] font-semibold leading-tight line-clamp-2">
+                                {deneme.title || DENEME_SINAVI_SUBJECT}
+                              </p>
+                              <p className="text-[8px] font-medium uppercase tracking-wide mt-0.5 opacity-70">
+                                Deneme
+                              </p>
                             </>
                           ) : (
                             <span className="block h-8" />

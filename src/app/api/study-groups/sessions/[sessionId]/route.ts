@@ -4,6 +4,7 @@ import {
   assertStudentsFreeForStudySession,
   assertTeacherFreeForStudySession,
 } from "@/lib/schedules/study-group-conflicts"
+import { assertNoGradeEtutExamConflict } from "@/lib/schedules/grade-etut-exams"
 import { isStaffEligibleAsScheduleInstructor } from "@/lib/staff-counseling"
 
 export const dynamic = "force-dynamic"
@@ -81,6 +82,16 @@ export async function PUT(
     })
     if (teacherConflict) {
       return NextResponse.json({ error: teacherConflict }, { status: 400 })
+    }
+
+    const denemeErr = await assertNoGradeEtutExamConflict({
+      gradeLevels: existing.studyGroup.gradeLevels ?? [],
+      dayOfWeek,
+      startTime,
+      endTime,
+    })
+    if (denemeErr) {
+      return NextResponse.json({ error: denemeErr }, { status: 400 })
     }
 
     const studentIds = existing.studyGroup.students.map((s) => s.studentId)

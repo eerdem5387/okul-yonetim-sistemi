@@ -93,6 +93,8 @@ export function ClassScheduleGrid({
   saturdayEnabled = false,
   saturdayMode = "FULL",
   saturdaySlots: saturdaySlotsProp,
+  grade,
+  gradeEtutExams = [],
 }: {
   classId: string
   className?: string
@@ -102,6 +104,15 @@ export function ClassScheduleGrid({
   saturdayEnabled?: boolean
   saturdayMode?: ClassSaturdayMode
   saturdaySlots?: GridSlot[]
+  grade?: number
+  gradeEtutExams?: Array<{
+    id: string
+    grade: number
+    dayOfWeek: number
+    startTime: string
+    endTime: string
+    title: string
+  }>
 }) {
   const slots: GridSlot[] = withResolvedKinds(
     slotsProp && slotsProp.length > 0 ? slotsProp : DEFAULT_LESSON_SLOTS
@@ -114,6 +125,15 @@ export function ClassScheduleGrid({
   // Sınıf programında etüt satırları gösterilmez (kulüp / ÖÇG ayrı sekmede)
   const displaySlots = slots.filter((s) => (s.kind ?? "LESSON") !== "ETUT")
   const lessonSlots = displaySlots.filter((s) => (s.kind ?? "LESSON") === "LESSON")
+  const etutSlots = slots.filter((s) => (s.kind ?? "LESSON") === "ETUT")
+  const gradeDenemeExams = useMemo(
+    () =>
+      typeof grade === "number"
+        ? gradeEtutExams.filter((e) => e.grade === grade)
+        : [],
+    [grade, gradeEtutExams]
+  )
+  const hasGradeDeneme = gradeDenemeExams.length > 0
   const saturdayDisplaySlots = saturdaySlots.filter((s) => (s.kind ?? "LESSON") !== "ETUT")
   const saturdayLessonSlots = saturdayDisplaySlots.filter(
     (s) => (s.kind ?? "LESSON") === "LESSON"
@@ -452,6 +472,80 @@ export function ClassScheduleGrid({
           </tbody>
         </table>
       </div>
+
+      {hasGradeDeneme && etutSlots.length > 0 && (
+        <div className="rounded-xl border border-rose-200 bg-rose-50/40 p-3 space-y-3">
+          <div>
+            <p className="font-semibold text-rose-950">
+              Etüt · sınıf düzeyi deneme ({grade}. sınıf)
+            </p>
+            <p className="text-xs text-rose-800/80">
+              Bu düzey için işaretlenen etüt saatleri deneme sınavıdır. Yönetim: Ders Programı →
+              Etüt denemesi.
+            </p>
+          </div>
+          <div className="overflow-x-auto rounded-xl border border-rose-100 bg-white">
+            <table className="w-full border-collapse min-w-[720px]">
+              <thead>
+                <tr className="bg-rose-50/80">
+                  <th className="border-b border-r border-rose-100 p-2 text-xs font-semibold text-rose-900 w-28">
+                    Etüt
+                  </th>
+                  {WEEKDAY_INDEXES.map((day) => (
+                    <th
+                      key={day}
+                      className="border-b border-rose-100 p-2 text-xs font-semibold text-rose-900"
+                    >
+                      {DAY_NAMES[day]}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {etutSlots.map((slot) => (
+                  <tr key={`etut-${slot.id}-${slot.startTime}`}>
+                    <td className="border-b border-r border-rose-50 p-2 text-xs font-medium text-rose-900 bg-rose-50/50">
+                      <div>{slot.label}</div>
+                      <div className="text-[10px] opacity-70 font-normal">
+                        {slot.startTime}–{slot.endTime}
+                      </div>
+                    </td>
+                    {WEEKDAY_INDEXES.map((day) => {
+                      const exam = gradeDenemeExams.find(
+                        (e) =>
+                          e.dayOfWeek === day &&
+                          normalizeTime(e.startTime) === normalizeTime(slot.startTime) &&
+                          normalizeTime(e.endTime) === normalizeTime(slot.endTime)
+                      )
+                      return (
+                        <td
+                          key={`etut-${day}-${slot.startTime}`}
+                          className={`border-b border-rose-50 p-1.5 align-top ${
+                            exam ? "bg-rose-100/80" : "bg-white"
+                          }`}
+                        >
+                          {exam ? (
+                            <div className="px-1 py-1">
+                              <p className="text-xs font-semibold text-rose-950 leading-tight">
+                                {exam.title || DENEME_SINAVI_SUBJECT}
+                              </p>
+                              <p className="text-[10px] text-rose-800/80">Tüm {grade}. sınıflar</p>
+                            </div>
+                          ) : (
+                            <div className="flex h-10 items-center justify-center text-gray-200 text-xs">
+                              —
+                            </div>
+                          )}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {saturdayEnabled && (
         <div className="rounded-xl border border-violet-200 bg-violet-50/40 p-3 space-y-3">

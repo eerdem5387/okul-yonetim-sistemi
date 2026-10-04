@@ -57,6 +57,15 @@ type ClubScheduleRow = {
   exclusions?: Array<{ studentId: string }>
 }
 
+type GradeEtutExamRow = {
+  id: string
+  grade: number
+  dayOfWeek: number
+  startTime: string
+  endTime: string
+  title: string
+}
+
 type Props = {
   refreshKey?: number
   onRosterChanged?: () => void
@@ -66,6 +75,7 @@ export function ClubSchedulesPanel({ refreshKey = 0, onRosterChanged }: Props) {
   const [groups, setGroups] = useState<ClubGroupRow[]>([])
   const [schedules, setSchedules] = useState<ClubScheduleRow[]>([])
   const [etutSlots, setEtutSlots] = useState<EtutSlot[]>([])
+  const [gradeEtutExams, setGradeEtutExams] = useState<GradeEtutExamRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [rosterId, setRosterId] = useState<string | null>(null)
@@ -80,10 +90,12 @@ export function ClubSchedulesPanel({ refreshKey = 0, onRosterChanged }: Props) {
       setGroups(Array.isArray(data.groups) ? data.groups : [])
       setSchedules(Array.isArray(data.schedules) ? data.schedules : [])
       setEtutSlots(Array.isArray(data.etutSlots) ? data.etutSlots : [])
+      setGradeEtutExams(Array.isArray(data.gradeEtutExams) ? data.gradeEtutExams : [])
     } catch (e) {
       setError(e instanceof Error ? e.message : "Yüklenemedi")
       setGroups([])
       setSchedules([])
+      setGradeEtutExams([])
     } finally {
       setLoading(false)
     }
@@ -163,15 +175,36 @@ export function ClubSchedulesPanel({ refreshKey = 0, onRosterChanged }: Props) {
                   </td>
                   {WEEKDAY_INDEXES.map((day) => {
                     const entries = cellEntries(day, slot.startTime, slot.endTime)
+                    const denemeGrades = [
+                      ...new Set(
+                        gradeEtutExams
+                          .filter(
+                            (e) =>
+                              e.dayOfWeek === day &&
+                              e.startTime === slot.startTime &&
+                              e.endTime === slot.endTime
+                          )
+                          .map((e) => e.grade)
+                      ),
+                    ].sort((a, b) => a - b)
                     return (
                       <td
                         key={`${day}-${slot.startTime}`}
                         className="border-b border-gray-100 p-1.5 align-top min-h-[4rem]"
                       >
-                        {entries.length === 0 ? (
-                          <div className="flex h-14 items-center justify-center text-gray-200 text-xs">
-                            —
+                        {denemeGrades.length > 0 && (
+                          <div className="mb-1 rounded-md border border-rose-200 bg-rose-50 px-1.5 py-1">
+                            <p className="text-[10px] font-semibold text-rose-900 leading-tight">
+                              Deneme · {denemeGrades.map((g) => `${g}.`).join(" ")} sınıf
+                            </p>
                           </div>
+                        )}
+                        {entries.length === 0 ? (
+                          denemeGrades.length === 0 ? (
+                            <div className="flex h-14 items-center justify-center text-gray-200 text-xs">
+                              —
+                            </div>
+                          ) : null
                         ) : (
                           <div className="space-y-1">
                             {entries.map((row) => {

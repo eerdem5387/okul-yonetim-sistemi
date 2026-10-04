@@ -1595,6 +1595,25 @@ model ClubGroupStudent {
   @@map("club_group_students")
 }
 
+/// Sınıf düzeyi etüt deneme bloğu — örn. tüm 12. sınıflar Salı 1.–2. Etüt = Deneme Sınavı
+model GradeEtutExam {
+  id        String   @id @default(cuid())
+  grade     Int // 5–12
+  dayOfWeek Int // 1–5 (Pazartesi–Cuma)
+  startTime String
+  endTime   String
+  title     String   @default("Deneme Sınavı")
+  notes     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([grade, dayOfWeek, startTime, endTime])
+  @@index([grade, dayOfWeek])
+  @@index([dayOfWeek, startTime])
+  @@map("grade_etut_exams")
+}
+
 /// Ders programında seçilen ders adları (Matematik, Fizik vb.) — Branş ile bağlı
 model ScheduleCourse {
   id        String   @id @default(cuid())
