@@ -763,6 +763,40 @@ export async function assignStudentToClubGroup(options: {
   return { assigned: `${group.club.name} / ${group.name} grubuna eklendi` }
 }
 
+/** Öğrenciyi ÖÇG grubuna ekler */
+export async function assignStudentToStudyGroup(options: {
+  studentId: string
+  studyGroupId: string
+}): Promise<{ assigned: string; error?: string }> {
+  const { studentId, studyGroupId } = options
+
+  const group = await prisma.studyGroup.findUnique({
+    where: { id: studyGroupId },
+    select: { id: true, name: true, isActive: true },
+  })
+  if (!group || !group.isActive) {
+    return { assigned: "", error: "ÖÇG grubu bulunamadı" }
+  }
+
+  const student = await prisma.student.findUnique({
+    where: { id: studentId },
+    select: { id: true },
+  })
+  if (!student) {
+    return { assigned: "", error: "Öğrenci bulunamadı" }
+  }
+
+  await prisma.studyGroupStudent.upsert({
+    where: {
+      studyGroupId_studentId: { studyGroupId: group.id, studentId },
+    },
+    create: { studyGroupId: group.id, studentId },
+    update: {},
+  })
+
+  return { assigned: `${group.name} ÖÇG grubuna eklendi` }
+}
+
 /** @deprecated Eski keep/remove akışı — geriye uyumluluk */
 export async function resolveStudentConflict(options: {
   studentId: string

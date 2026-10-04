@@ -29,6 +29,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { StudentAttendancePanel } from "@/components/students/student-attendance-panel"
+import { StudentWeeklySchedulePanel } from "@/components/students/student-weekly-schedule-panel"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 
@@ -198,6 +199,7 @@ const TAB_IDS = [
   "overview",
   "profile",
   "registration",
+  "schedule",
   "homework",
   "attendance",
   "exams",
@@ -478,6 +480,7 @@ export default function StudentDetailDashboardPage() {
             <TabsTrigger value="overview">Genel Bakış</TabsTrigger>
             <TabsTrigger value="profile">Profil & Aile</TabsTrigger>
             <TabsTrigger value="registration">Kayıt & Sözleşmeler</TabsTrigger>
+            <TabsTrigger value="schedule">Haftalık Program</TabsTrigger>
             <TabsTrigger value="homework">Ödevler</TabsTrigger>
             <TabsTrigger value="attendance">Yoklama</TabsTrigger>
             <TabsTrigger value="exams">Sınavlar</TabsTrigger>
@@ -855,6 +858,10 @@ export default function StudentDetailDashboardPage() {
                 ))}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="schedule" className="space-y-6">
+            <StudentWeeklySchedulePanel studentId={studentId} />
           </TabsContent>
 
           {dashboard && (
