@@ -173,7 +173,7 @@ export async function PUT(
   }
 }
 
-/** DELETE /api/club-groups/[id] — soft delete */
+/** DELETE /api/club-groups/[id] — soft delete + bağlı programları temizle */
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -185,12 +185,16 @@ export async function DELETE(
       return NextResponse.json({ error: "Grup bulunamadı" }, { status: 404 })
     }
 
-    await prisma.clubGroup.update({
-      where: { id },
-      data: { isActive: false },
+    await prisma.$transaction(async (tx) => {
+      // Bağlı etüt programlarını sil (öğretmen takviminde kalmasın)
+      await tx.clubSchedule.deleteMany({ where: { clubGroupId: id } })
+      await tx.clubGroup.update({
+        where: { id },
+        data: { isActive: false },
+      })
     })
 
-    return NextResponse.json({ success: true, message: "Grup silindi" })
+    return NextResponse.json({ success: true, message: "Grup ve program atamaları silindi" })
   } catch (error) {
     console.error("Error deleting club group:", error)
     return NextResponse.json({ error: "Grup silinemedi" }, { status: 500 })

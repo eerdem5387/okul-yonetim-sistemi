@@ -71,7 +71,10 @@ export async function GET() {
   try {
     const [schedules, clubs, groups, etutSlots, gradeEtutExams] = await Promise.all([
       prisma.clubSchedule.findMany({
-        where: { isActive: true },
+        where: {
+          isActive: true,
+          OR: [{ clubGroupId: null }, { clubGroup: { isActive: true } }],
+        },
         include: scheduleInclude,
         orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
       }),

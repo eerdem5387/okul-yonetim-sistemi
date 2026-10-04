@@ -143,21 +143,49 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const group = await prisma.clubGroup.create({
-      data: {
-        clubId,
-        name,
-        notes,
-        ...(studentIds.length > 0
-          ? {
-              students: {
-                create: studentIds.map((studentId) => ({ studentId })),
-              },
-            }
-          : {}),
-      },
-      include: groupInclude,
+    // Soft-delete edilmiş aynı isimli grup varsa yeniden aktifleştir
+    const inactive = await prisma.clubGroup.findFirst({
+      where: { clubId, name, isActive: false },
+      select: { id: true },
     })
+
+    let group
+    if (inactive) {
+      group = await prisma.$transaction(async (tx) => {
+        await tx.clubSchedule.deleteMany({ where: { clubGroupId: inactive.id } })
+        await tx.clubGroupStudent.deleteMany({ where: { clubGroupId: inactive.id } })
+        if (studentIds.length > 0) {
+          await tx.clubGroupStudent.createMany({
+            data: studentIds.map((studentId) => ({
+              clubGroupId: inactive.id,
+              studentId,
+            })),
+            skipDuplicates: true,
+          })
+        }
+        return tx.clubGroup.update({
+          where: { id: inactive.id },
+          data: { isActive: true, notes },
+          include: groupInclude,
+        })
+      })
+    } else {
+      group = await prisma.clubGroup.create({
+        data: {
+          clubId,
+          name,
+          notes,
+          ...(studentIds.length > 0
+            ? {
+                students: {
+                  create: studentIds.map((studentId) => ({ studentId })),
+                },
+              }
+            : {}),
+        },
+        include: groupInclude,
+      })
+    }
 
     return NextResponse.json({
       success: true,

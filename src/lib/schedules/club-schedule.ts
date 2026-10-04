@@ -101,6 +101,7 @@ export async function assertClubSlotFree(options: {
       clubId,
       dayOfWeek,
       isActive: true,
+      OR: [{ clubGroupId: null }, { clubGroup: { isActive: true } }],
       ...(excludeId ? { id: { not: excludeId } } : {}),
     },
   })
@@ -124,6 +125,7 @@ export async function assertClubSlotFree(options: {
         where: {
           dayOfWeek,
           isActive: true,
+          OR: [{ clubGroupId: null }, { clubGroup: { isActive: true } }],
           club: { instructorId },
           ...(excludeId ? { id: { not: excludeId } } : {}),
           clubId: { not: clubId },

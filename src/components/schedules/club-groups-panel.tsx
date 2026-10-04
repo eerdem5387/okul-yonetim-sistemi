@@ -1,7 +1,17 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { CalendarPlus, Loader2, Pencil, Plus, Search, Trash2, Users, X } from "lucide-react"
+import {
+  CalendarPlus,
+  Loader2,
+  Pencil,
+  Plus,
+  Search,
+  Split,
+  Trash2,
+  Users,
+  X,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -142,6 +152,12 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
   const [showSelectedOnly, setShowSelectedOnly] = useState(false)
   const [error, setError] = useState("")
   const [rosterId, setRosterId] = useState<string | null>(null)
+  const [splitOpen, setSplitOpen] = useState(false)
+  const [splitSource, setSplitSource] = useState<ClubGroup | null>(null)
+  const [splitNewName, setSplitNewName] = useState("")
+  const [splitRenameSource, setSplitRenameSource] = useState("")
+  const [splitMoveIds, setSplitMoveIds] = useState<string[]>([])
+  const [splitSearch, setSplitSearch] = useState("")
 
   const [sessionModalOpen, setSessionModalOpen] = useState(false)
   const [sessionGroup, setSessionGroup] = useState<ClubGroup | null>(null)
@@ -305,6 +321,104 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
     setTeacherBusy([])
     setSessionModalOpen(true)
   }
+
+  const openSplit = (group: ClubGroup) => {
+    if (group.students.length < 2) {
+      alert("Grubu bölmek için en az 2 öğrenci olmalı.")
+      return
+    }
+    const sorted = [...group.students].sort((a, b) =>
+      `${a.student.lastName} ${a.student.firstName}`.localeCompare(
+        `${b.student.lastName} ${b.student.firstName}`,
+        "tr"
+      )
+    )
+    const half = Math.floor(sorted.length / 2)
+    const moveIds = sorted.slice(half).map((m) => m.student.id)
+    const base = group.name.replace(/\s*[-–]\s*[AB]$/i, "").trim() || group.name
+    setSplitSource(group)
+    setSplitRenameSource(`${base} - A`)
+    setSplitNewName(`${base} - B`)
+    setSplitMoveIds(moveIds)
+    setSplitSearch("")
+    setSplitOpen(true)
+  }
+
+  const toggleSplitStudent = (id: string) => {
+    setSplitMoveIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    )
+  }
+
+  const saveSplit = async () => {
+    if (!splitSource) return
+    if (!splitNewName.trim()) {
+      alert("Yeni grup adı zorunludur.")
+      return
+    }
+    if (splitMoveIds.length === 0) {
+      alert("Yeni gruba taşınacak en az bir öğrenci seçiniz.")
+      return
+    }
+    if (splitMoveIds.length >= splitSource.students.length) {
+      alert("Mevcut grupta en az bir öğrenci kalmalı.")
+      return
+    }
+    setBusy(true)
+    try {
+      const res = await fetch(`/api/club-groups/${splitSource.id}/split`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          newName: splitNewName.trim(),
+          renameSourceTo: splitRenameSource.trim() || undefined,
+          moveStudentIds: splitMoveIds,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert(data.error || "Grup bölünemedi")
+        return
+      }
+      setSplitOpen(false)
+      setSplitSource(null)
+      await load()
+      notifySchedulesChanged()
+      if (data.message) {
+        // soft info via alert is ok for this workflow
+        alert(data.message)
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const groupsByClubCount = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const g of groups) {
+      map.set(g.clubId, (map.get(g.clubId) ?? 0) + 1)
+    }
+    return map
+  }, [groups])
+
+  const splitFilteredStudents = useMemo(() => {
+    if (!splitSource) return []
+    const q = splitSearch.trim().toLocaleLowerCase("tr")
+    return [...splitSource.students]
+      .sort((a, b) =>
+        `${a.student.lastName} ${a.student.firstName}`.localeCompare(
+          `${b.student.lastName} ${b.student.firstName}`,
+          "tr"
+        )
+      )
+      .filter((m) => {
+        if (!q) return true
+        const hay = `${m.student.firstName} ${m.student.lastName} ${m.student.grade}`.toLocaleLowerCase(
+          "tr"
+        )
+        return hay.includes(q)
+      })
+  }, [splitSource, splitSearch])
 
   const openEditSession = (group: ClubGroup, schedule: ClubGroupSchedule) => {
     setSessionGroup(group)
@@ -544,7 +658,9 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Kulüp grupları</h2>
           <p className="text-sm text-gray-600">
-            ÖÇG gibi önce grubu oluşturun; karttan öğretmen seçip etüt saatini atayın.
+            Başvurusu yoğun kulüpleri <strong>Grubu böl</strong> ile A/B gruplarına ayırıp her
+            birine ayrı gün programı atayabilirsiniz. Günlük muafiyetler program satırından
+            yönetilir.
           </p>
         </div>
         <Button type="button" onClick={openCreate} className="shrink-0">
@@ -569,10 +685,31 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <CardTitle className="truncate text-base">{g.name}</CardTitle>
-                    <CardDescription className="truncate">{g.club.name}</CardDescription>
+                    <CardTitle className="truncate text-base flex items-center gap-2">
+                      <span className="truncate">{g.name}</span>
+                      {(groupsByClubCount.get(g.clubId) ?? 0) > 1 ? (
+                        <span className="shrink-0 rounded-md bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">
+                          çoklu grup
+                        </span>
+                      ) : null}
+                    </CardTitle>
+                    <CardDescription className="truncate">
+                      {g.club.name}
+                      {g.name !== g.club.name ? ` · alt grup` : ""}
+                    </CardDescription>
                   </div>
                   <div className="flex shrink-0 gap-1">
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      title="Grubu böl"
+                      disabled={busy || g.students.length < 2}
+                      onClick={() => openSplit(g)}
+                    >
+                      <Split className="h-4 w-4" />
+                    </Button>
                     <Button
                       type="button"
                       size="icon"
@@ -689,15 +826,28 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
                   <p className="text-xs text-amber-700">Henüz etüt ataması yok</p>
                 )}
 
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => openCreateSession(g)}
-                >
-                  <CalendarPlus className="h-3.5 w-3.5 mr-1.5" />
-                  Program ata
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1"
+                    disabled={busy || g.students.length < 2}
+                    onClick={() => openSplit(g)}
+                    title="Öğrencileri iki gruba ayır"
+                  >
+                    <Split className="h-3.5 w-3.5 mr-1.5" />
+                    Grubu böl
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => openCreateSession(g)}
+                  >
+                    <CalendarPlus className="h-3.5 w-3.5 mr-1.5" />
+                    Program ata
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -1043,6 +1193,155 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
               )}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Grubu böl — öğrencileri iki alt gruba ayır */}
+      <Dialog
+        open={splitOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSplitOpen(false)
+            setSplitSource(null)
+          } else {
+            setSplitOpen(true)
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Grubu böl
+              {splitSource ? ` — ${splitSource.club.name}` : ""}
+            </DialogTitle>
+          </DialogHeader>
+
+          {splitSource ? (
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                Seçili öğrenciler yeni gruba taşınır; kalanlar mevcut grupta kalır. Bölme sonrası
+                her karttan <strong>Program ata</strong> ile ayrı gün/saat verebilirsiniz.
+              </p>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <Label>Mevcut grup adı (A)</Label>
+                  <Input
+                    className="mt-1"
+                    value={splitRenameSource}
+                    onChange={(e) => setSplitRenameSource(e.target.value)}
+                    placeholder="örn. Gastronomi Lise - A"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Kalacak: {(splitSource.students.length - splitMoveIds.length).toLocaleString("tr")}{" "}
+                    öğrenci
+                  </p>
+                </div>
+                <div>
+                  <Label>Yeni grup adı (B)</Label>
+                  <Input
+                    className="mt-1"
+                    value={splitNewName}
+                    onChange={(e) => setSplitNewName(e.target.value)}
+                    placeholder="örn. Gastronomi Lise - B"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Taşınacak: {splitMoveIds.length.toLocaleString("tr")} öğrenci
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-gray-200 p-3">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-medium text-gray-900">
+                    Yeni gruba taşınacak öğrenciler
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const sorted = [...splitSource.students].sort((a, b) =>
+                          `${a.student.lastName} ${a.student.firstName}`.localeCompare(
+                            `${b.student.lastName} ${b.student.firstName}`,
+                            "tr"
+                          )
+                        )
+                        const half = Math.floor(sorted.length / 2)
+                        setSplitMoveIds(sorted.slice(half).map((m) => m.student.id))
+                      }}
+                    >
+                      Yarıya böl
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={splitMoveIds.length === 0}
+                      onClick={() => setSplitMoveIds([])}
+                    >
+                      Seçimi temizle
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="relative mb-2">
+                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <Input
+                    className="pl-8"
+                    placeholder="Öğrenci ara…"
+                    value={splitSearch}
+                    onChange={(e) => setSplitSearch(e.target.value)}
+                  />
+                </div>
+
+                <div className="max-h-72 space-y-1 overflow-y-auto rounded-lg border border-gray-100 p-1">
+                  {splitFilteredStudents.map((m) => {
+                    const s = m.student
+                    const active = splitMoveIds.includes(s.id)
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => toggleSplitStudent(s.id)}
+                        className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm ${
+                          active
+                            ? "bg-emerald-50 text-emerald-900"
+                            : "hover:bg-gray-50 text-gray-800"
+                        }`}
+                      >
+                        <span>
+                          {s.firstName} {s.lastName}
+                          <span className="ml-2 text-xs text-gray-500">{s.grade}</span>
+                        </span>
+                        <span className="text-[10px] font-medium uppercase tracking-wide opacity-70">
+                          {active ? "→ B" : "A’da kalır"}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => {
+                    setSplitOpen(false)
+                    setSplitSource(null)
+                  }}
+                >
+                  İptal
+                </Button>
+                <Button type="button" onClick={() => void saveSplit()} disabled={busy}>
+                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Böl ve oluştur"}
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </DialogContent>
       </Dialog>
 
