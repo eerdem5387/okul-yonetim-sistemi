@@ -69,6 +69,7 @@ const allNavigation = [
   { name: "Neredeyiz?", href: "/neredeyiz", icon: Target, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
   { name: "Sınıf Yönetimi", href: "/sinif-yonetimi", icon: School, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
   { name: "Ders Programı", href: "/ders-programi", icon: Calendar, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
+  { name: "Yoklama Al", href: "/rehberlik/yoklama", icon: ClipboardList, roles: ["counselor", "head_counselor"] },
   { name: "Devamsızlık", href: "/devamsizlik", icon: ClipboardList, roles: [] as string[], permission: "attendance.view" },
   { name: "Onay Paneli", href: "/onay-paneli", icon: ClipboardList, roles: ["admin", "principal"] },
   { name: "Bursluluk Başvuruları", href: "/basvurular", icon: ClipboardList, roles: ["admin", "principal", "student_affairs", "head_counselor"] },

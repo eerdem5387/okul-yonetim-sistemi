@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { formatClubGradeLevels } from "@/lib/club-grade-levels"
 import { isSuperAdmin, resolveActorWithPermission } from "@/lib/permissions"
+import { isStaffEligibleAsScheduleInstructor } from "@/lib/staff-counseling"
 
 export const dynamic = "force-dynamic"
 
 /**
  * GET /api/attendance/sessions?date=YYYY-MM-DD&teacherId=
- * Öğretmenin o gün yoklama alabileceği oturumlar:
+ * Öğretmen / rehberlik personelinin o gün yoklama alabileceği oturumlar:
  * - sınıf dersleri (Schedule)
  * - ÖÇG atamaları (StudyGroupSession)
  * - kulüp programları (ClubSchedule + instructor)
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
 
     const ownOnly =
       !isSuperAdmin(actor.department, actor.staffId) &&
-      (actor.isTeacher || actor.department === "OGRETMEN")
+      isStaffEligibleAsScheduleInstructor(actor.department)
     if (ownOnly) teacherId = actor.staffId
 
     if (!dateStr) {

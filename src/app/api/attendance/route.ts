@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { Prisma, type AttendanceKind, type AttendanceStatus } from "@prisma/client"
 import { isSuperAdmin, resolveActorWithPermission } from "@/lib/permissions"
+import { isStaffEligibleAsScheduleInstructor } from "@/lib/staff-counseling"
 
 export const dynamic = "force-dynamic"
 
@@ -48,7 +49,7 @@ function scopeToOwnRecords(actor: {
   isTeacher: boolean
 }): boolean {
   if (isSuperAdmin(actor.department as never, actor.staffId)) return false
-  return actor.isTeacher || actor.department === "OGRETMEN"
+  return isStaffEligibleAsScheduleInstructor(actor.department as never)
 }
 
 /** GET /api/attendance */

@@ -493,12 +493,18 @@ export default function DersProgramiPage() {
         <div className={`space-y-4 ${fullscreen ? "h-full overflow-y-auto" : ""}`}>
           <Card className="border-0 shadow-sm">
             <CardContent className="p-4 sm:p-6">
-              <ClubGroupsPanel onSchedulesChanged={() => setClubSchedulesRefreshKey((n) => n + 1)} />
+              <ClubGroupsPanel
+                refreshKey={clubSchedulesRefreshKey}
+                onSchedulesChanged={() => setClubSchedulesRefreshKey((n) => n + 1)}
+              />
             </CardContent>
           </Card>
           <Card className="border-0 shadow-sm">
             <CardContent className="p-4 sm:p-6">
-              <ClubSchedulesPanel refreshKey={clubSchedulesRefreshKey} />
+              <ClubSchedulesPanel
+                refreshKey={clubSchedulesRefreshKey}
+                onRosterChanged={() => setClubSchedulesRefreshKey((n) => n + 1)}
+              />
             </CardContent>
           </Card>
         </div>

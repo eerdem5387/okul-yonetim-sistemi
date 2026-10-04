@@ -773,7 +773,7 @@ export function StudyGroupsPanel() {
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 {group.students.length > 0 ? (
-                  <div className="text-xs text-gray-600 line-clamp-2">
+                  <div className="max-h-20 overflow-y-auto text-xs text-gray-600 leading-relaxed pr-0.5">
                     {group.students
                       .map((m) => `${m.student.firstName} ${m.student.lastName}`)
                       .join(", ")}

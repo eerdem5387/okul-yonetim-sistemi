@@ -57,6 +57,9 @@ const scheduleInclude = {
       },
     },
   },
+  exclusions: {
+    select: { studentId: true },
+  },
 } as const
 
 /** GET /api/schedules/clubs — kulüp programları + etüt slotları + kulüp/grup listesi */

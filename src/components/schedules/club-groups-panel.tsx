@@ -16,6 +16,7 @@ import { getAuthHeaders } from "@/components/hr/hr-utils"
 import { DAY_NAMES, WEEKDAY_INDEXES } from "@/lib/schedules/lesson-slots"
 import { hasTimeConflict } from "@/lib/schedules/time-conflict"
 import { scheduleInstructorDeptLabel } from "@/lib/staff-counseling"
+import { ClubScheduleRosterDialog } from "@/components/schedules/club-schedule-roster-dialog"
 
 type Teacher = {
   id: string
@@ -124,9 +125,10 @@ function emptySessionForm(): SessionForm {
 
 type Props = {
   onSchedulesChanged?: () => void
+  refreshKey?: number
 }
 
-export function ClubGroupsPanel({ onSchedulesChanged }: Props = {}) {
+export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = {}) {
   const [groups, setGroups] = useState<ClubGroup[]>([])
   const [clubs, setClubs] = useState<ClubOption[]>([])
   const [teachers, setTeachers] = useState<Teacher[]>([])
@@ -139,6 +141,7 @@ export function ClubGroupsPanel({ onSchedulesChanged }: Props = {}) {
   const [studentSearch, setStudentSearch] = useState("")
   const [showSelectedOnly, setShowSelectedOnly] = useState(false)
   const [error, setError] = useState("")
+  const [rosterId, setRosterId] = useState<string | null>(null)
 
   const [sessionModalOpen, setSessionModalOpen] = useState(false)
   const [sessionGroup, setSessionGroup] = useState<ClubGroup | null>(null)
@@ -178,7 +181,7 @@ export function ClubGroupsPanel({ onSchedulesChanged }: Props = {}) {
 
   useEffect(() => {
     void load()
-  }, [load])
+  }, [load, refreshKey])
 
   const notifySchedulesChanged = useCallback(() => {
     onSchedulesChanged?.()
@@ -601,7 +604,7 @@ export function ClubGroupsPanel({ onSchedulesChanged }: Props = {}) {
                     : ""}
                 </p>
                 {g.students.length > 0 ? (
-                  <div className="text-xs text-gray-600 line-clamp-2">
+                  <div className="max-h-20 overflow-y-auto text-xs text-gray-600 leading-relaxed pr-0.5">
                     {g.students
                       .map((m) => `${m.student.firstName} ${m.student.lastName}`)
                       .join(", ")}
@@ -620,7 +623,12 @@ export function ClubGroupsPanel({ onSchedulesChanged }: Props = {}) {
                         className="rounded-lg border border-emerald-100 bg-emerald-50/50 px-2.5 py-2 text-xs"
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
+                          <button
+                            type="button"
+                            className="min-w-0 flex-1 text-left rounded-md hover:bg-emerald-100/60 px-1 py-0.5 -mx-1"
+                            onClick={() => setRosterId(sess.id)}
+                            title="Öğrenci listesini aç"
+                          >
                             <p className="font-medium text-gray-900">
                               {DAY_NAMES[sess.dayOfWeek]} · {sess.startTime}–{sess.endTime}
                             </p>
@@ -647,8 +655,12 @@ export function ClubGroupsPanel({ onSchedulesChanged }: Props = {}) {
                                       .join(", ")}`
                                   : ""}
                               </p>
-                            ) : null}
-                          </div>
+                            ) : (
+                              <p className="mt-1 text-[11px] text-emerald-800">
+                                Öğrencileri gör / düzenle
+                              </p>
+                            )}
+                          </button>
                           <div className="flex gap-1 shrink-0">
                             <Button
                               size="sm"
@@ -1033,6 +1045,18 @@ export function ClubGroupsPanel({ onSchedulesChanged }: Props = {}) {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ClubScheduleRosterDialog
+        open={!!rosterId}
+        clubScheduleId={rosterId}
+        onOpenChange={(o) => {
+          if (!o) setRosterId(null)
+        }}
+        onChanged={() => {
+          void load()
+          notifySchedulesChanged()
+        }}
+      />
     </div>
   )
 }

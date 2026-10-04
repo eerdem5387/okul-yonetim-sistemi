@@ -97,6 +97,13 @@ export async function hasPermission(
     return false
   }
 
+  // Rehberlik / baş rehberlik: atandıkları ders ve etütlerde yoklama alabilir
+  if (department === "REHBERLIK" || department === "BAS_REHBERLIK") {
+    if (module === "attendance") {
+      return action === "view" || action === "create" || action === "edit"
+    }
+  }
+
   return departmentFallbackAllows(department, module, action)
 }
 
@@ -136,6 +143,10 @@ export async function getEffectivePermissionKeys(
     implyViewKeys(keys)
     stripNonSuperAdminKeys(keys)
     return Array.from(keys)
+  }
+
+  if (department === "REHBERLIK" || department === "BAS_REHBERLIK") {
+    ;["view", "create", "edit"].forEach((a) => keys.add(permissionKey("attendance", a)))
   }
 
   const fallback = DEFAULT_DEPARTMENT_PERMISSIONS[department] ?? []

@@ -173,7 +173,9 @@ export default function TeacherAttendancePage() {
     if (typeof window === "undefined") return
     const role = localStorage.getItem("auth_role")
     const id = localStorage.getItem("staff_id")
-    if (role !== "teacher" || !id) {
+    const allowed =
+      role === "teacher" || role === "counselor" || role === "head_counselor"
+    if (!allowed || !id) {
       router.push("/login")
       return
     }

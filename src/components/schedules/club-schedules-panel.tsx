@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Loader2 } from "lucide-react"
+import { ClubScheduleRosterDialog } from "@/components/schedules/club-schedule-roster-dialog"
 import { DAY_NAMES, WEEKDAY_INDEXES } from "@/lib/schedules/lesson-slots"
 
 type Instructor = {
@@ -53,18 +54,21 @@ type ClubScheduleRow = {
   notes: string | null
   club: ClubRow
   clubGroup?: { id: string; name: string; _count: { students: number } } | null
+  exclusions?: Array<{ studentId: string }>
 }
 
 type Props = {
   refreshKey?: number
+  onRosterChanged?: () => void
 }
 
-export function ClubSchedulesPanel({ refreshKey = 0 }: Props) {
+export function ClubSchedulesPanel({ refreshKey = 0, onRosterChanged }: Props) {
   const [groups, setGroups] = useState<ClubGroupRow[]>([])
   const [schedules, setSchedules] = useState<ClubScheduleRow[]>([])
   const [etutSlots, setEtutSlots] = useState<EtutSlot[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [rosterId, setRosterId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -118,8 +122,8 @@ export function ClubSchedulesPanel({ refreshKey = 0 }: Props) {
       <div>
         <h2 className="text-lg font-semibold text-gray-900">Haftalık etüt programı — Kulüpler</h2>
         <p className="text-sm text-gray-600">
-          Özet görünüm. Atama ve düzenleme grup kartındaki <strong>Program ata</strong> ile
-          yapılır.
+          Bir kulüp hücresine tıklayarak o gün/saatteki öğrencileri görüp ekleyip çıkarabilirsiniz.
+          Program ataması grup kartındaki <strong>Program ata</strong> ile yapılır.
         </p>
       </div>
 
@@ -170,31 +174,41 @@ export function ClubSchedulesPanel({ refreshKey = 0 }: Props) {
                           </div>
                         ) : (
                           <div className="space-y-1">
-                            {entries.map((row) => (
-                              <div
-                                key={row.id}
-                                className="rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-1"
-                              >
-                                <p className="text-xs font-semibold text-gray-900 leading-tight truncate">
-                                  {row.clubGroup
-                                    ? `${row.club.name} · ${row.clubGroup.name}`
-                                    : row.club.name}
-                                </p>
-                                <p className="text-[10px] text-gray-600">
-                                  {row.clubGroup
-                                    ? `${row.clubGroup._count.students} öğrenci`
-                                    : `${row.club._count.selections}/${row.club.capacity} üye`}
-                                </p>
-                                {row.club.instructor && (
-                                  <p className="text-[10px] text-indigo-700 truncate">
-                                    {row.club.instructor.firstName} {row.club.instructor.lastName}
+                            {entries.map((row) => {
+                              const total = row.clubGroup
+                                ? row.clubGroup._count.students
+                                : row.club._count.selections
+                              const muaf = row.exclusions?.length ?? 0
+                              const active = Math.max(0, total - muaf)
+                              return (
+                                <button
+                                  key={row.id}
+                                  type="button"
+                                  onClick={() => setRosterId(row.id)}
+                                  className="w-full rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-1 text-left transition hover:border-emerald-400 hover:bg-emerald-100/80 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
+                                  title="Öğrenci listesini aç"
+                                >
+                                  <p className="text-xs font-semibold text-gray-900 leading-tight truncate">
+                                    {row.clubGroup
+                                      ? `${row.club.name} · ${row.clubGroup.name}`
+                                      : row.club.name}
                                   </p>
-                                )}
-                                {row.room && (
-                                  <p className="text-[10px] text-gray-500">{row.room}</p>
-                                )}
-                              </div>
-                            ))}
+                                  <p className="text-[10px] text-gray-600">
+                                    {active} öğrenci
+                                    {muaf > 0 ? ` · ${muaf} muaf` : ""}
+                                  </p>
+                                  {row.club.instructor && (
+                                    <p className="text-[10px] text-indigo-700 truncate">
+                                      {row.club.instructor.firstName}{" "}
+                                      {row.club.instructor.lastName}
+                                    </p>
+                                  )}
+                                  {row.room && (
+                                    <p className="text-[10px] text-gray-500">{row.room}</p>
+                                  )}
+                                </button>
+                              )
+                            })}
                           </div>
                         )}
                       </td>
@@ -224,6 +238,18 @@ export function ClubSchedulesPanel({ refreshKey = 0 }: Props) {
           yerleştirin.
         </p>
       )}
+
+      <ClubScheduleRosterDialog
+        open={!!rosterId}
+        clubScheduleId={rosterId}
+        onOpenChange={(o) => {
+          if (!o) setRosterId(null)
+        }}
+        onChanged={() => {
+          void load()
+          onRosterChanged?.()
+        }}
+      />
     </div>
   )
 }
