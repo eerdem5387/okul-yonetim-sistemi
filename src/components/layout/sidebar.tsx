@@ -29,6 +29,7 @@ import {
   UserSearch,
   Contact,
   Calendar,
+  Wallet,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { UnreadBadge } from "@/components/chat/UnreadBadge"
@@ -41,6 +42,7 @@ import { extraGrantedNavItems } from "@/lib/permissions/nav-catalog"
 const allNavigation = [
   // 1. Dashboard
   { name: "Dashboard", href: "/", icon: LayoutDashboard, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
+  { name: "Finans", href: "/finans", icon: Wallet, roles: ["admin", "principal"], permission: "finance.view" },
   { name: "Mesajlar", href: "/mesajlar", icon: MessageSquare, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor", "teacher"] },
   // 2. Yeni Kayıt
   { name: "Yeni Kayıt", href: "/new-registration", icon: FileText, roles: ["admin", "principal", "student_affairs", "head_counselor"] },
@@ -114,6 +116,10 @@ export function Sidebar() {
 
   const hrefToPermission: Record<string, string> = {
     "/": "dashboard.view",
+    "/finans": "finance.view",
+    "/finans/talepler": "finance.view",
+    "/finans/gelir-gider": "finance.view",
+    "/finans/yetkiler": "finance.view",
     "/mesajlar": "messaging.view",
     "/new-registration": "registrations.view",
     "/renewal": "registrations.view",

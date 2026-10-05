@@ -19,6 +19,7 @@ import {
   UserSearch,
   Users,
   Utensils,
+  Wallet,
 } from "lucide-react"
 import { hasAnyModulePermission } from "./access"
 
@@ -51,6 +52,7 @@ export const PERMISSION_NAV_CATALOG: PermissionNavItem[] = [
   { module: "aday_tespit", name: "Aday Öğrenci Tespiti", href: "/aday-ogrenci-tespiti", icon: Contact },
   { module: "parent_meetings", name: "Veli Görüşmeleri", href: "/yonetim/parent-meetings", icon: MessageSquare },
   { module: "approval_panel", name: "Onay Paneli", href: "/onay-paneli", icon: ClipboardList },
+  { module: "finance", name: "Finans", href: "/finans", icon: Wallet },
   { module: "gezi", name: "Gezi Yönetimi", href: "/gezi", icon: MapPin },
   { module: "clubs", name: "Kulüp Yönetimi", href: "/clubs", icon: Users },
   { module: "activity_events", name: "Faaliyet Yönetimi", href: "/faaliyet-yonetimi", icon: Award },

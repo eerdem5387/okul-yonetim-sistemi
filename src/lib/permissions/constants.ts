@@ -49,6 +49,12 @@ export const PERMISSION_MODULES: PermissionModuleDef[] = [
   },
   { id: "parent_meetings", label: "Veli Görüşmeleri", group: "Kayıt", actions: ["view", "create", "edit", "delete"] },
   { id: "approval_panel", label: "Onay Paneli", group: "Kayıt", actions: ["view", "approve"] },
+  {
+    id: "finance",
+    label: "Finans / Muhasebe",
+    group: "Genel",
+    actions: ["view", "approve"],
+  },
   { id: "gezi", label: "Gezi Yönetimi", group: "Faaliyet", actions: ["view", "create", "edit", "delete", "export"] },
   { id: "clubs", label: "Kulüp Yönetimi", group: "Faaliyet", actions: ["view", "create", "edit", "delete", "export"] },
   { id: "activity_events", label: "Faaliyet Yönetimi", group: "Faaliyet", actions: ["view", "create", "edit", "delete", "export", "approve"] },

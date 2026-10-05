@@ -2266,3 +2266,72 @@ model MessageReceipt {
   @@index([readerParentId])
   @@map("message_receipts")
 }
+
+// ─── Muhasebe entegrasyonu (kurucu finans paneli) ───────────────────────────
+
+enum FinanceRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// Muhasebe harcama taleplerinin okul paneli kopyası (kaynak: muhasebe webhook/sync)
+model FinanceExpenseRequest {
+  id                   String               @id // muhasebe ExpenseRequest.id
+  muhasebeTenantId     String
+  title                String
+  quantity             Decimal              @db.Decimal(18, 4)
+  unitPrice            Decimal              @db.Decimal(18, 2)
+  total                Decimal              @db.Decimal(18, 2)
+  requesterName        String
+  channel              String
+  status               FinanceRequestStatus @default(PENDING)
+  notes                String?
+  createdById          String?
+  principalApprovedAt  DateTime?
+  principalApprovedBy  String?
+  founderApprovedAt    DateTime?
+  founderApprovedBy    String?
+  rejectedAt           DateTime?
+  rejectedById         String?
+  rejectReason         String?
+  sourceCreatedAt      DateTime?
+  sourceUpdatedAt      DateTime?
+  syncedAt             DateTime             @default(now())
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  @@index([status])
+  @@index([syncedAt])
+  @@map("finance_expense_requests")
+}
+
+/// Muhasebe aylık gelir/gider (cashbook) satırlarının okul paneli kopyası
+model FinanceCashbookEntry {
+  id                 String   @id // muhasebe CashbookEntry.id
+  muhasebeTenantId   String
+  side               String // INCOME | EXPENSE
+  yearMonth          String
+  amount             Decimal  @db.Decimal(18, 2)
+  occurredAt         DateTime
+  channel            String
+  bankName           String?
+  checkInstallments  Int?
+  incomeCategory     String?
+  payerFirstName     String?
+  payerLastName      String?
+  payerIdentityNo    String?
+  expenseTitle       String?
+  payeeIdentityNo    String?
+  invoiceNo          String?
+  notes              String?
+  sourceCreatedAt    DateTime?
+  sourceUpdatedAt    DateTime?
+  syncedAt           DateTime @default(now())
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([yearMonth, side])
+  @@index([occurredAt])
+  @@map("finance_cashbook_entries")
+}

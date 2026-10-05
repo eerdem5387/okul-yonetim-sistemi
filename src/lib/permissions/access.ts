@@ -48,6 +48,7 @@ const PATH_MODULE_PREFIXES: Array<{ prefix: string; module: string }> = [
   { prefix: "/ogrenci-dashboard", module: "students" },
   { prefix: "/veli-gorusmeleri", module: "parent_meetings" },
   { prefix: "/onay-paneli", module: "approval_panel" },
+  { prefix: "/finans", module: "finance" },
   { prefix: "/edit-renewal", module: "registrations" },
   { prefix: "/edit-uniform", module: "registrations" },
   { prefix: "/edit-service", module: "registrations" },

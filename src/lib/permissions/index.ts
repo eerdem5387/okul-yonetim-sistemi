@@ -25,10 +25,15 @@ export {
 
 const SUPER_ADMIN_DEPT: StaffDepartment = "SUPER_ADMIN"
 
-/** Departmana göre otomatik tam yetki kaldırıldı; yalnızca StaffPermission + öğretmen geçişi + süper yönetici */
+/** Kurucu: finans paneli varsayılan açık (StaffPermission şart değil) */
 const DEFAULT_DEPARTMENT_PERMISSIONS: Partial<
   Record<StaffDepartment, Array<{ module: string; action: PermissionAction }>>
-> = {}
+> = {
+  KURUCU: [
+    { module: "finance", action: "view" },
+    { module: "finance", action: "approve" },
+  ],
+}
 
 export function isSuperAdmin(department: StaffDepartment, staffId?: string): boolean {
   if (staffId && isPrimarySystemAdminStaffId(staffId)) return true
