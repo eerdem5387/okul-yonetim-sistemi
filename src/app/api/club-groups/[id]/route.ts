@@ -119,12 +119,36 @@ export async function PUT(
       }
     }
 
+    // Soft-delete edilmiş aynı isim @@unique([clubId, name]) yüzünden 500 veriyordu
+    const inactiveNameClash =
+      name !== existing.name
+        ? await prisma.clubGroup.findFirst({
+            where: {
+              clubId: existing.clubId,
+              name,
+              isActive: false,
+              id: { not: id },
+            },
+            select: { id: true },
+          })
+        : null
+
     if (studentIds) {
-      const club = await prisma.club.findUnique({
-        where: { id: existing.clubId },
-        select: { selections: { select: { studentId: true } } },
-      })
-      const allowed = new Set((club?.selections ?? []).map((s) => s.studentId))
+      const [club, currentMembers] = await Promise.all([
+        prisma.club.findUnique({
+          where: { id: existing.clubId },
+          select: { selections: { select: { studentId: true } } },
+        }),
+        // İsim güncellenirken mevcut üyeler seçimde olmasa da kalsın (Excel/sync vb.)
+        prisma.clubGroupStudent.findMany({
+          where: { clubGroupId: id },
+          select: { studentId: true },
+        }),
+      ])
+      const allowed = new Set([
+        ...(club?.selections ?? []).map((s) => s.studentId),
+        ...currentMembers.map((m) => m.studentId),
+      ])
       const invalid = studentIds.filter((sid) => !allowed.has(sid))
       if (invalid.length > 0) {
         return NextResponse.json(
@@ -135,6 +159,16 @@ export async function PUT(
     }
 
     const group = await prisma.$transaction(async (tx) => {
+      if (inactiveNameClash) {
+        // Unique slot'u boşalt: eski soft-deleted kaydı arşiv ismine çek
+        await tx.clubGroup.update({
+          where: { id: inactiveNameClash.id },
+          data: {
+            name: `${name}__archived_${inactiveNameClash.id.slice(-8)}`,
+          },
+        })
+      }
+
       if (studentIds) {
         // Aynı kulübün diğer gruplarından çıkar (A/B tek üyelik)
         const siblingGroups = await tx.clubGroup.findMany({
@@ -165,6 +199,7 @@ export async function PUT(
         if (studentIds.length > 0) {
           await tx.clubGroupStudent.createMany({
             data: studentIds.map((studentId) => ({ clubGroupId: id, studentId })),
+            skipDuplicates: true,
           })
         }
         // Gruptan çıkan öğrencilerin bu grubun saat muafiyetlerini temizle
@@ -194,6 +229,17 @@ export async function PUT(
     })
   } catch (error) {
     console.error("Error updating club group:", error)
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      (error as { code?: string }).code === "P2002"
+    ) {
+      return NextResponse.json(
+        { error: "Bu kulüpte aynı isimde bir grup zaten var" },
+        { status: 400 }
+      )
+    }
     return NextResponse.json({ error: "Grup güncellenemedi" }, { status: 500 })
   }
 }

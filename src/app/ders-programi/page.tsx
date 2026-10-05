@@ -34,6 +34,7 @@ import { StudentConflictsDialog } from "@/components/schedules/student-conflicts
 import { GradeEtutExamsDialog } from "@/components/schedules/grade-etut-exams-dialog"
 import { TeacherScheduleGrid } from "@/components/schedules/teacher-schedule-grid"
 import { SchoolWideScheduleBoard } from "@/components/schedules/school-wide-schedule-board"
+import { ClubStudyWideScheduleBoard } from "@/components/schedules/club-study-wide-schedule-board"
 import { getAuthHeaders } from "@/components/hr/hr-utils"
 import {
   DEFAULT_LISE_WEEKDAY_SLOTS,
@@ -99,7 +100,13 @@ export default function DersProgramiPage() {
   const [hoursOpen, setHoursOpen] = useState(false)
   const [coursesOpen, setCoursesOpen] = useState(false)
   const [denemeOpen, setDenemeOpen] = useState(false)
-  const [fullscreen, setFullscreen] = useState(false)
+  const [fullscreenKind, setFullscreenKind] = useState<"none" | "classes" | "activities">(
+    "none"
+  )
+  const [activitiesKindFilter, setActivitiesKindFilter] = useState<"all" | "club" | "study">(
+    "all"
+  )
+  const [activitiesOnlyScheduled, setActivitiesOnlyScheduled] = useState(true)
   const [conflictsOpen, setConflictsOpen] = useState(false)
   const [clubSchedulesRefreshKey, setClubSchedulesRefreshKey] = useState(0)
   const [studySchedulesRefreshKey, setStudySchedulesRefreshKey] = useState(0)
@@ -205,18 +212,18 @@ export default function DersProgramiPage() {
   }, [loadClasses, loadDayTemplates, loadGradeEtutExams])
 
   useEffect(() => {
-    if (!fullscreen) return
+    if (fullscreenKind === "none") return
     const prev = document.body.style.overflow
     document.body.style.overflow = "hidden"
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setFullscreen(false)
+      if (e.key === "Escape") setFullscreenKind("none")
     }
     window.addEventListener("keydown", onKey)
     return () => {
       document.body.style.overflow = prev
       window.removeEventListener("keydown", onKey)
     }
-  }, [fullscreen])
+  }, [fullscreenKind])
 
   const filteredClasses = useMemo(() => {
     const bandGrades = gradesForBand(band)
@@ -510,7 +517,7 @@ export default function DersProgramiPage() {
   const workspace = (
     <>
       {viewMode === "study" ? (
-        <div className={`space-y-4 ${fullscreen ? "h-full overflow-y-auto" : ""}`}>
+        <div className="space-y-4">
           <Card className="border-0 shadow-sm">
             <CardContent className="p-4 sm:p-6">
               <StudyGroupsPanel
@@ -525,7 +532,7 @@ export default function DersProgramiPage() {
           </Card>
         </div>
       ) : viewMode === "club" ? (
-        <div className={`space-y-4 ${fullscreen ? "h-full overflow-y-auto" : ""}`}>
+        <div className="space-y-4">
           <Card className="border-0 shadow-sm">
             <CardContent className="p-4 sm:p-6">
               <ClubGroupsPanel
@@ -544,23 +551,15 @@ export default function DersProgramiPage() {
           </Card>
         </div>
       ) : viewMode === "class" ? (
-        <div
-          className={
-            fullscreen
-              ? "h-full min-h-0 grid gap-4 lg:grid-cols-[260px_1fr] overflow-hidden"
-              : "grid gap-4 lg:grid-cols-[280px_1fr]"
-          }
-        >
+        <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
           <Card
-            className={`border-0 shadow-sm ${
-              fullscreen ? "h-full overflow-hidden flex flex-col" : "h-fit lg:sticky lg:top-4"
-            }`}
+            className="border-0 shadow-sm h-fit lg:sticky lg:top-4"
           >
             <CardHeader className="pb-3 shrink-0">
               <CardTitle className="text-base">Sınıflar</CardTitle>
               <CardDescription>Program düzenlemek için seçin</CardDescription>
             </CardHeader>
-            <CardContent className={`space-y-3 ${fullscreen ? "flex-1 min-h-0 flex flex-col" : ""}`}>
+            <CardContent className="space-y-3">
               <div className="relative shrink-0">
                 <Input
                   value={search}
@@ -593,11 +592,7 @@ export default function DersProgramiPage() {
               ) : filteredClasses.length === 0 ? (
                 <p className="text-sm text-gray-500 py-6 text-center">Sınıf bulunamadı</p>
               ) : (
-                <div
-                  className={`overflow-y-auto space-y-1 pr-1 ${
-                    fullscreen ? "flex-1 min-h-0" : "max-h-[28rem]"
-                  }`}
-                >
+                <div className="overflow-y-auto space-y-1 pr-1 max-h-[28rem]">
                   {filteredClasses.map((c) => {
                     const active = c.id === selectedClassId
                     const bandLabel = gradeBandFor(c.grade) === "ortaokul" ? "Ortaokul" : "Lise"
@@ -629,9 +624,7 @@ export default function DersProgramiPage() {
           </Card>
 
           <Card
-            className={`border-0 shadow-sm ${
-              fullscreen ? "h-full overflow-hidden flex flex-col" : ""
-            }`}
+            className="border-0 shadow-sm"
           >
             <CardHeader className="pb-3 shrink-0">
               <div className="min-w-0 space-y-3">
@@ -678,7 +671,7 @@ export default function DersProgramiPage() {
                 )}
               </div>
             </CardHeader>
-            <CardContent className={fullscreen ? "flex-1 min-h-0 overflow-y-auto" : ""}>
+            <CardContent>
               {!selectedClassId ? (
                 <p className="text-sm text-gray-500 py-16 text-center">Sınıf seçilmedi</p>
               ) : scheduleLoading ? (
@@ -709,7 +702,7 @@ export default function DersProgramiPage() {
           </Card>
         </div>
       ) : (
-        <Card className={`border-0 shadow-sm ${fullscreen ? "h-full overflow-y-auto" : ""}`}>
+        <Card className={`border-0 shadow-sm `}>
           <CardHeader>
             <CardTitle className="text-lg">Öğretmen programı</CardTitle>
             <CardDescription>
@@ -757,7 +750,7 @@ export default function DersProgramiPage() {
 
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
-      {!fullscreen && (
+      {fullscreenKind === "none" && (
         <>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
@@ -863,9 +856,18 @@ export default function DersProgramiPage() {
               <AlertTriangle className="h-4 w-4 mr-1" />
               Çakışan Öğrenciler
             </Button>
-            <Button size="sm" variant="outline" onClick={() => setFullscreen(true)}>
+            <Button size="sm" variant="outline" onClick={() => setFullscreenKind("classes")}>
               <Maximize2 className="h-4 w-4 mr-1" />
-              Tam ekran
+              Ders tam ekran
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-violet-300 text-violet-900 hover:bg-violet-50"
+              onClick={() => setFullscreenKind("activities")}
+            >
+              <Maximize2 className="h-4 w-4 mr-1" />
+              ÖÇG & Kulüp
             </Button>
           </div>
 
@@ -873,7 +875,7 @@ export default function DersProgramiPage() {
         </>
       )}
 
-      {fullscreen && (
+      {fullscreenKind === "classes" && (
         <div className="fixed inset-0 z-[60] bg-slate-100 flex flex-col">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-3 border-b bg-white shrink-0">
             <div className="min-w-0">
@@ -907,7 +909,7 @@ export default function DersProgramiPage() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => setFullscreen(false)}
+                onClick={() => setFullscreenKind("none")}
                 title="Tam ekrandan çık"
               >
                 <Minimize2 className="h-4 w-4 mr-2" />
@@ -927,6 +929,62 @@ export default function DersProgramiPage() {
               ortaokulSlots={slotMap.ortaokul}
               liseSlots={slotMap.lise}
               gradeEtutExams={gradeEtutExams}
+            />
+          </div>
+        </div>
+      )}
+
+      {fullscreenKind === "activities" && (
+        <div className="fixed inset-0 z-[60] bg-slate-100 flex flex-col">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-3 border-b bg-white shrink-0">
+            <div className="min-w-0">
+              <p className="font-semibold text-gray-900 truncate">
+                ÖÇG ve kulüp etüt programı
+              </p>
+              <p className="text-xs text-gray-500">
+                Tüm gruplar tek ekranda · Esc veya Küçült ile çıkın
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {(
+                [
+                  { id: "all" as const, label: "Tümü" },
+                  { id: "club" as const, label: "Kulüp" },
+                  { id: "study" as const, label: "ÖÇG" },
+                ] as const
+              ).map((opt) => (
+                <Button
+                  key={opt.id}
+                  size="sm"
+                  variant={activitiesKindFilter === opt.id ? "default" : "outline"}
+                  onClick={() => setActivitiesKindFilter(opt.id)}
+                >
+                  {opt.label}
+                </Button>
+              ))}
+              <Button
+                size="sm"
+                variant={activitiesOnlyScheduled ? "default" : "outline"}
+                onClick={() => setActivitiesOnlyScheduled((v) => !v)}
+                title="Yalnızca en az bir etüt ataması olan gruplar"
+              >
+                Programı olanlar
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setFullscreenKind("none")}
+                title="Tam ekrandan çık"
+              >
+                <Minimize2 className="h-4 w-4 mr-2" />
+                Küçült
+              </Button>
+            </div>
+          </div>
+          <div className="flex-1 min-h-0 overflow-hidden p-3 sm:p-4">
+            <ClubStudyWideScheduleBoard
+              kindFilter={activitiesKindFilter}
+              onlyScheduled={activitiesOnlyScheduled}
             />
           </div>
         </div>
