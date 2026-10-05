@@ -335,23 +335,23 @@ export function StudentEtutMatrixBoard({
           return (
             <div
               key={grade}
-              className="shrink-0 rounded-xl border border-slate-300 bg-white shadow-sm overflow-hidden min-w-[22rem]"
+              className="shrink-0 rounded-xl border border-slate-300 bg-white shadow-sm overflow-hidden min-w-[28rem]"
             >
               <div className="bg-slate-900 text-white px-3 py-2 text-xs font-bold tracking-wide">
                 {grade}. SINIF
                 <span className="ml-2 font-normal text-slate-300">{rows.length} öğrenci</span>
               </div>
-              <div className="max-h-[28rem] overflow-auto">
+              <div className="max-h-[min(70vh,42rem)] overflow-auto">
                 <table className="border-collapse text-left w-full">
                   <thead className="sticky top-0 z-10">
                     <tr className="bg-slate-800 text-white">
-                      <th className="sticky left-0 z-20 bg-slate-900 border-b border-r border-slate-700 px-2 py-1.5 text-[10px] font-semibold min-w-[7.5rem]">
+                      <th className="sticky left-0 z-20 bg-slate-900 border-b border-r border-slate-700 px-3 py-2 text-[11px] font-semibold min-w-[11rem]">
                         Öğrenci
                       </th>
                       {weekdays.map((d) => (
                         <th
                           key={d.dayOfWeek}
-                          className="border-b border-slate-700 px-1.5 py-1.5 text-center text-[10px] font-semibold min-w-[5.5rem]"
+                          className="border-b border-slate-700 px-2 py-2 text-center text-[11px] font-semibold min-w-[8rem]"
                         >
                           {d.label}
                         </th>
@@ -378,7 +378,7 @@ export function StudentEtutMatrixBoard({
                         return (
                           <tr key={s.id} className="hover:bg-slate-50/80">
                             <td
-                              className={`sticky left-0 z-[1] border-b border-r border-slate-200 px-2 py-1 text-[11px] font-medium whitespace-nowrap ${nameBg}`}
+                              className={`sticky left-0 z-[1] border-b border-r border-slate-200 px-3 py-1.5 text-[12px] font-medium whitespace-nowrap ${nameBg}`}
                             >
                               {s.lastName} {s.firstName}
                             </td>
@@ -397,7 +397,7 @@ export function StudentEtutMatrixBoard({
                                   <button
                                     type="button"
                                     onClick={() => openAssign(s, d.dayOfWeek, d.label)}
-                                    className={`w-full min-h-[2.4rem] rounded px-1 py-0.5 text-left transition ${
+                                    className={`w-full min-h-[3rem] rounded px-1.5 py-1 text-left transition ${
                                       conflict
                                         ? "bg-rose-50 ring-1 ring-rose-300 hover:bg-rose-100"
                                         : isEmpty
@@ -415,7 +415,7 @@ export function StudentEtutMatrixBoard({
                                     }
                                   >
                                     {isEmpty ? (
-                                      <span className="block text-center text-[10px] text-gray-300">
+                                      <span className="block text-center text-[11px] text-gray-300">
                                         +
                                       </span>
                                     ) : (
@@ -423,7 +423,7 @@ export function StudentEtutMatrixBoard({
                                         {items.map((it) => (
                                           <p
                                             key={it.key}
-                                            className={`text-[10px] leading-tight line-clamp-2 ${
+                                            className={`text-[11px] leading-snug ${
                                               conflict
                                                 ? "font-semibold text-rose-800"
                                                 : it.kind === "STUDY_GROUP"
@@ -435,7 +435,7 @@ export function StudentEtutMatrixBoard({
                                           </p>
                                         ))}
                                         {freeSlots.length > 0 && (
-                                          <p className="text-[8px] text-amber-700/80">
+                                          <p className="text-[10px] text-amber-700/80">
                                             {freeSlots.length} boş etüt
                                           </p>
                                         )}

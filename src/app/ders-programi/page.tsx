@@ -1022,7 +1022,7 @@ export default function DersProgramiPage() {
                 ÖÇG ve kulüp etüt programı
               </p>
               <p className="text-xs text-gray-500">
-                Tüm gruplar tek ekranda · Esc veya Küçült ile çıkın
+                Alt sekmelerle sayfalar arasında geçin · Esc veya Küçült ile çıkın
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">

@@ -32,7 +32,7 @@ type WideItem = {
   room: string | null
 }
 
-type PeriodRow = {
+type PeriodCol = {
   key: string
   dayOfWeek: number
   dayLabel: string
@@ -60,10 +60,10 @@ function periodSortKey(label: string): number {
   return 50
 }
 
-function buildPeriodRows(
+function buildPeriodCols(
   ortaokulSlots: Array<LessonSlot & { kind?: SlotKind }>,
   liseSlots: Array<LessonSlot & { kind?: SlotKind }>
-): PeriodRow[] {
+): PeriodCol[] {
   const usable = [...ortaokulSlots, ...liseSlots].filter((s) => {
     const k = s.kind ?? "LESSON"
     return k === "LESSON" || k === "ETUT"
@@ -83,10 +83,10 @@ function buildPeriodRows(
 
   labelOrder.sort((a, b) => periodSortKey(a) - periodSortKey(b))
 
-  const rows: PeriodRow[] = []
+  const cols: PeriodCol[] = []
   for (const day of WEEKDAY_INDEXES) {
     for (const periodLabel of labelOrder) {
-      rows.push({
+      cols.push({
         key: `${day}|${periodLabel}`,
         dayOfWeek: day,
         dayLabel: DAY_NAMES[day],
@@ -96,13 +96,7 @@ function buildPeriodRows(
       })
     }
   }
-  return rows
-}
-
-function shortName(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length <= 1) return name
-  return parts[parts.length - 1]
+  return cols
 }
 
 function cellStyles(kind: WideItem["kind"] | "conflict") {
@@ -116,6 +110,50 @@ function cellStyles(kind: WideItem["kind"] | "conflict") {
     return "bg-violet-50 ring-1 ring-violet-200 text-violet-950"
   }
   return "bg-indigo-50 ring-1 ring-indigo-200 text-indigo-950"
+}
+
+function renderCell(cells: WideItem[]) {
+  let conflict = false
+  for (let a = 0; a < cells.length; a++) {
+    for (let b = a + 1; b < cells.length; b++) {
+      if (
+        hasTimeConflict(
+          cells[a].startTime,
+          cells[a].endTime,
+          cells[b].startTime,
+          cells[b].endTime
+        )
+      ) {
+        conflict = true
+        break
+      }
+    }
+    if (conflict) break
+  }
+  const primary = cells[0]
+  if (!primary) {
+    return <div className="min-h-[3.25rem] rounded-md border border-dashed border-transparent" />
+  }
+  const kind = conflict ? ("conflict" as const) : primary.kind
+  return (
+    <div
+      className={`w-full min-h-[3.25rem] rounded-md px-1.5 py-1 text-left ${cellStyles(kind)}`}
+      title={cells
+        .map(
+          (c) =>
+            `${c.label} · ${c.detail}${c.room ? ` · ${c.room}` : ""} (${c.startTime}–${c.endTime})`
+        )
+        .join("\n")}
+    >
+      {cells.map((c) => (
+        <div key={c.id} className="mb-1 last:mb-0">
+          <p className="text-[11px] font-semibold leading-snug">{c.label}</p>
+          <p className="text-[10px] opacity-90 leading-snug">{c.detail}</p>
+          {c.room ? <p className="text-[10px] text-gray-600">{c.room}</p> : null}
+        </div>
+      ))}
+    </div>
+  )
 }
 
 export function TeachersWideScheduleBoard({
@@ -158,22 +196,33 @@ export function TeachersWideScheduleBoard({
     void load()
   }, [load])
 
-  const periodRows = useMemo(
-    () => buildPeriodRows(ortaokulSlots, liseSlots),
+  const periodCols = useMemo(
+    () => buildPeriodCols(ortaokulSlots, liseSlots),
     [ortaokulSlots, liseSlots]
   )
 
+  const periodLabels = useMemo(() => {
+    const seen = new Set<string>()
+    const labels: string[] = []
+    for (const c of periodCols) {
+      if (seen.has(c.periodLabel)) continue
+      seen.add(c.periodLabel)
+      labels.push(c.periodLabel)
+    }
+    return labels
+  }, [periodCols])
+
   const startToPeriod = useMemo(() => {
     const map = new Map<string, string>()
-    for (const row of periodRows) {
-      for (const start of row.starts) {
-        if (!map.has(`${row.dayOfWeek}|${start}`)) {
-          map.set(`${row.dayOfWeek}|${start}`, row.periodLabel)
+    for (const col of periodCols) {
+      for (const start of col.starts) {
+        if (!map.has(`${col.dayOfWeek}|${start}`)) {
+          map.set(`${col.dayOfWeek}|${start}`, col.periodLabel)
         }
       }
     }
     return map
-  }, [periodRows])
+  }, [periodCols])
 
   const filteredItems = useMemo(() => {
     if (kindFilter === "all") return items
@@ -186,20 +235,17 @@ export function TeachersWideScheduleBoard({
       const start = normalizeTime(it.startTime)
       const period =
         startToPeriod.get(`${it.dayOfWeek}|${start}`) ??
-        periodRows.find(
+        periodCols.find(
           (r) => r.dayOfWeek === it.dayOfWeek && r.starts.includes(start)
         )?.periodLabel
-      if (!period) {
-        // Şablonda yoksa yine de göster: saat etiketli satır yoksa atla
-        continue
-      }
+      if (!period) continue
       const key = `${it.teacherId}|${it.dayOfWeek}|${period}`
       const list = map.get(key) ?? []
       list.push(it)
       map.set(key, list)
     }
     return map
-  }, [filteredItems, startToPeriod, periodRows])
+  }, [filteredItems, startToPeriod, periodCols])
 
   const visibleTeachers = useMemo(() => {
     const q = search.trim().toLocaleLowerCase("tr")
@@ -209,7 +255,7 @@ export function TeachersWideScheduleBoard({
           return false
         }
         if (!q) return true
-        const hay = `${t.name} ${t.subject ?? ""}`.toLocaleLowerCase("tr")
+        const hay = `${t.firstName} ${t.lastName} ${t.subject ?? ""}`.toLocaleLowerCase("tr")
         return hay.includes(q)
       })
       .sort((a, b) =>
@@ -219,25 +265,6 @@ export function TeachersWideScheduleBoard({
         )
       )
   }, [teachers, onlyScheduled, filteredItems, search])
-
-  const dayRowSpans = useMemo(() => {
-    const map = new Map<number, number>()
-    for (const day of WEEKDAY_INDEXES) {
-      map.set(
-        day,
-        periodRows.filter((r) => r.dayOfWeek === day).length
-      )
-    }
-    return map
-  }, [periodRows])
-
-  const firstPeriodKeyByDay = useMemo(() => {
-    const map = new Map<number, string>()
-    for (const row of periodRows) {
-      if (!map.has(row.dayOfWeek)) map.set(row.dayOfWeek, row.key)
-    }
-    return map
-  }, [periodRows])
 
   const conflictTeacherIds = useMemo(() => {
     const set = new Set<string>()
@@ -282,7 +309,7 @@ export function TeachersWideScheduleBoard({
     return <p className="py-16 text-center text-rose-600">{error}</p>
   }
 
-  if (periodRows.length === 0) {
+  if (periodCols.length === 0) {
     return (
       <p className="py-16 text-center text-amber-800 text-sm">
         Ders saatleri şablonu bulunamadı. Önce <strong>Ders saatleri</strong> tanımlayın.
@@ -297,6 +324,8 @@ export function TeachersWideScheduleBoard({
       </p>
     )
   }
+
+  const periodsPerDay = periodLabels.length
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2">
@@ -323,115 +352,74 @@ export function TeachersWideScheduleBoard({
         <table className="border-collapse text-left">
           <thead className="sticky top-0 z-20">
             <tr className="bg-slate-900 text-white">
-              <th className="sticky left-0 z-30 border-b border-r-2 border-slate-700 bg-slate-950 px-2 py-2 text-[10px] font-semibold min-w-[4.5rem] w-[4.5rem]">
-                Gün
+              <th
+                rowSpan={2}
+                className="sticky left-0 z-30 border-b border-r-2 border-slate-700 bg-slate-950 px-3 py-2 text-[12px] font-semibold min-w-[14rem] w-[14rem] align-middle"
+              >
+                Öğretmen
               </th>
-              <th className="sticky left-[4.5rem] z-30 border-b border-r-2 border-slate-600 bg-slate-900 px-2 py-2 text-[10px] font-semibold min-w-[4.25rem] w-[4.25rem]">
-                Saat
-              </th>
-              {visibleTeachers.map((t, i) => (
+              {WEEKDAY_INDEXES.map((day, di) => (
                 <th
-                  key={t.id}
-                  className={`border-b border-slate-700 px-1.5 py-2 text-center min-w-[5.5rem] max-w-[7rem] ${
-                    i === 0 ? "" : "border-l-[3px] border-l-slate-500"
-                  } ${conflictTeacherIds.has(t.id) ? "bg-rose-950/50" : ""}`}
+                  key={day}
+                  colSpan={periodsPerDay}
+                  className={`border-b border-slate-700 px-1 py-1.5 text-center text-[12px] font-bold ${
+                    di === 0 ? "" : "border-l-[3px] border-l-slate-500"
+                  }`}
                 >
-                  <span className="block text-[10px] font-bold leading-tight line-clamp-2">
-                    {shortName(t.name)}
-                  </span>
-                  <span className="block text-[9px] font-normal text-slate-300 mt-0.5 truncate">
-                    {t.subject || "—"}
-                  </span>
+                  {DAY_NAMES[day]}
                 </th>
               ))}
             </tr>
+            <tr className="bg-slate-800 text-white">
+              {periodCols.map((col, i) => {
+                const isDayStart = col.periodLabel === periodLabels[0]
+                return (
+                  <th
+                    key={col.key}
+                    className={`border-b border-slate-700 px-1 py-1.5 text-center text-[10px] font-semibold min-w-[6.5rem] whitespace-nowrap ${
+                      isDayStart && i > 0 ? "border-l-[3px] border-l-slate-500" : "border-l border-l-slate-700/60"
+                    } ${col.isEtut ? "bg-amber-950/50 text-amber-100" : ""}`}
+                  >
+                    {col.periodLabel}
+                  </th>
+                )
+              })}
+            </tr>
           </thead>
           <tbody>
-            {periodRows.map((period) => {
-              const showDay = firstPeriodKeyByDay.get(period.dayOfWeek) === period.key
-              const span = dayRowSpans.get(period.dayOfWeek) ?? 1
+            {visibleTeachers.map((t) => {
+              const conflict = conflictTeacherIds.has(t.id)
+              const fullName = `${t.firstName} ${t.lastName}`.trim()
               return (
-                <tr
-                  key={period.key}
-                  className={period.isEtut ? "bg-amber-50/40" : undefined}
-                >
-                  {showDay ? (
-                    <th
-                      rowSpan={span}
-                      className="sticky left-0 z-10 border-b border-r-2 border-slate-300 bg-slate-100 px-2 py-1 align-middle text-[11px] font-bold text-slate-800 w-[4.5rem]"
-                    >
-                      {period.dayLabel}
-                    </th>
-                  ) : null}
+                <tr key={t.id} className="hover:bg-slate-50/60">
                   <th
-                    className={`sticky left-[4.5rem] z-10 border-b border-r-2 border-slate-200 px-2 py-1 text-left text-[10px] font-medium whitespace-nowrap w-[4.25rem] ${
-                      period.isEtut
-                        ? "bg-amber-50 text-amber-900"
-                        : "bg-slate-50 text-slate-700"
+                    className={`sticky left-0 z-10 border-b border-r-2 border-slate-300 px-3 py-2 text-left align-middle min-w-[14rem] w-[14rem] ${
+                      conflict
+                        ? "bg-rose-100 text-rose-950"
+                        : "bg-slate-50 text-slate-900"
                     }`}
                   >
-                    {period.periodLabel}
+                    <span className="block text-[13px] font-semibold leading-snug">
+                      {fullName}
+                    </span>
+                    <span className="block text-[11px] font-normal text-slate-600 mt-0.5 leading-snug">
+                      {t.subject || "—"}
+                    </span>
                   </th>
-                  {visibleTeachers.map((t, i) => {
+                  {periodCols.map((col, i) => {
                     const cells =
-                      cellMap.get(`${t.id}|${period.dayOfWeek}|${period.periodLabel}`) ??
-                      []
-                    let conflict = false
-                    for (let a = 0; a < cells.length; a++) {
-                      for (let b = a + 1; b < cells.length; b++) {
-                        if (
-                          hasTimeConflict(
-                            cells[a].startTime,
-                            cells[a].endTime,
-                            cells[b].startTime,
-                            cells[b].endTime
-                          )
-                        ) {
-                          conflict = true
-                          break
-                        }
-                      }
-                      if (conflict) break
-                    }
-                    const primary = cells[0]
-                    const kind = conflict
-                      ? ("conflict" as const)
-                      : primary
-                        ? primary.kind
-                        : null
-
+                      cellMap.get(`${t.id}|${col.dayOfWeek}|${col.periodLabel}`) ?? []
+                    const isDayStart = col.periodLabel === periodLabels[0]
                     return (
                       <td
-                        key={`${t.id}|${period.key}`}
-                        className={`border-b border-slate-200 p-0.5 align-top ${
-                          i === 0 ? "" : "border-l-[3px] border-l-slate-300"
-                        }`}
+                        key={`${t.id}|${col.key}`}
+                        className={`border-b border-slate-100 p-0.5 align-top ${
+                          isDayStart && i > 0
+                            ? "border-l-[3px] border-l-slate-300"
+                            : "border-l border-l-slate-100"
+                        } ${col.isEtut ? "bg-amber-50/30" : ""}`}
                       >
-                        {primary ? (
-                          <div
-                            className={`w-full min-h-[2.75rem] rounded-md px-1 py-0.5 text-left ${cellStyles(kind!)}`}
-                            title={cells
-                              .map(
-                                (c) =>
-                                  `${c.label} · ${c.detail}${c.room ? ` · ${c.room}` : ""} (${c.startTime}–${c.endTime})`
-                              )
-                              .join("\n")}
-                          >
-                            {cells.slice(0, 3).map((c) => (
-                              <div key={c.id} className="mb-0.5 last:mb-0">
-                                <p className="text-[10px] font-semibold leading-tight line-clamp-1">
-                                  {c.label}
-                                </p>
-                                <p className="text-[9px] opacity-80 truncate">{c.detail}</p>
-                              </div>
-                            ))}
-                            {cells.length > 3 && (
-                              <p className="text-[9px] font-semibold">+{cells.length - 3}</p>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="min-h-[2.75rem] rounded-md border border-dashed border-transparent" />
-                        )}
+                        {renderCell(cells)}
                       </td>
                     )
                   })}

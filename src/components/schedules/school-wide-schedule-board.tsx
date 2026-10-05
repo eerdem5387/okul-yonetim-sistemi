@@ -182,12 +182,6 @@ function resolveSlotTimes(
   return null
 }
 
-function shortTeacher(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length <= 1) return name
-  return parts[parts.length - 1]
-}
-
 function detectEntryKind(subjectName: string): SlotKindChoice {
   const s = subjectName.trim().toLocaleLowerCase("tr")
   if (s.startsWith("kulüp") || s.startsWith("kulup")) return "club"
@@ -616,12 +610,12 @@ export function SchoolWideScheduleBoard({
               {visibleClasses.map((c, i) => (
                 <th
                   key={c.id}
-                  className={`border-b border-slate-700 px-1.5 py-2 text-center min-w-[5.25rem] ${
+                  className={`border-b border-slate-700 px-2 py-2 text-center min-w-[7.5rem] ${
                     i === 0 ? "" : "border-l-[3px] border-l-slate-500"
                   }`}
                 >
                   <span className="block text-xs font-bold whitespace-nowrap">{c.name}</span>
-                  <span className="block text-[9px] font-normal text-slate-300">
+                  <span className="block text-[10px] font-normal text-slate-300">
                     {gradeBandFor(c.grade) === "ortaokul" ? "Ortaokul" : "Lise"}
                   </span>
                 </th>
@@ -712,26 +706,26 @@ export function SchoolWideScheduleBoard({
                         >
                           {primary ? (
                             <>
-                              <p className="text-[10px] font-semibold leading-tight line-clamp-2">
+                              <p className="text-[11px] font-semibold leading-snug">
                                 {primary.subjectName.replace(/^(Kulüp|ÖÇG)\s*·\s*/i, "")}
                               </p>
                               {primary.teacherName ? (
-                                <p className="text-[9px] opacity-80 truncate mt-0.5">
-                                  {shortTeacher(primary.teacherName)}
+                                <p className="text-[10px] opacity-90 leading-snug mt-0.5">
+                                  {primary.teacherName}
                                 </p>
                               ) : null}
                               {kind && kind !== "lesson" && kind !== "deneme" ? (
-                                <p className="text-[8px] font-medium uppercase tracking-wide mt-0.5 opacity-70">
+                                <p className="text-[9px] font-medium uppercase tracking-wide mt-0.5 opacity-70">
                                   {kind === "club" ? "Kulüp" : "ÖÇG"}
                                 </p>
                               ) : null}
                             </>
                           ) : deneme ? (
                             <>
-                              <p className="text-[10px] font-semibold leading-tight line-clamp-2">
+                              <p className="text-[11px] font-semibold leading-snug">
                                 {deneme.title || DENEME_SINAVI_SUBJECT}
                               </p>
-                              <p className="text-[8px] font-medium uppercase tracking-wide mt-0.5 opacity-70">
+                              <p className="text-[9px] font-medium uppercase tracking-wide mt-0.5 opacity-70">
                                 Deneme
                               </p>
                             </>

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   CalendarPlus,
+  Combine,
   Loader2,
   Pencil,
   Plus,
@@ -342,6 +343,76 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
     setSplitMoveIds(moveIds)
     setSplitSearch("")
     setSplitOpen(true)
+  }
+
+  /** Aynı kulüpte A/B eşini bul (birleştirme için) */
+  const findAbSibling = useCallback(
+    (group: ClubGroup): ClubGroup | null => {
+      const isA = /\s*[-–]\s*A\s*$/i.test(group.name)
+      const isB = /\s*[-–]\s*B\s*$/i.test(group.name)
+      if (!isA && !isB) return null
+      const base = group.name.replace(/\s*[-–]\s*[AB]\s*$/i, "").trim()
+      const wantSuffix = isA ? "B" : "A"
+      return (
+        groups.find((other) => {
+          if (other.id === group.id || other.clubId !== group.clubId) return false
+          if (!new RegExp(`\\s*[-–]\\s*${wantSuffix}\\s*$`, "i").test(other.name)) {
+            return false
+          }
+          const otherBase = other.name.replace(/\s*[-–]\s*[AB]\s*$/i, "").trim()
+          return otherBase.localeCompare(base, "tr", { sensitivity: "base" }) === 0
+        }) ?? null
+      )
+    },
+    [groups]
+  )
+
+  const mergeWithSibling = async (group: ClubGroup) => {
+    const sibling = findAbSibling(group)
+    if (!sibling) {
+      alert("Bu grubun A/B eşi bulunamadı.")
+      return
+    }
+    // Salı programı olanı hedef tut (yoksa tıklanan grup hedef)
+    const groupHasTue = group.schedules.some((s) => s.dayOfWeek === 2)
+    const siblingHasTue = sibling.schedules.some((s) => s.dayOfWeek === 2)
+    const target = siblingHasTue && !groupHasTue ? sibling : group
+    const source = target.id === group.id ? sibling : group
+    const mergedName = group.name.replace(/\s*[-–]\s*[AB]\s*$/i, "").trim()
+
+    if (
+      !confirm(
+        `“${source.name}” → “${target.name}” ile birleştirilsin mi?\n` +
+          `Son isim: ${mergedName}\n` +
+          `Program: yalnızca Salı etütleri kalacak.`
+      )
+    ) {
+      return
+    }
+
+    setBusy(true)
+    try {
+      const res = await fetch("/api/club-groups/merge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceGroupId: source.id,
+          targetGroupId: target.id,
+          mergedName,
+          keepSchedulesFrom: "tuesday",
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert((data as { error?: string }).error || "Birleştirilemedi")
+        return
+      }
+      alert((data as { message?: string }).message || "Gruplar birleştirildi")
+      await load()
+      notifySchedulesChanged()
+    } finally {
+      setBusy(false)
+    }
   }
 
   const toggleSplitStudent = (id: string) => {
@@ -713,6 +784,19 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
                     </CardDescription>
                   </div>
                   <div className="flex shrink-0 gap-1">
+                    {findAbSibling(g) ? (
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-indigo-700"
+                        title="A/B gruplarını birleştir (Salı programı)"
+                        disabled={busy}
+                        onClick={() => void mergeWithSibling(g)}
+                      >
+                        <Combine className="h-4 w-4" />
+                      </Button>
+                    ) : null}
                     <Button
                       type="button"
                       size="icon"
@@ -840,7 +924,20 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
                   <p className="text-xs text-amber-700">Henüz etüt ataması yok</p>
                 )}
 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
+                  {findAbSibling(g) ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 border-indigo-300 text-indigo-900 hover:bg-indigo-50"
+                      disabled={busy}
+                      onClick={() => void mergeWithSibling(g)}
+                      title="A/B gruplarını birleştir, Salı programı kalsın"
+                    >
+                      <Combine className="h-3.5 w-3.5 mr-1.5" />
+                      Birleştir
+                    </Button>
+                  ) : null}
                   <Button
                     size="sm"
                     variant="outline"
