@@ -348,8 +348,8 @@ export function TeachersWideScheduleBoard({
         </span>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-slate-300 bg-white shadow-sm">
-        <table className="border-collapse text-left">
+      <div className="min-h-0 flex-1 overflow-auto rounded-xl border-2 border-slate-800 bg-white shadow-sm">
+        <table className="border-collapse text-left border border-slate-800">
           <thead className="sticky top-0 z-20">
             <tr className="bg-slate-900 text-white">
               <th
@@ -393,7 +393,7 @@ export function TeachersWideScheduleBoard({
               return (
                 <tr key={t.id} className="hover:bg-slate-50/60">
                   <th
-                    className={`sticky left-0 z-10 border-b border-r-2 border-slate-300 px-3 py-2 text-left align-middle min-w-[14rem] w-[14rem] ${
+                    className={`sticky left-0 z-10 border border-slate-800 border-r-2 px-3 py-2 text-left align-middle min-w-[14rem] w-[14rem] ${
                       conflict
                         ? "bg-rose-100 text-rose-950"
                         : "bg-slate-50 text-slate-900"
@@ -413,10 +413,10 @@ export function TeachersWideScheduleBoard({
                     return (
                       <td
                         key={`${t.id}|${col.key}`}
-                        className={`border-b border-slate-100 p-0.5 align-top ${
+                        className={`border border-slate-800 p-0.5 align-top ${
                           isDayStart && i > 0
-                            ? "border-l-[3px] border-l-slate-300"
-                            : "border-l border-l-slate-100"
+                            ? "border-l-[2px] border-l-slate-900"
+                            : ""
                         } ${col.isEtut ? "bg-amber-50/30" : ""}`}
                       >
                         {renderCell(cells)}

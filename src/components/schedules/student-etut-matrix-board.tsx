@@ -335,23 +335,23 @@ export function StudentEtutMatrixBoard({
           return (
             <div
               key={grade}
-              className="shrink-0 rounded-xl border border-slate-300 bg-white shadow-sm overflow-hidden min-w-[28rem]"
+              className="shrink-0 rounded-xl border-2 border-slate-800 bg-white shadow-sm overflow-hidden min-w-[28rem]"
             >
               <div className="bg-slate-900 text-white px-3 py-2 text-xs font-bold tracking-wide">
                 {grade}. SINIF
                 <span className="ml-2 font-normal text-slate-300">{rows.length} öğrenci</span>
               </div>
               <div className="max-h-[min(70vh,42rem)] overflow-auto">
-                <table className="border-collapse text-left w-full">
+                <table className="border-collapse text-left w-full border border-slate-800">
                   <thead className="sticky top-0 z-10">
                     <tr className="bg-slate-800 text-white">
-                      <th className="sticky left-0 z-20 bg-slate-900 border-b border-r border-slate-700 px-3 py-2 text-[11px] font-semibold min-w-[11rem]">
+                      <th className="sticky left-0 z-20 bg-slate-900 border border-slate-800 px-3 py-2 text-[11px] font-semibold min-w-[11rem]">
                         Öğrenci
                       </th>
                       {weekdays.map((d) => (
                         <th
                           key={d.dayOfWeek}
-                          className="border-b border-slate-700 px-2 py-2 text-center text-[11px] font-semibold min-w-[8rem]"
+                          className="border border-slate-800 px-2 py-2 text-center text-[11px] font-semibold min-w-[8rem]"
                         >
                           {d.label}
                         </th>
@@ -378,7 +378,7 @@ export function StudentEtutMatrixBoard({
                         return (
                           <tr key={s.id} className="hover:bg-slate-50/80">
                             <td
-                              className={`sticky left-0 z-[1] border-b border-r border-slate-200 px-3 py-1.5 text-[12px] font-medium whitespace-nowrap ${nameBg}`}
+                              className={`sticky left-0 z-[1] border border-slate-800 px-3 py-1.5 text-[12px] font-medium whitespace-nowrap ${nameBg}`}
                             >
                               {s.lastName} {s.firstName}
                             </td>
@@ -392,7 +392,7 @@ export function StudentEtutMatrixBoard({
                               return (
                                 <td
                                   key={d.dayOfWeek}
-                                  className="border-b border-slate-100 p-0.5 align-top"
+                                  className="border border-slate-800 p-0.5 align-top"
                                 >
                                   <button
                                     type="button"

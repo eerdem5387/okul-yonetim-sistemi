@@ -597,8 +597,8 @@ export function SchoolWideScheduleBoard({
         <span className="text-gray-400">· hücreye tıklayarak düzenleyin</span>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-slate-300 bg-white shadow-sm">
-        <table className="border-collapse text-left">
+      <div className="min-h-0 flex-1 overflow-auto rounded-xl border-2 border-slate-800 bg-white shadow-sm">
+        <table className="border-collapse text-left border border-slate-800">
           <thead className="sticky top-0 z-20">
             <tr className="bg-slate-900 text-white">
               <th className="sticky left-0 z-30 border-b border-r-2 border-slate-700 bg-slate-950 px-2 py-2 text-[10px] font-semibold min-w-[4.5rem] w-[4.5rem]">
@@ -634,13 +634,13 @@ export function SchoolWideScheduleBoard({
                   {showDay ? (
                     <th
                       rowSpan={span}
-                      className="sticky left-0 z-10 border-b border-r-2 border-slate-300 bg-slate-100 px-2 py-1 align-middle text-[11px] font-bold text-slate-800 w-[4.5rem]"
+                      className="sticky left-0 z-10 border border-slate-800 border-r-2 bg-slate-100 px-2 py-1 align-middle text-[11px] font-bold text-slate-800 w-[4.5rem]"
                     >
                       {period.dayLabel}
                     </th>
                   ) : null}
                   <th
-                    className={`sticky left-[4.5rem] z-10 border-b border-r-2 border-slate-200 px-2 py-1 text-left text-[10px] font-medium whitespace-nowrap w-[4.25rem] ${
+                    className={`sticky left-[4.5rem] z-10 border border-slate-800 border-r-2 px-2 py-1 text-left text-[10px] font-medium whitespace-nowrap w-[4.25rem] ${
                       period.isEtut
                         ? "bg-amber-50 text-amber-900"
                         : "bg-slate-50 text-slate-700"
@@ -674,8 +674,8 @@ export function SchoolWideScheduleBoard({
                     return (
                       <td
                         key={`${c.id}|${period.key}`}
-                        className={`border-b border-slate-200 p-0.5 align-top ${
-                          i === 0 ? "" : "border-l-[3px] border-l-slate-300"
+                        className={`border border-slate-800 p-0.5 align-top ${
+                          i === 0 ? "" : "border-l-[2px] border-l-slate-900"
                         }`}
                       >
                         <button
