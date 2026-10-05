@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Loader2 } from "lucide-react"
+import { CalendarOff, Loader2, UserX, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -87,6 +87,13 @@ type AssignTarget = {
   freeSlots: FreeSlot[]
 }
 
+type ConflictTarget = {
+  student: StudentRow
+  dayOfWeek: number
+  dayLabel: string
+  items: DayItem[]
+}
+
 function shortLabel(label: string): string {
   // "Kulüp Adı · Grup" → kısa gösterim
   return label.replace(/\s*·\s*/g, " · ")
@@ -112,11 +119,15 @@ export function StudentEtutMatrixBoard({
   const [activeGrade, setActiveGrade] = useState<number | "all">("all")
   const [onlyProblems, setOnlyProblems] = useState(false)
   const [assignTarget, setAssignTarget] = useState<AssignTarget | null>(null)
+  const [conflictTarget, setConflictTarget] = useState<ConflictTarget | null>(null)
   const [busy, setBusy] = useState(false)
+  const [busyKey, setBusyKey] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError("")
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) {
+      setLoading(true)
+      setError("")
+    }
     try {
       const band =
         activeGrade !== "all"
@@ -142,11 +153,13 @@ export function StudentEtutMatrixBoard({
         Array.isArray(data.assignOptions?.studyGroups) ? data.assignOptions.studyGroups : []
       )
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Yüklenemedi")
-      setByGrade({})
-      setGrades([])
+      if (!opts?.silent) {
+        setError(e instanceof Error ? e.message : "Yüklenemedi")
+        setByGrade({})
+        setGrades([])
+      }
     } finally {
-      setLoading(false)
+      if (!opts?.silent) setLoading(false)
     }
   }, [activeGrade, bandHint])
 
@@ -175,6 +188,29 @@ export function StudentEtutMatrixBoard({
     },
     [kindFilter]
   )
+
+  useEffect(() => {
+    if (!conflictTarget) return
+    const list = byGrade[String(conflictTarget.student.gradeLevel)] ?? []
+    const s = list.find((row) => row.id === conflictTarget.student.id)
+    if (!s) {
+      setConflictTarget(null)
+      return
+    }
+    const cell = s.days[String(conflictTarget.dayOfWeek)]
+    const items = filterItems(cell?.items ?? [])
+    if (!cell?.hasConflict || items.length <= 1) {
+      setConflictTarget(null)
+      return
+    }
+    setConflictTarget({
+      student: s,
+      dayOfWeek: conflictTarget.dayOfWeek,
+      dayLabel: conflictTarget.dayLabel,
+      items,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [byGrade, filterItems])
 
   const assignChoices = useMemo(() => {
     if (!assignTarget) return { clubs: [] as ClubOption[], studies: [] as StudyOption[] }
@@ -255,23 +291,51 @@ export function StudentEtutMatrixBoard({
     }
   }
 
-  const openAssign = (student: StudentRow, dayOfWeek: number, dayLabel: string) => {
+  const openCell = (student: StudentRow, dayOfWeek: number, dayLabel: string) => {
     const cell = student.days[String(dayOfWeek)]
-    const freeSlots = cell?.freeSlots ?? []
-    if (freeSlots.length === 0 && (cell?.items.length ?? 0) > 0) {
-      // Dolu ama çakışmasız — yine de atama izni (başka gruba eklemek için)
+    const items = filterItems(cell?.items ?? [])
+    const conflict = !!cell?.hasConflict && items.length > 1
+    if (conflict) {
+      setAssignTarget(null)
+      setConflictTarget({ student, dayOfWeek, dayLabel, items })
+      return
     }
+    setConflictTarget(null)
     setAssignTarget({
       student,
       dayOfWeek,
       dayLabel,
-      freeSlots,
+      freeSlots: cell?.freeSlots ?? [],
     })
+  }
+
+  const resolveConflict = async (
+    studentId: string,
+    assignmentKey: string,
+    action: "exclude_day" | "leave_group"
+  ) => {
+    const key = `${action}:${assignmentKey}`
+    setBusyKey(key)
+    try {
+      const res = await fetch("/api/schedules/student-conflicts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, studentId, assignmentKey }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert((data as { error?: string }).error || "İşlem başarısız")
+        return
+      }
+      await load({ silent: true })
+    } finally {
+      setBusyKey(null)
+    }
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center gap-2 py-10 text-gray-500">
+      <div className="flex h-full items-center justify-center gap-2 text-gray-500">
         <Loader2 className="h-5 w-5 animate-spin" />
         Öğrenci etüt matrisi yükleniyor…
       </div>
@@ -283,14 +347,14 @@ export function StudentEtutMatrixBoard({
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+    <div className="flex h-full min-h-0 flex-col gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 shrink-0">
         <div>
           <h3 className="text-sm font-semibold text-gray-900">
             Öğrenci × gün etüt matrisi
           </h3>
           <p className="text-[11px] text-gray-500">
-            Kırmızı satır = çakışma · Mavi satır = boş etüt · Boş/eksik hücreye tıklayarak ata
+            Kırmızı = çakışma (tıkla → alt panelden yönet) · Mavi = boş etüt · Boş hücreye tıkla → ata
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
@@ -302,19 +366,22 @@ export function StudentEtutMatrixBoard({
           >
             Tüm sınıflar
           </Button>
-          {(bandHint === "lise" ? [9, 10, 11, 12] : bandHint === "ortaokul" ? [5, 6, 7, 8] : [5, 6, 7, 8, 9, 10, 11, 12]).map(
-            (g) => (
-              <Button
-                key={g}
-                size="sm"
-                variant={activeGrade === g ? "default" : "outline"}
-                className="h-7 text-xs px-2"
-                onClick={() => setActiveGrade(g)}
-              >
-                {g}.
-              </Button>
-            )
-          )}
+          {(bandHint === "lise"
+            ? [9, 10, 11, 12]
+            : bandHint === "ortaokul"
+              ? [5, 6, 7, 8]
+              : [5, 6, 7, 8, 9, 10, 11, 12]
+          ).map((g) => (
+            <Button
+              key={g}
+              size="sm"
+              variant={activeGrade === g ? "default" : "outline"}
+              className="h-7 text-xs px-2"
+              onClick={() => setActiveGrade(g)}
+            >
+              {g}.
+            </Button>
+          ))}
           <Button
             size="sm"
             variant={onlyProblems ? "default" : "outline"}
@@ -329,133 +396,275 @@ export function StudentEtutMatrixBoard({
         </div>
       </div>
 
-      <div className="flex gap-3 overflow-x-auto pb-2 items-start">
-        {visibleGrades.map((grade) => {
-          const rows = (byGrade[String(grade)] ?? []).filter(filterStudent)
-          return (
-            <div
-              key={grade}
-              className="shrink-0 rounded-xl border-2 border-slate-800 bg-white shadow-sm overflow-hidden min-w-[28rem]"
-            >
-              <div className="bg-slate-900 text-white px-3 py-2 text-xs font-bold tracking-wide">
-                {grade}. SINIF
-                <span className="ml-2 font-normal text-slate-300">{rows.length} öğrenci</span>
-              </div>
-              <div className="max-h-[min(70vh,42rem)] overflow-auto">
-                <table className="border-collapse text-left w-full border border-slate-800">
-                  <thead className="sticky top-0 z-10">
-                    <tr className="bg-slate-800 text-white">
-                      <th className="sticky left-0 z-20 bg-slate-900 border border-slate-800 px-3 py-2 text-[11px] font-semibold min-w-[11rem]">
-                        Öğrenci
-                      </th>
-                      {weekdays.map((d) => (
-                        <th
-                          key={d.dayOfWeek}
-                          className="border border-slate-800 px-2 py-2 text-center text-[11px] font-semibold min-w-[8rem]"
-                        >
-                          {d.label}
+      <div className="min-h-0 flex-1 overflow-auto">
+        <div className="flex gap-3 items-stretch min-h-full pb-1">
+          {visibleGrades.map((grade) => {
+            const rows = (byGrade[String(grade)] ?? []).filter(filterStudent)
+            return (
+              <div
+                key={grade}
+                className="shrink-0 rounded-xl border-2 border-slate-800 bg-white shadow-sm overflow-hidden min-w-[28rem] flex flex-col min-h-full"
+              >
+                <div className="bg-slate-900 text-white px-3 py-2 text-xs font-bold tracking-wide shrink-0">
+                  {grade}. SINIF
+                  <span className="ml-2 font-normal text-slate-300">{rows.length} öğrenci</span>
+                </div>
+                <div className="min-h-0 flex-1 overflow-auto">
+                  <table className="border-collapse text-left w-full border border-slate-800">
+                    <thead className="sticky top-0 z-10">
+                      <tr className="bg-slate-800 text-white">
+                        <th className="sticky left-0 z-20 bg-slate-900 border border-slate-800 px-3 py-2 text-[11px] font-semibold min-w-[11rem]">
+                          Öğrenci
                         </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan={1 + weekdays.length}
-                          className="px-3 py-6 text-center text-xs text-gray-400"
-                        >
-                          Öğrenci yok
-                        </td>
+                        {weekdays.map((d) => (
+                          <th
+                            key={d.dayOfWeek}
+                            className="border border-slate-800 px-2 py-2 text-center text-[11px] font-semibold min-w-[8rem]"
+                          >
+                            {d.label}
+                          </th>
+                        ))}
                       </tr>
-                    ) : (
-                      rows.map((s) => {
-                        const nameBg = s.hasConflict
-                          ? "bg-rose-200 text-rose-950"
-                          : s.hasEmptyDay
-                            ? "bg-sky-100 text-sky-950"
-                            : "bg-white text-gray-900"
-                        return (
-                          <tr key={s.id} className="hover:bg-slate-50/80">
-                            <td
-                              className={`sticky left-0 z-[1] border border-slate-800 px-3 py-1.5 text-[12px] font-medium whitespace-nowrap ${nameBg}`}
-                            >
-                              {s.lastName} {s.firstName}
-                            </td>
-                            {weekdays.map((d) => {
-                              const cell = s.days[String(d.dayOfWeek)]
-                              const items = filterItems(cell?.items ?? [])
-                              const freeSlots = cell?.freeSlots ?? []
-                              const conflict = cell?.hasConflict && items.length > 1
-                              const isEmpty = items.length === 0
+                    </thead>
+                    <tbody>
+                      {rows.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={1 + weekdays.length}
+                            className="px-3 py-6 text-center text-xs text-gray-400"
+                          >
+                            Öğrenci yok
+                          </td>
+                        </tr>
+                      ) : (
+                        rows.map((s) => {
+                          const nameBg = s.hasConflict
+                            ? "bg-rose-200 text-rose-950"
+                            : s.hasEmptyDay
+                              ? "bg-sky-100 text-sky-950"
+                              : "bg-white text-gray-900"
+                          const selected =
+                            conflictTarget?.student.id === s.id
+                              ? "ring-2 ring-inset ring-indigo-400"
+                              : ""
+                          return (
+                            <tr key={s.id} className={`hover:bg-slate-50/80 ${selected}`}>
+                              <td
+                                className={`sticky left-0 z-[1] border border-slate-800 px-3 py-1.5 text-[12px] font-medium whitespace-nowrap ${nameBg}`}
+                              >
+                                {s.lastName} {s.firstName}
+                              </td>
+                              {weekdays.map((d) => {
+                                const cell = s.days[String(d.dayOfWeek)]
+                                const items = filterItems(cell?.items ?? [])
+                                const freeSlots = cell?.freeSlots ?? []
+                                const conflict = !!cell?.hasConflict && items.length > 1
+                                const isEmpty = items.length === 0
+                                const cellSelected =
+                                  conflictTarget?.student.id === s.id &&
+                                  conflictTarget.dayOfWeek === d.dayOfWeek
 
-                              return (
-                                <td
-                                  key={d.dayOfWeek}
-                                  className="border border-slate-800 p-0.5 align-top"
-                                >
-                                  <button
-                                    type="button"
-                                    onClick={() => openAssign(s, d.dayOfWeek, d.label)}
-                                    className={`w-full min-h-[3rem] rounded px-1.5 py-1 text-left transition ${
-                                      conflict
-                                        ? "bg-rose-50 ring-1 ring-rose-300 hover:bg-rose-100"
-                                        : isEmpty
-                                          ? "hover:bg-emerald-50 border border-dashed border-transparent hover:border-emerald-300"
-                                          : freeSlots.length > 0
-                                            ? "bg-amber-50/60 ring-1 ring-amber-100 hover:bg-amber-50"
-                                            : "bg-slate-50/80 hover:bg-slate-100"
-                                    }`}
-                                    title={
-                                      isEmpty
-                                        ? `${d.label}: boş — tıklayarak ata`
-                                        : conflict
-                                          ? `${d.label}: çakışma — tıklayarak başka atama ekle / gör`
-                                          : `${d.label}: düzenlemek için tıkla`
-                                    }
+                                return (
+                                  <td
+                                    key={d.dayOfWeek}
+                                    className="border border-slate-800 p-0.5 align-top"
                                   >
-                                    {isEmpty ? (
-                                      <span className="block text-center text-[11px] text-gray-300">
-                                        +
-                                      </span>
-                                    ) : (
-                                      <div className="space-y-0.5">
-                                        {items.map((it) => (
-                                          <p
-                                            key={it.key}
-                                            className={`text-[11px] leading-snug ${
-                                              conflict
-                                                ? "font-semibold text-rose-800"
-                                                : it.kind === "STUDY_GROUP"
-                                                  ? "text-violet-900"
-                                                  : "text-amber-950"
-                                            }`}
-                                          >
-                                            {shortLabel(it.label)}
-                                          </p>
-                                        ))}
-                                        {freeSlots.length > 0 && (
-                                          <p className="text-[10px] text-amber-700/80">
-                                            {freeSlots.length} boş etüt
-                                          </p>
-                                        )}
-                                      </div>
-                                    )}
-                                  </button>
-                                </td>
-                              )
-                            })}
-                          </tr>
-                        )
-                      })
-                    )}
-                  </tbody>
-                </table>
+                                    <button
+                                      type="button"
+                                      onClick={() => openCell(s, d.dayOfWeek, d.label)}
+                                      className={`w-full min-h-[3rem] rounded px-1.5 py-1 text-left transition ${
+                                        cellSelected
+                                          ? "ring-2 ring-indigo-500"
+                                          : ""
+                                      } ${
+                                        conflict
+                                          ? "bg-rose-50 ring-1 ring-rose-300 hover:bg-rose-100"
+                                          : isEmpty
+                                            ? "hover:bg-emerald-50 border border-dashed border-transparent hover:border-emerald-300"
+                                            : freeSlots.length > 0
+                                              ? "bg-amber-50/60 ring-1 ring-amber-100 hover:bg-amber-50"
+                                              : "bg-slate-50/80 hover:bg-slate-100"
+                                      }`}
+                                      title={
+                                        isEmpty
+                                          ? `${d.label}: boş — tıklayarak ata`
+                                          : conflict
+                                            ? `${d.label}: çakışma — tıkla, alt panelden yönet`
+                                            : `${d.label}: düzenlemek için tıkla`
+                                      }
+                                    >
+                                      {isEmpty ? (
+                                        <span className="block text-center text-[11px] text-gray-300">
+                                          +
+                                        </span>
+                                      ) : (
+                                        <div className="space-y-0.5">
+                                          {items.map((it) => (
+                                            <p
+                                              key={it.key}
+                                              className={`text-[11px] leading-snug ${
+                                                conflict
+                                                  ? "font-semibold text-rose-800"
+                                                  : it.kind === "STUDY_GROUP"
+                                                    ? "text-violet-900"
+                                                    : "text-amber-950"
+                                              }`}
+                                            >
+                                              {shortLabel(it.label)}
+                                            </p>
+                                          ))}
+                                          {freeSlots.length > 0 && (
+                                            <p className="text-[10px] text-amber-700/80">
+                                              {freeSlots.length} boş etüt
+                                            </p>
+                                          )}
+                                        </div>
+                                      )}
+                                    </button>
+                                  </td>
+                                )
+                              })}
+                            </tr>
+                          )
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
+
+      {conflictTarget ? (
+        <div className="shrink-0 rounded-xl border-2 border-rose-400 bg-rose-50/90 shadow-sm max-h-[38vh] overflow-y-auto">
+          <div className="sticky top-0 z-[1] flex items-start justify-between gap-3 border-b border-rose-200 bg-rose-100/90 px-4 py-2.5">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-rose-950">
+                Çakışma · {conflictTarget.student.lastName}{" "}
+                {conflictTarget.student.firstName}
+              </p>
+              <p className="text-[11px] text-rose-800/90">
+                {conflictTarget.dayLabel} · {conflictTarget.student.grade} · alttan çöz, tablodan
+                çıkmana gerek yok
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-8 w-8 p-0 shrink-0"
+              onClick={() => setConflictTarget(null)}
+              title="Paneli kapat"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <ul className="divide-y divide-rose-200/80 px-2 py-1">
+            {conflictTarget.items.map((it) => {
+              const excludeBusy = busyKey === `exclude_day:${it.key}`
+              const leaveBusy = busyKey === `leave_group:${it.key}`
+              const canExcludeDay = it.kind === "CLUB"
+              return (
+                <li
+                  key={it.key}
+                  className="flex flex-col sm:flex-row sm:items-center gap-2 px-2 py-2.5"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-slate-900">
+                      <span
+                        className={
+                          it.kind === "STUDY_GROUP" ? "text-violet-700" : "text-amber-800"
+                        }
+                      >
+                        {it.kind === "STUDY_GROUP" ? "ÖÇG" : "Kulüp"}
+                      </span>
+                      {" · "}
+                      {it.label}
+                    </p>
+                    <p className="text-[11px] text-slate-600">
+                      {it.startTime}–{it.endTime}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 shrink-0">
+                    {canExcludeDay ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-8 border-amber-400 text-amber-950 hover:bg-amber-100"
+                        disabled={busyKey !== null}
+                        onClick={() => {
+                          if (
+                            !confirm(
+                              `${conflictTarget.student.firstName} ${conflictTarget.student.lastName} — yalnızca ${conflictTarget.dayLabel} ${it.startTime} saatinden çıkarılsın mı?\n\n${it.label}\n\nGrup üyeliği kalır.`
+                            )
+                          ) {
+                            return
+                          }
+                          void resolveConflict(
+                            conflictTarget.student.id,
+                            it.key,
+                            "exclude_day"
+                          )
+                        }}
+                      >
+                        {excludeBusy ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <>
+                            <CalendarOff className="mr-1 h-3.5 w-3.5" />
+                            Bu günden çıkar
+                          </>
+                        )}
+                      </Button>
+                    ) : null}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-8 border-rose-400 text-rose-800 hover:bg-rose-100"
+                      disabled={busyKey !== null}
+                      onClick={() => {
+                        const what =
+                          it.kind === "STUDY_GROUP"
+                            ? "ÖÇG grubundan tamamen çıkarılsın mı?"
+                            : "Kulüp grubundan tamamen çıkarılsın mı? (tüm günler iptal olur)"
+                        if (
+                          !confirm(
+                            `${conflictTarget.student.firstName} ${conflictTarget.student.lastName}\n\n${it.label}\n\n${what}`
+                          )
+                        ) {
+                          return
+                        }
+                        void resolveConflict(
+                          conflictTarget.student.id,
+                          it.key,
+                          "leave_group"
+                        )
+                      }}
+                    >
+                      {leaveBusy ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <>
+                          <UserX className="mr-1 h-3.5 w-3.5" />
+                          {it.kind === "STUDY_GROUP" ? "Gruptan çıkar" : "Tüm gruptan çıkar"}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      ) : (
+        <div className="shrink-0 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
+          Çakışmalı (kırmızı) bir hücreye tıklayınca çözüm paneli burada açılır.
+        </div>
+      )}
 
       <Dialog
         open={!!assignTarget}

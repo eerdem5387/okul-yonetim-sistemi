@@ -606,7 +606,7 @@ export function ClubStudyWideScheduleBoard({
             )}
           </div>
         ) : (
-          <div className="h-full min-h-0 overflow-y-auto">
+          <div className="h-full min-h-0 overflow-hidden">
             <StudentEtutMatrixBoard kindFilter={kindFilter} bandHint={bandHint} />
           </div>
         )}
