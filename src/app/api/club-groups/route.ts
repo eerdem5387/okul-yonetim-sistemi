@@ -155,6 +155,25 @@ export async function POST(request: NextRequest) {
         await tx.clubSchedule.deleteMany({ where: { clubGroupId: inactive.id } })
         await tx.clubGroupStudent.deleteMany({ where: { clubGroupId: inactive.id } })
         if (studentIds.length > 0) {
+          const siblings = await tx.clubGroup.findMany({
+            where: { clubId, isActive: true, id: { not: inactive.id } },
+            select: { id: true },
+          })
+          const siblingIds = siblings.map((g) => g.id)
+          if (siblingIds.length > 0) {
+            await tx.clubGroupStudent.deleteMany({
+              where: {
+                clubGroupId: { in: siblingIds },
+                studentId: { in: studentIds },
+              },
+            })
+            await tx.clubScheduleExclusion.deleteMany({
+              where: {
+                studentId: { in: studentIds },
+                clubSchedule: { clubGroupId: { in: siblingIds } },
+              },
+            })
+          }
           await tx.clubGroupStudent.createMany({
             data: studentIds.map((studentId) => ({
               clubGroupId: inactive.id,
@@ -170,20 +189,43 @@ export async function POST(request: NextRequest) {
         })
       })
     } else {
-      group = await prisma.clubGroup.create({
-        data: {
-          clubId,
-          name,
-          notes,
-          ...(studentIds.length > 0
-            ? {
-                students: {
-                  create: studentIds.map((studentId) => ({ studentId })),
-                },
-              }
-            : {}),
-        },
-        include: groupInclude,
+      group = await prisma.$transaction(async (tx) => {
+        if (studentIds.length > 0) {
+          const siblings = await tx.clubGroup.findMany({
+            where: { clubId, isActive: true },
+            select: { id: true },
+          })
+          const siblingIds = siblings.map((g) => g.id)
+          if (siblingIds.length > 0) {
+            await tx.clubGroupStudent.deleteMany({
+              where: {
+                clubGroupId: { in: siblingIds },
+                studentId: { in: studentIds },
+              },
+            })
+            await tx.clubScheduleExclusion.deleteMany({
+              where: {
+                studentId: { in: studentIds },
+                clubSchedule: { clubGroupId: { in: siblingIds } },
+              },
+            })
+          }
+        }
+        return tx.clubGroup.create({
+          data: {
+            clubId,
+            name,
+            notes,
+            ...(studentIds.length > 0
+              ? {
+                  students: {
+                    create: studentIds.map((studentId) => ({ studentId })),
+                  },
+                }
+              : {}),
+          },
+          include: groupInclude,
+        })
       })
     }
 

@@ -136,6 +136,31 @@ export async function PUT(
 
     const group = await prisma.$transaction(async (tx) => {
       if (studentIds) {
+        // Aynı kulübün diğer gruplarından çıkar (A/B tek üyelik)
+        const siblingGroups = await tx.clubGroup.findMany({
+          where: {
+            clubId: existing.clubId,
+            isActive: true,
+            id: { not: id },
+          },
+          select: { id: true },
+        })
+        const siblingIds = siblingGroups.map((g) => g.id)
+        if (siblingIds.length > 0 && studentIds.length > 0) {
+          await tx.clubGroupStudent.deleteMany({
+            where: {
+              clubGroupId: { in: siblingIds },
+              studentId: { in: studentIds },
+            },
+          })
+          await tx.clubScheduleExclusion.deleteMany({
+            where: {
+              studentId: { in: studentIds },
+              clubSchedule: { clubGroupId: { in: siblingIds } },
+            },
+          })
+        }
+
         await tx.clubGroupStudent.deleteMany({ where: { clubGroupId: id } })
         if (studentIds.length > 0) {
           await tx.clubGroupStudent.createMany({

@@ -420,6 +420,20 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
       })
   }, [splitSource, splitSearch])
 
+  /** Aynı kulübün diğer gruplarında olan öğrenciler → grup adı */
+  const siblingGroupByStudent = useMemo(() => {
+    const map = new Map<string, string>()
+    if (!form.clubId) return map
+    for (const g of groups) {
+      if (g.clubId !== form.clubId) continue
+      if (editing && g.id === editing.id) continue
+      for (const m of g.students) {
+        map.set(m.student.id, g.name)
+      }
+    }
+    return map
+  }, [groups, form.clubId, editing])
+
   const openEditSession = (group: ClubGroup, schedule: ClubGroupSchedule) => {
     setSessionGroup(group)
     setEditingSchedule(schedule)
@@ -935,6 +949,9 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
                   </Button>
                 </div>
               </div>
+              <p className="mb-2 text-xs text-gray-500">
+                Başka alt gruptaki öğrenciyi seçerseniz kayıtta o gruptan buraya taşınır.
+              </p>
 
               {!selectedClub ? (
                 <p className="py-6 text-center text-sm text-gray-500">Önce kulüp seçin</p>
@@ -966,6 +983,7 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
                   <div className="max-h-64 space-y-1 overflow-y-auto rounded-lg border border-gray-100 p-1">
                     {filteredStudents.map((s) => {
                       const active = form.studentIds.includes(s.id)
+                      const inOther = siblingGroupByStudent.get(s.id)
                       return (
                         <button
                           key={s.id}
@@ -980,6 +998,11 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
                           <span>
                             {s.firstName} {s.lastName}
                             <span className="ml-2 text-xs text-gray-500">{s.grade}</span>
+                            {inOther && !active ? (
+                              <span className="ml-2 text-[10px] font-medium text-amber-700">
+                                {inOther}
+                              </span>
+                            ) : null}
                           </span>
                           {active ? <X className="h-3.5 w-3.5 opacity-60" /> : null}
                         </button>
