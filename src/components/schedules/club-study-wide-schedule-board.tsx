@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Loader2 } from "lucide-react"
 import { ClubScheduleRosterDialog } from "@/components/schedules/club-schedule-roster-dialog"
+import { StudentEtutMatrixBoard } from "@/components/schedules/student-etut-matrix-board"
 import {
   DAY_NAMES,
   WEEKDAY_INDEXES,
@@ -109,9 +110,11 @@ function teacherName(t: Instructor | null | undefined): string {
 export function ClubStudyWideScheduleBoard({
   kindFilter = "all",
   onlyScheduled = true,
+  bandHint = "all",
 }: {
   kindFilter?: KindFilter
   onlyScheduled?: boolean
+  bandHint?: "all" | "ortaokul" | "lise"
 }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -401,30 +404,8 @@ export function ClubStudyWideScheduleBoard({
     return <p className="py-16 text-center text-rose-600">{error}</p>
   }
 
-  if (etutSlots.length === 0) {
-    return (
-      <div className="flex h-full items-center justify-center p-8">
-        <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-900 max-w-lg text-center">
-          Henüz etüt saati yok. <strong>Ders saatleri</strong> içinde türü{" "}
-          <strong>Etüt</strong> olan satırlar ekleyin.
-        </div>
-      </div>
-    )
-  }
-
-  if (columns.length === 0) {
-    return (
-      <div className="flex h-full items-center justify-center p-8">
-        <div className="rounded-xl border border-dashed border-gray-200 bg-white px-4 py-6 text-sm text-gray-500 max-w-lg text-center">
-          Gösterilecek kulüp / ÖÇG yok. Grup oluşturup <strong>Program ata</strong> ile etüt
-          yerleştirin veya “Tümü” / program filtresini değiştirin.
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="flex h-full min-h-0 flex-col gap-2">
+    <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto pr-0.5">
       <div className="flex flex-wrap items-center gap-3 shrink-0 text-[11px] text-gray-600 px-0.5">
         <span>
           {stats.clubs} kulüp grubu · {stats.studies} ÖÇG
@@ -444,70 +425,134 @@ export function ClubStudyWideScheduleBoard({
         <span className="text-gray-400">· kulüp hücresine tıklayınca öğrenci listesi</span>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-slate-300 bg-white shadow-sm">
-        <table className="border-collapse text-left">
-          <thead className="sticky top-0 z-20">
-            <tr className="bg-slate-900 text-white">
-              <th className="sticky left-0 z-30 border-b border-r-2 border-slate-700 bg-slate-950 px-2 py-2 text-[10px] font-semibold min-w-[4.5rem] w-[4.5rem]">
-                Gün
-              </th>
-              <th className="sticky left-[4.5rem] z-30 border-b border-r-2 border-slate-600 bg-slate-900 px-2 py-2 text-[10px] font-semibold min-w-[4.5rem] w-[4.5rem]">
-                Etüt
-              </th>
-              {columns.map((col, i) => (
-                <th
-                  key={col.key}
-                  className={`border-b border-slate-700 px-1.5 py-2 text-center min-w-[6rem] max-w-[7.5rem] ${
-                    i === 0 ? "" : "border-l-[3px] border-l-slate-500"
-                  } ${col.kind === "club" ? "bg-amber-950/40" : "bg-violet-950/40"}`}
-                >
-                  <span className="block text-[10px] font-bold leading-tight line-clamp-2">
-                    {col.title}
-                  </span>
-                  <span
-                    className={`block text-[9px] font-normal mt-0.5 ${
-                      col.kind === "club" ? "text-amber-200" : "text-violet-200"
-                    }`}
-                  >
-                    {col.kind === "club" ? col.subtitle : "ÖÇG"}
-                    {col.instructorLabel ? ` · ${col.instructorLabel}` : ""}
-                  </span>
+      {etutSlots.length === 0 ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-900">
+          Henüz etüt saati yok. <strong>Ders saatleri</strong> içinde türü{" "}
+          <strong>Etüt</strong> olan satırlar ekleyin.
+        </div>
+      ) : columns.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-gray-200 bg-white px-4 py-6 text-sm text-gray-500 text-center">
+          Gösterilecek kulüp / ÖÇG yok. Grup oluşturup <strong>Program ata</strong> ile etüt
+          yerleştirin veya “Tümü” / program filtresini değiştirin.
+        </div>
+      ) : (
+        <div className="shrink-0 overflow-auto rounded-xl border border-slate-300 bg-white shadow-sm max-h-[min(52vh,36rem)]">
+          <table className="border-collapse text-left">
+            <thead className="sticky top-0 z-20">
+              <tr className="bg-slate-900 text-white">
+                <th className="sticky left-0 z-30 border-b border-r-2 border-slate-700 bg-slate-950 px-2 py-2 text-[10px] font-semibold min-w-[4.5rem] w-[4.5rem]">
+                  Gün
                 </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {periodRows.map((period) => {
-              const showDay = firstPeriodKeyByDay.get(period.dayOfWeek) === period.key
-              const span = dayRowSpans.get(period.dayOfWeek) ?? 1
-              const denemeKey = `${period.dayOfWeek}|${period.slot.startTime}|${period.slot.endTime}`
-              const denemeGrades = denemeBySlot.get(denemeKey) ?? []
-
-              return (
-                <tr key={period.key} className="bg-amber-50/30">
-                  {showDay ? (
-                    <th
-                      rowSpan={span}
-                      className="sticky left-0 z-10 border-b border-r-2 border-slate-300 bg-slate-100 px-2 py-1 align-middle text-[11px] font-bold text-slate-800 w-[4.5rem]"
+                <th className="sticky left-[4.5rem] z-30 border-b border-r-2 border-slate-600 bg-slate-900 px-2 py-2 text-[10px] font-semibold min-w-[4.5rem] w-[4.5rem]">
+                  Etüt
+                </th>
+                {columns.map((col, i) => (
+                  <th
+                    key={col.key}
+                    className={`border-b border-slate-700 px-1.5 py-2 text-center min-w-[6rem] max-w-[7.5rem] ${
+                      i === 0 ? "" : "border-l-[3px] border-l-slate-500"
+                    } ${col.kind === "club" ? "bg-amber-950/40" : "bg-violet-950/40"}`}
+                  >
+                    <span className="block text-[10px] font-bold leading-tight line-clamp-2">
+                      {col.title}
+                    </span>
+                    <span
+                      className={`block text-[9px] font-normal mt-0.5 ${
+                        col.kind === "club" ? "text-amber-200" : "text-violet-200"
+                      }`}
                     >
-                      {period.dayLabel}
-                    </th>
-                  ) : null}
-                  <th className="sticky left-[4.5rem] z-10 border-b border-r-2 border-slate-200 bg-amber-50 px-2 py-1 text-left text-[10px] font-medium text-amber-900 whitespace-nowrap w-[4.5rem]">
-                    <div>{period.slot.label}</div>
-                    <div className="text-[9px] font-normal opacity-70">
-                      {period.slot.startTime}–{period.slot.endTime}
-                    </div>
-                    {denemeGrades.length > 0 && (
-                      <div className="mt-0.5 text-[8px] font-semibold text-rose-700 leading-tight">
-                        Deneme {denemeGrades.map((g) => `${g}.`).join(" ")}
-                      </div>
-                    )}
+                      {col.kind === "club" ? col.subtitle : "ÖÇG"}
+                      {col.instructorLabel ? ` · ${col.instructorLabel}` : ""}
+                    </span>
                   </th>
-                  {columns.map((col, i) => {
-                    if (col.kind === "club") {
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {periodRows.map((period) => {
+                const showDay = firstPeriodKeyByDay.get(period.dayOfWeek) === period.key
+                const span = dayRowSpans.get(period.dayOfWeek) ?? 1
+                const denemeKey = `${period.dayOfWeek}|${period.slot.startTime}|${period.slot.endTime}`
+                const denemeGrades = denemeBySlot.get(denemeKey) ?? []
+
+                return (
+                  <tr key={period.key} className="bg-amber-50/30">
+                    {showDay ? (
+                      <th
+                        rowSpan={span}
+                        className="sticky left-0 z-10 border-b border-r-2 border-slate-300 bg-slate-100 px-2 py-1 align-middle text-[11px] font-bold text-slate-800 w-[4.5rem]"
+                      >
+                        {period.dayLabel}
+                      </th>
+                    ) : null}
+                    <th className="sticky left-[4.5rem] z-10 border-b border-r-2 border-slate-200 bg-amber-50 px-2 py-1 text-left text-[10px] font-medium text-amber-900 whitespace-nowrap w-[4.5rem]">
+                      <div>{period.slot.label}</div>
+                      <div className="text-[9px] font-normal opacity-70">
+                        {period.slot.startTime}–{period.slot.endTime}
+                      </div>
+                      {denemeGrades.length > 0 && (
+                        <div className="mt-0.5 text-[8px] font-semibold text-rose-700 leading-tight">
+                          Deneme {denemeGrades.map((g) => `${g}.`).join(" ")}
+                        </div>
+                      )}
+                    </th>
+                    {columns.map((col, i) => {
+                      if (col.kind === "club") {
+                        const entries =
+                          clubCellMap.get(
+                            `${col.id}|${period.dayOfWeek}|${period.slot.startTime}|${period.slot.endTime}`
+                          ) ?? []
+                        const primary = entries[0]
+                        return (
+                          <td
+                            key={`${col.key}|${period.key}`}
+                            className={`border-b border-slate-200 p-0.5 align-top ${
+                              i === 0 ? "" : "border-l-[3px] border-l-slate-300"
+                            }`}
+                          >
+                            {primary ? (
+                              <button
+                                type="button"
+                                onClick={() => setRosterId(primary.id)}
+                                className="w-full min-h-[2.75rem] rounded-md bg-amber-50 ring-1 ring-amber-200 hover:bg-amber-100 px-1 py-0.5 text-left transition text-amber-950"
+                                title={`${primary.club.name}${
+                                  primary.clubGroup ? ` · ${primary.clubGroup.name}` : ""
+                                }`}
+                              >
+                                <p className="text-[10px] font-semibold leading-tight line-clamp-2">
+                                  {primary.clubGroup?.name || primary.club.name}
+                                </p>
+                                {primary.club.instructor && (
+                                  <p className="text-[9px] opacity-80 truncate">
+                                    {shortTeacher(teacherName(primary.club.instructor))}
+                                  </p>
+                                )}
+                                {(() => {
+                                  const total = primary.clubGroup
+                                    ? primary.clubGroup._count.students
+                                    : primary.club._count.selections
+                                  const muaf = primary.exclusions?.length ?? 0
+                                  return (
+                                    <p className="text-[9px] text-amber-800/80">
+                                      {Math.max(0, total - muaf)} öğr.
+                                    </p>
+                                  )
+                                })()}
+                                {primary.room && (
+                                  <p className="text-[9px] text-gray-500 truncate">
+                                    {primary.room}
+                                  </p>
+                                )}
+                              </button>
+                            ) : (
+                              <div className="min-h-[2.75rem] rounded-md border border-dashed border-transparent" />
+                            )}
+                          </td>
+                        )
+                      }
+
                       const entries =
-                        clubCellMap.get(
+                        studyCellMap.get(
                           `${col.id}|${period.dayOfWeek}|${period.slot.startTime}|${period.slot.endTime}`
                         ) ?? []
                       const primary = entries[0]
@@ -519,91 +564,45 @@ export function ClubStudyWideScheduleBoard({
                           }`}
                         >
                           {primary ? (
-                            <button
-                              type="button"
-                              onClick={() => setRosterId(primary.id)}
-                              className="w-full min-h-[2.75rem] rounded-md bg-amber-50 ring-1 ring-amber-200 hover:bg-amber-100 px-1 py-0.5 text-left transition text-amber-950"
-                              title={`${primary.club.name}${
-                                primary.clubGroup ? ` · ${primary.clubGroup.name}` : ""
+                            <div
+                              className="w-full min-h-[2.75rem] rounded-md bg-violet-50 ring-1 ring-violet-200 px-1 py-0.5 text-left text-violet-950"
+                              title={`${primary.groupName}${
+                                primary.topic ? ` · ${primary.topic}` : ""
                               }`}
                             >
                               <p className="text-[10px] font-semibold leading-tight line-clamp-2">
-                                {primary.clubGroup?.name || primary.club.name}
+                                {primary.groupName}
                               </p>
-                              {primary.club.instructor && (
+                              {primary.teacherLabel && (
                                 <p className="text-[9px] opacity-80 truncate">
-                                  {shortTeacher(teacherName(primary.club.instructor))}
+                                  {shortTeacher(primary.teacherLabel)}
                                 </p>
                               )}
-                              {(() => {
-                                const total = primary.clubGroup
-                                  ? primary.clubGroup._count.students
-                                  : primary.club._count.selections
-                                const muaf = primary.exclusions?.length ?? 0
-                                return (
-                                  <p className="text-[9px] text-amber-800/80">
-                                    {Math.max(0, total - muaf)} öğr.
-                                  </p>
-                                )
-                              })()}
+                              {primary.topic && (
+                                <p className="text-[9px] text-violet-800/80 truncate">
+                                  {primary.topic}
+                                </p>
+                              )}
                               {primary.room && (
                                 <p className="text-[9px] text-gray-500 truncate">{primary.room}</p>
                               )}
-                            </button>
+                            </div>
                           ) : (
                             <div className="min-h-[2.75rem] rounded-md border border-dashed border-transparent" />
                           )}
                         </td>
                       )
-                    }
+                    })}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-                    const entries =
-                      studyCellMap.get(
-                        `${col.id}|${period.dayOfWeek}|${period.slot.startTime}|${period.slot.endTime}`
-                      ) ?? []
-                    const primary = entries[0]
-                    return (
-                      <td
-                        key={`${col.key}|${period.key}`}
-                        className={`border-b border-slate-200 p-0.5 align-top ${
-                          i === 0 ? "" : "border-l-[3px] border-l-slate-300"
-                        }`}
-                      >
-                        {primary ? (
-                          <div
-                            className="w-full min-h-[2.75rem] rounded-md bg-violet-50 ring-1 ring-violet-200 px-1 py-0.5 text-left text-violet-950"
-                            title={`${primary.groupName}${
-                              primary.topic ? ` · ${primary.topic}` : ""
-                            }`}
-                          >
-                            <p className="text-[10px] font-semibold leading-tight line-clamp-2">
-                              {primary.groupName}
-                            </p>
-                            {primary.teacherLabel && (
-                              <p className="text-[9px] opacity-80 truncate">
-                                {shortTeacher(primary.teacherLabel)}
-                              </p>
-                            )}
-                            {primary.topic && (
-                              <p className="text-[9px] text-violet-800/80 truncate">
-                                {primary.topic}
-                              </p>
-                            )}
-                            {primary.room && (
-                              <p className="text-[9px] text-gray-500 truncate">{primary.room}</p>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="min-h-[2.75rem] rounded-md border border-dashed border-transparent" />
-                        )}
-                      </td>
-                    )
-                  })}
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+      <div className="shrink-0 border-t border-slate-200 pt-3">
+        <StudentEtutMatrixBoard kindFilter={kindFilter} bandHint={bandHint} />
       </div>
 
       <ClubScheduleRosterDialog

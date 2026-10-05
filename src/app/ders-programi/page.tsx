@@ -35,6 +35,7 @@ import { GradeEtutExamsDialog } from "@/components/schedules/grade-etut-exams-di
 import { TeacherScheduleGrid } from "@/components/schedules/teacher-schedule-grid"
 import { SchoolWideScheduleBoard } from "@/components/schedules/school-wide-schedule-board"
 import { ClubStudyWideScheduleBoard } from "@/components/schedules/club-study-wide-schedule-board"
+import { TeachersWideScheduleBoard } from "@/components/schedules/teachers-wide-schedule-board"
 import { getAuthHeaders } from "@/components/hr/hr-utils"
 import {
   DEFAULT_LISE_WEEKDAY_SLOTS,
@@ -100,13 +101,18 @@ export default function DersProgramiPage() {
   const [hoursOpen, setHoursOpen] = useState(false)
   const [coursesOpen, setCoursesOpen] = useState(false)
   const [denemeOpen, setDenemeOpen] = useState(false)
-  const [fullscreenKind, setFullscreenKind] = useState<"none" | "classes" | "activities">(
-    "none"
-  )
+  const [fullscreenKind, setFullscreenKind] = useState<
+    "none" | "classes" | "activities" | "teachers"
+  >("none")
   const [activitiesKindFilter, setActivitiesKindFilter] = useState<"all" | "club" | "study">(
     "all"
   )
   const [activitiesOnlyScheduled, setActivitiesOnlyScheduled] = useState(true)
+  const [teachersKindFilter, setTeachersKindFilter] = useState<
+    "all" | "class" | "study" | "club"
+  >("all")
+  const [teachersOnlyScheduled, setTeachersOnlyScheduled] = useState(true)
+  const [teachersSearch, setTeachersSearch] = useState("")
   const [conflictsOpen, setConflictsOpen] = useState(false)
   const [clubSchedulesRefreshKey, setClubSchedulesRefreshKey] = useState(0)
   const [studySchedulesRefreshKey, setStudySchedulesRefreshKey] = useState(0)
@@ -863,6 +869,15 @@ export default function DersProgramiPage() {
             <Button
               size="sm"
               variant="outline"
+              className="border-indigo-300 text-indigo-900 hover:bg-indigo-50"
+              onClick={() => setFullscreenKind("teachers")}
+            >
+              <Maximize2 className="h-4 w-4 mr-1" />
+              Öğretmenler
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
               className="border-violet-300 text-violet-900 hover:bg-violet-50"
               onClick={() => setFullscreenKind("activities")}
             >
@@ -929,6 +944,71 @@ export default function DersProgramiPage() {
               ortaokulSlots={slotMap.ortaokul}
               liseSlots={slotMap.lise}
               gradeEtutExams={gradeEtutExams}
+            />
+          </div>
+        </div>
+      )}
+
+      {fullscreenKind === "teachers" && (
+        <div className="fixed inset-0 z-[60] bg-slate-100 flex flex-col">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-3 border-b bg-white shrink-0">
+            <div className="min-w-0">
+              <p className="font-semibold text-gray-900 truncate">
+                Tüm öğretmen programları
+              </p>
+              <p className="text-xs text-gray-500">
+                Ders + ÖÇG + kulüp · Esc veya Küçült ile çıkın
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                value={teachersSearch}
+                onChange={(e) => setTeachersSearch(e.target.value)}
+                placeholder="Öğretmen / branş ara"
+                className="h-8 w-40 sm:w-52 text-sm"
+              />
+              {(
+                [
+                  { id: "all" as const, label: "Tümü" },
+                  { id: "class" as const, label: "Ders" },
+                  { id: "club" as const, label: "Kulüp" },
+                  { id: "study" as const, label: "ÖÇG" },
+                ] as const
+              ).map((opt) => (
+                <Button
+                  key={opt.id}
+                  size="sm"
+                  variant={teachersKindFilter === opt.id ? "default" : "outline"}
+                  onClick={() => setTeachersKindFilter(opt.id)}
+                >
+                  {opt.label}
+                </Button>
+              ))}
+              <Button
+                size="sm"
+                variant={teachersOnlyScheduled ? "default" : "outline"}
+                onClick={() => setTeachersOnlyScheduled((v) => !v)}
+              >
+                Programı olanlar
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setFullscreenKind("none")}
+                title="Tam ekrandan çık"
+              >
+                <Minimize2 className="h-4 w-4 mr-2" />
+                Küçült
+              </Button>
+            </div>
+          </div>
+          <div className="flex-1 min-h-0 overflow-hidden p-3 sm:p-4">
+            <TeachersWideScheduleBoard
+              ortaokulSlots={slotMap.ortaokul}
+              liseSlots={slotMap.lise}
+              onlyScheduled={teachersOnlyScheduled}
+              kindFilter={teachersKindFilter}
+              search={teachersSearch}
             />
           </div>
         </div>
