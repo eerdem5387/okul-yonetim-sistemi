@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { CalendarOff, Loader2, UserX, X } from "lucide-react"
+import { CalendarOff, Download, Loader2, UserX, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -122,6 +122,7 @@ export function StudentEtutMatrixBoard({
   const [conflictTarget, setConflictTarget] = useState<ConflictTarget | null>(null)
   const [busy, setBusy] = useState(false)
   const [busyKey, setBusyKey] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
 
   const load = useCallback(async (opts?: { silent?: boolean }) => {
     if (!opts?.silent) {
@@ -309,6 +310,66 @@ export function StudentEtutMatrixBoard({
     })
   }
 
+  const exportExcel = async () => {
+    setExporting(true)
+    try {
+      const XLSX = await import("xlsx")
+      const wb = XLSX.utils.book_new()
+      let anyRows = false
+
+      for (const grade of visibleGrades) {
+        const rows = (byGrade[String(grade)] ?? []).filter(filterStudent)
+        const headers = ["Öğrenci", ...weekdays.map((d) => d.label)]
+        const aoa: string[][] = [headers]
+
+        for (const s of rows) {
+          const line = [`${s.lastName} ${s.firstName}`.trim()]
+          for (const d of weekdays) {
+            const cell = s.days[String(d.dayOfWeek)]
+            const items = filterItems(cell?.items ?? [])
+            line.push(items.map((it) => shortLabel(it.label)).join("\n"))
+          }
+          aoa.push(line)
+        }
+
+        if (rows.length > 0) anyRows = true
+        const ws = XLSX.utils.aoa_to_sheet(aoa)
+        ws["!cols"] = [
+          { wch: 22 },
+          ...weekdays.map(() => ({ wch: 28 })),
+        ]
+        const sheetName = `${grade}. Sınıf`.slice(0, 31)
+        XLSX.utils.book_append_sheet(wb, ws, sheetName)
+      }
+
+      if (!anyRows) {
+        alert("İndirilecek öğrenci yok")
+        return
+      }
+
+      const stamp = new Date().toISOString().slice(0, 10)
+      const gradePart =
+        activeGrade === "all" ? "tum-siniflar" : `${activeGrade}-sinif`
+      const filename = `ogrenci-etut-matrisi-${gradePart}-${stamp}.xlsx`
+      const wbout = XLSX.write(wb, { type: "array", bookType: "xlsx" }) as Uint8Array
+      const blob = new Blob([wbout], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch {
+      alert("Excel indirilemedi")
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const resolveConflict = async (
     studentId: string,
     assignmentKey: string,
@@ -389,6 +450,20 @@ export function StudentEtutMatrixBoard({
             onClick={() => setOnlyProblems((v) => !v)}
           >
             Sorunlular
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            disabled={exporting}
+            onClick={() => void exportExcel()}
+          >
+            {exporting ? (
+              <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Download className="mr-1 h-3.5 w-3.5" />
+            )}
+            Excel İndir
           </Button>
           <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void load()}>
             Yenile
