@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   CalendarPlus,
   Combine,
+  Copy,
   Loader2,
   Pencil,
   Plus,
@@ -151,6 +152,7 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
   const [form, setForm] = useState<GroupForm>(emptyForm())
   const [studentSearch, setStudentSearch] = useState("")
   const [showSelectedOnly, setShowSelectedOnly] = useState(false)
+  const [copiedStudents, setCopiedStudents] = useState(false)
   const [error, setError] = useState("")
   const [rosterId, setRosterId] = useState<string | null>(null)
   const [splitOpen, setSplitOpen] = useState(false)
@@ -295,6 +297,7 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
     setForm(emptyForm())
     setStudentSearch("")
     setShowSelectedOnly(false)
+    setCopiedStudents(false)
     setModalOpen(true)
   }
 
@@ -308,6 +311,7 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
     })
     setStudentSearch("")
     setShowSelectedOnly(false)
+    setCopiedStudents(false)
     setModalOpen(true)
   }
 
@@ -537,6 +541,23 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
 
   const clearStudents = () => {
     setForm((prev) => ({ ...prev, studentIds: [] }))
+  }
+
+  const copySelectedStudents = async () => {
+    const selected = poolStudents
+      .filter((s) => form.studentIds.includes(s.id))
+      .sort((a, b) =>
+        `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`, "tr")
+      )
+    if (selected.length === 0) return
+    const text = selected.map((s) => `${s.firstName} ${s.lastName}`.trim()).join("\n")
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedStudents(true)
+      window.setTimeout(() => setCopiedStudents(false), 1500)
+    } catch {
+      alert("Kopyalanamadı. Tarayıcı panoya erişim izni vermedi.")
+    }
   }
 
   const findBusy = (day: number, start: string, end: string) =>
@@ -1034,6 +1055,16 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
                     onClick={selectAllVisible}
                   >
                     Görünenleri seç
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={form.studentIds.length === 0}
+                    onClick={() => void copySelectedStudents()}
+                  >
+                    <Copy className="mr-1 h-3.5 w-3.5" />
+                    {copiedStudents ? "Kopyalandı" : "Kopyala"}
                   </Button>
                   <Button
                     type="button"
