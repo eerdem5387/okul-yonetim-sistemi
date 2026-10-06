@@ -318,33 +318,58 @@ export function StudentEtutMatrixBoard({
   const exportExcel = async () => {
     setExporting(true)
     try {
+      const exportGrades =
+        bandHint === "lise"
+          ? [9, 10, 11, 12]
+          : bandHint === "ortaokul"
+            ? [5, 6, 7, 8]
+            : [5, 6, 7, 8, 9, 10, 11, 12]
+      const band =
+        bandHint === "ortaokul" || bandHint === "lise" ? bandHint : "all"
+
+      // Aktif sınıf filtresinden bağımsız tüm tabloyu çek
+      const res = await fetch(`/api/schedules/student-etut-matrix?band=${band}`, {
+        cache: "no-store",
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || "Matris alınamadı")
+
+      const exportWeekdays: Array<{ dayOfWeek: number; label: string }> =
+        Array.isArray(data.weekdays) && data.weekdays.length > 0
+          ? data.weekdays
+          : weekdays
+      const exportByGrade: Record<string, StudentRow[]> =
+        data.byGrade && typeof data.byGrade === "object" ? data.byGrade : {}
+
       const XLSX = await import("xlsx")
       const wb = XLSX.utils.book_new()
+      const headers = ["Öğrenci", ...exportWeekdays.map((d) => d.label)]
+      const combined: string[][] = [["Sınıf", ...headers]]
       let anyRows = false
 
-      for (const grade of visibleGrades) {
-        const rows = (byGrade[String(grade)] ?? []).filter(filterStudent)
-        const headers = ["Öğrenci", ...weekdays.map((d) => d.label)]
+      for (const grade of exportGrades) {
+        const rows = (exportByGrade[String(grade)] ?? []).filter(filterStudent)
         const aoa: string[][] = [headers]
 
         for (const s of rows) {
-          const line = [`${s.firstName} ${s.lastName}`.trim()]
-          for (const d of weekdays) {
+          const name = `${s.firstName} ${s.lastName}`.trim()
+          const line = [name]
+          for (const d of exportWeekdays) {
             const cell = s.days[String(d.dayOfWeek)]
             const items = filterItems(cell?.items ?? [])
             line.push(items.map((it) => shortLabel(it.label)).join("\n"))
           }
           aoa.push(line)
+          combined.push([`${grade}. Sınıf`, name, ...line.slice(1)])
         }
 
         if (rows.length > 0) anyRows = true
         const ws = XLSX.utils.aoa_to_sheet(aoa)
         ws["!cols"] = [
           { wch: 22 },
-          ...weekdays.map(() => ({ wch: 28 })),
+          ...exportWeekdays.map(() => ({ wch: 28 })),
         ]
-        const sheetName = `${grade}. Sınıf`.slice(0, 31)
-        XLSX.utils.book_append_sheet(wb, ws, sheetName)
+        XLSX.utils.book_append_sheet(wb, ws, `${grade}. Sınıf`.slice(0, 31))
       }
 
       if (!anyRows) {
@@ -352,10 +377,19 @@ export function StudentEtutMatrixBoard({
         return
       }
 
+      const wsAll = XLSX.utils.aoa_to_sheet(combined)
+      wsAll["!cols"] = [
+        { wch: 10 },
+        { wch: 22 },
+        ...exportWeekdays.map(() => ({ wch: 28 })),
+      ]
+      // Excel ilk sayfayı açar — tüm sınıflar önde olsun
+      XLSX.utils.book_append_sheet(wb, wsAll, "Tüm sınıflar")
+      const order = ["Tüm sınıflar", ...exportGrades.map((g) => `${g}. Sınıf`)]
+      wb.SheetNames = order.filter((n) => wb.Sheets[n])
+
       const stamp = new Date().toISOString().slice(0, 10)
-      const gradePart =
-        activeGrade === "all" ? "tum-siniflar" : `${activeGrade}-sinif`
-      const filename = `ogrenci-etut-matrisi-${gradePart}-${stamp}.xlsx`
+      const filename = `ogrenci-etut-matrisi-tum-siniflar-${stamp}.xlsx`
       const wbout = XLSX.write(wb, { type: "array", bookType: "xlsx" })
       const blob = new Blob([wbout as BlobPart], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -368,8 +402,8 @@ export function StudentEtutMatrixBoard({
       a.click()
       a.remove()
       URL.revokeObjectURL(url)
-    } catch {
-      alert("Excel indirilemedi")
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Excel indirilemedi")
     } finally {
       setExporting(false)
     }
