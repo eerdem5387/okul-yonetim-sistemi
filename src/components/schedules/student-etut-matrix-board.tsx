@@ -17,7 +17,7 @@ type KindFilter = "all" | "club" | "study"
 
 type DayItem = {
   key: string
-  kind: "CLUB" | "STUDY_GROUP"
+  kind: "CLUB" | "STUDY_GROUP" | "GRADE_EXAM"
   label: string
   startTime: string
   endTime: string
@@ -183,8 +183,13 @@ export function StudentEtutMatrixBoard({
 
   const filterItems = useCallback(
     (items: DayItem[]) => {
-      if (kindFilter === "club") return items.filter((i) => i.kind === "CLUB")
-      if (kindFilter === "study") return items.filter((i) => i.kind === "STUDY_GROUP")
+      // Sınıf denemesi her görünümde kalsın (boş gün yanlışını önler)
+      if (kindFilter === "club") {
+        return items.filter((i) => i.kind === "CLUB" || i.kind === "GRADE_EXAM")
+      }
+      if (kindFilter === "study") {
+        return items.filter((i) => i.kind === "STUDY_GROUP" || i.kind === "GRADE_EXAM")
+      }
       return items
     },
     [kindFilter]
@@ -580,9 +585,11 @@ export function StudentEtutMatrixBoard({
                                               className={`text-[11px] leading-snug ${
                                                 conflict
                                                   ? "font-semibold text-rose-800"
-                                                  : it.kind === "STUDY_GROUP"
-                                                    ? "text-violet-900"
-                                                    : "text-amber-950"
+                                                  : it.kind === "GRADE_EXAM"
+                                                    ? "font-semibold text-sky-900"
+                                                    : it.kind === "STUDY_GROUP"
+                                                      ? "text-violet-900"
+                                                      : "text-amber-950"
                                               }`}
                                             >
                                               {shortLabel(it.label)}
@@ -641,6 +648,7 @@ export function StudentEtutMatrixBoard({
               const excludeBusy = busyKey === `exclude_day:${it.key}`
               const leaveBusy = busyKey === `leave_group:${it.key}`
               const canExcludeDay = it.kind === "CLUB"
+              const isGradeExam = it.kind === "GRADE_EXAM"
               return (
                 <li
                   key={it.key}
@@ -650,18 +658,30 @@ export function StudentEtutMatrixBoard({
                     <p className="text-sm font-semibold text-slate-900">
                       <span
                         className={
-                          it.kind === "STUDY_GROUP" ? "text-violet-700" : "text-amber-800"
+                          isGradeExam
+                            ? "text-sky-700"
+                            : it.kind === "STUDY_GROUP"
+                              ? "text-violet-700"
+                              : "text-amber-800"
                         }
                       >
-                        {it.kind === "STUDY_GROUP" ? "ÖÇG" : "Kulüp"}
+                        {isGradeExam
+                          ? "Deneme"
+                          : it.kind === "STUDY_GROUP"
+                            ? "ÖÇG"
+                            : "Kulüp"}
                       </span>
                       {" · "}
                       {it.label}
                     </p>
                     <p className="text-[11px] text-slate-600">
                       {it.startTime}–{it.endTime}
+                      {isGradeExam
+                        ? " · sınıf düzeyi (Etüt denemesinden yönetilir)"
+                        : ""}
                     </p>
                   </div>
+                  {isGradeExam ? null : (
                   <div className="flex flex-wrap gap-1.5 shrink-0">
                     {canExcludeDay ? (
                       <Button
@@ -730,6 +750,7 @@ export function StudentEtutMatrixBoard({
                       )}
                     </Button>
                   </div>
+                  )}
                 </li>
               )
             })}
@@ -779,10 +800,18 @@ export function StudentEtutMatrixBoard({
                         <li key={it.key} className="text-xs text-slate-800">
                           <span
                             className={
-                              it.kind === "STUDY_GROUP" ? "text-violet-700" : "text-amber-800"
+                              it.kind === "GRADE_EXAM"
+                                ? "text-sky-700"
+                                : it.kind === "STUDY_GROUP"
+                                  ? "text-violet-700"
+                                  : "text-amber-800"
                             }
                           >
-                            {it.kind === "STUDY_GROUP" ? "ÖÇG" : "Kulüp"}
+                            {it.kind === "GRADE_EXAM"
+                              ? "Deneme"
+                              : it.kind === "STUDY_GROUP"
+                                ? "ÖÇG"
+                                : "Kulüp"}
                           </span>
                           {" · "}
                           {it.label}

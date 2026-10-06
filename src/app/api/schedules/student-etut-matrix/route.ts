@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { loadEtutSlots } from "@/lib/schedules/club-schedule"
+import { listGradeEtutExams } from "@/lib/schedules/grade-etut-exams"
 import { DAY_LABELS, hasTimeConflict } from "@/lib/schedules/time-conflict"
-import { normalizeTime } from "@/lib/schedules/lesson-slots"
+import { DENEME_SINAVI_SUBJECT, normalizeTime } from "@/lib/schedules/lesson-slots"
 import {
   gradeLevelWhereClause,
   parseStudentGradeLevel,
@@ -12,7 +13,7 @@ export const dynamic = "force-dynamic"
 
 type DayItem = {
   key: string
-  kind: "CLUB" | "STUDY_GROUP"
+  kind: "CLUB" | "STUDY_GROUP" | "GRADE_EXAM"
   label: string
   startTime: string
   endTime: string
@@ -60,7 +61,7 @@ export async function GET(request: NextRequest) {
             }),
           }
 
-    const [students, etutSlotsRaw, clubMemberships, studyMemberships, exclusions, clubGroups, studyGroups] =
+    const [students, etutSlotsRaw, clubMemberships, studyMemberships, exclusions, clubGroups, studyGroups, gradeEtutExams] =
       await Promise.all([
         prisma.student.findMany({
           where: studentWhere,
@@ -171,6 +172,7 @@ export async function GET(request: NextRequest) {
           },
           orderBy: { name: "asc" },
         }),
+        listGradeEtutExams(),
       ])
 
     // Benzersiz etüt slotları (saat)
@@ -239,6 +241,34 @@ export async function GET(request: NextRequest) {
           clubGroupId: null,
           studyGroupId: g.id,
           scheduleOrSessionId: sess.id,
+        })
+      }
+    }
+
+    // Sınıf düzeyi deneme — o seviyedeki tüm öğrencilere uygulanır
+    const examsByGrade = new Map<number, typeof gradeEtutExams>()
+    for (const exam of gradeEtutExams) {
+      if (!grades.includes(exam.grade)) continue
+      const list = examsByGrade.get(exam.grade) ?? []
+      list.push(exam)
+      examsByGrade.set(exam.grade, list)
+    }
+
+    for (const s of students) {
+      const gradeLevel = parseStudentGradeLevel(s.grade)
+      if (gradeLevel == null) continue
+      const exams = examsByGrade.get(gradeLevel)
+      if (!exams?.length) continue
+      for (const exam of exams) {
+        ensureDay(s.id, exam.dayOfWeek).push({
+          key: `GRADE_EXAM:${exam.id}`,
+          kind: "GRADE_EXAM",
+          label: exam.title?.trim() || DENEME_SINAVI_SUBJECT,
+          startTime: normalizeTime(exam.startTime),
+          endTime: normalizeTime(exam.endTime),
+          clubGroupId: null,
+          studyGroupId: null,
+          scheduleOrSessionId: exam.id,
         })
       }
     }
