@@ -323,7 +323,7 @@ export function StudentEtutMatrixBoard({
         const aoa: string[][] = [headers]
 
         for (const s of rows) {
-          const line = [`${s.lastName} ${s.firstName}`.trim()]
+          const line = [`${s.firstName} ${s.lastName}`.trim()]
           for (const d of weekdays) {
             const cell = s.days[String(d.dayOfWeek)]
             const items = filterItems(cell?.items ?? [])
@@ -351,8 +351,8 @@ export function StudentEtutMatrixBoard({
       const gradePart =
         activeGrade === "all" ? "tum-siniflar" : `${activeGrade}-sinif`
       const filename = `ogrenci-etut-matrisi-${gradePart}-${stamp}.xlsx`
-      const wbout = XLSX.write(wb, { type: "array", bookType: "xlsx" }) as Uint8Array
-      const blob = new Blob([wbout], {
+      const wbout = XLSX.write(wb, { type: "array", bookType: "xlsx" })
+      const blob = new Blob([wbout as BlobPart], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       })
       const url = URL.createObjectURL(blob)
@@ -527,7 +527,7 @@ export function StudentEtutMatrixBoard({
                               <td
                                 className={`sticky left-0 z-[1] border border-slate-800 px-3 py-1.5 text-[12px] font-medium whitespace-nowrap ${nameBg}`}
                               >
-                                {s.lastName} {s.firstName}
+                                {s.firstName} {s.lastName}
                               </td>
                               {weekdays.map((d) => {
                                 const cell = s.days[String(d.dayOfWeek)]
@@ -617,8 +617,8 @@ export function StudentEtutMatrixBoard({
           <div className="sticky top-0 z-[1] flex items-start justify-between gap-3 border-b border-rose-200 bg-rose-100/90 px-4 py-2.5">
             <div className="min-w-0">
               <p className="text-sm font-semibold text-rose-950">
-                Çakışma · {conflictTarget.student.lastName}{" "}
-                {conflictTarget.student.firstName}
+                Çakışma · {conflictTarget.student.firstName}{" "}
+                {conflictTarget.student.lastName}
               </p>
               <p className="text-[11px] text-rose-800/90">
                 {conflictTarget.dayLabel} · {conflictTarget.student.grade} · alttan çöz, tablodan
@@ -752,7 +752,7 @@ export function StudentEtutMatrixBoard({
             <DialogTitle>Etüt ataması</DialogTitle>
             <DialogDescription>
               {assignTarget
-                ? `${assignTarget.student.lastName} ${assignTarget.student.firstName} · ${assignTarget.dayLabel}`
+                ? `${assignTarget.student.firstName} ${assignTarget.student.lastName} · ${assignTarget.dayLabel}`
                 : ""}
               {assignTarget && assignTarget.freeSlots.length > 0
                 ? ` · Boş: ${assignTarget.freeSlots.map((s) => s.label).join(", ")}`
