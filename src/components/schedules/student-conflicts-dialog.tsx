@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   AlertTriangle,
-  CalendarOff,
   CheckCircle2,
   Download,
   Loader2,
@@ -148,7 +147,7 @@ export function StudentConflictsDialog({
   const resolveAssignment = async (
     studentId: string,
     assignmentKey: string,
-    action: "exclude_day" | "leave_group"
+    action: "leave_group" = "leave_group"
   ) => {
     const busy = `${action}:${studentId}:${assignmentKey}`
     setBusyKey(busy)
@@ -245,10 +244,9 @@ export function StudentConflictsDialog({
             Çakışan öğrenciler
           </DialogTitle>
           <DialogDescription className="text-sm leading-relaxed">
-            Aynı saatte iki programa düşen öğrenciler. Kulüpte{" "}
-            <strong>Bu günden çıkar</strong> yalnızca çakışan günü kaldırır;
-            diğer günler ve grup üyeliği devam eder.{" "}
-            <strong>Tüm gruptan çıkar</strong> üyeliği tamamen siler.
+            Aynı saatte iki programa düşen öğrenciler. Çözüm: çakışan
+            kulüp/ÖÇG atamasından <strong>gruptan çıkar</strong> — üyelik silinir,
+            çakışma gerçekten kalkar.
           </DialogDescription>
         </DialogHeader>
 
@@ -408,8 +406,7 @@ export function StudentConflictsDialog({
                           Çakışan atamalar
                         </h3>
                         <p className="mt-1 text-[11px] leading-relaxed text-gray-500">
-                          Tercih: çakışan <em>günü</em> çıkarın. Diğer günler
-                          otomatik devam eder.
+                          Aynı günde tek yer kuralı: çakışan atamadan gruptan çıkarın.
                         </p>
 
                         {conflictCleared ? (
@@ -427,15 +424,10 @@ export function StudentConflictsDialog({
                               </p>
                               <ul className="space-y-2.5">
                                 {cluster.assignments.map((a) => {
-                                  const excludeBusy =
-                                    busyKey ===
-                                    `exclude_day:${s.studentId}:${a.key}`
                                   const leaveBusy =
                                     busyKey ===
                                     `leave_group:${s.studentId}:${a.key}`
                                   const hasOtherDays = a.otherDaysKeep.length > 0
-                                  const showDayExclude =
-                                    a.kind === "CLUB" && a.canExcludeDay
 
                                   return (
                                     <li
@@ -453,68 +445,20 @@ export function StudentConflictsDialog({
                                             : ""}
                                           {a.kind === "STUDY_GROUP" ? " · ÖÇG" : ""}
                                         </p>
-                                        {showDayExclude && hasOtherDays ? (
-                                          <p className="mt-1.5 rounded-md bg-white/80 px-2 py-1 text-[11px] leading-snug text-slate-700 ring-1 ring-slate-200/80">
-                                            <span className="font-medium text-slate-900">
-                                              Bu günden çıkarılırsa devam eder:{" "}
-                                            </span>
-                                            {a.otherDaysKeep.join(" · ")}
-                                          </p>
-                                        ) : null}
-                                        {showDayExclude && !hasOtherDays ? (
+                                        {hasOtherDays ? (
                                           <p className="mt-1.5 text-[11px] text-amber-800">
-                                            Bu kulübün tek program günü — gün
-                                            çıkarmak fiilen kulüpten ayırır; gerekirse
-                                            tüm gruptan çıkarın.
+                                            Bu gruptan çıkınca diğer günler de kalkar:{" "}
+                                            {a.otherDaysKeep.join(" · ")}
                                           </p>
                                         ) : null}
                                       </div>
 
                                       <div className="mt-2.5 flex flex-wrap gap-1.5">
-                                        {showDayExclude ? (
-                                          <Button
-                                            type="button"
-                                            size="sm"
-                                            className="h-8 bg-amber-700 hover:bg-amber-800"
-                                            disabled={busyKey !== null}
-                                            onClick={() => {
-                                              const keepHint = hasOtherDays
-                                                ? `\n\nGrup üyeliği kalır.\nDevam eden günler: ${a.otherDaysKeep.join(", ")}`
-                                                : "\n\nBu kulübün başka aktif günü yok; öğrenci bu saate gelmez ama kayıt grupta kalabilir."
-                                              if (
-                                                !confirm(
-                                                  `${s.firstName} ${s.lastName} — yalnızca ${a.dayLabel} ${a.startTime} saatinden çıkarılsın mı?\n\n${a.label}${keepHint}`
-                                                )
-                                              ) {
-                                                return
-                                              }
-                                              void resolveAssignment(
-                                                s.studentId,
-                                                a.key,
-                                                "exclude_day"
-                                              )
-                                            }}
-                                          >
-                                            {excludeBusy ? (
-                                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                            ) : (
-                                              <>
-                                                <CalendarOff className="mr-1 h-3.5 w-3.5" />
-                                                Bu günden çıkar
-                                              </>
-                                            )}
-                                          </Button>
-                                        ) : null}
-
                                         <Button
                                           type="button"
                                           size="sm"
                                           variant="outline"
-                                          className={`h-8 ${
-                                            showDayExclude
-                                              ? "border-rose-300 text-rose-800 hover:bg-rose-100"
-                                              : "border-rose-300 text-rose-700 hover:bg-rose-100"
-                                          }`}
+                                          className="h-8 border-rose-300 text-rose-800 hover:bg-rose-100"
                                           disabled={busyKey !== null}
                                           onClick={() => {
                                             const what =

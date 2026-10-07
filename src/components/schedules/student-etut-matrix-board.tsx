@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { CalendarOff, Download, Loader2, UserX, X } from "lucide-react"
+import { Download, Loader2, UserX, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -412,7 +412,7 @@ export function StudentEtutMatrixBoard({
   const resolveConflict = async (
     studentId: string,
     assignmentKey: string,
-    action: "exclude_day" | "leave_group"
+    action: "leave_group" = "leave_group"
   ) => {
     const key = `${action}:${assignmentKey}`
     setBusyKey(key)
@@ -679,9 +679,7 @@ export function StudentEtutMatrixBoard({
           </div>
           <ul className="divide-y divide-rose-200/80 px-2 py-1">
             {conflictTarget.items.map((it) => {
-              const excludeBusy = busyKey === `exclude_day:${it.key}`
               const leaveBusy = busyKey === `leave_group:${it.key}`
-              const canExcludeDay = it.kind === "CLUB"
               const isGradeExam = it.kind === "GRADE_EXAM"
               return (
                 <li
@@ -717,38 +715,6 @@ export function StudentEtutMatrixBoard({
                   </div>
                   {isGradeExam ? null : (
                   <div className="flex flex-wrap gap-1.5 shrink-0">
-                    {canExcludeDay ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="h-8 border-amber-400 text-amber-950 hover:bg-amber-100"
-                        disabled={busyKey !== null}
-                        onClick={() => {
-                          if (
-                            !confirm(
-                              `${conflictTarget.student.firstName} ${conflictTarget.student.lastName} — yalnızca ${conflictTarget.dayLabel} ${it.startTime} saatinden çıkarılsın mı?\n\n${it.label}\n\nGrup üyeliği kalır.`
-                            )
-                          ) {
-                            return
-                          }
-                          void resolveConflict(
-                            conflictTarget.student.id,
-                            it.key,
-                            "exclude_day"
-                          )
-                        }}
-                      >
-                        {excludeBusy ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <>
-                            <CalendarOff className="mr-1 h-3.5 w-3.5" />
-                            Bu günden çıkar
-                          </>
-                        )}
-                      </Button>
-                    ) : null}
                     <Button
                       type="button"
                       size="sm"

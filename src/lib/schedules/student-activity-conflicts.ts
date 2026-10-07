@@ -612,7 +612,7 @@ export async function removeStudentFromAssignment(options: {
   }
 
   if (kind === "CLUB") {
-    const mode: RemoveAssignmentMode = options.mode ?? "exclude_day"
+    const mode: RemoveAssignmentMode = options.mode ?? "leave_group"
 
     if (mode === "exclude_day") {
       const result = await excludeStudentFromClubSchedule({

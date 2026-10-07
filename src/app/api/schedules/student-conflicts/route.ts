@@ -60,11 +60,11 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/schedules/student-conflicts
  *
- * action: "exclude_day" → { studentId, assignmentKey }  — yalnızca o kulüp saatinden muaf
- * action: "leave_group" → { studentId, assignmentKey }  — gruptan/seçimden tamamen çıkar
- * action: "remove"      → { studentId, assignmentKey, mode? }  — mode: exclude_day|leave_group
+ * action: "leave_group" | "remove" → { studentId, assignmentKey }  — gruptan/seçimden tamamen çıkar
  * action: "assign"      → { studentId, clubGroupId }
  * (eski) keep/remove → { studentId, keepKey, removeKeys }
+ *
+ * Not: exclude_day çakışma çözümünde kapalı (üyelik örtbasını önlemek için).
  */
 export async function POST(request: NextRequest) {
   try {
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Öğrenci bulunamadı" }, { status: 404 })
     }
 
-    const runRemove = async (mode: "exclude_day" | "leave_group") => {
+    const runRemove = async () => {
       const assignmentKey = String(body.assignmentKey ?? "").trim()
       if (!assignmentKey) {
         return NextResponse.json({ error: "assignmentKey zorunludur" }, { status: 400 })
@@ -92,31 +92,29 @@ export async function POST(request: NextRequest) {
       const result = await removeStudentFromAssignment({
         studentId,
         assignmentKey,
-        mode,
+        mode: "leave_group",
       })
       if (result.error) {
         return NextResponse.json({ error: result.error }, { status: 400 })
       }
-      return NextResponse.json({ success: true, message: result.removed, mode })
+      return NextResponse.json({
+        success: true,
+        message: result.removed,
+        mode: "leave_group",
+      })
     }
 
     if (action === "exclude_day") {
-      return runRemove("exclude_day")
+      return NextResponse.json(
+        {
+          error:
+            "Çakışma çözümünde 'bu günden çıkar' kapatıldı. Gruptan tamamen çıkarın.",
+        },
+        { status: 400 }
+      )
     }
-    if (action === "leave_group") {
-      return runRemove("leave_group")
-    }
-
-    if (action === "remove") {
-      const modeRaw = String(body.mode ?? "exclude_day").trim()
-      const mode =
-        modeRaw === "leave_group" ? ("leave_group" as const) : ("exclude_day" as const)
-      // ÖÇG için leave_group zorunlu (exclude anlamsız)
-      const assignmentKey = String(body.assignmentKey ?? "").trim()
-      const effectiveMode = assignmentKey.startsWith("STUDY_GROUP:")
-        ? ("leave_group" as const)
-        : mode
-      return runRemove(effectiveMode)
+    if (action === "leave_group" || action === "remove") {
+      return runRemove()
     }
 
     if (action === "assign") {
@@ -139,7 +137,7 @@ export async function POST(request: NextRequest) {
 
     if (!keepKey) {
       return NextResponse.json(
-        { error: "action (exclude_day|leave_group|remove|assign) veya keepKey zorunludur" },
+        { error: "action (leave_group|remove|assign) veya keepKey zorunludur" },
         { status: 400 }
       )
     }
