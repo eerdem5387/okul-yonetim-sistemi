@@ -40,6 +40,8 @@ interface AdayOgrenciTespiti {
 }
 
 const siniflar = [
+  "2. Sınıf",
+  "3. Sınıf",
   "4. Sınıf",
   "5. Sınıf",
   "6. Sınıf",
