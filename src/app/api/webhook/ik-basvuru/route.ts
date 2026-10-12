@@ -31,7 +31,7 @@ function isValidWorkHistory(entries: unknown): entries is WorkHistoryPayload[] {
 }
 
 function isValidClubs(clubs: unknown): clubs is string[] {
-  if (!Array.isArray(clubs) || clubs.length === 0) return false
+  if (!Array.isArray(clubs) || clubs.length < 2) return false
   return clubs.every((c) => typeof c === "string" && c.trim().length > 0)
 }
 

@@ -35,7 +35,7 @@ Güncelleme: `20261002150000_hr_application_work_history` (pedagojik yaklaşım/
 - `POST /api/webhook/ik-basvuru`
 - Header: `X-Webhook-Secret`, `X-Webhook-Source: ik-leventokullari`
 - Payload notları:
-  - `clubsAndActivities`: `string[]` (en az 1)
+  - `clubsAndActivities`: `string[]` (en az 2)
   - `workHistory`: `{ institutionName, phone, directorName }[]` (boş olabilir)
   - `pedagogicalApproach` / `references` artık gönderilmez
 
