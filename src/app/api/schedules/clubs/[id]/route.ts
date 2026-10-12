@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { assertClubSlotFree, assertEtutSlot } from "@/lib/schedules/club-schedule"
+import {
+  assertClubSlotFree,
+  assertEtutSlot,
+  resolveClubScheduleGradeLevels,
+} from "@/lib/schedules/club-schedule"
+import { assertNoGradeEtutExamConflict } from "@/lib/schedules/grade-etut-exams"
 import { isStaffEligibleAsScheduleInstructor } from "@/lib/staff-counseling"
 
 export const dynamic = "force-dynamic"
 
 const scheduleInclude = {
+  instructor: {
+    select: { id: true, firstName: true, lastName: true, subject: true },
+  },
   club: {
     select: {
       id: true,
@@ -96,6 +104,17 @@ export async function PUT(
       return NextResponse.json({ error: etutErr }, { status: 400 })
     }
 
+    const gradeLevels = await resolveClubScheduleGradeLevels({ clubId, clubGroupId })
+    const denemeErr = await assertNoGradeEtutExamConflict({
+      gradeLevels,
+      dayOfWeek,
+      startTime,
+      endTime,
+    })
+    if (denemeErr) {
+      return NextResponse.json({ error: denemeErr }, { status: 400 })
+    }
+
     const freeErr = await assertClubSlotFree({
       clubId,
       clubGroupId,
@@ -103,14 +122,16 @@ export async function PUT(
       startTime,
       endTime,
       excludeId: id,
-      instructorIdOverride: instructorId,
+      instructorIdOverride: hasInstructor
+        ? instructorId
+        : existing.instructorId ?? undefined,
     })
     if (freeErr) {
       return NextResponse.json({ error: freeErr }, { status: 400 })
     }
 
     const row = await prisma.$transaction(async (tx) => {
-      if (hasInstructor) {
+      if (hasInstructor && !clubGroupId) {
         await tx.club.update({
           where: { id: clubId },
           data: { instructorId },
@@ -118,7 +139,16 @@ export async function PUT(
       }
       return tx.clubSchedule.update({
         where: { id },
-        data: { clubId, clubGroupId, dayOfWeek, startTime, endTime, room, notes },
+        data: {
+          clubId,
+          clubGroupId,
+          dayOfWeek,
+          startTime,
+          endTime,
+          room,
+          notes,
+          ...(hasInstructor ? { instructorId } : {}),
+        },
         include: scheduleInclude,
       })
     })

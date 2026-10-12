@@ -61,6 +61,8 @@ type ClubGroupSchedule = {
   startTime: string
   endTime: string
   room: string | null
+  instructorId?: string | null
+  instructor?: Teacher | null
   exclusions?: Array<{
     studentId: string
     student: { firstName: string; lastName: string }
@@ -81,6 +83,33 @@ type ClubGroup = {
   }
   students: Array<{ student: Student }>
   schedules: ClubGroupSchedule[]
+}
+
+function groupInstructorLabel(g: ClubGroup): string {
+  const fromSchedules = g.schedules
+    .map((s) => s.instructor)
+    .filter((t): t is Teacher => !!t)
+  const unique = new Map(fromSchedules.map((t) => [t.id, t]))
+  if (unique.size > 0) {
+    return [...unique.values()]
+      .map((t) => `${t.firstName} ${t.lastName}`.trim())
+      .join(" · ")
+  }
+  if (g.club.instructor) {
+    return `${g.club.instructor.firstName} ${g.club.instructor.lastName}`.trim()
+  }
+  return ""
+}
+
+function preferredGroupTeacherId(g: ClubGroup): string {
+  const fromSchedule = g.schedules.find((s) => s.instructorId || s.instructor?.id)
+  return (
+    fromSchedule?.instructorId ||
+    fromSchedule?.instructor?.id ||
+    g.club.instructorId ||
+    g.club.instructor?.id ||
+    ""
+  )
 }
 
 type GroupForm = {
@@ -242,7 +271,9 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
         }
         for (const c of Array.isArray(clubData.schedules) ? clubData.schedules : []) {
           if (excludeScheduleId && c.id === excludeScheduleId) continue
-          if (c.club?.instructorId !== teacherId && c.club?.instructor?.id !== teacherId) continue
+          const rowInstructor =
+            c.instructorId || c.instructor?.id || c.club?.instructorId || c.club?.instructor?.id
+          if (rowInstructor !== teacherId) continue
           blocks.push({
             dayOfWeek: c.dayOfWeek,
             startTime: c.startTime,
@@ -320,7 +351,7 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
     setEditingSchedule(null)
     setSessionForm({
       ...emptySessionForm(),
-      teacherId: group.club.instructorId || group.club.instructor?.id || "",
+      teacherId: preferredGroupTeacherId(group),
     })
     setSelectedSlots([])
     setTeacherBusy([])
@@ -514,7 +545,10 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
     setEditingSchedule(schedule)
     setSelectedSlots([])
     setSessionForm({
-      teacherId: group.club.instructorId || group.club.instructor?.id || "",
+      teacherId:
+        schedule.instructorId ||
+        schedule.instructor?.id ||
+        preferredGroupTeacherId(group),
       dayOfWeek: String(schedule.dayOfWeek),
       startTime: schedule.startTime,
       endTime: schedule.endTime,
@@ -855,9 +889,7 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
                 <p className="flex items-center gap-1.5 text-gray-700">
                   <Users className="h-4 w-4 text-gray-500" />
                   {g.students.length} öğrenci
-                  {g.club.instructor
-                    ? ` · ${g.club.instructor.firstName} ${g.club.instructor.lastName}`
-                    : ""}
+                  {groupInstructorLabel(g) ? ` · ${groupInstructorLabel(g)}` : ""}
                 </p>
                 {g.students.length > 0 ? (
                   <div className="max-h-20 overflow-y-auto text-xs text-gray-600 leading-relaxed pr-0.5">

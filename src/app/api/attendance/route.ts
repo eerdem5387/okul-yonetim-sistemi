@@ -186,10 +186,14 @@ export async function POST(request: NextRequest) {
     if (kind === "CLUB" && clubScheduleId) {
       const cs = await prisma.clubSchedule.findUnique({
         where: { id: clubScheduleId },
-        include: { club: { select: { instructorId: true } } },
+        select: {
+          instructorId: true,
+          club: { select: { instructorId: true } },
+        },
       })
       if (!cs) return NextResponse.json({ error: "Kulüp programı bulunamadı" }, { status: 404 })
-      if (scopeToOwnRecords(actor) && cs.club.instructorId !== actor.staffId) {
+      const clubTeacher = cs.instructorId ?? cs.club.instructorId
+      if (scopeToOwnRecords(actor) && clubTeacher !== actor.staffId) {
         return NextResponse.json({ error: "Bu kulüp size atanmamış" }, { status: 403 })
       }
     }

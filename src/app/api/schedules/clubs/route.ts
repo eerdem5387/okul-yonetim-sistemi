@@ -5,6 +5,7 @@ import {
   assertEtutSlot,
   DAY_LABELS,
   loadEtutSlots,
+  resolveClubScheduleGradeLevels,
 } from "@/lib/schedules/club-schedule"
 import {
   assertNoGradeEtutExamConflict,
@@ -15,6 +16,9 @@ import { isStaffEligibleAsScheduleInstructor } from "@/lib/staff-counseling"
 export const dynamic = "force-dynamic"
 
 const scheduleInclude = {
+  instructor: {
+    select: { id: true, firstName: true, lastName: true, subject: true },
+  },
   club: {
     select: {
       id: true,
@@ -183,12 +187,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: etutErr }, { status: 400 })
     }
 
-    const clubMeta = await prisma.club.findUnique({
-      where: { id: clubId },
-      select: { gradeLevels: true },
-    })
+    const gradeLevels = await resolveClubScheduleGradeLevels({ clubId, clubGroupId })
     const denemeErr = await assertNoGradeEtutExamConflict({
-      gradeLevels: clubMeta?.gradeLevels ?? [],
+      gradeLevels,
       dayOfWeek,
       startTime,
       endTime,
@@ -210,14 +211,25 @@ export async function POST(request: NextRequest) {
     }
 
     const row = await prisma.$transaction(async (tx) => {
-      if (hasInstructor) {
+      // Grupsuz (eski) atamalarda kulüp instructor güncellenir;
+      // grup programında öğretmen schedule’a yazılır — diğer grupları ezmez.
+      if (hasInstructor && !clubGroupId) {
         await tx.club.update({
           where: { id: clubId },
           data: { instructorId },
         })
       }
       return tx.clubSchedule.create({
-        data: { clubId, clubGroupId, dayOfWeek, startTime, endTime, room, notes },
+        data: {
+          clubId,
+          clubGroupId,
+          dayOfWeek,
+          startTime,
+          endTime,
+          room,
+          notes,
+          ...(hasInstructor ? { instructorId } : {}),
+        },
         include: scheduleInclude,
       })
     })

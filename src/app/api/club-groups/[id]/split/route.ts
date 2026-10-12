@@ -34,6 +34,9 @@ const groupInclude = {
     where: { isActive: true },
     orderBy: [{ dayOfWeek: "asc" as const }, { startTime: "asc" as const }],
     include: {
+      instructor: {
+        select: { id: true, firstName: true, lastName: true, subject: true },
+      },
       exclusions: {
         select: {
           studentId: true,

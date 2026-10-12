@@ -701,6 +701,7 @@ model Staff {
   studentComments       StudentComment[]    @relation("StaffComments")
   teacherActivityEvents ActivityEvent[]     @relation("TeacherActivityEvents")
   instructedClubs       Club[]              @relation("ClubInstructor")
+  clubSchedules         ClubSchedule[]      @relation("ClubScheduleInstructor")
   clubMembershipRequestsRequested ClubMembershipRequest[] @relation("ClubMembershipRequestedBy")
   clubMembershipRequestsReviewed  ClubMembershipRequest[] @relation("ClubMembershipReviewedBy")
 
@@ -1521,6 +1522,8 @@ model ClubSchedule {
   clubId      String
   /// ÖÇG’deki session gibi: program ataması gruba yapılır (eski kayıtlar null olabilir)
   clubGroupId String?
+  /// Grup programı için sorumlu öğretmen (kulüp instructor’dan bağımsız)
+  instructorId String?
   dayOfWeek   Int // 1-7 (Pazartesi=1)
   startTime   String // "16:10"
   endTime     String // "16:40"
@@ -1530,14 +1533,16 @@ model ClubSchedule {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  club      Club       @relation(fields: [clubId], references: [id], onDelete: Cascade)
-  clubGroup ClubGroup? @relation(fields: [clubGroupId], references: [id], onDelete: SetNull)
+  club       Club       @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  clubGroup  ClubGroup? @relation(fields: [clubGroupId], references: [id], onDelete: SetNull)
+  instructor Staff?     @relation("ClubScheduleInstructor", fields: [instructorId], references: [id], onDelete: SetNull)
   attendances Attendance[]
   exclusions  ClubScheduleExclusion[]
 
   @@unique([clubId, dayOfWeek, startTime, endTime])
   @@index([clubId])
   @@index([clubGroupId])
+  @@index([instructorId])
   @@index([dayOfWeek, startTime])
   @@map("club_schedules")
 }

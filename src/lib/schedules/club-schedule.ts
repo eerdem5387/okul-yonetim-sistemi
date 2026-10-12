@@ -1,6 +1,32 @@
 import { prisma } from "@/lib/prisma"
 import { normalizeSlotKind } from "@/lib/schedules/day-templates"
 import { DAY_LABELS, hasTimeConflict } from "@/lib/schedules/time-conflict"
+import { parseStudentGradeLevel } from "@/lib/student-grade-level"
+
+/** Deneme çakışması için: grup üyelerinin sınıf düzeyleri (yoksa kulüp gradeLevels). */
+export async function resolveClubScheduleGradeLevels(options: {
+  clubId: string
+  clubGroupId?: string | null
+}): Promise<number[]> {
+  const { clubId, clubGroupId } = options
+  if (clubGroupId) {
+    const members = await prisma.clubGroupStudent.findMany({
+      where: { clubGroupId },
+      select: { student: { select: { grade: true } } },
+    })
+    const levels = new Set<number>()
+    for (const m of members) {
+      const level = parseStudentGradeLevel(m.student.grade)
+      if (level != null) levels.add(level)
+    }
+    if (levels.size > 0) return [...levels].sort((a, b) => a - b)
+  }
+  const club = await prisma.club.findUnique({
+    where: { id: clubId },
+    select: { gradeLevels: true },
+  })
+  return club?.gradeLevels ?? []
+}
 
 export type EtutSlot = {
   label: string
@@ -112,7 +138,7 @@ export async function assertClubSlotFree(options: {
   }
 
   if (instructorId) {
-    const [schedules, groups, otherClubs] = await Promise.all([
+    const [schedules, groups, otherClubRows] = await Promise.all([
       prisma.schedule.findMany({
         where: { teacherId: instructorId, dayOfWeek, isActive: true },
         include: { class: { select: { name: true } } },
@@ -126,11 +152,12 @@ export async function assertClubSlotFree(options: {
           dayOfWeek,
           isActive: true,
           OR: [{ clubGroupId: null }, { clubGroup: { isActive: true } }],
-          club: { instructorId },
           ...(excludeId ? { id: { not: excludeId } } : {}),
-          clubId: { not: clubId },
         },
-        include: { club: { select: { name: true } } },
+        include: {
+          club: { select: { name: true, instructorId: true } },
+          clubGroup: { select: { name: true } },
+        },
       }),
     ])
 
@@ -152,11 +179,17 @@ export async function assertClubSlotFree(options: {
       return `Sorumlu öğretmenin aynı saatte özel çalışma ataması var: ${info}`
     }
 
-    const clubHit = otherClubs.filter((c) =>
-      hasTimeConflict(c.startTime, c.endTime, startTime, endTime)
-    )
+    const clubHit = otherClubRows.filter((c) => {
+      const rowInstructor = c.instructorId ?? c.club.instructorId
+      if (rowInstructor !== instructorId) return false
+      return hasTimeConflict(c.startTime, c.endTime, startTime, endTime)
+    })
     if (clubHit.length > 0) {
-      const info = clubHit.map((c) => c.club.name).join(", ")
+      const info = clubHit
+        .map((c) =>
+          c.clubGroup?.name ? `${c.club.name} · ${c.clubGroup.name}` : c.club.name
+        )
+        .join(", ")
       return `Sorumlu öğretmen aynı saatte başka kulüpte: ${info}`
     }
   }

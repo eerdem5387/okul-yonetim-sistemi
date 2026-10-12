@@ -127,12 +127,20 @@ export default function TeacherSchedulePage() {
       const clubItems: EtutItem[] = clubSchedules
         .filter(
           (c: {
+            instructorId?: string | null
+            instructor?: { id?: string } | null
             club?: {
               instructorId?: string | null
               instructor?: { id?: string } | null
             } | null
-          }) =>
-            c.club?.instructorId === teacherId || c.club?.instructor?.id === teacherId
+          }) => {
+            const row =
+              c.instructorId ||
+              c.instructor?.id ||
+              c.club?.instructorId ||
+              c.club?.instructor?.id
+            return row === teacherId
+          }
         )
         .map(
           (c: {
