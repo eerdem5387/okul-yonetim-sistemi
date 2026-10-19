@@ -33,6 +33,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.min(limit, 200) : 50
+    const safePage = Number.isFinite(page) && page > 0 ? page : 1
+
     const [meetings, total] = await Promise.all([
       prisma.parentMeeting.findMany({
         where: whereConditions,
@@ -52,19 +55,19 @@ export async function GET(request: NextRequest) {
         orderBy: {
           meetingDate: "desc"
         },
-        skip: (page - 1) * limit,
-        take: limit
+        skip: (safePage - 1) * safeLimit,
+        take: safeLimit
       }),
       prisma.parentMeeting.count({ where: whereConditions })
     ])
 
     return NextResponse.json({
-      meetings,
+      meetings: Array.isArray(meetings) ? meetings : [],
       pagination: {
-        page,
-        limit,
+        page: safePage,
+        limit: safeLimit,
         total,
-        totalPages: Math.ceil(total / limit)
+        totalPages: Math.max(1, Math.ceil(total / safeLimit) || 1)
       }
     })
   } catch (error) {

@@ -15,7 +15,7 @@ import {
   Loader2,
   MessageSquare,
 } from "lucide-react"
-import { CLASS_COUNSELOR_DEPARTMENTS } from "@/lib/staff-counseling"
+import { staffAuthHeaders } from "@/lib/permissions/client"
 
 interface Student {
   id: string
@@ -41,7 +41,7 @@ interface ParentMeeting {
     tcNumber: string
     motherName: string
     fatherName: string
-  }
+  } | null
 }
 
 export default function YonetimParentMeetingsPage() {
@@ -71,7 +71,10 @@ export default function YonetimParentMeetingsPage() {
 
   const fetchStudents = useCallback(async () => {
     try {
-      const response = await fetch("/api/students?limit=1000")
+      const response = await fetch("/api/students?limit=1000", {
+        headers: staffAuthHeaders(),
+        cache: "no-store",
+      })
       if (response.ok) {
         const data = await response.json()
         if (data.students && Array.isArray(data.students)) {
@@ -90,24 +93,23 @@ export default function YonetimParentMeetingsPage() {
 
   const fetchCounselors = useCallback(async () => {
     try {
-      const response = await fetch(
-        `/api/staff?department=${CLASS_COUNSELOR_DEPARTMENTS.join(",")}&limit=1000`
-      )
+      // staff.view gerektirmeyen picker endpoint + Bearer token
+      const response = await fetch("/api/staff/pickers?type=counselors", {
+        headers: staffAuthHeaders(),
+        cache: "no-store",
+      })
       if (response.ok) {
         const data = await response.json()
-        const staffArray = Array.isArray(data.staff) ? data.staff : (Array.isArray(data) ? data : [])
-        // Rehberlik ve baş rehberlik personelinin isimlerini çıkar
+        const staffArray = Array.isArray(data.staff) ? data.staff : []
         const counselorNames: string[] = staffArray
-          .filter((s: { department: string }) =>
-            (CLASS_COUNSELOR_DEPARTMENTS as readonly string[]).includes(s.department)
+          .map((s: { firstName?: string; lastName?: string }) =>
+            `${s.firstName ?? ""} ${s.lastName ?? ""}`.trim()
           )
-          .map((s: { firstName: string; lastName: string }) => `${s.firstName} ${s.lastName}`)
-          .filter((name: string | undefined): name is string => Boolean(name))
-        setCounselors([...new Set(counselorNames)].sort())
+          .filter((name: string): name is string => Boolean(name))
+        setCounselors([...new Set(counselorNames)].sort((a, b) => a.localeCompare(b, "tr")))
       }
     } catch (error) {
       console.error("Error fetching counselors:", error)
-      // Hata durumunda görüşmelerden çıkarmaya devam et
     }
   }, [])
 
@@ -123,34 +125,33 @@ export default function YonetimParentMeetingsPage() {
       if (startDate) params.append("startDate", startDate)
       if (endDate) params.append("endDate", endDate)
 
-      console.log("[Parent Meetings] Fetching with params:", params.toString())
-      const response = await fetch(`/api/parent-meetings?${params.toString()}`)
-      
+      const response = await fetch(`/api/parent-meetings?${params.toString()}`, {
+        headers: staffAuthHeaders(),
+        cache: "no-store",
+      })
+
       if (response.ok) {
         const data = await response.json()
-        console.log("[Parent Meetings] API Response:", data)
-        
-        let fetchedMeetings = data.meetings || []
-        
-        // Rehberlik uzmanı filtresi (frontend'de)
+        let fetchedMeetings: ParentMeeting[] = Array.isArray(data.meetings)
+          ? data.meetings
+          : []
+
         if (selectedCounselor) {
-          fetchedMeetings = fetchedMeetings.filter((m: ParentMeeting) => 
-            m.counselorName === selectedCounselor
+          fetchedMeetings = fetchedMeetings.filter(
+            (m) => m.counselorName === selectedCounselor
           )
         }
-        
-        console.log("[Parent Meetings] Filtered meetings:", fetchedMeetings.length)
+
         setMeetings(fetchedMeetings)
-        
-        // Rehberlik uzmanı filtresi uygulanmışsa total'i güncelle
-        const total = selectedCounselor 
-          ? fetchedMeetings.length 
-          : (data.pagination?.total || fetchedMeetings.length)
-        
+
+        const total = selectedCounselor
+          ? fetchedMeetings.length
+          : Number(data.pagination?.total ?? fetchedMeetings.length)
+
         setTotalMeetings(total)
-        setTotalPages(data.pagination?.totalPages || 1)
+        setTotalPages(Math.max(1, Number(data.pagination?.totalPages ?? 1)))
       } else {
-        console.error("[Parent Meetings] API Error:", response.status, await response.text())
+        console.error("[Parent Meetings] API Error:", response.status)
         setMeetings([])
         setTotalMeetings(0)
         setTotalPages(1)
@@ -176,27 +177,44 @@ export default function YonetimParentMeetingsPage() {
 
   // Rehberlik uzmanlarını görüşmelerden de ekle (API'den gelenlerle birleştir)
   useEffect(() => {
-    const uniqueCounselorsFromMeetings = Array.from(new Set(meetings.map(m => m.counselorName).filter(Boolean))) as string[]
-    if (uniqueCounselorsFromMeetings.length > 0) {
-      setCounselors(prev => {
-        const combined = [...new Set([...prev, ...uniqueCounselorsFromMeetings])]
-        return combined.sort()
-      })
-    }
+    const uniqueCounselorsFromMeetings = Array.from(
+      new Set(
+        meetings
+          .map((m) => m.counselorName)
+          .filter((name): name is string => Boolean(name && name.trim()))
+      )
+    )
+    if (uniqueCounselorsFromMeetings.length === 0) return
+    setCounselors((prev) => {
+      const combined = [...new Set([...prev, ...uniqueCounselorsFromMeetings])]
+      combined.sort((a, b) => a.localeCompare(b, "tr"))
+      if (
+        combined.length === prev.length &&
+        combined.every((name, i) => name === prev[i])
+      ) {
+        return prev
+      }
+      return combined
+    })
   }, [meetings])
 
   const filteredStudents = useMemo(() => {
     if (!studentSearchTerm.trim()) return []
     const search = studentSearchTerm.toLowerCase().trim()
     return students
-      .filter(
-        (student) =>
-          student.firstName.toLowerCase().includes(search) ||
-          student.lastName.toLowerCase().includes(search) ||
-          `${student.firstName} ${student.lastName}`.toLowerCase().includes(search) ||
-          student.tcNumber.includes(search) ||
-          student.grade.toLowerCase().includes(search)
-      )
+      .filter((student) => {
+        const first = (student.firstName ?? "").toLowerCase()
+        const last = (student.lastName ?? "").toLowerCase()
+        const grade = (student.grade ?? "").toLowerCase()
+        const tc = student.tcNumber ?? ""
+        return (
+          first.includes(search) ||
+          last.includes(search) ||
+          `${first} ${last}`.includes(search) ||
+          tc.includes(search) ||
+          grade.includes(search)
+        )
+      })
       .slice(0, 10)
   }, [students, studentSearchTerm])
 
@@ -422,10 +440,18 @@ export default function YonetimParentMeetingsPage() {
               <p className="text-gray-500 text-xs sm:text-sm font-medium">
                 Henüz görüşme kaydı bulunmamaktadır.
               </p>
+              <p className="text-gray-400 text-xs mt-2 max-w-md mx-auto">
+                Rehberlik paneli üzerinden kaydedilen veli görüşmeleri burada listelenir.
+              </p>
             </div>
           ) : (
             <div className="space-y-3 sm:space-y-4">
-              {meetings.map((meeting) => (
+              {meetings.map((meeting) => {
+                const student = meeting.student
+                const studentName = student
+                  ? `${student.firstName ?? ""} ${student.lastName ?? ""}`.trim() || "Öğrenci"
+                  : "Öğrenci bulunamadı"
+                return (
                 <Card
                   key={meeting.id}
                   className="hover:shadow-lg transition-all duration-200 border-l-4 border-l-blue-500"
@@ -440,15 +466,19 @@ export default function YonetimParentMeetingsPage() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <h3 className="font-bold text-base sm:text-lg text-gray-900 mb-1">
-                              {meeting.student.firstName} {meeting.student.lastName}
+                              {studentName}
                             </h3>
                             <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm">
-                              <span className="inline-flex items-center px-2 py-1 rounded-full bg-blue-100 text-blue-800 font-medium">
-                                {meeting.student.grade}
-                              </span>
-                              <span className="text-gray-500">
-                                TC: {meeting.student.tcNumber}
-                              </span>
+                              {student?.grade ? (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full bg-blue-100 text-blue-800 font-medium">
+                                  {student.grade}
+                                </span>
+                              ) : null}
+                              {student?.tcNumber ? (
+                                <span className="text-gray-500">
+                                  TC: {student.tcNumber}
+                                </span>
+                              ) : null}
                             </div>
                           </div>
                         </div>
@@ -476,12 +506,12 @@ export default function YonetimParentMeetingsPage() {
                           <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 rounded-lg">
                             <User className="h-4 w-4 text-green-600" />
                             <span className="font-medium text-green-700">
-                              Veli: {meeting.student.motherName || meeting.student.fatherName || "Bilinmiyor"}
-                              {meeting.student.motherName && meeting.student.fatherName && (
+                              Veli: {student?.motherName || student?.fatherName || "Bilinmiyor"}
+                              {student?.motherName && student?.fatherName ? (
                                 <span className="text-green-600 ml-1">
-                                  ({meeting.student.motherName} / {meeting.student.fatherName})
+                                  ({student.motherName} / {student.fatherName})
                                 </span>
-                              )}
+                              ) : null}
                             </span>
                           </div>
                         </div>
@@ -499,7 +529,8 @@ export default function YonetimParentMeetingsPage() {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+                )
+              })}
             </div>
           )}
         </CardContent>

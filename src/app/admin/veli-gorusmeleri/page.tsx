@@ -39,7 +39,7 @@ interface ParentMeeting {
     tcNumber: string
     motherName: string
     fatherName: string
-  }
+  } | null
 }
 
 export default function AdminVeliGorusmeleriPage() {
@@ -87,21 +87,24 @@ export default function AdminVeliGorusmeleriPage() {
       if (startDate) params.append("startDate", startDate)
       if (endDate) params.append("endDate", endDate)
 
-      const response = await fetch(`/api/parent-meetings?${params.toString()}`)
+      const response = await fetch(`/api/parent-meetings?${params.toString()}`, {
+        cache: "no-store",
+      })
       if (response.ok) {
         const data = await response.json()
-        let fetchedMeetings = data.meetings || []
-        
-        // Rehberlik uzmanı filtresi (frontend'de)
+        let fetchedMeetings: ParentMeeting[] = Array.isArray(data.meetings)
+          ? data.meetings
+          : []
+
         if (selectedCounselor) {
-          fetchedMeetings = fetchedMeetings.filter((m: ParentMeeting) => 
-            m.counselorName === selectedCounselor
+          fetchedMeetings = fetchedMeetings.filter(
+            (m) => m.counselorName === selectedCounselor
           )
         }
-        
+
         setMeetings(fetchedMeetings)
-        setTotalMeetings(data.pagination?.total || 0)
-        setTotalPages(data.pagination?.totalPages || 1)
+        setTotalMeetings(Number(data.pagination?.total ?? fetchedMeetings.length))
+        setTotalPages(Math.max(1, Number(data.pagination?.totalPages ?? 1)))
       }
     } catch (error) {
       console.error("Error fetching meetings:", error)
@@ -128,14 +131,19 @@ export default function AdminVeliGorusmeleriPage() {
     if (!studentSearchTerm.trim()) return []
     const search = studentSearchTerm.toLowerCase().trim()
     return students
-      .filter(
-        (student) =>
-          student.firstName.toLowerCase().includes(search) ||
-          student.lastName.toLowerCase().includes(search) ||
-          `${student.firstName} ${student.lastName}`.toLowerCase().includes(search) ||
-          student.tcNumber.includes(search) ||
-          student.grade.toLowerCase().includes(search)
-      )
+      .filter((student) => {
+        const first = (student.firstName ?? "").toLowerCase()
+        const last = (student.lastName ?? "").toLowerCase()
+        const grade = (student.grade ?? "").toLowerCase()
+        const tc = student.tcNumber ?? ""
+        return (
+          first.includes(search) ||
+          last.includes(search) ||
+          `${first} ${last}`.includes(search) ||
+          tc.includes(search) ||
+          grade.includes(search)
+        )
+      })
       .slice(0, 10)
   }, [students, studentSearchTerm])
 
@@ -341,7 +349,12 @@ export default function AdminVeliGorusmeleriPage() {
             </div>
           ) : (
             <div className="space-y-3 sm:space-y-4">
-              {meetings.map((meeting) => (
+              {meetings.map((meeting) => {
+                const student = meeting.student
+                const studentName = student
+                  ? `${student.firstName ?? ""} ${student.lastName ?? ""}`.trim() || "Öğrenci"
+                  : "Öğrenci bulunamadı"
+                return (
                 <Card
                   key={meeting.id}
                   className="hover:shadow-lg transition-all duration-200 border-l-4 border-l-blue-500"
@@ -349,27 +362,27 @@ export default function AdminVeliGorusmeleriPage() {
                   <CardContent className="p-4 sm:p-5">
                     <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                       <div className="flex-1 min-w-0 space-y-3">
-                        {/* Öğrenci Bilgisi */}
                         <div className="flex items-start gap-3">
                           <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
                             <User className="h-5 w-5 text-white" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <h3 className="font-bold text-base sm:text-lg text-gray-900 mb-1">
-                              {meeting.student.firstName} {meeting.student.lastName}
+                              {studentName}
                             </h3>
                             <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm">
-                              <span className="inline-flex items-center px-2 py-1 rounded-full bg-blue-100 text-blue-800 font-medium">
-                                {meeting.student.grade}
-                              </span>
-                              <span className="text-gray-500">
-                                TC: {meeting.student.tcNumber}
-                              </span>
+                              {student?.grade ? (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full bg-blue-100 text-blue-800 font-medium">
+                                  {student.grade}
+                                </span>
+                              ) : null}
+                              {student?.tcNumber ? (
+                                <span className="text-gray-500">TC: {student.tcNumber}</span>
+                              ) : null}
                             </div>
                           </div>
                         </div>
 
-                        {/* Görüşme Detayları */}
                         <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs sm:text-sm">
                           <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg">
                             <Calendar className="h-4 w-4 text-gray-600" />
@@ -381,28 +394,25 @@ export default function AdminVeliGorusmeleriPage() {
                               })}
                             </span>
                           </div>
-                          {/* Görüşmeyi Gerçekleştiren Rehberlik Uzmanı */}
                           <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-50 rounded-lg">
                             <Users className="h-4 w-4 text-purple-600" />
                             <span className="font-medium text-purple-700">
                               Görüşmeyi gerçekleştiren: {meeting.counselorName || "Bilinmiyor"}
                             </span>
                           </div>
-                          {/* Veli Bilgisi */}
                           <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 rounded-lg">
                             <User className="h-4 w-4 text-green-600" />
                             <span className="font-medium text-green-700">
-                              Görüşme &quot;{meeting.student.firstName} {meeting.student.lastName}&quot; velisiyle yapıldı
-                              {meeting.student.motherName && meeting.student.fatherName && (
+                              Görüşme &quot;{studentName}&quot; velisiyle yapıldı
+                              {student?.motherName && student?.fatherName ? (
                                 <span className="text-green-600 ml-1">
-                                  ({meeting.student.motherName} / {meeting.student.fatherName})
+                                  ({student.motherName} / {student.fatherName})
                                 </span>
-                              )}
+                              ) : null}
                             </span>
                           </div>
                         </div>
 
-                        {/* Görüşme Notları */}
                         <div className="pt-2 border-t border-gray-100">
                           <p className="text-xs sm:text-sm text-gray-600 font-medium mb-1.5">
                             Görüşme Notları:
@@ -415,7 +425,8 @@ export default function AdminVeliGorusmeleriPage() {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+                )
+              })}
             </div>
           )}
         </CardContent>
