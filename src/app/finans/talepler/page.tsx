@@ -8,23 +8,42 @@ import { FinanceTabs } from "../finance-tabs"
 import { staffAuthHeaders } from "@/lib/permissions/client"
 import { Loader2 } from "lucide-react"
 
+const CHANNEL_TR: Record<string, string> = {
+  BANK: "Banka",
+  CHECK: "Çek",
+  CREDIT_CARD: "Kredi kartı",
+  CASH: "Nakit",
+  PROMISSORY: "Senet",
+  TRANSFER: "Banka",
+}
+
+function channelLabel(channel: string) {
+  return CHANNEL_TR[channel] ?? channel
+}
+
 type RequestRow = {
   id: string
   title: string
   requesterName: string
   channel: string
-  status: "PENDING" | "APPROVED" | "REJECTED"
-  total: string | number
-  quantity: string | number
-  unitPrice: string | number
+  status: "PENDING" | "APPROVED" | "COMPLETED" | "REJECTED"
+  total: string | number | null
   notes: string | null
   principalApprovedAt: string | null
   founderApprovedAt: string | null
+  completedAt: string | null
   rejectReason: string | null
 }
 
 const money = (n: number) =>
   new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(n)
+
+const STATUS_TR: Record<RequestRow["status"], string> = {
+  PENDING: "Kurucu onayı bekliyor",
+  APPROVED: "Onaylandı — tutar bekleniyor",
+  COMPLETED: "Tamamlandı",
+  REJECTED: "Reddedildi",
+}
 
 export default function FinansTaleplerPage() {
   const [rows, setRows] = useState<RequestRow[]>([])
@@ -77,7 +96,7 @@ export default function FinansTaleplerPage() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Harcama talepleri</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Kurucu onayı burada verilir. Müdür onayı muhasebe yazılımında yapılır.
+          Talepler tutarsız gelir. Kurucu burada onaylar; tutarı muhasebe yazılımında muhasebeci girer.
         </p>
       </div>
       <FinanceTabs />
@@ -95,18 +114,27 @@ export default function FinansTaleplerPage() {
                   <div>
                     <h2 className="font-semibold text-slate-900">{r.title}</h2>
                     <p className="text-sm text-slate-500">
-                      {r.requesterName} · {Number(r.quantity)} × {money(Number(r.unitPrice))} · {r.channel}
+                      {r.requesterName} · {channelLabel(r.channel)}
                     </p>
                     {r.notes ? <p className="mt-1 text-sm text-slate-600">{r.notes}</p> : null}
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold">{money(Number(r.total))}</p>
-                    <Badge variant="outline">{r.status}</Badge>
+                    <p className="font-semibold">
+                      {r.total != null && r.total !== "" ? money(Number(r.total)) : "Tutar yok"}
+                    </p>
+                    <Badge variant="outline">{STATUS_TR[r.status] ?? r.status}</Badge>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-4 text-xs text-slate-500">
-                  <span>Müdür: {r.principalApprovedAt ? "onayladı" : "bekliyor"}</span>
                   <span>Kurucu: {r.founderApprovedAt ? "onayladı" : "bekliyor"}</span>
+                  <span>
+                    Muhasebe:{" "}
+                    {r.completedAt
+                      ? "tamamladı"
+                      : r.status === "APPROVED"
+                        ? "tutar bekleniyor"
+                        : "—"}
+                  </span>
                   {r.rejectReason ? <span>Red: {r.rejectReason}</span> : null}
                 </div>
                 {r.status === "PENDING" && !r.founderApprovedAt ? (

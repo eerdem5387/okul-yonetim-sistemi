@@ -2277,6 +2277,7 @@ model MessageReceipt {
 enum FinanceRequestStatus {
   PENDING
   APPROVED
+  COMPLETED
   REJECTED
 }
 
@@ -2285,9 +2286,7 @@ model FinanceExpenseRequest {
   id                   String               @id // muhasebe ExpenseRequest.id
   muhasebeTenantId     String
   title                String
-  quantity             Decimal              @db.Decimal(18, 4)
-  unitPrice            Decimal              @db.Decimal(18, 2)
-  total                Decimal              @db.Decimal(18, 2)
+  total                Decimal?             @db.Decimal(18, 2)
   requesterName        String
   channel              String
   status               FinanceRequestStatus @default(PENDING)
@@ -2297,6 +2296,8 @@ model FinanceExpenseRequest {
   principalApprovedBy  String?
   founderApprovedAt    DateTime?
   founderApprovedBy    String?
+  completedAt          DateTime?
+  completedById        String?
   rejectedAt           DateTime?
   rejectedById         String?
   rejectReason         String?

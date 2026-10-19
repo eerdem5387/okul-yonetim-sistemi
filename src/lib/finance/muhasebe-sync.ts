@@ -12,8 +12,10 @@ function asDate(value: unknown): Date | null {
   return Number.isNaN(d.getTime()) ? null : d
 }
 
-function asStatus(value: unknown): "PENDING" | "APPROVED" | "REJECTED" {
-  if (value === "APPROVED" || value === "REJECTED" || value === "PENDING") return value
+function asStatus(value: unknown): "PENDING" | "APPROVED" | "COMPLETED" | "REJECTED" {
+  if (value === "APPROVED" || value === "REJECTED" || value === "PENDING" || value === "COMPLETED") {
+    return value
+  }
   return "PENDING"
 }
 
@@ -24,14 +26,13 @@ export async function upsertFinanceExpenseRequest(
   const id = String(data.id ?? "")
   if (!id) throw new Error("expense_request id gerekli")
 
+  const totalRaw = data.total
   const payload = {
     muhasebeTenantId: tenantId,
     title: String(data.title ?? ""),
-    quantity: asDecimal(data.quantity, "1"),
-    unitPrice: asDecimal(data.unitPrice),
-    total: asDecimal(data.total),
+    total: totalRaw == null || totalRaw === "" ? null : asDecimal(totalRaw),
     requesterName: String(data.requesterName ?? ""),
-    channel: String(data.channel ?? "TRANSFER"),
+    channel: String(data.channel ?? "BANK"),
     status: asStatus(data.status),
     notes: data.notes == null ? null : String(data.notes),
     createdById: data.createdById == null ? null : String(data.createdById),
@@ -39,6 +40,8 @@ export async function upsertFinanceExpenseRequest(
     principalApprovedBy: data.principalApprovedBy == null ? null : String(data.principalApprovedBy),
     founderApprovedAt: asDate(data.founderApprovedAt),
     founderApprovedBy: data.founderApprovedBy == null ? null : String(data.founderApprovedBy),
+    completedAt: asDate(data.completedAt),
+    completedById: data.completedById == null ? null : String(data.completedById),
     rejectedAt: asDate(data.rejectedAt),
     rejectedById: data.rejectedById == null ? null : String(data.rejectedById),
     rejectReason: data.rejectReason == null ? null : String(data.rejectReason),

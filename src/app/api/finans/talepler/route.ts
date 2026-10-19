@@ -18,7 +18,13 @@ export async function GET(request: NextRequest) {
 
   const status = request.nextUrl.searchParams.get("status")
   const rows = await prisma.financeExpenseRequest.findMany({
-    where: status === "PENDING" || status === "APPROVED" || status === "REJECTED" ? { status } : undefined,
+    where:
+      status === "PENDING" ||
+      status === "APPROVED" ||
+      status === "COMPLETED" ||
+      status === "REJECTED"
+        ? { status }
+        : undefined,
     orderBy: { sourceCreatedAt: "desc" },
     take: 200,
   })
@@ -88,7 +94,7 @@ export async function POST(request: NextRequest) {
         data: {
           founderApprovedAt: new Date(),
           founderApprovedBy: actorId,
-          status: local.principalApprovedAt ? "APPROVED" : "PENDING",
+          status: "APPROVED",
         },
       })
     } else {
