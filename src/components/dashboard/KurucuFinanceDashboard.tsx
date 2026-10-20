@@ -6,11 +6,16 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   Banknote,
+  CalendarDays,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
   Loader2,
   RefreshCw,
   Scale,
   ShieldCheck,
+  Users,
   Wallet,
   XCircle,
 } from "lucide-react"
@@ -53,16 +58,39 @@ type OzetPayload = {
   current: SeriesPoint
   series: SeriesPoint[]
   pendingRequests: RequestRow[]
+  awaitingAccounting: RequestRow[]
   recentRequests: RequestRow[]
   recentMovements: Movement[]
   requestCounts: Record<string, number>
+  breakdowns: {
+    expenseByChannel: Record<string, number>
+    incomeByCategory: Record<string, number>
+  }
+  live:
+    | { available: false }
+    | {
+        available: true
+        tenantName: string | null
+        exportedAt: string
+        schedule: { realized: number; expected: number; blocked: number }
+        students: {
+          total: number
+          activeEnrollments: number
+          collectedEnrollments: number
+          collectionRate: number
+          collectionAmount: number
+        }
+        requests: { pending: number; approvedAwaiting: number }
+      }
   canApprove: boolean
 }
 
 const money = (n: number) =>
-  new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 }).format(
-    n
-  )
+  new Intl.NumberFormat("tr-TR", {
+    style: "currency",
+    currency: "TRY",
+    maximumFractionDigits: 0,
+  }).format(n)
 
 const CHANNEL_TR: Record<string, string> = {
   BANK: "Banka",
@@ -80,17 +108,36 @@ const INCOME_TR: Record<string, string> = {
   OTHER: "Diğer",
 }
 
-const STATUS_TR: Record<RequestRow["status"], string> = {
-  PENDING: "Onay bekliyor",
-  APPROVED: "Onaylandı",
-  COMPLETED: "Tamamlandı",
-  REJECTED: "Reddedildi",
-}
+const AYLAR = [
+  "Ocak",
+  "Şubat",
+  "Mart",
+  "Nisan",
+  "Mayıs",
+  "Haziran",
+  "Temmuz",
+  "Ağustos",
+  "Eylül",
+  "Ekim",
+  "Kasım",
+  "Aralık",
+]
 
 function monthLabel(ym: string) {
   const [y, m] = ym.split("-").map(Number)
   if (!y || !m) return ym
-  return new Date(y, m - 1, 1).toLocaleDateString("tr-TR", { month: "short", year: "2-digit" })
+  return `${AYLAR[m - 1]} ${y}`
+}
+
+function monthShort(ym: string) {
+  const [, m] = ym.split("-").map(Number)
+  return AYLAR[(m || 1) - 1]?.slice(0, 3) ?? ym
+}
+
+function shiftMonth(ym: string, delta: number) {
+  const [y, m] = ym.split("-").map(Number)
+  const d = new Date(y, m - 1 + delta, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
 }
 
 function movementTitle(e: Movement) {
@@ -102,7 +149,43 @@ function movementTitle(e: Movement) {
   return e.expenseTitle || "Gider"
 }
 
+function BreakdownBars({
+  data,
+  labels,
+  colorClass,
+}: {
+  data: Record<string, number>
+  labels: Record<string, string>
+  colorClass: string
+}) {
+  const entries = Object.entries(data).sort((a, b) => b[1] - a[1])
+  const max = Math.max(...entries.map(([, v]) => v), 1)
+  if (entries.length === 0) {
+    return <p className="py-4 text-center text-sm text-slate-400">Bu ay veri yok.</p>
+  }
+  return (
+    <div className="space-y-3">
+      {entries.map(([key, value]) => (
+        <div key={key}>
+          <div className="mb-1 flex justify-between text-xs">
+            <span className="font-medium text-slate-700">{labels[key] ?? key}</span>
+            <span className="tabular-nums text-slate-500">{money(value)}</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+            <div
+              className={`h-full rounded-full ${colorClass}`}
+              style={{ width: `${Math.max(4, (value / max) * 100)}%` }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function KurucuFinanceDashboard() {
+  const defaultMonth = useMemo(() => new Date().toISOString().slice(0, 7), [])
+  const [month, setMonth] = useState(defaultMonth)
   const [data, setData] = useState<OzetPayload | null>(null)
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
@@ -118,7 +201,7 @@ export function KurucuFinanceDashboard() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch("/api/finans/ozet", {
+      const res = await fetch(`/api/finans/ozet?month=${month}`, {
         headers: staffAuthHeaders(),
         cache: "no-store",
       })
@@ -131,7 +214,7 @@ export function KurucuFinanceDashboard() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [month])
 
   useEffect(() => {
     void load()
@@ -139,11 +222,7 @@ export function KurucuFinanceDashboard() {
 
   const maxBar = useMemo(() => {
     if (!data?.series?.length) return 1
-    const peak = Math.max(
-      ...data.series.flatMap((s) => [s.income, s.expense]),
-      1
-    )
-    return peak
+    return Math.max(...data.series.flatMap((s) => [s.income, s.expense]), 1)
   }, [data])
 
   async function syncFromMuhasebe() {
@@ -190,36 +269,71 @@ export function KurucuFinanceDashboard() {
     return (
       <div className="flex min-h-[50vh] items-center justify-center gap-2 text-slate-500">
         <Loader2 className="h-5 w-5 animate-spin" />
-        Mali özet yükleniyor…
+        Mali panel yükleniyor…
       </div>
     )
   }
 
-  const current = data?.current ?? { month: "", income: 0, expense: 0, net: 0 }
+  const current = data?.current ?? { month, income: 0, expense: 0, net: 0 }
   const pending = data?.pendingRequests ?? []
+  const awaiting = data?.awaitingAccounting ?? []
+  const live = data?.live?.available ? data.live : null
+  const firstName = staffName.split(" ")[0] || "Kurucu"
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-50 via-slate-50 to-slate-100 p-3 sm:p-4 md:p-6 lg:p-8">
+    <div className="min-h-screen bg-[radial-gradient(1200px_600px_at_10%_-10%,#ecfdf5_0%,transparent_55%),radial-gradient(900px_500px_at_90%_0%,#f0f9ff_0%,transparent_50%),linear-gradient(180deg,#f8fafc_0%,#f1f5f9_100%)] p-3 sm:p-5 lg:p-8">
       <div className="mx-auto max-w-7xl space-y-5 sm:space-y-6">
         {/* Header */}
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="mb-1 flex items-center gap-2">
-              <div className="rounded-xl bg-gradient-to-br from-emerald-700 to-teal-800 p-2 shadow-lg shadow-emerald-900/20">
-                <Scale className="h-5 w-5 text-white" />
-              </div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-emerald-800/70">
-                Kurucu mali paneli
-              </p>
+        <header className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-900 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-50">
+                <Scale className="h-3.5 w-3.5" />
+                Kurucu mali panel
+              </span>
+              {live ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-medium text-emerald-800">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Muhasebe canlı
+                  {live.tenantName ? ` · ${live.tenantName}` : ""}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-medium text-amber-800">
+                  Yerel kopya · senkron önerilir
+                </span>
+              )}
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-              Merhaba, {staffName.split(" ")[0]}
+              Merhaba, {firstName}
             </h1>
-            <p className="mt-1 text-sm text-slate-600">
-              Muhasebe sisteminden gelen para hareketleri, aylık özet ve harcama onayları.
+            <p className="mt-1 max-w-xl text-sm text-slate-600">
+              Tahsilat durumu, kasa hareketleri ve harcama onayları — muhasebe sisteminden.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center gap-1 rounded-2xl border border-slate-200/80 bg-white/90 p-1 shadow-sm">
+              <button
+                type="button"
+                aria-label="Önceki ay"
+                className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100"
+                onClick={() => setMonth((m) => shiftMonth(m, -1))}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <div className="flex items-center gap-1.5 px-2 text-sm font-semibold text-slate-800">
+                <CalendarDays className="h-4 w-4 text-slate-400" />
+                {monthLabel(month)}
+              </div>
+              <button
+                type="button"
+                aria-label="Sonraki ay"
+                className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100"
+                onClick={() => setMonth((m) => shiftMonth(m, 1))}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
             <Button variant="outline" onClick={() => void load()} disabled={loading}>
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
               Yenile
@@ -230,73 +344,112 @@ export function KurucuFinanceDashboard() {
             </Button>
             <Link
               href="/finans"
-              className="inline-flex h-11 items-center justify-center rounded-xl bg-gray-100 px-6 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-200"
+              className="inline-flex h-11 items-center rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-800"
             >
               Finans modülü
             </Link>
           </div>
-        </div>
+        </header>
 
         {error ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
           </div>
         ) : null}
 
-        {/* KPI */}
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {/* Tahsilat KPI (muhasebe canlı) */}
+        {live ? (
+          <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <Kpi
+              label="Gerçekleşen tahsilat"
+              value={money(live.schedule.realized)}
+              hint="Sözleşme taksitleri"
+              tone="income"
+              icon={<ArrowUpRight className="h-4 w-4" />}
+            />
+            <Kpi
+              label="Beklenen"
+              value={money(live.schedule.expected)}
+              hint="Vadesi gelmiş"
+              tone="pending"
+              icon={<Clock3 className="h-4 w-4" />}
+            />
+            <Kpi
+              label="Blokeli"
+              value={money(live.schedule.blocked)}
+              hint="Henüz vadesi yok"
+              tone="blocked"
+              icon={<ShieldCheck className="h-4 w-4" />}
+            />
+            <Kpi
+              label="Tahsilat oranı"
+              value={`%${live.students.collectionRate}`}
+              hint={`${live.students.collectedEnrollments}/${live.students.activeEnrollments} kayıt`}
+              tone="info"
+              icon={<Users className="h-4 w-4" />}
+            />
+          </section>
+        ) : null}
+
+        {/* Kasa KPI */}
+        <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Kpi
-            label={`Gelir · ${monthLabel(current.month)}`}
+            label={`Kasa gelir · ${monthShort(current.month)}`}
             value={money(current.income)}
-            icon={<ArrowUpRight className="h-4 w-4" />}
             tone="income"
+            icon={<ArrowUpRight className="h-4 w-4" />}
           />
           <Kpi
-            label={`Gider · ${monthLabel(current.month)}`}
+            label={`Kasa gider · ${monthShort(current.month)}`}
             value={money(current.expense)}
-            icon={<ArrowDownRight className="h-4 w-4" />}
             tone="expense"
+            icon={<ArrowDownRight className="h-4 w-4" />}
           />
           <Kpi
-            label="Net"
+            label="Net kasa"
             value={money(current.net)}
-            icon={<Wallet className="h-4 w-4" />}
             tone={current.net >= 0 ? "income" : "expense"}
+            icon={<Wallet className="h-4 w-4" />}
           />
           <Kpi
             label="Onay bekleyen"
-            value={String(data?.requestCounts?.PENDING ?? pending.length)}
+            value={String(live?.requests.pending ?? data?.requestCounts?.PENDING ?? pending.length)}
+            hint={
+              (live?.requests.approvedAwaiting ?? data?.requestCounts?.APPROVED ?? 0) > 0
+                ? `${live?.requests.approvedAwaiting ?? data?.requestCounts?.APPROVED} muhasebe bekliyor`
+                : undefined
+            }
+            tone="alert"
             icon={<ShieldCheck className="h-4 w-4" />}
-            tone="pending"
           />
-        </div>
+        </section>
 
-        {/* Chart + pending */}
-        <div className="grid gap-4 lg:grid-cols-5">
-          <Card className="border-0 bg-white/90 shadow-md lg:col-span-3">
+        {/* Trend + Onay */}
+        <section className="grid gap-4 lg:grid-cols-5">
+          <Card className="border-0 bg-white/95 shadow-md ring-1 ring-slate-900/5 lg:col-span-3">
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-semibold text-slate-900">
-                Son 6 ay · gelir / gider
+                Son 6 ay · kasa gelir / gider
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex h-52 items-end gap-2 sm:gap-3">
+              <div className="flex h-56 items-end gap-2 sm:gap-3">
                 {(data?.series ?? []).map((s) => (
                   <div key={s.month} className="flex flex-1 flex-col items-center gap-2">
-                    <div className="flex h-40 w-full items-end justify-center gap-1">
+                    <div className="flex h-44 w-full items-end justify-center gap-1">
                       <div
-                        className="w-2.5 rounded-t-md bg-emerald-500/90 sm:w-3"
-                        style={{ height: `${Math.max(4, (s.income / maxBar) * 100)}%` }}
+                        className="w-2.5 rounded-t-md bg-emerald-500 sm:w-3.5"
+                        style={{ height: `${Math.max(3, (s.income / maxBar) * 100)}%` }}
                         title={`Gelir ${money(s.income)}`}
                       />
                       <div
-                        className="w-2.5 rounded-t-md bg-rose-400/90 sm:w-3"
-                        style={{ height: `${Math.max(4, (s.expense / maxBar) * 100)}%` }}
+                        className="w-2.5 rounded-t-md bg-rose-400 sm:w-3.5"
+                        style={{ height: `${Math.max(3, (s.expense / maxBar) * 100)}%` }}
                         title={`Gider ${money(s.expense)}`}
                       />
                     </div>
                     <span className="text-[10px] font-medium text-slate-500 sm:text-xs">
-                      {monthLabel(s.month)}
+                      {monthShort(s.month)}
                     </span>
                   </div>
                 ))}
@@ -312,24 +465,22 @@ export function KurucuFinanceDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border-0 bg-white/90 shadow-md lg:col-span-2">
+          <Card className="border-0 bg-white/95 shadow-md ring-1 ring-slate-900/5 lg:col-span-2">
             <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <CardTitle className="text-base font-semibold">Harcama onayları</CardTitle>
-                <Badge variant="outline">{pending.length} bekliyor</Badge>
+                <Badge variant="outline">{pending.length}</Badge>
               </div>
+              <p className="text-xs text-slate-500">Kurucu onayı sonrası muhasebe tutarı girer.</p>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="max-h-[22rem] space-y-3 overflow-y-auto">
               {pending.length === 0 ? (
-                <p className="rounded-lg bg-slate-50 px-3 py-6 text-center text-sm text-slate-500">
-                  Onay bekleyen talep yok.
+                <p className="rounded-xl bg-slate-50 px-3 py-8 text-center text-sm text-slate-500">
+                  Bekleyen talep yok.
                 </p>
               ) : (
-                pending.slice(0, 6).map((r) => (
-                  <div
-                    key={r.id}
-                    className="rounded-xl border border-slate-100 bg-slate-50/80 p-3"
-                  >
+                pending.map((r) => (
+                  <div key={r.id} className="rounded-xl border border-slate-100 bg-slate-50/70 p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="truncate font-semibold text-slate-900">{r.title}</p>
@@ -337,8 +488,8 @@ export function KurucuFinanceDashboard() {
                           {r.requesterName} · {CHANNEL_TR[r.channel] ?? r.channel}
                         </p>
                       </div>
-                      <p className="shrink-0 text-sm font-bold text-slate-800">
-                        {r.total != null && r.total !== "" ? money(Number(r.total)) : "—"}
+                      <p className="shrink-0 text-sm font-bold">
+                        {r.total != null && r.total !== "" ? money(Number(r.total)) : "Tutar yok"}
                       </p>
                     </div>
                     {r.notes ? (
@@ -371,32 +522,57 @@ export function KurucuFinanceDashboard() {
               )}
               <Link
                 href="/finans/talepler"
-                className="inline-flex h-9 w-full items-center justify-center rounded-xl border-2 border-gray-200 bg-white px-4 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                className="inline-flex h-9 w-full items-center justify-center rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50"
               >
                 Tüm talepler
               </Link>
             </CardContent>
           </Card>
-        </div>
+        </section>
 
-        {/* Movements + recent requests */}
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card className="border-0 bg-white/90 shadow-md">
+        {/* Breakdowns */}
+        <section className="grid gap-4 md:grid-cols-2">
+          <Card className="border-0 bg-white/95 shadow-md ring-1 ring-slate-900/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold">Gider · ödeme kanalı</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <BreakdownBars
+                data={data?.breakdowns.expenseByChannel ?? {}}
+                labels={CHANNEL_TR}
+                colorClass="bg-rose-400"
+              />
+            </CardContent>
+          </Card>
+          <Card className="border-0 bg-white/95 shadow-md ring-1 ring-slate-900/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold">Gelir · kategori</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <BreakdownBars
+                data={data?.breakdowns.incomeByCategory ?? {}}
+                labels={INCOME_TR}
+                colorClass="bg-emerald-500"
+              />
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* Movements + awaiting + recent */}
+        <section className="grid gap-4 lg:grid-cols-3">
+          <Card className="border-0 bg-white/95 shadow-md ring-1 ring-slate-900/5 lg:col-span-1">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-semibold">Son para hareketleri</CardTitle>
-                <Link
-                  href="/finans/gelir-gider"
-                  className="rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-gray-100"
-                >
+                <CardTitle className="text-base font-semibold">Son hareketler</CardTitle>
+                <Link href="/finans/gelir-gider" className="text-xs font-semibold text-slate-500 hover:text-slate-800">
                   Detay
                 </Link>
               </div>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="max-h-80 space-y-0 overflow-y-auto">
               {(data?.recentMovements ?? []).length === 0 ? (
                 <p className="py-6 text-center text-sm text-slate-500">
-                  Henüz muhasebeden hareket gelmemiş. “Muhasebeden çek” ile senkronize edin.
+                  Kasa hareketi yok. Senkron deneyin.
                 </p>
               ) : (
                 (data?.recentMovements ?? []).map((m) => {
@@ -404,16 +580,14 @@ export function KurucuFinanceDashboard() {
                   return (
                     <div
                       key={m.id}
-                      className="flex items-center justify-between gap-3 border-b border-slate-100 py-2.5 last:border-0"
+                      className="flex items-center justify-between gap-2 border-b border-slate-100 py-2.5 last:border-0"
                     >
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium text-slate-800">
                           {movementTitle(m)}
                         </p>
-                        <p className="text-xs text-slate-500">
-                          {CHANNEL_TR[m.channel] ?? m.channel}
-                          {m.bankName ? ` · ${m.bankName}` : ""}
-                          {m.invoiceNo ? ` · ${m.invoiceNo}` : ""} ·{" "}
+                        <p className="text-[11px] text-slate-500">
+                          {CHANNEL_TR[m.channel] ?? m.channel} ·{" "}
                           {new Date(m.occurredAt).toLocaleDateString("tr-TR")}
                         </p>
                       </div>
@@ -432,37 +606,57 @@ export function KurucuFinanceDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border-0 bg-white/90 shadow-md">
+          <Card className="border-0 bg-white/95 shadow-md ring-1 ring-slate-900/5">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base font-semibold">Son harcama talepleri</CardTitle>
+              <CardTitle className="text-base font-semibold">Muhasebe tutar bekliyor</CardTitle>
+              <p className="text-xs text-slate-500">Onaylandı, tutar henüz girilmedi.</p>
             </CardHeader>
-            <CardContent className="space-y-2">
-              {(data?.recentRequests ?? []).length === 0 ? (
-                <p className="py-6 text-center text-sm text-slate-500">Talep kaydı yok.</p>
+            <CardContent className="max-h-80 space-y-2 overflow-y-auto">
+              {awaiting.length === 0 ? (
+                <p className="py-6 text-center text-sm text-slate-500">Kayıt yok.</p>
               ) : (
-                (data?.recentRequests ?? []).map((r) => (
-                  <div
-                    key={r.id}
-                    className="flex items-center justify-between gap-3 border-b border-slate-100 py-2.5 last:border-0"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-slate-800">{r.title}</p>
-                      <p className="text-xs text-slate-500">{r.requesterName}</p>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <p className="text-sm font-semibold">
-                        {r.total != null && r.total !== "" ? money(Number(r.total)) : "—"}
-                      </p>
-                      <Badge variant="outline" className="mt-0.5 text-[10px]">
-                        {STATUS_TR[r.status]}
-                      </Badge>
-                    </div>
+                awaiting.map((r) => (
+                  <div key={r.id} className="rounded-lg border border-amber-100 bg-amber-50/50 px-3 py-2">
+                    <p className="truncate text-sm font-semibold text-slate-900">{r.title}</p>
+                    <p className="text-xs text-slate-500">{r.requesterName}</p>
                   </div>
                 ))
               )}
             </CardContent>
           </Card>
-        </div>
+
+          <Card className="border-0 bg-white/95 shadow-md ring-1 ring-slate-900/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold">Son talepler</CardTitle>
+            </CardHeader>
+            <CardContent className="max-h-80 space-y-2 overflow-y-auto">
+              {(data?.recentRequests ?? []).length === 0 ? (
+                <p className="py-6 text-center text-sm text-slate-500">Talep yok.</p>
+              ) : (
+                (data?.recentRequests ?? []).map((r) => (
+                  <div
+                    key={r.id}
+                    className="flex items-center justify-between gap-2 border-b border-slate-100 py-2 last:border-0"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{r.title}</p>
+                      <p className="text-[11px] text-slate-500">{r.requesterName}</p>
+                    </div>
+                    <Badge variant="outline" className="shrink-0 text-[10px]">
+                      {r.status === "PENDING"
+                        ? "Bekliyor"
+                        : r.status === "APPROVED"
+                          ? "Onaylı"
+                          : r.status === "COMPLETED"
+                            ? "Tamam"
+                            : "Red"}
+                    </Badge>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </section>
       </div>
     </div>
   )
@@ -471,28 +665,34 @@ export function KurucuFinanceDashboard() {
 function Kpi({
   label,
   value,
+  hint,
   icon,
   tone,
 }: {
   label: string
   value: string
+  hint?: string
   icon: ReactNode
-  tone: "income" | "expense" | "pending"
+  tone: "income" | "expense" | "pending" | "blocked" | "info" | "alert"
 }) {
-  const tones = {
-    income: "from-emerald-700 to-teal-700",
-    expense: "from-rose-600 to-orange-600",
-    pending: "from-amber-600 to-yellow-600",
+  const tones: Record<string, string> = {
+    income: "from-emerald-800 to-teal-700",
+    expense: "from-rose-700 to-orange-600",
+    pending: "from-sky-700 to-indigo-700",
+    blocked: "from-amber-700 to-orange-700",
+    info: "from-slate-700 to-slate-900",
+    alert: "from-violet-800 to-fuchsia-700",
   }
   return (
-    <Card className="overflow-hidden border-0 shadow-md">
+    <Card className="overflow-hidden border-0 shadow-md ring-1 ring-slate-900/5">
       <CardContent className="p-0">
         <div className={`bg-gradient-to-br ${tones[tone]} p-4 text-white`}>
           <div className="mb-2 flex items-center justify-between opacity-90">
-            <span className="text-xs font-medium">{label}</span>
+            <span className="text-xs font-medium leading-snug">{label}</span>
             {icon}
           </div>
           <p className="text-xl font-bold tracking-tight sm:text-2xl">{value}</p>
+          {hint ? <p className="mt-1 text-[11px] text-white/75">{hint}</p> : null}
         </div>
       </CardContent>
     </Card>

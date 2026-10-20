@@ -189,3 +189,55 @@ export async function pullMuhasebeFinanceSnapshot(tenantId?: string) {
   await applyFinanceSnapshot(snapshot)
   return snapshot
 }
+
+export type MuhasebeFinanceSummary = {
+  tenantId: string
+  tenantName: string | null
+  yearMonth: string
+  exportedAt: string
+  schedule: { realized: number; expected: number; blocked: number }
+  cashbook: {
+    income: number
+    expense: number
+    net: number
+    expenseByChannel: Record<string, number>
+    incomeByCategory: Record<string, number>
+  }
+  series: Array<{ month: string; income: number; expense: number; net: number }>
+  requests: { pending: number; approvedAwaiting: number }
+  students: {
+    total: number
+    activeEnrollments: number
+    collectedEnrollments: number
+    collectionRate: number
+    collectionAmount: number
+  }
+}
+
+/** Canlı KPI — muhasebe anlık özet (yerel kopya değil). Başarısızsa null. */
+export async function fetchMuhasebeFinanceSummary(
+  month?: string,
+  tenantId?: string
+): Promise<MuhasebeFinanceSummary | null> {
+  const base = muhasebeBaseUrl()
+  const secret = muhasebeIntegrationSecret()
+  if (!base || !secret) return null
+
+  const url = new URL(`${base}/api/integrations/okul/finance-summary`)
+  if (month) url.searchParams.set("month", month)
+  if (tenantId) url.searchParams.set("tenantId", tenantId)
+
+  try {
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${secret}`,
+        "X-Service-Secret": secret,
+      },
+      cache: "no-store",
+    })
+    if (!res.ok) return null
+    return (await res.json()) as MuhasebeFinanceSummary
+  } catch {
+    return null
+  }
+}
