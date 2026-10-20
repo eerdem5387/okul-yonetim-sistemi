@@ -19,9 +19,11 @@ import {
   MessageSquare,
   Award,
   BookOpen,
+  Loader2,
 } from "lucide-react"
 import Link from "next/link"
 import { getAuthHeaders } from "@/components/hr/hr-utils"
+import { KurucuFinanceDashboard } from "@/components/dashboard/KurucuFinanceDashboard"
 
 interface DashboardStats {
   totalStudents: number
@@ -102,6 +104,7 @@ interface ContractTotals {
 }
 
 export default function HomePage() {
+  const [isKurucu, setIsKurucu] = useState<boolean | null>(null)
   const [stats, setStats] = useState<DashboardStats>({
     totalStudents: 0,
     totalNewRegistrations: 0,
@@ -122,9 +125,27 @@ export default function HomePage() {
   const [insights, setInsights] = useState<DashboardInsights | null>(null)
 
   useEffect(() => {
-    fetchDashboardData()
+    const department = localStorage.getItem("staff_department")
+    const kurucu = department === "KURUCU"
+    setIsKurucu(kurucu)
+    if (!kurucu) {
+      fetchDashboardData()
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  if (isKurucu === null) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center gap-2 text-slate-500">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        Yükleniyor…
+      </div>
+    )
+  }
+
+  if (isKurucu) {
+    return <KurucuFinanceDashboard />
+  }
 
   const fetchDashboardData = async () => {
     try {
