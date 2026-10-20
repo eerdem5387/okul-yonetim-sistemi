@@ -129,25 +129,12 @@ export default function HomePage() {
     const kurucu = department === "KURUCU"
     setIsKurucu(kurucu)
     if (!kurucu) {
-      fetchDashboardData()
+      void fetchDashboardData()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  if (isKurucu === null) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center gap-2 text-slate-500">
-        <Loader2 className="h-5 w-5 animate-spin" />
-        Yükleniyor…
-      </div>
-    )
-  }
-
-  if (isKurucu) {
-    return <KurucuFinanceDashboard />
-  }
-
-  const fetchDashboardData = async () => {
+  async function fetchDashboardData() {
     try {
       setLoading(true)
 
@@ -298,6 +285,19 @@ export default function HomePage() {
       "book": "Kitap Sözleşmesi"
     }
     return typeMap[type] || type
+  }
+
+  if (isKurucu === null) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center gap-2 text-slate-500">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        Yükleniyor…
+      </div>
+    )
+  }
+
+  if (isKurucu) {
+    return <KurucuFinanceDashboard />
   }
 
   return (
