@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { FinanceTabs } from "../finance-tabs"
 import { staffAuthHeaders } from "@/lib/permissions/client"
-import { Loader2 } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 
 type Entry = {
   id: string
@@ -29,6 +29,102 @@ const INCOME_TR: Record<string, string> = {
   TRIP: "Gezi",
   FOOD: "Yemek",
   OTHER: "Diğer",
+}
+
+const AYLAR_TR = [
+  "Ocak",
+  "Şubat",
+  "Mart",
+  "Nisan",
+  "Mayıs",
+  "Haziran",
+  "Temmuz",
+  "Ağustos",
+  "Eylül",
+  "Ekim",
+  "Kasım",
+  "Aralık",
+] as const
+
+function parseYearMonth(value: string) {
+  const [y, m] = value.split("-").map(Number)
+  return { year: y || new Date().getFullYear(), month: m || 1 }
+}
+
+function formatYearMonth(year: number, month: number) {
+  return `${year}-${String(month).padStart(2, "0")}`
+}
+
+function shiftYearMonth(value: string, delta: number) {
+  const { year, month } = parseYearMonth(value)
+  const d = new Date(year, month - 1 + delta, 1)
+  return formatYearMonth(d.getFullYear(), d.getMonth() + 1)
+}
+
+function MonthPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { year, month } = parseYearMonth(value)
+  const years = useMemo(() => {
+    const now = new Date().getFullYear()
+    const start = Math.min(now - 4, year - 1)
+    const end = Math.max(now + 1, year)
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i)
+  }, [year])
+
+  return (
+    <div className="inline-flex items-center gap-1 rounded-2xl border border-slate-200/80 bg-white p-1 shadow-sm ring-1 ring-slate-900/5">
+      <button
+        type="button"
+        aria-label="Önceki ay"
+        onClick={() => onChange(shiftYearMonth(value, -1))}
+        className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </button>
+
+      <div className="flex items-center gap-2 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100/80 px-2.5 py-1.5">
+        <CalendarDays className="h-4 w-4 text-slate-500" />
+        <label className="sr-only" htmlFor="finans-ay">
+          Ay
+        </label>
+        <select
+          id="finans-ay"
+          value={month}
+          onChange={(e) => onChange(formatYearMonth(year, Number(e.target.value)))}
+          className="appearance-none bg-transparent pr-1 text-sm font-semibold text-slate-900 outline-none cursor-pointer"
+        >
+          {AYLAR_TR.map((ad, i) => (
+            <option key={ad} value={i + 1}>
+              {ad}
+            </option>
+          ))}
+        </select>
+        <label className="sr-only" htmlFor="finans-yil">
+          Yıl
+        </label>
+        <select
+          id="finans-yil"
+          value={year}
+          onChange={(e) => onChange(formatYearMonth(Number(e.target.value), month))}
+          className="appearance-none bg-transparent text-sm font-semibold text-slate-700 outline-none cursor-pointer"
+        >
+          {years.map((y) => (
+            <option key={y} value={y}>
+              {y}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <button
+        type="button"
+        aria-label="Sonraki ay"
+        onClick={() => onChange(shiftYearMonth(value, 1))}
+        className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+      >
+        <ChevronRight className="h-4 w-4" />
+      </button>
+    </div>
+  )
 }
 
 export default function FinansGelirGiderPage() {
@@ -76,20 +172,12 @@ export default function FinansGelirGiderPage() {
 
   return (
     <div className="space-y-4 p-4 md:p-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Gelir / Gider</h1>
           <p className="mt-1 text-sm text-slate-500">Muhasebe kasa defterinden gelen aylık hareketler.</p>
         </div>
-        <label className="text-sm">
-          Ay
-          <input
-            type="month"
-            className="ml-2 rounded-md border border-slate-300 px-2 py-1"
-            value={month}
-            onChange={(e) => setMonth(e.target.value)}
-          />
-        </label>
+        <MonthPicker value={month} onChange={setMonth} />
       </div>
       <FinanceTabs />
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
