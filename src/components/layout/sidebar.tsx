@@ -67,6 +67,12 @@ const allNavigation = [
     icon: Settings,
     roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"],
   },
+  {
+    name: "Akademik Takvim",
+    href: "/yonetim/akademik-takvim",
+    icon: Calendar,
+    roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"],
+  },
   // Neredeyiz
   { name: "Neredeyiz?", href: "/neredeyiz", icon: Target, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
   { name: "Sınıf Yönetimi", href: "/sinif-yonetimi", icon: School, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },

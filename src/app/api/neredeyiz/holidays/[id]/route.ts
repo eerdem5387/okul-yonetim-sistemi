@@ -41,7 +41,7 @@ export async function PUT(
   try {
     const params = await context.params
     const body = await request.json()
-    const { name, type, startDate, endDate, description } = body
+    const { name, type, startDate, endDate, description, blocksTeaching } = body
 
     if (!name || !type || !startDate || !endDate) {
       return NextResponse.json(
@@ -58,6 +58,7 @@ export async function PUT(
         startDate: new Date(startDate),
         endDate: new Date(endDate),
         description: description || null,
+        blocksTeaching: blocksTeaching !== false,
       },
     })
 

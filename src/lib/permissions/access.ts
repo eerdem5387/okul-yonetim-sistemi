@@ -35,6 +35,7 @@ const PATH_MODULE_PREFIXES: Array<{ prefix: string; module: string }> = [
   { prefix: "/rehberlik/clubs", module: "clubs" },
   { prefix: "/rehberlik/gezi", module: "gezi" },
   { prefix: "/yonetim/parent-meetings", module: "parent_meetings" },
+  { prefix: "/yonetim/akademik-takvim", module: "settings" },
   { prefix: "/yonetim/ayarlar", module: "settings" },
   { prefix: "/new-registration", module: "registrations" },
   { prefix: "/edit-new-registration", module: "registrations" },

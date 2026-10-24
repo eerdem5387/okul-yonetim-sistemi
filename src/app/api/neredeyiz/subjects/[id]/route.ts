@@ -57,26 +57,19 @@ export async function GET(
       )
     }
 
-    // ✅ Rehberlik kullanıcısı kontrolü: Sadece kendisine atanmış sınıfların derslerine erişebilir
+    // Rehberlik: yalnızca atandığı sınıfların dersleri
     if (counselorId) {
-      // Subject'in classId'si var mı kontrol et
-      if (subject.classId) {
-        const classData = await prisma.class.findUnique({
-          where: { id: subject.classId },
-          select: { counselorId: true },
-        })
-        
-        if (!classData || classData.counselorId !== counselorId) {
-          return NextResponse.json(
-            { error: "Bu derse erişim yetkiniz bulunmamaktadır. Sadece size atanan sınıfların derslerini görüntüleyebilirsiniz." },
-            { status: 403 }
-          )
-        }
-      } else {
-        // classId yoksa, grade ve section ile kontrol et (eski sistem uyumluluğu)
-        // Bu durumda rehberlik kullanıcısı erişemez (çünkü sınıf ataması yok)
+      const classData = await prisma.class.findUnique({
+        where: { id: subject.classId },
+        select: { counselorId: true },
+      })
+
+      if (!classData || classData.counselorId !== counselorId) {
         return NextResponse.json(
-          { error: "Bu derse erişim yetkiniz bulunmamaktadır. Sadece size atanan sınıfların derslerini görüntüleyebilirsiniz." },
+          {
+            error:
+              "Bu derse erişim yetkiniz bulunmamaktadır. Sadece size atanan sınıfların derslerini görüntüleyebilirsiniz.",
+          },
           { status: 403 }
         )
       }
@@ -152,7 +145,7 @@ export async function PUT(
   try {
     const params = await context.params
     const body = await request.json()
-    const { name, code, grade, section, description } = body
+    const { name, code, description, classId, branchId } = body
 
     if (!name) {
       return NextResponse.json(
@@ -161,28 +154,14 @@ export async function PUT(
       )
     }
 
-    // Sınıf validasyonu (varsa)
-    let gradeNum: number | undefined
-    if (grade !== undefined) {
-      gradeNum = parseInt(grade, 10)
-      if (isNaN(gradeNum) || gradeNum < 5 || gradeNum > 12) {
-        return NextResponse.json(
-          { error: "Sınıf 5 ile 12 arasında olmalıdır" },
-          { status: 400 }
-        )
-      }
-    }
-
-    // Şube validasyonu (boş string ise null yap)
-    const sectionValue = section !== undefined 
-      ? (section && section.trim() !== "" ? section.trim() : null)
-      : undefined
-
     const updateData: {
       name: string
       code?: string | null
       grade?: number
       section?: string | null
+      classId?: string
+      academicYearId?: string
+      branchId?: string | null
       description?: string | null
     } = {
       name: name.trim(),
@@ -190,11 +169,27 @@ export async function PUT(
       description: description !== undefined ? (description && description.trim() !== "" ? description.trim() : null) : undefined,
     }
 
-    if (gradeNum !== undefined) {
-      updateData.grade = gradeNum
+    if (classId !== undefined) {
+      const classIdValue = String(classId || "").trim()
+      if (!classIdValue) {
+        return NextResponse.json(
+          { error: "classId zorunludur" },
+          { status: 400 }
+        )
+      }
+      const classData = await prisma.class.findUnique({ where: { id: classIdValue } })
+      if (!classData) {
+        return NextResponse.json({ error: "Sınıf bulunamadı" }, { status: 404 })
+      }
+      updateData.classId = classData.id
+      updateData.grade = classData.grade
+      updateData.section = classData.section
+      updateData.academicYearId = classData.academicYearId
     }
-    if (sectionValue !== undefined) {
-      updateData.section = sectionValue
+
+    if (branchId !== undefined) {
+      updateData.branchId =
+        typeof branchId === "string" && branchId.trim() ? branchId.trim() : null
     }
 
     const subject = await prisma.subject.update({

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { isStaffEligibleAsClassCounselor } from "@/lib/staff-counseling"
+import { seedSubjectsForNewClass } from "@/lib/neredeyiz/sync"
 
 /**
  * GET /api/classes
@@ -150,28 +151,40 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Sınıf oluştur
-    const newClass = await prisma.class.create({
-      data: {
-        name,
-        grade,
-        section,
-        academicYearId,
-        counselorId,
-        description,
-      },
-      include: {
-        academicYear: true,
-        counselor: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phone: true,
+    // Sınıf oluştur + neredeyiz ders kabuklarını ScheduleCourse kataloğundan seed et
+    const newClass = await prisma.$transaction(async (tx) => {
+      const created = await tx.class.create({
+        data: {
+          name,
+          grade,
+          section,
+          academicYearId,
+          counselorId,
+          description,
+        },
+        include: {
+          academicYear: true,
+          counselor: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+            },
           },
         },
-      },
+      })
+      await seedSubjectsForNewClass(
+        {
+          id: created.id,
+          academicYearId: created.academicYearId,
+          grade: created.grade,
+          section: created.section,
+        },
+        tx
+      )
+      return created
     })
 
     return NextResponse.json({

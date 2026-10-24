@@ -59,6 +59,7 @@ interface Subject {
   name: string
   code: string | null
   academicYearId: string
+  classId: string
   grade: number
   section: string | null
   assignments: Array<{
@@ -768,14 +769,8 @@ export default function YonetimPage() {
       return
     }
 
-    if (!subjectFormData.grade) {
+    if (!subjectFormData.classId.trim()) {
       error("Sınıf seçimi zorunludur!")
-      return
-    }
-
-    const gradeNum = parseInt(subjectFormData.grade, 10)
-    if (isNaN(gradeNum) || gradeNum < 5 || gradeNum > 12) {
-      error("Sınıf 5 ile 12 arasında olmalıdır!")
       return
     }
 
@@ -791,11 +786,10 @@ export default function YonetimPage() {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...subjectFormData,
+          name: subjectFormData.name,
+          code: subjectFormData.code,
           academicYearId: selectedYearId,
-          grade: gradeNum,
-          section: subjectFormData.section.trim() !== "" ? subjectFormData.section.trim() : null,
-          classId: subjectFormData.classId.trim() !== "" ? subjectFormData.classId.trim() : null,
+          classId: subjectFormData.classId.trim(),
         }),
       })
 
@@ -908,9 +902,17 @@ export default function YonetimPage() {
               Ayarlar
             </h1>
             <p className="text-gray-600 mt-1 text-sm sm:text-base">
-              Akademik yıllar, tatiller ve Neredeyiz ders yönetimi
+              Akademik yıl aktifleştirme ve kayıt yenileme
             </p>
           </div>
+        </div>
+        <div className="mt-4 flex flex-col sm:flex-row gap-2">
+          <Link href="/yonetim/akademik-takvim">
+            <Button variant="outline" size="sm">Akademik Takvim</Button>
+          </Link>
+          <Link href="/neredeyiz/sinif">
+            <Button variant="outline" size="sm">Sınıf yıllık ders planları</Button>
+          </Link>
         </div>
       </div>
 
@@ -1270,7 +1272,7 @@ export default function YonetimPage() {
                                   name: subject.name,
                                   code: subject.code || "",
                                   academicYearId: subject.academicYearId,
-                                  classId: "", // Düzenlemede classId yok, manuel girişte olabilir
+                                  classId: subject.classId || "",
                                   grade: subject.grade.toString(),
                                   section: subject.section || "",
                                 })
@@ -1616,7 +1618,7 @@ export default function YonetimPage() {
                   </div>
                 </div>
 
-                {/* Resmi Tatiller Bölümü */}
+                {/* Resmi tatiller asıl olarak /yonetim/akademik-takvim ekranında yönetilir */}
                 <div className="pt-4 border-t border-gray-200">
                   <p className="text-[11px] text-gray-500 mb-2">
                     Resmi tatiller için önce takvimin tamamlanmış olması gerekir (taslak yılda yalnızca ad kaydedip

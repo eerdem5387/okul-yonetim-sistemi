@@ -1,54 +1,63 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
-  // GET - Tüm dersleri listele
-  export async function GET(request: NextRequest) {
-    try {
-      const searchParams = request.nextUrl.searchParams
-      const academicYearId = searchParams.get("academicYearId")
-      const grade = searchParams.get("grade")
-      const section = searchParams.get("section")
-      const staffId = searchParams.get("staffId") // Öğretmen ID'si
-      const counselorId = searchParams.get("counselorId") // ✅ Rehberlik kullanıcısı için filtreleme
+// GET - Tüm dersleri listele
+export async function GET(request: NextRequest) {
+  try {
+    const searchParams = request.nextUrl.searchParams
+    const academicYearId = searchParams.get("academicYearId")
+    const grade = searchParams.get("grade")
+    const section = searchParams.get("section")
+    const classId = searchParams.get("classId")
+    const staffId = searchParams.get("staffId")
+    const counselorId = searchParams.get("counselorId")
 
-      const where: Record<string, unknown> = {}
+    const where: Record<string, unknown> = {}
 
-      if (academicYearId) {
-        where.academicYearId = academicYearId
-      }
+    if (academicYearId) {
+      where.academicYearId = academicYearId
+    }
+
+    // classId tercih edilir (öğretmen/rehberlik tek anahtar)
+    if (classId) {
+      where.classId = classId
+    } else {
       if (grade) {
         where.grade = parseInt(grade, 10)
       }
       if (section) {
         where.section = section
       }
-      
-      // ✅ Rehberlik kullanıcısı için: Sadece kendisine atanmış sınıfların derslerini göster
-      if (counselorId) {
-        // Önce kullanıcıya atanmış sınıfları bul
-        const assignedClasses = await prisma.class.findMany({
-          where: { counselorId },
-          select: { id: true },
-        })
-        const assignedClassIds = assignedClasses.map(c => c.id)
-        
-        // Eğer hiç sınıf atanmamışsa, boş sonuç döndür
-        if (assignedClassIds.length === 0) {
+    }
+
+    if (counselorId) {
+      const assignedClasses = await prisma.class.findMany({
+        where: { counselorId },
+        select: { id: true },
+      })
+      const assignedClassIds = assignedClasses.map((c) => c.id)
+
+      if (assignedClassIds.length === 0) {
+        return NextResponse.json([])
+      }
+
+      if (classId) {
+        if (!assignedClassIds.includes(classId)) {
           return NextResponse.json([])
         }
-        
-        // classId ile filtrele
+        where.classId = classId
+      } else {
         where.classId = { in: assignedClassIds }
       }
-      
-      // Öğretmen ID'si varsa, sadece o öğretmene atanmış dersleri getir
-      if (staffId) {
-        where.assignments = {
-          some: {
-            staffId: staffId,
-          },
-        }
+    }
+
+    if (staffId) {
+      where.assignments = {
+        some: {
+          staffId: staffId,
+        },
       }
+    }
 
     const subjects = await prisma.subject.findMany({
       where: where as never,
@@ -58,6 +67,14 @@ import { prisma } from "@/lib/prisma"
             id: true,
             name: true,
             isActive: true,
+          },
+        },
+        class: {
+          select: {
+            id: true,
+            name: true,
+            grade: true,
+            section: true,
           },
         },
         assignments: {
@@ -106,33 +123,38 @@ import { prisma } from "@/lib/prisma"
   }
 }
 
-// POST - Yeni ders oluştur
+// POST - Yeni ders oluştur (classId zorunlu; grade/section Class'tan)
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { academicYearId, name, code, grade, section, description, classId, branchId } = body
+    const { academicYearId, name, code, description, classId, branchId } = body
 
-    if (!academicYearId || !name || !grade) {
+    if (!name || !classId || String(classId).trim() === "") {
       return NextResponse.json(
-        { error: "Akademik yıl, ders adı ve sınıf zorunludur" },
+        { error: "Ders adı ve sınıf (classId) zorunludur" },
         { status: 400 }
       )
     }
 
-    // Sınıf validasyonu (5-12 arası)
-    const gradeNum = parseInt(grade, 10)
-    if (isNaN(gradeNum) || gradeNum < 5 || gradeNum > 12) {
+    const classData = await prisma.class.findUnique({
+      where: { id: String(classId).trim() },
+    })
+
+    if (!classData) {
+      return NextResponse.json({ error: "Sınıf bulunamadı" }, { status: 404 })
+    }
+
+    const yearId =
+      academicYearId && String(academicYearId).trim() !== ""
+        ? String(academicYearId).trim()
+        : classData.academicYearId
+
+    if (yearId !== classData.academicYearId) {
       return NextResponse.json(
-        { error: "Sınıf 5 ile 12 arasında olmalıdır" },
+        { error: "Akademik yıl, seçilen sınıfla uyuşmuyor" },
         { status: 400 }
       )
     }
-
-    // Şube validasyonu (boş string ise null yap)
-    const sectionValue = section && section.trim() !== "" ? section.trim() : null
-
-    // classId validasyonu (opsiyonel)
-    const classIdValue = classId && classId.trim() !== "" ? classId.trim() : null
 
     let resolvedBranchId: string | null =
       typeof branchId === "string" && branchId.trim() ? branchId.trim() : null
@@ -144,12 +166,12 @@ export async function POST(request: NextRequest) {
 
     const subject = await prisma.subject.create({
       data: {
-        academicYearId,
+        academicYearId: yearId,
         name: name.trim(),
         code: code && code.trim() !== "" ? code.trim() : null,
-        grade: gradeNum,
-        section: sectionValue,
-        classId: classIdValue,
+        grade: classData.grade,
+        section: classData.section,
+        classId: classData.id,
         branchId: resolvedBranchId,
         description: description && description.trim() !== "" ? description.trim() : null,
       },
@@ -164,4 +186,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-

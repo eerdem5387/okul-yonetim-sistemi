@@ -24,29 +24,55 @@ export async function GET(
       )
     }
 
-    // Öğretmenin ders programından sınıfları çıkar
-    const schedules = await prisma.schedule.findMany({
-      where: { teacherId: id },
-      include: {
-        class: {
-          select: {
-            id: true,
-            name: true,
-            grade: true,
-            section: true,
+    // Ders programı + neredeyiz atamalarından sınıfları birleştir
+    const [schedules, assignments] = await Promise.all([
+      prisma.schedule.findMany({
+        where: { teacherId: id, isActive: true },
+        include: {
+          class: {
+            select: {
+              id: true,
+              name: true,
+              grade: true,
+              section: true,
+            },
           },
         },
-      },
-      distinct: ["classId"],
-    })
+        distinct: ["classId"],
+      }),
+      prisma.subjectAssignment.findMany({
+        where: { staffId: id },
+        include: {
+          subject: {
+            include: {
+              class: {
+                select: {
+                  id: true,
+                  name: true,
+                  grade: true,
+                  section: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+    ])
 
-    // Benzersiz sınıfları al
-    const uniqueClasses = schedules
-      .map((s) => s.class)
-      .filter((c) => c !== null)
-      .filter((value, index, self) => 
-        index === self.findIndex((c) => c.id === value.id)
-      )
+    const byId = new Map<
+      string,
+      { id: string; name: string; grade: number; section: string }
+    >()
+    for (const s of schedules) {
+      if (s.class) byId.set(s.class.id, s.class)
+    }
+    for (const a of assignments) {
+      if (a.subject.class) byId.set(a.subject.class.id, a.subject.class)
+    }
+
+    const uniqueClasses = Array.from(byId.values()).sort(
+      (a, b) => a.grade - b.grade || a.section.localeCompare(b.section)
+    )
 
     return NextResponse.json({ classes: uniqueClasses })
   } catch (error) {

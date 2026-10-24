@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { academicYearId, name, type, startDate, endDate, description } = body
+    const { academicYearId, name, type, startDate, endDate, description, blocksTeaching } = body
 
     if (!academicYearId || !name || !type || !startDate || !endDate) {
       return NextResponse.json(
@@ -66,6 +66,7 @@ export async function POST(request: NextRequest) {
         startDate: new Date(startDate),
         endDate: new Date(endDate),
         description: description || null,
+        blocksTeaching: blocksTeaching !== false,
       },
     })
 

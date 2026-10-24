@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { ProgressStatus } from "@prisma/client"
+import { assertTeacherAssignedToTopic } from "@/lib/neredeyiz/sync"
 
 // Bildirim helper fonksiyonları (server-side)
 async function createNotificationServer(params: {
@@ -201,6 +202,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Öğretmen işaretlemesi: SubjectAssignment zorunlu
+    const actorStaffId = reportedBy || markedBy || null
+    if (actorStaffId) {
+      const gate = await assertTeacherAssignedToTopic(topicId, actorStaffId)
+      if (!gate.ok) {
+        return NextResponse.json({ error: gate.error }, { status: 403 })
+      }
+    }
+
     // Topic bilgisini çek (bildirim için)
     const topic = await prisma.topic.findUnique({
       where: { id: topicId },
@@ -223,6 +233,13 @@ export async function POST(request: NextRequest) {
 
     if (!topic) {
       return NextResponse.json({ error: "Konu bulunamadı" }, { status: 404 })
+    }
+
+    if (!topic.unit.subject.classId) {
+      return NextResponse.json(
+        { error: "Ders bir sınıfa bağlı değil; ilerleme kaydı oluşturulamaz" },
+        { status: 400 }
+      )
     }
 
     // Mevcut progress kaydını kontrol et

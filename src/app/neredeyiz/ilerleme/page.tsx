@@ -141,7 +141,11 @@ export default function IlerlemePage() {
               İlerleme Takibi
             </h1>
             <p className="text-gray-600 mt-1 text-sm sm:text-base">
-              Konuların tamamlanma durumunu işaretleyin
+              Konuların tamamlanma durumunu işaretleyin. Plan düzeni{" "}
+              <Link href="/neredeyiz/sinif" className="text-blue-700 underline">
+                sınıf planlarında
+              </Link>
+              .
             </p>
           </div>
         </div>

@@ -104,7 +104,7 @@ export default function OgretmenNeredeyizPage() {
       if (!selectedClassData) return
 
       const response = await fetch(
-        `/api/neredeyiz/subjects?staffId=${teacherId}&grade=${selectedClassData.grade}${selectedClassData.section ? `&section=${selectedClassData.section}` : ""}`
+        `/api/neredeyiz/subjects?staffId=${teacherId}&classId=${classId}`
       )
       if (response.ok) {
         const data = await response.json()

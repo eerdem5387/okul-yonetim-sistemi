@@ -885,6 +885,15 @@ enum HolidayType {
   YARILYIL_TATILI // Yarıyıl Tatili
   ARA_TATIL // Ara Tatil
   DIGER // Diğer
+  SINAV_DONEMI // Yazılı / deneme / sınav penceresi
+  OZEL_DONEM // Planlı okul etkinliği penceresi
+}
+
+enum DisruptionScope {
+  SCHOOL
+  CLASSES
+  SUBJECTS
+  TEACHER
 }
 
 enum ProgressStatus {
@@ -982,9 +991,9 @@ model Subject {
   academicYearId String
   name           String // Örn: "Geometri"
   code           String? // Ders kodu
-  grade          Int // Sınıf: 5, 6, 7, 8, 9, 10, 11, 12
-  section        String? // Şube: "A", "B", "C", vb. (opsiyonel)
-  classId        String? // Sınıf bağlantısı (FAZ 3 - Neredeyiz entegrasyonu için)
+  grade          Int // Sınıf: 5, 6, 7, 8, 9, 10, 11, 12 — Class'tan türetilir
+  section        String? // Şube — Class'tan türetilir
+  classId        String // Zorunlu sınıf bağlantısı (neredeyiz ↔ sınıf entegrasyonu)
   branchId       String? // Ortak branş kataloğu
   description    String?
   createdAt      DateTime @default(now())
@@ -992,12 +1001,14 @@ model Subject {
 
   // Relations
   academicYear AcademicYear        @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
-  class        Class?              @relation(fields: [classId], references: [id], onDelete: SetNull) // Opsiyonel sınıf bağlantısı
+  class        Class               @relation(fields: [classId], references: [id], onDelete: Cascade)
   branch       Branch?             @relation(fields: [branchId], references: [id], onDelete: SetNull)
   units        Unit[]
   assignments  SubjectAssignment[]
+  schedules    Schedule[] // Ders programı satırları (subjectId)
 
   @@unique([academicYearId, name, grade, section]) // Aynı akademik yılda aynı ders-sınıf-şube kombinasyonu tekrar edemez
+  @@unique([classId, name]) // Bir sınıfta aynı ders adı bir kez
   @@index([academicYearId])
   @@index([academicYearId, grade])
   @@index([academicYearId, grade, section])
@@ -1098,6 +1109,8 @@ model Holiday {
   startDate      DateTime
   endDate        DateTime
   description    String?
+  /// true = konu işlenemez (resmi tatil, ara tatil, sınav penceresi varsayılanı)
+  blocksTeaching Boolean     @default(true)
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 
@@ -1112,15 +1125,18 @@ model Holiday {
 
 // Aksama
 model Disruption {
-  id               String         @id @default(cuid())
+  id               String          @id @default(cuid())
   academicYearId   String
   type             DisruptionType
+  scope            DisruptionScope @default(SUBJECTS)
   reason           String // Aksama sebebi (detaylı açıklama)
   startDate        DateTime
   endDate          DateTime
-  affectedSubjects String[] // Etkilenen dersler (Subject ID'leri)
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  affectedSubjects String[] // Etkilenen dersler (Subject ID'leri) — scope SUBJECTS
+  affectedClassIds String[]       @default([])
+  affectedStaffIds String[]       @default([])
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
   createdBy        String? // Oluşturan kullanıcı
 
   // Relations
@@ -1357,7 +1373,8 @@ model ClassStudent {
 model Schedule {
   id          String   @id @default(cuid())
   classId     String
-  subjectName String // "Matematik", "Fizik", "Türkçe"
+  subjectName String // Denormalize cache: "Matematik", "Fizik", "Türkçe"
+  subjectId   String? // Neredeyiz Subject FK — yazma sırasında senkronlanır
   teacherId   String // Dersi veren öğretmen (Staff ID)
   dayOfWeek   Int // 1-5 (Pazartesi-Cuma) veya 1-7 (Pazartesi-Pazar)
   startTime   String // "09:00"
@@ -1370,11 +1387,13 @@ model Schedule {
 
   // Relations
   class       Class              @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject     Subject?           @relation(fields: [subjectId], references: [id], onDelete: SetNull)
   teacher     Staff              @relation("TeacherSchedules", fields: [teacherId], references: [id], onDelete: Cascade)
   approvals   ScheduleApproval[] // Onay talepleri
   attendances Attendance[] // Yoklamalar (FAZ 2)
 
   @@index([classId])
+  @@index([subjectId])
   @@index([teacherId])
   @@index([dayOfWeek])
   @@index([classId, dayOfWeek])

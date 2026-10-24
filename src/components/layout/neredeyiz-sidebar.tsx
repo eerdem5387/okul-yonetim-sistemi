@@ -12,6 +12,7 @@ import {
   ArrowLeft,
   Calendar,
   Target,
+  BookOpen,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { MobileMenuButton } from "@/components/layout/mobile-menu-button"
@@ -22,6 +23,18 @@ const navigation = [
     href: "/neredeyiz",
     icon: LayoutDashboard,
     description: "Genel bakış ve istatistikler",
+  },
+  {
+    name: "Akademik Takvim",
+    href: "/yonetim/akademik-takvim",
+    icon: Calendar,
+    description: "Okul geneli takvim",
+  },
+  {
+    name: "Sınıf Planları",
+    href: "/neredeyiz/sinif",
+    icon: BookOpen,
+    description: "Yıllık ders planı",
   },
   {
     name: "İlerleme Takibi",

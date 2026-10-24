@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { syncScheduleToNeredeyiz } from "@/lib/neredeyiz/sync"
 
 /**
  * POST /api/schedule-approvals/[id]/approve
@@ -51,21 +52,44 @@ export async function POST(
     let result: { id: string } | undefined
 
     if (approval.changeType === "CREATE") {
-      // Yeni ders oluştur
       const newScheduleData = JSON.parse(approval.newValue!)
+      const { subjectId } = await syncScheduleToNeredeyiz({
+        classId: newScheduleData.classId,
+        subjectName: newScheduleData.subjectName,
+        teacherId: newScheduleData.teacherId,
+      })
       result = await prisma.schedule.create({
         data: {
-          ...newScheduleData,
+          classId: newScheduleData.classId,
+          subjectName: String(newScheduleData.subjectName).trim(),
+          subjectId,
+          teacherId: newScheduleData.teacherId,
+          dayOfWeek: newScheduleData.dayOfWeek,
+          startTime: newScheduleData.startTime,
+          endTime: newScheduleData.endTime,
+          room: newScheduleData.room ?? null,
+          notes: newScheduleData.notes ?? null,
           isActive: true,
         },
       })
     } else if (approval.changeType === "UPDATE") {
-      // Mevcut dersi güncelle
       const updatedScheduleData = JSON.parse(approval.newValue!)
+      const existing = await prisma.schedule.findUnique({
+        where: { id: approval.scheduleId! },
+      })
+      if (!existing) {
+        return NextResponse.json({ error: "Ders programı satırı bulunamadı" }, { status: 404 })
+      }
+      const { subjectId } = await syncScheduleToNeredeyiz({
+        classId: existing.classId,
+        subjectName: updatedScheduleData.subjectName ?? existing.subjectName,
+        teacherId: updatedScheduleData.teacherId ?? existing.teacherId,
+      })
       result = await prisma.schedule.update({
         where: { id: approval.scheduleId! },
         data: {
           subjectName: updatedScheduleData.subjectName,
+          subjectId,
           teacherId: updatedScheduleData.teacherId,
           dayOfWeek: updatedScheduleData.dayOfWeek,
           startTime: updatedScheduleData.startTime,
@@ -75,7 +99,6 @@ export async function POST(
         },
       })
     } else if (approval.changeType === "DELETE") {
-      // Dersi sil
       result = await prisma.schedule.delete({
         where: { id: approval.scheduleId! },
       })

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { isStaffEligibleAsScheduleInstructor } from "@/lib/staff-counseling"
+import { syncScheduleToNeredeyiz } from "@/lib/neredeyiz/sync"
 
 /**
  * İki zaman aralığının çakışıp çakışmadığını kontrol eder
@@ -67,6 +68,13 @@ export async function GET(request: NextRequest) {
             name: true,
             grade: true,
             section: true,
+          },
+        },
+        subject: {
+          select: {
+            id: true,
+            name: true,
+            classId: true,
           },
         },
         teacher: {
@@ -256,11 +264,18 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Direkt ders oluştur (Yönetici/Müdür için)
+    // Direkt ders oluştur (Yönetici/Müdür için) + neredeyiz Subject/Assignment senkron
+    const { subjectId } = await syncScheduleToNeredeyiz({
+      classId,
+      subjectName,
+      teacherId,
+    })
+
     const newSchedule = await prisma.schedule.create({
       data: {
         classId,
-        subjectName,
+        subjectName: subjectName.trim(),
+        subjectId,
         teacherId,
         dayOfWeek,
         startTime,
@@ -276,6 +291,12 @@ export async function POST(request: NextRequest) {
             name: true,
             grade: true,
             section: true,
+          },
+        },
+        subject: {
+          select: {
+            id: true,
+            name: true,
           },
         },
         teacher: {

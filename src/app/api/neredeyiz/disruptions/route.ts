@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { DisruptionType } from "@prisma/client"
+import { parseDisruptionScope } from "@/lib/neredeyiz/disruption-scope"
 
 // GET - Tüm aksamaları listele
 export async function GET(request: NextRequest) {
@@ -53,6 +54,9 @@ export async function POST(request: NextRequest) {
       startDate,
       endDate,
       affectedSubjects,
+      affectedClassIds,
+      affectedStaffIds,
+      scope,
       createdBy,
     } = body
 
@@ -81,14 +85,27 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const parsed = parseDisruptionScope({
+      scope,
+      affectedSubjects,
+      affectedClassIds,
+      affectedStaffIds,
+    })
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 })
+    }
+
     const disruption = await prisma.disruption.create({
       data: {
         academicYearId,
         type: type as DisruptionType,
+        scope: parsed.scope,
         reason: reason.trim(),
         startDate: start,
         endDate: end,
-        affectedSubjects: Array.isArray(affectedSubjects) ? affectedSubjects : [],
+        affectedSubjects: parsed.affectedSubjects,
+        affectedClassIds: parsed.affectedClassIds,
+        affectedStaffIds: parsed.affectedStaffIds,
         createdBy: createdBy || null,
       },
     })

@@ -8,6 +8,7 @@
     "build:strict-migrate": "prisma migrate deploy && prisma generate && next build --turbopack",
     "start": "next start",
     "lint": "eslint",
+    "test:neredeyiz-sync": "tsx src/lib/neredeyiz/__tests__/sync-names.test.ts && tsx src/lib/neredeyiz/__tests__/sync-integration.test.ts && tsx src/lib/neredeyiz/__tests__/disruption-scope.test.ts",
     "postinstall": "prisma generate",
     "cleanup-duplicates": "tsx scripts/cleanup-duplicate-registrations.ts",
     "migrate-activities": "tsx scripts/migrate-activities-to-new-structure.ts",

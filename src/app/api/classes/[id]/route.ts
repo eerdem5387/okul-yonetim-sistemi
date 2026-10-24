@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { isStaffEligibleAsClassCounselor } from "@/lib/staff-counseling"
 import { Prisma } from "@prisma/client"
+import { syncSubjectsFromClassUpdate } from "@/lib/neredeyiz/sync"
 
 /**
  * GET /api/classes/[id]
@@ -166,27 +167,46 @@ export async function PUT(
       updateData.saturdayMode = mode
     }
 
-    const updatedClass = await prisma.class.update({
-      where: { id },
-      data: updateData,
-      include: {
-        academicYear: true,
-        counselor: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phone: true,
+    const updatedClass = await prisma.$transaction(async (tx) => {
+      const updated = await tx.class.update({
+        where: { id },
+        data: updateData,
+        include: {
+          academicYear: true,
+          counselor: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+            },
+          },
+          _count: {
+            select: {
+              students: true,
+              schedules: true,
+            },
           },
         },
-        _count: {
-          select: {
-            students: true,
-            schedules: true,
+      })
+
+      if (
+        grade !== undefined ||
+        section !== undefined
+      ) {
+        await syncSubjectsFromClassUpdate(
+          id,
+          {
+            grade: updated.grade,
+            section: updated.section,
+            academicYearId: updated.academicYearId,
           },
-        },
-      },
+          tx
+        )
+      }
+
+      return updated
     })
 
     return NextResponse.json({

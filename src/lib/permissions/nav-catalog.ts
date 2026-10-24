@@ -61,6 +61,7 @@ export const PERMISSION_NAV_CATALOG: PermissionNavItem[] = [
   { module: "student_comments", name: "Öğrenci Görüşleri", href: "/rehberlik/gorusler", icon: MessageSquare },
   { module: "neredeyiz", name: "Neredeyiz?", href: "/neredeyiz", icon: Target },
   { module: "settings", name: "Ayarlar", href: "/yonetim/ayarlar", icon: Settings },
+  { module: "settings", name: "Akademik Takvim", href: "/yonetim/akademik-takvim", icon: Calendar },
 ]
 
 export function extraGrantedNavItems(options: {

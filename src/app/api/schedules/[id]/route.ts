@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { isStaffEligibleAsScheduleInstructor } from "@/lib/staff-counseling"
+import { syncScheduleToNeredeyiz } from "@/lib/neredeyiz/sync"
 
 /**
  * İki zaman aralığının çakışıp çakışmadığını kontrol eder
@@ -262,9 +263,19 @@ export async function PUT(
       })
     }
 
-    // Direkt güncelleme (Yönetici/Müdür için)
-    const updateData: Prisma.ScheduleUpdateInput = {}
-    if (subjectName !== undefined) updateData.subjectName = subjectName
+    // Direkt güncelleme (Yönetici/Müdür için) + neredeyiz senkron
+    const finalSubjectName = subjectName ?? existingSchedule.subjectName
+    const finalTeacherIdForSync = teacherId ?? existingSchedule.teacherId
+    const { subjectId } = await syncScheduleToNeredeyiz({
+      classId: existingSchedule.classId,
+      subjectName: finalSubjectName,
+      teacherId: finalTeacherIdForSync,
+    })
+
+    const updateData: Prisma.ScheduleUpdateInput = {
+      subject: { connect: { id: subjectId } },
+      subjectName: finalSubjectName.trim(),
+    }
     if (teacherId !== undefined) updateData.teacher = { connect: { id: teacherId } }
     if (dayOfWeek !== undefined) updateData.dayOfWeek = dayOfWeek
     if (startTime !== undefined) updateData.startTime = startTime
@@ -277,6 +288,12 @@ export async function PUT(
       data: updateData,
       include: {
         class: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        subject: {
           select: {
             id: true,
             name: true,
