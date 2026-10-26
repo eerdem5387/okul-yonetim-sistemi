@@ -49,6 +49,7 @@ type LedgerRow = {
 
 type Finance = {
   tenantName?: string | null
+  academicYear?: string | null
   expectedIncome: number
   collectedTotal: number
   collectedNew: number
