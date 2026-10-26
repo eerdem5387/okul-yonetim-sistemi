@@ -218,14 +218,14 @@ export function KurucuFinanceDashboard() {
   )
 
   return (
-    <div className="min-h-screen px-3 py-4 sm:px-5 sm:py-6 lg:px-8 lg:py-8">
-      <div className="mx-auto max-w-6xl space-y-5">
+    <div className="min-h-screen w-full px-4 py-5 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
+      <div className="w-full space-y-5 xl:space-y-6">
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
               Aktif akademik yıl
             </p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900 sm:text-[1.75rem]">
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl xl:text-4xl">
               {title}
             </h1>
           </div>
@@ -253,52 +253,52 @@ export function KurucuFinanceDashboard() {
         ) : null}
 
         {loading && !data ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 xl:gap-5">
             {Array.from({ length: 9 }).map((_, index) => (
               <div
                 key={index}
-                className="h-[7.5rem] animate-pulse rounded-2xl border border-white/60 bg-white/50"
+                className="h-44 animate-pulse rounded-2xl border border-white/60 bg-white/50 xl:h-52"
               />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 xl:gap-5">
             <Metric
-              icon={<Users className="h-4 w-4" />}
+              icon={<Users className="h-5 w-5" />}
               label="Toplam kayıt sayısı"
               value={regs ? String(regs.total) : "—"}
               hint="Bu yıl kaydı olan öğrenciler"
             />
             <Metric
-              icon={<UserPlus className="h-4 w-4" />}
+              icon={<UserPlus className="h-5 w-5" />}
               label="Yeni kayıt sayısı"
               value={regs ? String(regs.newRegistrations) : "—"}
               hint={newShare == null ? undefined : `Pay %${newShare}`}
             />
             <Metric
-              icon={<RefreshCw className="h-4 w-4" />}
+              icon={<RefreshCw className="h-5 w-5" />}
               label="Kayıt yenileme sayısı"
               value={regs ? String(regs.renewals) : "—"}
               hint={renewalShare == null ? undefined : `Pay %${renewalShare}`}
             />
 
             <Metric
-              icon={<Wallet className="h-4 w-4" />}
+              icon={<Wallet className="h-5 w-5" />}
               label="Toplam gelir"
               value={finance ? money(finance.expectedIncome) : "—"}
               hint="Beklenen yıllık ücret"
             />
-            <div className="flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm shadow-slate-200/60">
+            <div className="flex h-full min-h-[11rem] flex-col rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/60 xl:min-h-[13.5rem] xl:p-7 2xl:min-h-[15rem] 2xl:p-8">
               <div className="flex items-start justify-between gap-3">
-                <p className="text-[13px] font-medium text-slate-500">Tahsil edilen</p>
+                <p className="text-sm font-medium text-slate-500 xl:text-base">Tahsil edilen</p>
                 <IconWrap>
-                  <Receipt className="h-4 w-4" />
+                  <Receipt className="h-5 w-5" />
                 </IconWrap>
               </div>
-              <p className="mt-3 text-[1.65rem] font-semibold leading-none tracking-tight text-slate-900 tabular-nums">
+              <p className="mt-auto pt-8 text-4xl font-semibold leading-none tracking-tight text-slate-900 tabular-nums xl:text-5xl">
                 {finance ? money(finance.collectedTotal) : "—"}
               </p>
-              <p className="mt-2 text-xs text-slate-500">Tüm kayıt tahsilatı</p>
+              <p className="mt-3 text-sm text-slate-500">Tüm kayıt tahsilatı</p>
               {collectionRate != null ? (
                 <div className="mt-3">
                   <div className="mb-1 flex items-center justify-between text-[11px] text-slate-500">
@@ -320,16 +320,16 @@ export function KurucuFinanceDashboard() {
               disabled={!finance}
               aria-expanded={panel === "collected"}
               onClick={() => open("collected")}
-              className={`flex h-full flex-col rounded-2xl border bg-white p-4 text-left shadow-sm shadow-slate-200/60 transition disabled:cursor-default ${
+              className={`flex h-full min-h-[11rem] flex-col rounded-2xl border bg-white p-5 text-left shadow-sm shadow-slate-200/60 transition disabled:cursor-default xl:min-h-[13.5rem] xl:p-7 2xl:min-h-[15rem] 2xl:p-8 ${
                 panel === "collected"
                   ? "border-indigo-300 ring-2 ring-indigo-100"
                   : "border-slate-200/80 hover:border-slate-300"
               }`}
             >
               <div className="flex items-start justify-between gap-3">
-                <p className="text-[13px] font-medium text-slate-500">Tahsil edilen gelir</p>
+                <p className="text-sm font-medium text-slate-500 xl:text-base">Tahsil edilen gelir</p>
                 <IconWrap active={panel === "collected"}>
-                  <ArrowLeftRight className="h-4 w-4" />
+                  <ArrowLeftRight className="h-5 w-5" />
                 </IconWrap>
               </div>
               {splitTotal > 0 ? (
@@ -372,7 +372,7 @@ export function KurucuFinanceDashboard() {
               active={panel === "expenses"}
               disabled={!finance}
               onClick={() => open("expenses")}
-              icon={<Receipt className="h-4 w-4" />}
+              icon={<Receipt className="h-5 w-5" />}
               label="Giderler"
               value={finance ? money(finance.expenseTotal) : "—"}
               hint={finance ? monthLabel(finance.expenseMonth) : "Bu ay"}
@@ -382,7 +382,7 @@ export function KurucuFinanceDashboard() {
               active={panel === "monthly"}
               disabled={!finance}
               onClick={() => open("monthly")}
-              icon={<CalendarRange className="h-4 w-4" />}
+              icon={<CalendarRange className="h-5 w-5" />}
               label="Aylık gelir / gider"
               value={finance ? monthLabel(finance.selectedMonth) : "—"}
               hint={
@@ -404,7 +404,7 @@ export function KurucuFinanceDashboard() {
               active={panel === "daily"}
               disabled={!finance}
               onClick={() => open("daily")}
-              icon={<CalendarDays className="h-4 w-4" />}
+              icon={<CalendarDays className="h-5 w-5" />}
               label="Günlük gelir / gider"
               value={finance ? monthLabel(finance.selectedMonth) : "—"}
               hint={finance ? `${finance.daily.length} gün hareket` : "Seçilen ayın günleri"}
@@ -645,7 +645,7 @@ function CloseButton({ onClose }: { onClose: () => void }) {
       className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800"
       aria-label="Tabloyu kapat"
     >
-      <X className="h-4 w-4" />
+      <X className="h-5 w-5" />
     </button>
   )
 }
@@ -823,15 +823,15 @@ function Metric({
   hint?: string
 }) {
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm shadow-slate-200/60">
+    <div className="flex h-full min-h-[11rem] flex-col rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/60 xl:min-h-[13.5rem] xl:p-7 2xl:min-h-[15rem] 2xl:p-8">
       <div className="flex items-start justify-between gap-3">
-        <p className="text-[13px] font-medium text-slate-500">{label}</p>
+        <p className="text-sm font-medium text-slate-500 xl:text-base">{label}</p>
         <IconWrap>{icon}</IconWrap>
       </div>
-      <p className="mt-3 text-[1.65rem] font-semibold leading-none tracking-tight text-slate-900 tabular-nums">
+      <p className="mt-auto pt-8 text-4xl font-semibold leading-none tracking-tight text-slate-900 tabular-nums xl:text-5xl">
         {value}
       </p>
-      {hint ? <p className="mt-2 text-xs text-slate-500">{hint}</p> : <p className="mt-2 h-4" />}
+      {hint ? <p className="mt-3 text-sm text-slate-500">{hint}</p> : <p className="mt-3 h-5" />}
     </div>
   )
 }
@@ -863,25 +863,25 @@ function ActionCard({
       disabled={disabled}
       aria-expanded={active}
       onClick={onClick}
-      className={`flex h-full flex-col rounded-2xl border bg-white p-4 text-left shadow-sm shadow-slate-200/60 transition disabled:cursor-default ${
+      className={`flex h-full min-h-[11rem] flex-col rounded-2xl border bg-white p-5 text-left shadow-sm shadow-slate-200/60 transition disabled:cursor-default xl:min-h-[13.5rem] xl:p-7 2xl:min-h-[15rem] 2xl:p-8 ${
         active
           ? "border-indigo-300 ring-2 ring-indigo-100"
           : "border-slate-200/80 hover:border-slate-300"
       }`}
     >
       <div className="flex items-start justify-between gap-3">
-        <p className="text-[13px] font-medium text-slate-500">{label}</p>
+        <p className="text-sm font-medium text-slate-500 xl:text-base">{label}</p>
         <IconWrap active={active}>{icon}</IconWrap>
       </div>
       <p
-        className={`mt-3 font-semibold leading-none tracking-tight text-slate-900 tabular-nums ${
-          compact ? "text-xl" : "text-[1.65rem]"
+        className={`mt-auto pt-8 font-semibold leading-none tracking-tight text-slate-900 tabular-nums ${
+          compact ? "text-3xl xl:text-4xl" : "text-4xl xl:text-5xl"
         }`}
       >
         {value}
       </p>
-      <div className="mt-2 flex items-end justify-between gap-3">
-        <p className="min-w-0 text-xs leading-snug text-slate-500">{hint}</p>
+      <div className="mt-3 flex items-end justify-between gap-3">
+        <p className="min-w-0 text-sm leading-snug text-slate-500">{hint}</p>
         <span className={`shrink-0 text-xs font-medium ${active ? "text-indigo-700" : "text-slate-400"}`}>
           {active ? "Kapat" : action}
         </span>
@@ -920,7 +920,7 @@ function MiniStat({ label, value, tone }: { label: string; value: string; tone: 
 function IconWrap({ children, active }: { children: ReactNode; active?: boolean }) {
   return (
     <span
-      className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+      className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl xl:h-11 xl:w-11 ${
         active ? "bg-indigo-50 text-indigo-700" : "bg-slate-50 text-slate-500"
       }`}
     >
