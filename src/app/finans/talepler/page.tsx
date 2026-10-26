@@ -31,7 +31,9 @@ type RequestRow = {
   notes: string | null
   principalApprovedAt: string | null
   founderApprovedAt: string | null
+  founderApprovedByName: string | null
   completedAt: string | null
+  rejectedByName: string | null
   rejectReason: string | null
 }
 
@@ -126,7 +128,14 @@ export default function FinansTaleplerPage() {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-4 text-xs text-slate-500">
-                  <span>Kurucu: {r.founderApprovedAt ? "onayladı" : "bekliyor"}</span>
+                  <span>
+                    Kurucu:{" "}
+                    {r.founderApprovedAt
+                      ? r.founderApprovedByName
+                        ? `${r.founderApprovedByName} onayladı`
+                        : "onayladı"
+                      : "bekliyor"}
+                  </span>
                   <span>
                     Muhasebe:{" "}
                     {r.completedAt
@@ -135,7 +144,12 @@ export default function FinansTaleplerPage() {
                         ? "tutar bekleniyor"
                         : "—"}
                   </span>
-                  {r.rejectReason ? <span>Red: {r.rejectReason}</span> : null}
+                  {r.status === "REJECTED" ? (
+                    <span>
+                      Red:{" "}
+                      {[r.rejectedByName, r.rejectReason].filter(Boolean).join(" — ") || "reddedildi"}
+                    </span>
+                  ) : null}
                 </div>
                 {r.status === "PENDING" && !r.founderApprovedAt ? (
                   <div className="flex flex-wrap gap-2">

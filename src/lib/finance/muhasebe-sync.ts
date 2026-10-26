@@ -40,10 +40,13 @@ export async function upsertFinanceExpenseRequest(
     principalApprovedBy: data.principalApprovedBy == null ? null : String(data.principalApprovedBy),
     founderApprovedAt: asDate(data.founderApprovedAt),
     founderApprovedBy: data.founderApprovedBy == null ? null : String(data.founderApprovedBy),
+    founderApprovedByName:
+      data.founderApprovedByName == null ? null : String(data.founderApprovedByName),
     completedAt: asDate(data.completedAt),
     completedById: data.completedById == null ? null : String(data.completedById),
     rejectedAt: asDate(data.rejectedAt),
     rejectedById: data.rejectedById == null ? null : String(data.rejectedById),
+    rejectedByName: data.rejectedByName == null ? null : String(data.rejectedByName),
     rejectReason: data.rejectReason == null ? null : String(data.rejectReason),
     sourceCreatedAt: asDate(data.createdAt),
     sourceUpdatedAt: asDate(data.updatedAt),
@@ -129,6 +132,7 @@ export async function callMuhasebeExpenseDecision(input: {
   action: "approve" | "reject"
   as?: "founder" | "principal"
   actorId: string
+  actorName?: string | null
   reason?: string
   tenantId?: string
 }) {
@@ -149,6 +153,7 @@ export async function callMuhasebeExpenseDecision(input: {
       action: input.action,
       as: input.as ?? "founder",
       actorId: input.actorId,
+      actorName: input.actorName?.trim() || null,
       reason: input.reason,
       tenantId: input.tenantId,
     }),

@@ -35,6 +35,8 @@ type RequestRow = {
   total: string | number | null
   notes: string | null
   founderApprovedAt: string | null
+  founderApprovedByName: string | null
+  rejectedByName: string | null
   rejectReason: string | null
   sourceCreatedAt: string | null
 }
@@ -640,7 +642,14 @@ export function KurucuFinanceDashboard() {
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{r.title}</p>
-                      <p className="text-[11px] text-slate-500">{r.requesterName}</p>
+                      <p className="text-[11px] text-slate-500">
+                        {r.requesterName}
+                        {r.founderApprovedByName
+                          ? ` · Onay: ${r.founderApprovedByName}`
+                          : r.rejectedByName
+                            ? ` · Red: ${r.rejectedByName}`
+                            : ""}
+                      </p>
                     </div>
                     <Badge variant="outline" className="shrink-0 text-[10px]">
                       {r.status === "PENDING"

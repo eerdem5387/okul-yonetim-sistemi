@@ -76,12 +76,14 @@ export async function POST(request: NextRequest) {
   }
 
   const actorId = `oys:${actor.staffId}`
+  const actorName = [actor.firstName, actor.lastName].filter(Boolean).join(" ").trim() || null
   try {
     const result = (await callMuhasebeExpenseDecision({
       requestId: id,
       action: body.action,
       as: "founder",
       actorId,
+      actorName,
       reason: body.reason,
       tenantId: local.muhasebeTenantId,
     })) as { request?: Record<string, unknown> }
@@ -94,6 +96,7 @@ export async function POST(request: NextRequest) {
         data: {
           founderApprovedAt: new Date(),
           founderApprovedBy: actorId,
+          founderApprovedByName: actorName,
           status: "APPROVED",
         },
       })
@@ -104,6 +107,7 @@ export async function POST(request: NextRequest) {
           status: "REJECTED",
           rejectedAt: new Date(),
           rejectedById: actorId,
+          rejectedByName: actorName,
           rejectReason: body.reason?.trim() || null,
         },
       })
