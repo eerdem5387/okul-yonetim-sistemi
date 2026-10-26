@@ -4,7 +4,9 @@ import { prisma } from "@/lib/prisma"
 import { resolveStaffActor } from "@/lib/hr/actor"
 import { canViewFinance } from "@/lib/finance/access"
 import { fetchMuhasebeFinanceSummary } from "@/lib/finance/muhasebe-sync"
-import { contractMatchesAcademicYearTargets } from "@/lib/student-registration-meta"
+import { getRenewalTargetContext } from "@/lib/student-registration-meta"
+import { buildEnrollmentRegistrationGradeBreakdown } from "@/lib/enrolled-grade-counts"
+import { k12GradeWhereClause } from "@/lib/student-grade-level"
 
 export const dynamic = "force-dynamic"
 
@@ -28,17 +30,26 @@ export async function GET(request: NextRequest) {
     select: { id: true, name: true },
   })
 
-  const targets = activeYear ? [{ id: activeYear.id, label: activeYear.name }] : []
-  const [newRegs, renewals] = await Promise.all([
-    prisma.newRegistration.findMany({ select: { contractData: true } }),
-    prisma.renewal.findMany({ select: { contractData: true } }),
+  const [ctx, students] = await Promise.all([
+    getRenewalTargetContext(prisma),
+    prisma.student.findMany({
+      where: k12GradeWhereClause(),
+      select: { id: true, grade: true },
+    }),
   ])
-  const newRegistrationCount = targets.length
-    ? newRegs.filter((row) => contractMatchesAcademicYearTargets(row.contractData, targets)).length
-    : 0
-  const renewalCount = targets.length
-    ? renewals.filter((row) => contractMatchesAcademicYearTargets(row.contractData, targets)).length
-    : 0
+  const breakdown = buildEnrollmentRegistrationGradeBreakdown({
+    students,
+    renewedStudentIds: ctx.renewedStudentIds,
+    newRegistrationStudentIds: ctx.newRegistrationStudentIds,
+    newRegistrationActiveYearStudentIds: ctx.newRegistrationActiveYearStudentIds,
+    futureYearOnlyNewRegistrationStudentIds: ctx.futureYearOnlyNewRegistrationStudentIds,
+  })
+  let newRegistrationCount = 0
+  let renewalCount = 0
+  for (const row of Object.values(breakdown)) {
+    newRegistrationCount += row.newRegistration
+    renewalCount += row.renewed
+  }
 
   const live = await fetchMuhasebeFinanceSummary(
     ledgerMonth,

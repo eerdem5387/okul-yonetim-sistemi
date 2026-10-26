@@ -266,7 +266,7 @@ export function KurucuFinanceDashboard() {
               icon={<Users className="h-4 w-4" />}
               label="Toplam kayıt sayısı"
               value={regs ? String(regs.total) : "—"}
-              hint="Aktif akademik yıl"
+              hint="Bu yıl kaydı olan öğrenciler"
             />
             <Metric
               icon={<UserPlus className="h-4 w-4" />}
