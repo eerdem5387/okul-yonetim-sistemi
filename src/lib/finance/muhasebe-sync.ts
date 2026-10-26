@@ -217,12 +217,30 @@ export type MuhasebeFinanceSummary = {
     collectionRate: number
     collectionAmount: number
   }
+  founder?: {
+    academicYear: string | null
+    expectedIncome: number
+    collectedTotal: number
+    collectedNew: number
+    collectedRenewal: number
+    collectedUnclassified: number
+    expenseMonth: string
+    expenseTotal: number
+    expenses: Array<{ id: string; occurredAt: string; title: string; amount: number; channel: string }>
+    selectedMonth: string
+    ledgerIncome: number
+    ledgerExpense: number
+    months: string[]
+    rows: Array<{ id: string; side: string; occurredAt: string; title: string; amount: number }>
+    daily: Array<{ date: string; income: number; expense: number }>
+  }
 }
 
 /** Canlı KPI — muhasebe anlık özet (yerel kopya değil). Başarısızsa null. */
 export async function fetchMuhasebeFinanceSummary(
   month?: string,
-  tenantId?: string
+  tenantId?: string,
+  academicYear?: string
 ): Promise<MuhasebeFinanceSummary | null> {
   const base = muhasebeBaseUrl()
   const secret = muhasebeIntegrationSecret()
@@ -231,6 +249,7 @@ export async function fetchMuhasebeFinanceSummary(
   const url = new URL(`${base}/api/integrations/okul/finance-summary`)
   if (month) url.searchParams.set("month", month)
   if (tenantId) url.searchParams.set("tenantId", tenantId)
+  if (academicYear) url.searchParams.set("academicYear", academicYear)
 
   try {
     const res = await fetch(url, {

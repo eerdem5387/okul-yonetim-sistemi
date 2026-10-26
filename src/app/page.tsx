@@ -126,7 +126,8 @@ export default function HomePage() {
 
   useEffect(() => {
     const department = localStorage.getItem("staff_department")
-    const kurucu = department === "KURUCU"
+    const role = localStorage.getItem("auth_role")
+    const kurucu = department === "KURUCU" || department === "SUPER_ADMIN" || role === "admin"
     setIsKurucu(kurucu)
     if (!kurucu) {
       void fetchDashboardData()
