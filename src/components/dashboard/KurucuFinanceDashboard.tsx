@@ -16,7 +16,17 @@ import {
 } from "lucide-react"
 import { staffAuthHeaders } from "@/lib/permissions/client"
 
-type Panel = "expenses" | "monthly" | "daily" | null
+type Panel = "collected" | "expenses" | "monthly" | "daily" | null
+
+type IncomeDetail = {
+  id: string
+  category: string
+  title: string
+  occurredAt: string
+  amount: number
+  channel: string | null
+  channelLabel: string
+}
 
 type ExpenseRow = {
   id: string
@@ -32,14 +42,20 @@ type LedgerRow = {
   occurredAt: string
   title: string
   amount: number
+  channel?: string | null
+  channelLabel?: string | null
+  tag?: "PLANNED" | "CREDITED" | null
 }
 
 type Finance = {
+  tenantName?: string | null
   expectedIncome: number
   collectedTotal: number
   collectedNew: number
   collectedRenewal: number
   collectedUnclassified: number
+  incomeCategories?: Array<{ name: string; amount: number }>
+  incomeDetails?: IncomeDetail[]
   expenseMonth: string
   expenseTotal: number
   expenses: ExpenseRow[]
@@ -58,6 +74,28 @@ type Payload = {
   financeAvailable: boolean
 }
 
+const INCOME_SWATCHES = [
+  "bg-indigo-600",
+  "bg-sky-500",
+  "bg-emerald-600",
+  "bg-amber-500",
+  "bg-violet-500",
+  "bg-rose-500",
+  "bg-slate-500",
+]
+
+function incomeLines(finance: Finance) {
+  if (finance.incomeCategories?.length) return finance.incomeCategories
+  const lines = [
+    { name: "Yeni kayıt", amount: finance.collectedNew },
+    { name: "Kayıt yenileme", amount: finance.collectedRenewal },
+  ]
+  if (finance.collectedUnclassified > 0) {
+    lines.push({ name: "Diğer kayıt", amount: finance.collectedUnclassified })
+  }
+  return lines
+}
+
 const CHANNEL_LABEL: Record<string, string> = {
   BANK: "Banka",
   CHECK: "Çek",
@@ -72,6 +110,38 @@ function money(value: number) {
     currency: "TRY",
     maximumFractionDigits: 0,
   }).format(value)
+}
+
+function moneyExact(value: number) {
+  return new Intl.NumberFormat("tr-TR", {
+    style: "currency",
+    currency: "TRY",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value)
+}
+
+function monthUpper(ym: string) {
+  const [y, m] = ym.split("-").map(Number)
+  if (!y || !m) return ym
+  const name = new Date(y, m - 1, 1).toLocaleDateString("tr-TR", { month: "long" })
+  return `${name.toLocaleUpperCase("tr-TR")}-${y}`
+}
+
+function reportDate(iso: string) {
+  const date = new Date(iso.length === 10 ? `${iso}T00:00:00` : iso)
+  if (Number.isNaN(date.getTime())) return iso
+  return date.toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric" })
+}
+
+function channelText(row: LedgerRow) {
+  if (row.channelLabel) return row.channelLabel
+  if (row.channel) return CHANNEL_LABEL[row.channel] ?? row.channel
+  return "—"
+}
+
+function bookedTotal(rows: LedgerRow[]) {
+  return rows.filter((row) => row.tag !== "PLANNED").reduce((sum, row) => sum + row.amount, 0)
 }
 
 function titleCaseTr(value: string) {
@@ -140,9 +210,8 @@ export function KurucuFinanceDashboard() {
   const collectionRate = finance ? share(finance.collectedTotal, finance.expectedIncome) : null
   const newShare = regs ? share(regs.newRegistrations, regs.total) : null
   const renewalShare = regs ? share(regs.renewals, regs.total) : null
-  const splitTotal = finance
-    ? finance.collectedNew + finance.collectedRenewal + finance.collectedUnclassified
-    : 0
+  const collectedLines = finance ? incomeLines(finance) : []
+  const splitTotal = collectedLines.reduce((sum, line) => sum + line.amount, 0)
   const today = titleCaseTr(
     new Date().toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" })
   )
@@ -175,7 +244,7 @@ export function KurucuFinanceDashboard() {
             Muhasebe özeti alınamadı. Kayıt sayıları okul kaydından, tutarlar muhasebeden gelir.
           </Notice>
         ) : null}
-        {finance && finance.collectedUnclassified > 0 ? (
+        {finance && finance.collectedUnclassified > 0 && !finance.incomeCategories ? (
           <Notice tone="amber">
             {money(finance.collectedUnclassified)} tahsilat yeni kayıt veya yenileme olarak işaretli değil.
             Toplam tahsilata dahil, iki satıra dağıtılmadı.
@@ -245,46 +314,58 @@ export function KurucuFinanceDashboard() {
               ) : null}
             </div>
 
-            <div className="flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm shadow-slate-200/60">
+            <button
+              type="button"
+              disabled={!finance}
+              aria-expanded={panel === "collected"}
+              onClick={() => open("collected")}
+              className={`flex h-full flex-col rounded-2xl border bg-white p-4 text-left shadow-sm shadow-slate-200/60 transition disabled:cursor-default ${
+                panel === "collected"
+                  ? "border-indigo-300 ring-2 ring-indigo-100"
+                  : "border-slate-200/80 hover:border-slate-300"
+              }`}
+            >
               <div className="flex items-start justify-between gap-3">
                 <p className="text-[13px] font-medium text-slate-500">Tahsil edilen gelir</p>
-                <IconWrap>
+                <IconWrap active={panel === "collected"}>
                   <ArrowLeftRight className="h-4 w-4" />
                 </IconWrap>
               </div>
               {splitTotal > 0 ? (
                 <div className="mt-3 flex h-1.5 overflow-hidden rounded-full bg-slate-100">
-                  <div
-                    className="h-full bg-indigo-600"
-                    style={{ width: `${(finance!.collectedNew / splitTotal) * 100}%` }}
-                  />
-                  <div
-                    className="h-full bg-sky-500"
-                    style={{ width: `${(finance!.collectedRenewal / splitTotal) * 100}%` }}
-                  />
-                  {finance!.collectedUnclassified > 0 ? (
-                    <div
-                      className="h-full bg-amber-400"
-                      style={{ width: `${(finance!.collectedUnclassified / splitTotal) * 100}%` }}
-                    />
-                  ) : null}
+                  {collectedLines.map((line, index) =>
+                    line.amount > 0 ? (
+                      <div
+                        key={line.name}
+                        className={`h-full ${INCOME_SWATCHES[index % INCOME_SWATCHES.length]}`}
+                        style={{ width: `${(line.amount / splitTotal) * 100}%` }}
+                      />
+                    ) : null
+                  )}
                 </div>
               ) : (
                 <div className="mt-3 h-1.5 rounded-full bg-slate-100" />
               )}
               <dl className="mt-3 space-y-2.5">
-                <SplitLine
-                  swatch="bg-indigo-600"
-                  label="Yeni kayıt"
-                  value={finance ? money(finance.collectedNew) : "—"}
-                />
-                <SplitLine
-                  swatch="bg-sky-500"
-                  label="Kayıt yenileme"
-                  value={finance ? money(finance.collectedRenewal) : "—"}
-                />
+                {collectedLines.map((line, index) => (
+                  <SplitLine
+                    key={line.name}
+                    swatch={INCOME_SWATCHES[index % INCOME_SWATCHES.length]}
+                    label={line.name}
+                    value={money(line.amount)}
+                  />
+                ))}
+                {!finance ? (
+                  <>
+                    <SplitLine swatch="bg-indigo-600" label="Yeni kayıt" value="—" />
+                    <SplitLine swatch="bg-sky-500" label="Kayıt yenileme" value="—" />
+                  </>
+                ) : null}
               </dl>
-            </div>
+              <p className={`mt-3 text-xs font-medium ${panel === "collected" ? "text-indigo-700" : "text-slate-400"}`}>
+                {panel === "collected" ? "Kapat" : "Detayı aç"}
+              </p>
+            </button>
 
             <ActionCard
               active={panel === "expenses"}
@@ -306,8 +387,10 @@ export function KurucuFinanceDashboard() {
               hint={
                 finance ? (
                   <span className="block">
-                    Gelir {money(finance.ledgerIncome)}
-                    <span className="mt-0.5 block">Gider {money(finance.ledgerExpense)}</span>
+                    Gelir {money(bookedTotal(finance.rows.filter((row) => row.side === "INCOME")))}
+                    <span className="mt-0.5 block">
+                      Gider {money(bookedTotal(finance.rows.filter((row) => row.side === "EXPENSE")))}
+                    </span>
                   </span>
                 ) : (
                   "Ay seçmek için aç"
@@ -360,12 +443,95 @@ function DetailPanel({
   onMonth: (value: string) => void
   onClose: () => void
 }) {
+  if (panel === "collected") {
+    const details = finance.incomeDetails ?? []
+    const groups = incomeLines(finance).map((line) => ({
+      ...line,
+      rows: details.filter((row) => row.category === line.name),
+    }))
+    return (
+      <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm shadow-slate-200/70">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3.5 sm:px-5">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">Tahsil edilen gelir</h2>
+            <p className="mt-0.5 text-sm text-slate-500">
+              {finance.academicYear || "Aktif akademik yıl"}
+              {details.length ? ` · ${details.length} tahsilat` : ""}
+            </p>
+          </div>
+          <CloseButton onClose={onClose} />
+        </div>
+        <div className="divide-y divide-slate-100">
+          {groups.map((group, index) => (
+            <div key={group.name} className="px-4 py-4 sm:px-5">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                  <span className={`h-2 w-2 rounded-full ${INCOME_SWATCHES[index % INCOME_SWATCHES.length]}`} />
+                  {group.name}
+                </p>
+                <p className="text-sm font-semibold tabular-nums text-slate-900">{moneyExact(group.amount)}</p>
+              </div>
+              {group.rows.length ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[36rem] border-collapse text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                        <th className="px-2 py-2">Tarih</th>
+                        <th className="px-2 py-2">Açıklama</th>
+                        <th className="px-2 py-2">Kanal</th>
+                        <th className="px-2 py-2 text-right">Tutar</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {group.rows.map((row) => (
+                        <tr key={row.id} className="border-b border-slate-50">
+                          <td className="whitespace-nowrap px-2 py-2 text-slate-500">{reportDate(row.occurredAt)}</td>
+                          <td className="px-2 py-2 text-slate-800">{row.title}</td>
+                          <td className="whitespace-nowrap px-2 py-2 text-slate-600">
+                            {row.channelLabel || "—"}
+                          </td>
+                          <td className="whitespace-nowrap px-2 py-2 text-right font-medium tabular-nums text-slate-900">
+                            {moneyExact(row.amount)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : group.amount === 0 ? (
+                <p className="text-sm text-slate-400">Bu kalemde tahsilat yok.</p>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  if (panel === "monthly") {
+    return (
+      <div className={loading ? "opacity-70" : ""}>
+        <div className="mb-3 flex items-center justify-end gap-2">
+          {loading ? (
+            <span className="mr-auto inline-flex items-center gap-2 text-xs text-slate-500">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Güncelleniyor
+            </span>
+          ) : null}
+          <MonthSelect month={month} months={finance.months} onMonth={onMonth} />
+          <CloseButton onClose={onClose} />
+        </div>
+        <MonthlyStatement finance={finance} />
+      </div>
+    )
+  }
+
   const heading =
     panel === "expenses"
       ? `Giderler · ${monthLabel(finance.expenseMonth)}`
-      : panel === "monthly"
-        ? `Aylık hareket · ${monthLabel(finance.selectedMonth)}`
-        : `Günlük özet · ${monthLabel(finance.selectedMonth)}`
+      : `Günlük özet · ${monthLabel(finance.selectedMonth)}`
+  const dailyIncome = finance.daily.reduce((sum, row) => sum + row.income, 0)
+  const dailyExpense = finance.daily.reduce((sum, row) => sum + row.expense, 0)
 
   return (
     <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm shadow-slate-200/70">
@@ -373,49 +539,25 @@ function DetailPanel({
         <div className="min-w-0">
           <h2 className="text-base font-semibold text-slate-900">{heading}</h2>
           <p className="mt-0.5 text-sm text-slate-500">
-            {panel === "expenses"
-              ? `${finance.expenses.length} kayıt`
-              : panel === "monthly"
-                ? `${finance.rows.length} kasa hareketi`
-                : "Seçilen ayın gün dökümü"}
+            {panel === "expenses" ? `${finance.expenses.length} kayıt` : "Seçilen ayın gün dökümü"}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {panel !== "expenses" ? (
-            <label className="flex min-w-0 flex-1 items-center gap-2 text-sm text-slate-600 sm:flex-none">
-              <span className="sr-only">Ay</span>
-              <select
-                className="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-900 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 sm:w-52"
-                value={month}
-                onChange={(event) => onMonth(event.target.value)}
-              >
-                {finance.months.map((item) => (
-                  <option key={item} value={item}>
-                    {monthLabel(item)}
-                  </option>
-                ))}
-              </select>
-            </label>
+          {panel === "daily" ? (
+            <MonthSelect month={month} months={finance.months} onMonth={onMonth} />
           ) : null}
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800"
-            aria-label="Tabloyu kapat"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <CloseButton onClose={onClose} />
         </div>
       </div>
 
-      {panel !== "expenses" ? (
+      {panel === "daily" ? (
         <div className="grid grid-cols-1 gap-px border-b border-slate-100 bg-slate-100 sm:grid-cols-3">
-          <MiniStat label="Gelir" value={money(finance.ledgerIncome)} tone="in" />
-          <MiniStat label="Gider" value={money(finance.ledgerExpense)} tone="out" />
+          <MiniStat label="Gelir" value={money(dailyIncome)} tone="in" />
+          <MiniStat label="Gider" value={money(dailyExpense)} tone="out" />
           <MiniStat
             label="Net"
-            value={money(finance.ledgerIncome - finance.ledgerExpense)}
-            tone={finance.ledgerIncome - finance.ledgerExpense >= 0 ? "in" : "out"}
+            value={money(dailyIncome - dailyExpense)}
+            tone={dailyIncome - dailyExpense >= 0 ? "in" : "out"}
           />
         </div>
       ) : null}
@@ -445,24 +587,6 @@ function DetailPanel({
           />
         ) : null}
 
-        {panel === "monthly" ? (
-          <Table
-            headers={["Tarih", "Tür", "Açıklama", "Tutar"]}
-            align={["left", "left", "left", "right"]}
-            empty="Bu ay kasa hareketi yok."
-            rows={finance.rows.map((row) => ({
-              key: row.id,
-              cells: [
-                dayLabel(row.occurredAt),
-                row.side === "INCOME" ? "Gelir" : "Gider",
-                row.title,
-                money(row.amount),
-              ],
-              tone: row.side === "INCOME" ? "in" : "out",
-            }))}
-          />
-        ) : null}
-
         {panel === "daily" ? (
           <Table
             headers={["Gün", "Gelir", "Gider", "Net"]}
@@ -480,6 +604,207 @@ function DetailPanel({
             }))}
           />
         ) : null}
+      </div>
+    </section>
+  )
+}
+
+function MonthSelect({
+  month,
+  months,
+  onMonth,
+}: {
+  month: string
+  months: string[]
+  onMonth: (value: string) => void
+}) {
+  return (
+    <label className="flex min-w-0 flex-1 items-center gap-2 text-sm text-slate-600 sm:flex-none">
+      <span className="sr-only">Ay</span>
+      <select
+        className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 sm:w-52"
+        value={month}
+        onChange={(event) => onMonth(event.target.value)}
+      >
+        {months.map((item) => (
+          <option key={item} value={item}>
+            {monthLabel(item)}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
+function CloseButton({ onClose }: { onClose: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClose}
+      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+      aria-label="Tabloyu kapat"
+    >
+      <X className="h-4 w-4" />
+    </button>
+  )
+}
+
+function MonthlyStatement({ finance }: { finance: Finance }) {
+  const incomeRows = finance.rows.filter((row) => row.side === "INCOME")
+  const expenseRows = finance.rows.filter((row) => row.side === "EXPENSE")
+  const incomeBooked = bookedTotal(incomeRows)
+  const incomePlanned = incomeRows
+    .filter((row) => row.tag === "PLANNED")
+    .reduce((sum, row) => sum + row.amount, 0)
+  const expenseBooked = bookedTotal(expenseRows)
+  const net = incomeBooked - expenseBooked
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="border-b-2 border-slate-800 px-4 py-4 text-center">
+        {finance.tenantName ? (
+          <p className="text-sm font-semibold tracking-wide text-slate-500">{finance.tenantName}</p>
+        ) : null}
+        <h2 className="mt-1 text-base font-bold uppercase tracking-wide text-slate-900 sm:text-xl">
+          {monthUpper(finance.selectedMonth)} tarihli gelir gider ödeme özet tablosu
+        </h2>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2">
+        <StatementColumn
+          title="Gelirler"
+          empty="Bu ay gelir yok."
+          totalLabel="Toplam gelir (hesaba geçen)"
+          rows={incomeRows}
+          total={incomeBooked}
+          planned={incomePlanned}
+          divider
+        />
+        <StatementColumn
+          title="Giderler"
+          empty="Bu ay gider yok."
+          totalLabel="Toplam gider"
+          rows={expenseRows}
+          total={expenseBooked}
+        />
+      </div>
+
+      <div
+        className={`border-t-[3px] border-slate-800 px-4 py-3 text-right text-sm font-semibold ${
+          net >= 0 ? "text-emerald-700" : "text-red-700"
+        }`}
+      >
+        Net (hesaba geçen gelir − gider): {moneyExact(net)}
+        {incomePlanned > 0 ? (
+          <span className="mt-1 block text-xs font-medium text-amber-800">
+            + Planlanmış gelir: {moneyExact(incomePlanned)}
+          </span>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+function StatementColumn({
+  title,
+  empty,
+  totalLabel,
+  rows,
+  total,
+  planned = 0,
+  divider = false,
+}: {
+  title: string
+  empty: string
+  totalLabel: string
+  rows: LedgerRow[]
+  total: number
+  planned?: number
+  divider?: boolean
+}) {
+  return (
+    <section
+      className={`border-b-[3px] border-slate-800 lg:border-b-0 ${
+        divider ? "lg:border-r-[3px]" : ""
+      }`}
+    >
+      <div className="border-b-2 border-slate-800 bg-white px-4 py-3">
+        <h3 className="text-base font-bold uppercase tracking-wide text-slate-900">{title}</h3>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[36rem] border-collapse">
+          <thead className="bg-slate-100">
+            <tr className="border-b-2 border-slate-400">
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-700">
+                Açıklama
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-700">
+                Kanal
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-700">
+                Tutar
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-700">
+                Tarih
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.id} className="border-b border-slate-300 bg-white align-top">
+                <td className="px-4 py-2.5 text-sm font-medium text-slate-800">
+                  <span className="inline-flex flex-wrap items-center gap-2">
+                    <span className="whitespace-normal break-words">{row.title}</span>
+                    {row.tag === "PLANNED" ? (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                        Planlanmış
+                      </span>
+                    ) : null}
+                    {row.tag === "CREDITED" ? (
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+                        Hesaba geçti
+                      </span>
+                    ) : null}
+                  </span>
+                </td>
+                <td className="whitespace-nowrap px-4 py-2.5 text-sm text-slate-600">{channelText(row)}</td>
+                <td className="whitespace-nowrap px-4 py-2.5 text-right text-sm font-medium tabular-nums text-slate-800">
+                  {moneyExact(row.amount)}
+                </td>
+                <td className="whitespace-nowrap px-4 py-2.5 text-sm text-slate-500">
+                  {reportDate(row.occurredAt)}
+                </td>
+              </tr>
+            ))}
+            {rows.length === 0 ? (
+              <tr>
+                <td className="px-4 py-3 text-sm text-slate-400" colSpan={4}>
+                  {empty}
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-[3px] border-slate-800 bg-slate-100 font-semibold">
+              <td className="px-4 py-3 text-sm text-slate-800" colSpan={2}>
+                {totalLabel}
+              </td>
+              <td className="whitespace-nowrap px-4 py-3 text-right text-sm tabular-nums text-slate-900">
+                {moneyExact(total)}
+              </td>
+              <td />
+            </tr>
+            {planned > 0 ? (
+              <tr className="bg-amber-50/80 text-sm font-medium text-amber-900">
+                <td className="px-4 py-3" colSpan={2}>
+                  Planlanmış (henüz hesaba geçmedi)
+                </td>
+                <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums">{moneyExact(planned)}</td>
+                <td />
+              </tr>
+            ) : null}
+          </tfoot>
+        </table>
       </div>
     </section>
   )

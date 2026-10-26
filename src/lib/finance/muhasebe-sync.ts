@@ -218,12 +218,23 @@ export type MuhasebeFinanceSummary = {
     collectionAmount: number
   }
   founder?: {
+    tenantName?: string | null
     academicYear: string | null
     expectedIncome: number
     collectedTotal: number
     collectedNew: number
     collectedRenewal: number
     collectedUnclassified: number
+    incomeCategories?: Array<{ name: string; amount: number }>
+    incomeDetails?: Array<{
+      id: string
+      category: string
+      title: string
+      occurredAt: string
+      amount: number
+      channel: string | null
+      channelLabel: string
+    }>
     expenseMonth: string
     expenseTotal: number
     expenses: Array<{ id: string; occurredAt: string; title: string; amount: number; channel: string }>
@@ -231,7 +242,16 @@ export type MuhasebeFinanceSummary = {
     ledgerIncome: number
     ledgerExpense: number
     months: string[]
-    rows: Array<{ id: string; side: string; occurredAt: string; title: string; amount: number }>
+    rows: Array<{
+      id: string
+      side: string
+      occurredAt: string
+      title: string
+      amount: number
+      channel?: string | null
+      channelLabel?: string | null
+      tag?: "PLANNED" | "CREDITED" | null
+    }>
     daily: Array<{ date: string; income: number; expense: number }>
   }
 }
