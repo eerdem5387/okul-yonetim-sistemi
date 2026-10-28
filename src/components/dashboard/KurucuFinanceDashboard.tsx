@@ -1,11 +1,14 @@
 "use client"
 
 import { useCallback, useEffect, useState, type ReactNode } from "react"
+import { createPortal } from "react-dom"
 import {
   AlertTriangle,
   ArrowLeftRight,
+  BadgeCheck,
   CalendarDays,
   CalendarRange,
+  ClipboardList,
   Loader2,
   Receipt,
   RefreshCw,
@@ -16,7 +19,21 @@ import {
 } from "lucide-react"
 import { staffAuthHeaders } from "@/lib/permissions/client"
 
-type Panel = "collected" | "expenses" | "monthly" | "daily" | null
+type Panel = "collected" | "expenses" | "monthly" | "daily" | "pending" | "approved" | null
+
+type ExpenseRequest = {
+  id: string
+  title: string
+  requesterName: string
+  channel: string
+  status: string
+  total: string | number | null
+  notes: string | null
+  founderApprovedAt: string | null
+  founderApprovedByName: string | null
+  createdAt?: string | null
+  sourceCreatedAt?: string | null
+}
 
 type IncomeDetail = {
   id: string
@@ -175,6 +192,9 @@ export function KurucuFinanceDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [title, setTitle] = useState("Panel")
+  const [requests, setRequests] = useState<ExpenseRequest[]>([])
+  const [requestsError, setRequestsError] = useState<string | null>(null)
+  const [requestBusyId, setRequestBusyId] = useState<string | null>(null)
 
   const load = useCallback(async (nextMonth?: string) => {
     setLoading(true)
@@ -196,11 +216,51 @@ export function KurucuFinanceDashboard() {
     }
   }, [])
 
+  const loadRequests = useCallback(async () => {
+    setRequestsError(null)
+    try {
+      await fetch("/api/finans/talepler", {
+        method: "POST",
+        headers: { ...staffAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "sync" }),
+      })
+      const res = await fetch("/api/finans/talepler", {
+        headers: staffAuthHeaders(),
+        cache: "no-store",
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error((json as { error?: string }).error || "Talepler yüklenemedi")
+      setRequests((json as { requests?: ExpenseRequest[] }).requests ?? [])
+    } catch (err) {
+      setRequestsError(err instanceof Error ? err.message : "Talepler yüklenemedi")
+    }
+  }, [])
+
   useEffect(() => {
     const department = localStorage.getItem("staff_department")
     setTitle(department === "KURUCU" ? "Kurucu paneli" : "Yönetim paneli")
     void load()
-  }, [load])
+    void loadRequests()
+  }, [load, loadRequests])
+
+  async function decideRequest(id: string, action: "approve" | "reject", reason?: string) {
+    setRequestBusyId(id)
+    setRequestsError(null)
+    try {
+      const res = await fetch("/api/finans/talepler", {
+        method: "POST",
+        headers: { ...staffAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ action, id, reason }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error((json as { error?: string }).error || "İşlem başarısız")
+      await loadRequests()
+    } catch (err) {
+      setRequestsError(err instanceof Error ? err.message : "İşlem başarısız")
+    } finally {
+      setRequestBusyId(null)
+    }
+  }
 
   function open(next: Exclude<Panel, null>) {
     setPanel((current) => (current === next ? null : next))
@@ -213,6 +273,10 @@ export function KurucuFinanceDashboard() {
   const renewalShare = regs ? share(regs.renewals, regs.total) : null
   const collectedLines = finance ? incomeLines(finance) : []
   const splitTotal = collectedLines.reduce((sum, line) => sum + line.amount, 0)
+  const pendingRequests = requests.filter((row) => row.status === "PENDING")
+  const approvedRequests = requests.filter(
+    (row) => row.status === "APPROVED" || row.status === "COMPLETED"
+  )
   const today = titleCaseTr(
     new Date().toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" })
   )
@@ -240,6 +304,7 @@ export function KurucuFinanceDashboard() {
         {error ? (
           <Notice tone="red">{error}</Notice>
         ) : null}
+        {requestsError ? <Notice tone="red">{requestsError}</Notice> : null}
         {!data?.financeAvailable && data ? (
           <Notice tone="amber">
             Muhasebe özeti alınamadı. Kayıt sayıları okul kaydından, tutarlar muhasebeden gelir.
@@ -254,7 +319,7 @@ export function KurucuFinanceDashboard() {
 
         {loading && !data ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 xl:gap-5">
-            {Array.from({ length: 9 }).map((_, index) => (
+            {Array.from({ length: 11 }).map((_, index) => (
               <div
                 key={index}
                 className="h-44 animate-pulse rounded-2xl border border-white/60 bg-white/50 xl:h-52"
@@ -411,21 +476,231 @@ export function KurucuFinanceDashboard() {
               action="Günleri aç"
               compact
             />
+            <ActionCard
+              active={panel === "pending"}
+              disabled={false}
+              onClick={() => open("pending")}
+              icon={<ClipboardList className="h-5 w-5" />}
+              label="Bekleyen talepler"
+              value={String(pendingRequests.length)}
+              hint="Kurucu onayı bekliyor"
+              action="Talepleri aç"
+            />
+            <ActionCard
+              active={panel === "approved"}
+              disabled={false}
+              onClick={() => open("approved")}
+              icon={<BadgeCheck className="h-5 w-5" />}
+              label="Onaylanmış talepler"
+              value={String(approvedRequests.length)}
+              hint="Kurucu onayı verilmiş"
+              action="Talepleri aç"
+            />
           </div>
         )}
 
-        {panel && finance ? (
-          <DetailPanel
-            panel={panel}
-            finance={finance}
-            month={month}
-            loading={loading}
-            onMonth={(value) => void load(value)}
-            onClose={() => setPanel(null)}
-          />
+        {panel ? (
+          <DashboardModal onClose={() => setPanel(null)}>
+            {panel === "pending" || panel === "approved" ? (
+              <RequestPanel
+                mode={panel}
+                rows={panel === "pending" ? pendingRequests : approvedRequests}
+                error={requestsError}
+                busyId={requestBusyId}
+                onClose={() => setPanel(null)}
+                onDecide={(id, action, reason) => void decideRequest(id, action, reason)}
+              />
+            ) : finance ? (
+              <DetailPanel
+                panel={panel}
+                finance={finance}
+                month={month}
+                loading={loading}
+                onMonth={(value) => void load(value)}
+                onClose={() => setPanel(null)}
+              />
+            ) : null}
+          </DashboardModal>
         ) : null}
       </div>
     </div>
+  )
+}
+
+function DashboardModal({
+  children,
+  onClose,
+}: {
+  children: ReactNode
+  onClose: () => void
+}) {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose()
+    }
+    const previous = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    window.addEventListener("keydown", onKey)
+    return () => {
+      document.body.style.overflow = previous
+      window.removeEventListener("keydown", onKey)
+    }
+  }, [onClose])
+
+  if (!mounted) return null
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-3 sm:p-6">
+      <button
+        type="button"
+        className="fixed inset-0 bg-slate-900/45"
+        aria-label="Kapat"
+        onClick={onClose}
+      />
+      <div className="relative z-10 my-2 w-full max-w-6xl">{children}</div>
+    </div>,
+    document.body
+  )
+}
+
+function RequestPanel({
+  mode,
+  rows,
+  error,
+  busyId,
+  onClose,
+  onDecide,
+}: {
+  mode: "pending" | "approved"
+  rows: ExpenseRequest[]
+  error: string | null
+  busyId: string | null
+  onClose: () => void
+  onDecide: (id: string, action: "approve" | "reject", reason?: string) => void
+}) {
+  const [reasons, setReasons] = useState<Record<string, string>>({})
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+      <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900">
+            {mode === "pending" ? "Bekleyen talepler" : "Onaylanmış talepler"}
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            {mode === "pending"
+              ? "Talep eden, tutar, ürün veya hizmet, kanal ve açıklama. Onay size ait."
+              : "Onayı verilmiş talepler ve onaylayan kişi."}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+          aria-label="Kapat"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      <div className="max-h-[75vh] space-y-3 overflow-y-auto p-4 sm:p-5">
+        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        {rows.length === 0 ? (
+          <p className="py-10 text-center text-sm text-slate-500">
+            {mode === "pending" ? "Bekleyen talep yok." : "Onaylanmış talep yok."}
+          </p>
+        ) : (
+          rows.map((row) => {
+            const when = row.sourceCreatedAt || row.createdAt
+            const numeric = row.total == null || row.total === "" ? null : Number(row.total)
+            const amount =
+              numeric != null && Number.isFinite(numeric) ? moneyExact(numeric) : "Tutar girilmemiş"
+            return (
+              <article key={row.id} className="rounded-xl border border-slate-200 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-base font-semibold text-slate-900">{row.title || "Ürün / hizmet adı yok"}</h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {row.status === "COMPLETED"
+                        ? "Tamamlandı"
+                        : row.status === "APPROVED"
+                          ? "Onaylandı — tutar muhasebede girilecek"
+                          : "Kurucu onayı bekliyor"}
+                    </p>
+                  </div>
+                  <p className="text-lg font-semibold tabular-nums text-slate-900">{amount}</p>
+                </div>
+                <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                  <div>
+                    <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">Talep eden</dt>
+                    <dd className="mt-0.5 text-slate-800">{row.requesterName || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">Harcama kanalı</dt>
+                    <dd className="mt-0.5 text-slate-800">{CHANNEL_LABEL[row.channel] ?? row.channel}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">Ürün veya hizmet</dt>
+                    <dd className="mt-0.5 text-slate-800">{row.title || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">Talep tarihi</dt>
+                    <dd className="mt-0.5 text-slate-800">{when ? dayLabel(when) : "—"}</dd>
+                  </div>
+                  {mode === "approved" ? (
+                    <div className="sm:col-span-2">
+                      <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">Onaylayan</dt>
+                      <dd className="mt-0.5 text-slate-800">
+                        {row.founderApprovedByName || "Ad kaydı yok"}
+                        {row.founderApprovedAt ? ` · ${dayLabel(row.founderApprovedAt)}` : ""}
+                      </dd>
+                    </div>
+                  ) : null}
+                  <div className="sm:col-span-2">
+                    <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">Açıklama</dt>
+                    <dd className="mt-0.5 whitespace-pre-wrap text-slate-800">
+                      {row.notes?.trim() ? row.notes : "Açıklama yok"}
+                    </dd>
+                  </div>
+                </dl>
+                {mode === "pending" ? (
+                  <div className="mt-4 space-y-2">
+                    <input
+                      value={reasons[row.id] ?? ""}
+                      onChange={(event) =>
+                        setReasons((current) => ({ ...current, [row.id]: event.target.value }))
+                      }
+                      placeholder="Red gerekçesi (isteğe bağlı)"
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400"
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={busyId === row.id}
+                        onClick={() => onDecide(row.id, "approve")}
+                        className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+                      >
+                        {busyId === row.id ? "İşleniyor…" : "Onayla"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busyId === row.id}
+                        onClick={() => onDecide(row.id, "reject", reasons[row.id])}
+                        className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
+                      >
+                        Reddet
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </article>
+            )
+          })
+        )}
+      </div>
+    </section>
   )
 }
 
@@ -437,7 +712,7 @@ function DetailPanel({
   onMonth,
   onClose,
 }: {
-  panel: Exclude<Panel, null>
+  panel: "collected" | "expenses" | "monthly" | "daily"
   finance: Finance
   month: string
   loading: boolean
