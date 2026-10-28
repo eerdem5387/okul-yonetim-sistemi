@@ -39,6 +39,12 @@ export interface ChatConversation {
   title: string | null
   updatedAt: string
   myRole: "ADMIN" | "MEMBER"
+  membersCanPost?: boolean
+  createdByStaffId?: string | null
+  systemKey?: string | null
+  studentName?: string | null
+  className?: string | null
+  branchName?: string | null
   participants: ChatParticipant[]
   lastMessage: ChatLastMessage | null
   unreadCount: number
@@ -76,10 +82,13 @@ export interface ContactParent {
   studentTcNumber: string
   studentNames: string[]
   studentClasses: string[]
+  students?: { id: string; name: string }[]
 }
 
 export interface ContactsResponse {
   actor: { kind: ChatActorKind }
   staff: ContactStaff[]
   parents: ContactParent[]
+  branches?: { id: string; name: string; teacherCount: number }[]
+  classes?: { id: string; name: string }[]
 }

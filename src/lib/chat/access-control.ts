@@ -28,6 +28,7 @@ export interface ContactParent {
   studentTcNumber: string
   studentNames: string[]
   studentClasses: string[]
+  students: { id: string; name: string }[]
 }
 
 export function canCreateGroup(actor: ChatActor): boolean {
@@ -169,6 +170,7 @@ export async function getReachableParentsForActor(actor: ChatActor): Promise<Con
             parentName: true,
             student: {
               select: {
+                id: true,
                 firstName: true,
                 lastName: true,
                 grade: true,
@@ -205,6 +207,7 @@ export async function getReachableParentsForActor(actor: ChatActor): Promise<Con
             parentName: true,
             student: {
               select: {
+                id: true,
                 firstName: true,
                 lastName: true,
                 grade: true,
@@ -237,6 +240,10 @@ export async function getReachableParentsForActor(actor: ChatActor): Promise<Con
       studentTcNumber: p.studentTcNumber,
       studentNames,
       studentClasses: Array.from(classes),
+      students: p.students.map((s) => ({
+        id: s.student.id,
+        name: `${s.student.firstName} ${s.student.lastName}`.trim(),
+      })),
     }
   })
 }
@@ -256,7 +263,7 @@ export async function canStartPrivateWithStaff(
   if (!target || !target.isActive) return false
   if (!ACTIVE_STAFF_DEPARTMENTS.includes(target.department)) return false
 
-  if (actor.kind === "staff") return true // Tüm aktif Staff kendi aralarında DM
+  if (actor.kind === "staff") return false
 
   // Parent → Staff
   // Yönetici Staff'a her parent ulaşabilir

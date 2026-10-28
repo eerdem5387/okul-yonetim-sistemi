@@ -35,6 +35,7 @@ const MANAGER_DEPARTMENTS: StaffDepartment[] = [
   "SUPER_ADMIN",
   "MUDUR",
   "MUDUR_YARDIMCISI",
+  "KURUCU",
   "OGRENCI_ISLERI",
   "REHBERLIK",
   "BAS_REHBERLIK",
@@ -50,6 +51,7 @@ export function isAnnouncementCreatorDepartment(department: StaffDepartment): bo
     department === "SUPER_ADMIN" ||
     department === "MUDUR" ||
     department === "MUDUR_YARDIMCISI" ||
+    department === "KURUCU" ||
     department === "OGRENCI_ISLERI"
   )
 }

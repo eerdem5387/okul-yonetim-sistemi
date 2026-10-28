@@ -21,7 +21,7 @@ export type PermissionModuleDef = {
 /** Sistem modülleri — yetkilendirme matrisi satırları */
 export const PERMISSION_MODULES: PermissionModuleDef[] = [
   { id: "dashboard", label: "Dashboard", group: "Genel", actions: ["view"] },
-  { id: "messaging", label: "Mesajlar", group: "Genel", actions: ["view", "create", "edit", "delete"] },
+  { id: "messaging", label: "İç Haberleşme Sistemi", group: "Genel", actions: ["view", "create", "edit", "delete"] },
   { id: "staff", label: "Personel Yönetimi", group: "Genel", actions: ["view", "create", "edit", "delete"] },
   { id: "permissions", label: "Yetkilendirme Sistemi", group: "Genel", actions: ["view", "edit"] },
   { id: "hr", label: "İK (izin, nöbet, notlar)", group: "İK", actions: ["view", "create", "edit", "delete", "approve"] },

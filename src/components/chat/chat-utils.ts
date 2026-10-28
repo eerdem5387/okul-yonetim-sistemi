@@ -43,12 +43,17 @@ export function conversationDisplayTitle(
 }
 
 export function conversationSubtitle(conv: ChatConversation): string {
-  if (conv.type === "ANNOUNCEMENT") return "Duyuru Kanalı"
-  if (conv.type === "GROUP") {
-    const count = conv.participants.length
-    return `${count} katılımcı`
+  if (conv.type === "ANNOUNCEMENT") {
+    return conv.branchName ? `${conv.branchName} duyurusu` : "Duyuru"
   }
-  return ""
+  if (conv.type === "GROUP") {
+    const kind = conv.systemKey ? "Kalıcı kanal" : "Grup"
+    const lock = conv.membersCanPost === false ? " · yalnızca okunur" : ""
+    const linked = [conv.className, conv.studentName].filter(Boolean).join(" · ")
+    const base = `${kind} · ${conv.participants.length} kişi${lock}`
+    return linked ? `${base} · ${linked}` : base
+  }
+  return conv.studentName || ""
 }
 
 export function otherSideOfPrivate(

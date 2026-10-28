@@ -43,7 +43,7 @@ type NavItem = {
 
 const ALL_NAV: NavItem[] = [
   { name: "Ana Sayfa", href: "/ogretmen", icon: Home, module: "dashboard", action: "view" },
-  { name: "Mesajlar", href: "/mesajlar", icon: MessageSquare, module: "messaging", action: "view" },
+  { name: "İç Haberleşme Sistemi", href: "/mesajlar", icon: MessageSquare, module: "messaging", action: "view" },
   { name: "Neredeyiz?", href: "/ogretmen/neredeyiz", icon: Target, module: "neredeyiz", action: "view" },
   // Kendi programı — schedules yetkisinden bağımsız (yönetim sayfası /ders-programi ayrı)
   { name: "Ders Programım", href: "/ogretmen/ders-programim", icon: Calendar, module: "dashboard", action: "view" },

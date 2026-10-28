@@ -30,7 +30,7 @@ type NavDef = { name: string; href: string; icon: LucideIcon; module: string; ac
 
 const baseNavigation: NavDef[] = [
   { name: "Dashboard", href: "/rehberlik", icon: LayoutDashboard, module: "dashboard", action: "view" },
-  { name: "Mesajlar", href: "/mesajlar", icon: MessageSquare, module: "messaging", action: "view" },
+  { name: "İç Haberleşme Sistemi", href: "/mesajlar", icon: MessageSquare, module: "messaging", action: "view" },
   { name: "Neredeyiz?", href: "/rehberlik/neredeyiz", icon: Target, module: "neredeyiz", action: "view" },
   { name: "Sınıf Yönetimi", href: "/sinif-yonetimi", icon: School, module: "classes", action: "view" },
   { name: "Ders Programı", href: "/ders-programi", icon: Calendar, module: "schedules", action: "view" },

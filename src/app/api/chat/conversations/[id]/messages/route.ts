@@ -54,7 +54,19 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
     if (guard.reason === "announcement_only_admin") {
       return NextResponse.json(
-        { error: "Bu duyuru kanalında yalnızca yöneticiler mesaj gönderebilir" },
+        { error: "Bu duyuruda yalnızca yöneticiler yazabilir. Diğer üyeler okuyabilir." },
+        { status: 403 }
+      )
+    }
+    if (guard.reason === "posting_locked") {
+      return NextResponse.json(
+        { error: "Bu grupta sohbet kapatıldı. Yalnızca okuyabilirsiniz." },
+        { status: 403 }
+      )
+    }
+    if (guard.reason === "staff_private_disabled") {
+      return NextResponse.json(
+        { error: "Personel arasında özel yazışma kapalı." },
         { status: 403 }
       )
     }

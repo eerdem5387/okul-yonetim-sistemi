@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { departmentLabel, getAuthHeaders } from "./chat-utils"
+import { getAuthHeaders } from "./chat-utils"
 import type { ContactsResponse } from "./types"
 
 interface Props {
@@ -49,17 +49,6 @@ export function MassMessageDialog({ open, onOpenChange, onSent }: Props) {
     }
   }, [open])
 
-  const filteredStaff = useMemo(() => {
-    if (!data) return []
-    const q = search.trim().toLowerCase()
-    return data.staff.filter(
-      (s) =>
-        !q ||
-        `${s.firstName} ${s.lastName}`.toLowerCase().includes(q) ||
-        departmentLabel(s.department).toLowerCase().includes(q) ||
-        (s.subject && s.subject.toLowerCase().includes(q))
-    )
-  }, [data, search])
   const filteredParents = useMemo(() => {
     if (!data) return []
     const q = search.trim().toLowerCase()
@@ -81,17 +70,6 @@ export function MassMessageDialog({ open, onOpenChange, onSent }: Props) {
     })
   }
 
-  const selectAllStaff = (checked: boolean) => {
-    setSelected((prev) => {
-      const next = { ...prev }
-      for (const s of filteredStaff) {
-        const k = `s:${s.id}`
-        if (checked) next[k] = { staffId: s.id }
-        else delete next[k]
-      }
-      return next
-    })
-  }
   const selectAllParents = (checked: boolean) => {
     setSelected((prev) => {
       const next = { ...prev }
@@ -144,9 +122,9 @@ export function MassMessageDialog({ open, onOpenChange, onSent }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Toplu Mesaj (BCC)</DialogTitle>
+          <DialogTitle>Velilere toplu mesaj</DialogTitle>
           <p className="text-xs text-gray-500">
-            Seçtiğiniz her alıcıya ayrı bir özel sohbette aynı mesaj iletilir.
+            Seçtiğiniz her veliye ayrı bir yazışmada aynı mesaj gider. Personel arası özel mesaj kapalıdır.
           </p>
         </DialogHeader>
 
@@ -175,47 +153,6 @@ export function MassMessageDialog({ open, onOpenChange, onSent }: Props) {
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredStaff.length > 0 && (
-                <section>
-                  <div className="mb-1 flex items-center justify-between">
-                    <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      Personel ({filteredStaff.length})
-                    </h3>
-                    <label className="flex items-center gap-1 text-xs text-gray-600">
-                      <input
-                        type="checkbox"
-                        onChange={(e) => selectAllStaff(e.target.checked)}
-                        className="h-3.5 w-3.5"
-                      />
-                      Tümünü seç
-                    </label>
-                  </div>
-                  <ul className="divide-y divide-gray-100">
-                    {filteredStaff.map((s) => {
-                      const k = `s:${s.id}`
-                      return (
-                        <li key={s.id} className="flex items-center justify-between py-2">
-                          <div className="min-w-0">
-                            <div className="font-medium truncate text-gray-900">
-                              {s.firstName} {s.lastName}
-                            </div>
-                            <div className="text-xs text-gray-500 truncate">
-                              {departmentLabel(s.department)}
-                              {s.subject ? ` · ${s.subject}` : ""}
-                            </div>
-                          </div>
-                          <input
-                            type="checkbox"
-                            className="h-4 w-4"
-                            checked={!!selected[k]}
-                            onChange={() => toggle(k, { staffId: s.id })}
-                          />
-                        </li>
-                      )
-                    })}
-                  </ul>
-                </section>
-              )}
               {filteredParents.length > 0 && (
                 <section>
                   <div className="mb-1 flex items-center justify-between">
@@ -255,7 +192,7 @@ export function MassMessageDialog({ open, onOpenChange, onSent }: Props) {
                   </ul>
                 </section>
               )}
-              {filteredStaff.length === 0 && filteredParents.length === 0 && (
+              {filteredParents.length === 0 && (
                 <div className="py-8 text-center text-sm text-gray-500">
                   Eşleşen kişi bulunamadı.
                 </div>

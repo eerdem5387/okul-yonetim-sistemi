@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { resolveChatActor } from "@/lib/chat/identity"
-import { isActorParticipant } from "@/lib/chat/repository"
+import { canToggleMemberPosting, isActorParticipant } from "@/lib/chat/repository"
 
 export const dynamic = "force-dynamic"
 
@@ -19,6 +19,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
   const conv = await prisma.conversation.findUnique({
     where: { id },
     include: {
+      student: { select: { firstName: true, lastName: true } },
+      class: { select: { name: true } },
+      branch: { select: { name: true } },
       participants: {
         include: {
           staff: { select: { id: true, firstName: true, lastName: true, department: true } },
@@ -43,6 +46,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
         title: conv.title,
         createdAt: conv.createdAt,
         updatedAt: conv.updatedAt,
+        membersCanPost: conv.membersCanPost,
+        createdByStaffId: conv.createdByStaffId,
+        systemKey: conv.systemKey,
+        studentName: conv.student ? `${conv.student.firstName} ${conv.student.lastName}`.trim() : null,
+        className: conv.class?.name ?? null,
+        branchName: conv.branch?.name ?? null,
         myRole: role,
         participants: conv.participants.map((p) => ({
           id: p.id,
@@ -75,19 +84,32 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Yetkisiz" }, { status: 403 })
   }
 
-  let body: { title?: string }
+  let body: { title?: string; membersCanPost?: boolean }
   try {
     body = await request.json()
   } catch {
     return NextResponse.json({ error: "Geçersiz JSON" }, { status: 400 })
   }
-  if (typeof body.title !== "string") {
-    return NextResponse.json({ error: "Başlık geçersiz" }, { status: 400 })
+
+  const data: { title?: string | null; membersCanPost?: boolean } = {}
+  if (typeof body.title === "string") {
+    if (role !== "ADMIN") return NextResponse.json({ error: "Yetkisiz" }, { status: 403 })
+    data.title = body.title.trim() || null
   }
+  if (typeof body.membersCanPost === "boolean") {
+    if (!(await canToggleMemberPosting(actor, id))) {
+      return NextResponse.json({ error: "Bu ayarı yalnızca grubu kuran kişi değiştirebilir." }, { status: 403 })
+    }
+    data.membersCanPost = body.membersCanPost
+  }
+  if (Object.keys(data).length === 0) {
+    return NextResponse.json({ error: "Güncellenecek alan yok" }, { status: 400 })
+  }
+
   const updated = await prisma.conversation.update({
     where: { id },
-    data: { title: body.title.trim() || null },
-    select: { id: true, title: true },
+    data,
+    select: { id: true, title: true, membersCanPost: true },
   })
   return NextResponse.json({ conversation: updated })
 }

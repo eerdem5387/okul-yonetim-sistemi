@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Loader2, Megaphone, Users } from "lucide-react"
+import { Loader2, Megaphone, Settings, Users } from "lucide-react"
 import { MessageBubble } from "./MessageBubble"
 import { MessageComposer } from "./MessageComposer"
 import { useChatRealtime } from "./useChatRealtime"
@@ -31,6 +31,9 @@ export function ConversationView({ conversation, actor, onConversationsChanged }
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
   const [detail, setDetail] = useState<ConversationDetail | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [readFor, setReadFor] = useState<string | null>(null)
+  const [readReport, setReadReport] = useState<{ read: { name: string; readAt: string }[]; unread: { name: string }[] } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   // İlk yükleme
@@ -39,8 +42,12 @@ export function ConversationView({ conversation, actor, onConversationsChanged }
       setMessages([])
       setDetail(null)
       setNextCursor(null)
+      setSettingsOpen(false)
+      setReadFor(null)
       return
     }
+    setSettingsOpen(false)
+    setReadFor(null)
     let cancelled = false
     const load = async () => {
       setLoading(true)
@@ -200,9 +207,53 @@ export function ConversationView({ conversation, actor, onConversationsChanged }
         ? "group"
         : "user"
 
-  const myRole = detail?.myRole ?? conversation.myRole
+  const view = detail || conversation
+  const myRole = view.myRole
+  const membersCanPost = view.membersCanPost !== false
+  const canManagePosting =
+    actor.kind === "staff" &&
+    conversation.type === "GROUP" &&
+    (view.createdByStaffId
+      ? view.createdByStaffId === actor.id
+      : myRole === "ADMIN")
   const composerDisabled =
-    conversation.type === "ANNOUNCEMENT" && myRole !== "ADMIN"
+    (conversation.type === "ANNOUNCEMENT" && myRole !== "ADMIN") ||
+    (conversation.type === "GROUP" && !membersCanPost && myRole !== "ADMIN")
+  const disabledMessage =
+    conversation.type === "ANNOUNCEMENT"
+      ? "Bu duyuruda yalnızca yöneticiler yazabilir. Siz okuyabilirsiniz."
+      : "Bu grupta sohbet kapatıldı. Yalnızca okuyabilirsiniz."
+
+  const togglePosting = async (next: boolean) => {
+    const res = await fetch(`/api/chat/conversations/${conversation.id}`, {
+      method: "PATCH",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ membersCanPost: next }),
+    })
+    const json = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      alert(json?.error || "Ayar kaydedilemedi")
+      return
+    }
+    setDetail((current) => (current ? { ...current, membersCanPost: next } : current))
+    onConversationsChanged?.()
+  }
+
+  const openReceipts = async (messageId: string) => {
+    setReadFor(messageId)
+    setReadReport(null)
+    const res = await fetch(
+      `/api/chat/conversations/${conversation.id}/receipts?messageId=${encodeURIComponent(messageId)}`,
+      { headers: getAuthHeaders(), cache: "no-store" }
+    )
+    const json = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      alert(json?.error || "Okundu listesi alınamadı")
+      setReadFor(null)
+      return
+    }
+    setReadReport(json)
+  }
 
   const myName =
     typeof window !== "undefined"
@@ -227,10 +278,38 @@ export function ConversationView({ conversation, actor, onConversationsChanged }
           </div>
           {subtitle && <p className="text-[11px] text-gray-500">{subtitle}</p>}
         </div>
+        {canManagePosting && (
+          <button
+            type="button"
+            onClick={() => setSettingsOpen((open) => !open)}
+            className="rounded-md p-2 text-gray-500 hover:bg-gray-100"
+            aria-label="Grup ayarları"
+          >
+            <Settings className="h-4 w-4" />
+          </button>
+        )}
         {myName && (
           <span className="hidden text-xs text-gray-400 sm:inline">Siz: {myName}</span>
         )}
       </header>
+      {settingsOpen && canManagePosting ? (
+        <div className="border-b bg-slate-50 px-4 py-3 text-sm">
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={membersCanPost}
+              onChange={(event) => void togglePosting(event.target.checked)}
+            />
+            <span>
+              <span className="font-medium text-gray-900">Üyeler yazabilsin</span>
+              <span className="mt-0.5 block text-xs text-gray-500">
+                Kapatırsanız grupta yalnızca siz yazarsınız. Diğerleri mesajları okur.
+              </span>
+            </span>
+          </label>
+        </div>
+      ) : null}
 
       <div
         ref={scrollRef}
@@ -263,13 +342,51 @@ export function ConversationView({ conversation, actor, onConversationsChanged }
             actor.kind === "staff"
               ? m.sender?.kind === "staff" && m.sender.id === actor.id
               : m.sender?.kind === "parent" && m.sender.id === actor.id
-          return <MessageBubble key={m.id} message={m} isOwn={isOwn} actorKind={actor.kind} />
+          return (
+            <div key={m.id}>
+              <MessageBubble message={m} isOwn={isOwn} actorKind={actor.kind} />
+              {conversation.type === "ANNOUNCEMENT" && myRole === "ADMIN" ? (
+                <button
+                  type="button"
+                  className="mb-2 ml-12 text-xs text-blue-700 hover:underline"
+                  onClick={() => void openReceipts(m.id)}
+                >
+                  Kimler okudu
+                </button>
+              ) : null}
+            </div>
+          )
         })}
       </div>
 
+      {readFor && readReport ? (
+        <div className="max-h-40 overflow-y-auto border-t bg-white px-4 py-3 text-sm">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="font-medium text-gray-900">Okundu bilgisi</p>
+            <button type="button" className="text-xs text-gray-500" onClick={() => setReadFor(null)}>
+              Kapat
+            </button>
+          </div>
+          <p className="text-xs font-medium text-gray-500">Okuyanlar ({readReport.read.length})</p>
+          <ul className="mb-2 text-gray-800">
+            {readReport.read.map((row) => (
+              <li key={row.name}>{row.name}</li>
+            ))}
+            {readReport.read.length === 0 ? <li className="text-gray-400">Henüz yok</li> : null}
+          </ul>
+          <p className="text-xs font-medium text-gray-500">Okumayanlar ({readReport.unread.length})</p>
+          <ul className="text-gray-800">
+            {readReport.unread.map((row) => (
+              <li key={row.name}>{row.name}</li>
+            ))}
+            {readReport.unread.length === 0 ? <li className="text-gray-400">Herkes okudu</li> : null}
+          </ul>
+        </div>
+      ) : null}
+
       <MessageComposer
         disabled={composerDisabled}
-        disabledMessage="Bu duyuru kanalında yalnızca yöneticiler mesaj gönderebilir."
+        disabledMessage={disabledMessage}
         onSend={sendMessage}
         onUpload={uploadFile}
       />

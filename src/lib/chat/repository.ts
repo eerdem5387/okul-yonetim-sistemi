@@ -47,7 +47,8 @@ export async function isActorParticipant(
  */
 export async function findOrCreatePrivateConversation(
   actor: ChatActor,
-  target: { staffId?: string; parentId?: string }
+  target: { staffId?: string; parentId?: string },
+  link?: { studentId?: string | null }
 ): Promise<string> {
   if ((target.staffId && target.parentId) || (!target.staffId && !target.parentId)) {
     throw new Error("Hedef için tam olarak biri staffId VEYA parentId olmalı")
@@ -67,14 +68,26 @@ export async function findOrCreatePrivateConversation(
         { participants: { some: sideBFilter } },
       ],
     },
-    select: { id: true },
+    select: { id: true, studentId: true },
   })
-  if (existing) return existing.id
+  const linkedStudentId = await resolvePrivateStudentId(target.parentId, link?.studentId)
+  if (existing) {
+    if (linkedStudentId && !existing.studentId) {
+      const classId = await activeClassIdForStudent(linkedStudentId)
+      await prisma.conversation.update({
+        where: { id: existing.id },
+        data: { studentId: linkedStudentId, classId },
+      })
+    }
+    return existing.id
+  }
 
-  // Oluştur
+  const classId = linkedStudentId ? await activeClassIdForStudent(linkedStudentId) : null
   const conv = await prisma.conversation.create({
     data: {
       type: "PRIVATE",
+      studentId: linkedStudentId,
+      classId,
       participants: {
         create: [
           actor.kind === "staff" ? { staffId: actor.staffId } : { parentId: actor.parentId },
@@ -87,9 +100,46 @@ export async function findOrCreatePrivateConversation(
   return conv.id
 }
 
+async function resolvePrivateStudentId(
+  parentId: string | undefined,
+  requested: string | null | undefined
+): Promise<string | null> {
+  if (!parentId) return null
+  const links = await prisma.parentStudent.findMany({
+    where: { parentId },
+    select: { studentId: true },
+  })
+  const ids = links.map((link) => link.studentId)
+  if (requested) return ids.includes(requested) ? requested : null
+  return ids.length === 1 ? ids[0] : null
+}
+
+async function activeClassIdForStudent(studentId: string): Promise<string | null> {
+  const activeYear = await prisma.academicYear.findFirst({
+    where: { isActive: true, parentActiveYearId: null },
+    select: { id: true },
+  })
+  const assignment = await prisma.classStudent.findFirst({
+    where: {
+      studentId,
+      ...(activeYear ? { class: { academicYearId: activeYear.id } } : {}),
+    },
+    select: { classId: true },
+    orderBy: { createdAt: "desc" },
+  })
+  return assignment?.classId ?? null
+}
+
 export async function createGroupConversation(
   creator: ChatActor,
-  options: { title: string; participants: ParticipantRef[]; type?: Extract<ConversationType, "GROUP" | "ANNOUNCEMENT"> }
+  options: {
+    title: string
+    participants: ParticipantRef[]
+    type?: Extract<ConversationType, "GROUP" | "ANNOUNCEMENT">
+    studentId?: string | null
+    classId?: string | null
+    branchId?: string | null
+  }
 ): Promise<string> {
   const type = options.type ?? "GROUP"
   if (creator.kind !== "staff") throw new Error("Sadece personel grup/duyuru oluşturabilir")
@@ -117,6 +167,11 @@ export async function createGroupConversation(
     data: {
       type,
       title: options.title.trim() || null,
+      membersCanPost: type !== "ANNOUNCEMENT",
+      createdByStaffId: creator.staffId,
+      studentId: options.studentId || null,
+      classId: options.classId || null,
+      branchId: options.branchId || null,
       participants: {
         create: cleaned.map((p) => ({
           staffId: p.staffId,
@@ -233,6 +288,12 @@ interface ConversationListItem {
   title: string | null
   updatedAt: Date
   myRole: "ADMIN" | "MEMBER"
+  membersCanPost: boolean
+  createdByStaffId: string | null
+  systemKey: string | null
+  studentName: string | null
+  className: string | null
+  branchName: string | null
   participants: Array<{
     role: "ADMIN" | "MEMBER"
     staff: { id: string; firstName: string; lastName: string; department: string } | null
@@ -250,12 +311,68 @@ interface ConversationListItem {
   unreadCount: number
 }
 
+function staffOnlyPrivateExclusion(): Prisma.ConversationWhereInput {
+  return {
+    NOT: {
+      AND: [{ type: "PRIVATE" }, { participants: { every: { parentId: null } } }],
+    },
+  }
+}
+
+function conversationSearchWhere(q: string): Prisma.ConversationWhereInput {
+  return {
+    OR: [
+      { title: { contains: q, mode: "insensitive" } },
+      { class: { name: { contains: q, mode: "insensitive" } } },
+      { branch: { name: { contains: q, mode: "insensitive" } } },
+      {
+        student: {
+          OR: [
+            { firstName: { contains: q, mode: "insensitive" } },
+            { lastName: { contains: q, mode: "insensitive" } },
+          ],
+        },
+      },
+      {
+        participants: {
+          some: {
+            staff: {
+              OR: [
+                { firstName: { contains: q, mode: "insensitive" } },
+                { lastName: { contains: q, mode: "insensitive" } },
+              ],
+            },
+          },
+        },
+      },
+      {
+        participants: {
+          some: {
+            parent: { students: { some: { parentName: { contains: q, mode: "insensitive" } } } },
+          },
+        },
+      },
+      {
+        messages: { some: { body: { contains: q, mode: "insensitive" } } },
+      },
+    ],
+  }
+}
+
 export async function listConversationsForActor(
-  actor: ChatActor
+  actor: ChatActor,
+  query?: string
 ): Promise<ConversationListItem[]> {
   const myWhere = actorParticipantWhere(actor)
+  const q = query?.trim()
   const convos = await prisma.conversation.findMany({
-    where: { participants: { some: myWhere } },
+    where: {
+      AND: [
+        { participants: { some: myWhere } },
+        actor.kind === "staff" ? staffOnlyPrivateExclusion() : {},
+        q ? conversationSearchWhere(q) : {},
+      ],
+    },
     include: {
       participants: {
         include: {
@@ -269,6 +386,9 @@ export async function listConversationsForActor(
           },
         },
       },
+      student: { select: { firstName: true, lastName: true } },
+      class: { select: { name: true } },
+      branch: { select: { name: true } },
       messages: {
         orderBy: { createdAt: "desc" },
         take: 1,
@@ -286,6 +406,27 @@ export async function listConversationsForActor(
     orderBy: { updatedAt: "desc" },
   })
 
+  const unreadByConversation = new Map<string, number>()
+  if (convos.length > 0) {
+    const grouped = await prisma.message.groupBy({
+      by: ["conversationId"],
+      where:
+        actor.kind === "staff"
+          ? {
+              conversationId: { in: convos.map((row) => row.id) },
+              senderStaffId: { not: actor.staffId },
+              NOT: { receipts: { some: { readerStaffId: actor.staffId } } },
+            }
+          : {
+              conversationId: { in: convos.map((row) => row.id) },
+              senderParentId: { not: actor.parentId },
+              NOT: { receipts: { some: { readerParentId: actor.parentId } } },
+            },
+      _count: { _all: true },
+    })
+    for (const row of grouped) unreadByConversation.set(row.conversationId, row._count._all)
+  }
+
   const result: ConversationListItem[] = []
   for (const c of convos) {
     const me = c.participants.find((p) =>
@@ -293,25 +434,7 @@ export async function listConversationsForActor(
     )
     if (!me) continue
 
-    // Unread count
-    let unread = 0
-    if (actor.kind === "staff") {
-      unread = await prisma.message.count({
-        where: {
-          conversationId: c.id,
-          senderStaffId: { not: actor.staffId },
-          NOT: { receipts: { some: { readerStaffId: actor.staffId } } },
-        },
-      })
-    } else {
-      unread = await prisma.message.count({
-        where: {
-          conversationId: c.id,
-          senderParentId: { not: actor.parentId },
-          NOT: { receipts: { some: { readerParentId: actor.parentId } } },
-        },
-      })
-    }
+    const unread = unreadByConversation.get(c.id) ?? 0
 
     result.push({
       id: c.id,
@@ -319,6 +442,12 @@ export async function listConversationsForActor(
       title: c.title,
       updatedAt: c.updatedAt,
       myRole: me.role,
+      membersCanPost: c.membersCanPost,
+      createdByStaffId: c.createdByStaffId,
+      systemKey: c.systemKey,
+      studentName: c.student ? `${c.student.firstName} ${c.student.lastName}`.trim() : null,
+      className: c.class?.name ?? null,
+      branchName: c.branch?.name ?? null,
       participants: c.participants.map((p) => ({
         role: p.role,
         staff: p.staff,
@@ -402,7 +531,12 @@ export async function unreadCountForActor(actor: ChatActor): Promise<number> {
     return prisma.message.count({
       where: {
         senderStaffId: { not: actor.staffId },
-        conversation: { participants: { some: { staffId: actor.staffId } } },
+        conversation: {
+          AND: [
+            { participants: { some: { staffId: actor.staffId } } },
+            staffOnlyPrivateExclusion(),
+          ],
+        },
         NOT: { receipts: { some: { readerStaffId: actor.staffId } } },
       },
     })
@@ -424,16 +558,45 @@ export async function unreadCountForActor(actor: ChatActor): Promise<number> {
 export async function canActorSendMessage(
   actor: ChatActor,
   conversationId: string
-): Promise<{ ok: boolean; reason?: "not_member" | "announcement_only_admin" | "not_found" }> {
+): Promise<{
+  ok: boolean
+  reason?: "not_member" | "announcement_only_admin" | "posting_locked" | "staff_private_disabled" | "not_found"
+}> {
   const conv = await prisma.conversation.findUnique({
     where: { id: conversationId },
-    select: { id: true, type: true },
+    select: {
+      id: true,
+      type: true,
+      membersCanPost: true,
+      participants: { select: { staffId: true, parentId: true } },
+    },
   })
   if (!conv) return { ok: false, reason: "not_found" }
   const { isMember, role } = await isActorParticipant(actor, conversationId)
   if (!isMember) return { ok: false, reason: "not_member" }
+  const staffOnly =
+    conv.type === "PRIVATE" &&
+    conv.participants.length > 0 &&
+    conv.participants.every((participant) => participant.parentId == null)
+  if (staffOnly) return { ok: false, reason: "staff_private_disabled" }
   if (conv.type === "ANNOUNCEMENT" && role !== "ADMIN") {
     return { ok: false, reason: "announcement_only_admin" }
   }
+  if (conv.type === "GROUP" && !conv.membersCanPost && role !== "ADMIN") {
+    return { ok: false, reason: "posting_locked" }
+  }
   return { ok: true }
+}
+
+export async function canToggleMemberPosting(actor: ChatActor, conversationId: string): Promise<boolean> {
+  if (actor.kind !== "staff") return false
+  const conv = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    select: { type: true, createdByStaffId: true },
+  })
+  if (!conv || conv.type !== "GROUP") return false
+  const { isMember, role } = await isActorParticipant(actor, conversationId)
+  if (!isMember) return false
+  if (conv.createdByStaffId) return conv.createdByStaffId === actor.staffId
+  return role === "ADMIN"
 }

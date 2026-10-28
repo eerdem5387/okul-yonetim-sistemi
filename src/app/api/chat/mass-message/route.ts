@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { resolveChatActor } from "@/lib/chat/identity"
-import {
-  canStartPrivateWithParent,
-  canStartPrivateWithStaff,
-} from "@/lib/chat/access-control"
+import { canStartPrivateWithParent } from "@/lib/chat/access-control"
 import {
   appendMessage,
   findOrCreatePrivateConversation,
@@ -72,9 +69,11 @@ export async function POST(request: NextRequest) {
         skipped.push({ target: r, reason: "invalid_target" })
         continue
       }
-      const allowed = r.staffId
-        ? await canStartPrivateWithStaff(actor, r.staffId)
-        : await canStartPrivateWithParent(actor, r.parentId!)
+      if (r.staffId) {
+        skipped.push({ target: r, reason: "staff_private_disabled" })
+        continue
+      }
+      const allowed = await canStartPrivateWithParent(actor, r.parentId!)
       if (!allowed) {
         skipped.push({ target: r, reason: "forbidden" })
         continue
