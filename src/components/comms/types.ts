@@ -5,6 +5,7 @@ export type CommsCapabilities = {
   approveRequests: boolean
   createClassGroup: boolean
   createRequest: boolean
+  deleteComms: boolean
 }
 
 export type CommsMe = {

@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { resolveStaffActor } from "@/lib/hr/actor"
 import { resolveChatActor } from "@/lib/comms/identity"
-import { canCreateClassGroup } from "@/lib/comms/access"
+import { canCreateClassGroup, canDeleteComms } from "@/lib/comms/access"
 
 export const dynamic = "force-dynamic"
 
@@ -126,4 +126,19 @@ export async function PATCH(request: NextRequest, context: Ctx) {
 
   const updated = await prisma.classGroup.update({ where: { id }, data })
   return NextResponse.json({ group: updated })
+}
+
+export async function DELETE(_request: NextRequest, context: Ctx) {
+  const actor = await resolveStaffActor(_request)
+  if (!actor) return NextResponse.json({ error: "Yetkisiz" }, { status: 401 })
+  if (!canDeleteComms(actor.department)) {
+    return NextResponse.json({ error: "Silme yetkiniz yok" }, { status: 403 })
+  }
+
+  const { id } = await context.params
+  const group = await prisma.classGroup.findUnique({ where: { id }, select: { id: true } })
+  if (!group) return NextResponse.json({ error: "Grup bulunamadı" }, { status: 404 })
+
+  await prisma.classGroup.delete({ where: { id } })
+  return NextResponse.json({ ok: true })
 }

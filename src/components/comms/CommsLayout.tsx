@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { FileDown, Loader2, RefreshCw } from "lucide-react"
+import { FileDown, Loader2, RefreshCw, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -216,6 +216,7 @@ export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
             selected={selectedNotice}
             onSelect={setSelectedNotice}
             mode="inbox"
+            canDelete={Boolean(caps?.deleteComms)}
             onAcked={() => void refresh()}
           />
         ) : tab === "templates" ? (
@@ -225,6 +226,7 @@ export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
             requests={requests}
             canApprove={Boolean(caps?.approveRequests)}
             canCreate={Boolean(caps?.createRequest)}
+            canDelete={Boolean(caps?.deleteComms)}
             onChanged={() => void refresh()}
           />
         ) : tab === "groups" || (kind === "parent" && tab === "class-announcements") ? (
@@ -234,6 +236,7 @@ export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
             actorId={me?.actor.id || ""}
             canCreate={Boolean(caps?.createClassGroup)}
             canSendAnnouncement={Boolean(caps?.sendClassAnnouncement)}
+            canDelete={Boolean(caps?.deleteComms)}
             selectedId={selectedGroupId}
             onSelect={setSelectedGroupId}
             onChanged={() => void refresh()}
@@ -244,6 +247,7 @@ export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
             selected={selectedNotice}
             onSelect={setSelectedNotice}
             mode="sent"
+            canDelete={Boolean(caps?.deleteComms)}
             onAcked={() => void refresh()}
           />
         ) : (
@@ -261,16 +265,19 @@ function NoticesPanel({
   selected,
   onSelect,
   mode,
+  canDelete,
   onAcked,
 }: {
   notices: OfficialNotice[]
   selected: OfficialNotice | null
   onSelect: (n: OfficialNotice | null) => void
   mode: "inbox" | "sent"
+  canDelete: boolean
   onAcked: () => void
 }) {
   const [acking, setAcking] = useState(false)
   const [pdfLoading, setPdfLoading] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [typeFilter, setTypeFilter] = useState<"ALL" | NoticeType>("ALL")
   const [seenFilter, setSeenFilter] = useState<"ALL" | "SEEN" | "UNSEEN">("ALL")
   const [query, setQuery] = useState("")
@@ -346,6 +353,27 @@ function NoticesPanel({
       alert("PDF indirilemedi")
     } finally {
       setPdfLoading(false)
+    }
+  }
+
+  const removeNotice = async (id: string) => {
+    if (!canDelete || deleting) return
+    if (!window.confirm("Bu iletiyi silmek istediğinize emin misiniz?")) return
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/comms/notices/${id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert(j.error || "Silinemedi")
+        return
+      }
+      onSelect(null)
+      onAcked()
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -476,18 +504,35 @@ function NoticesPanel({
                 </div>
                 <h2 className="mt-2 text-2xl font-bold leading-snug text-gray-900">{current.subject}</h2>
               </div>
-              <Button
-                variant="outline"
-                onClick={() => void downloadPdf(current.id, current.subject)}
-                disabled={pdfLoading}
-              >
-                {pdfLoading ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <FileDown className="mr-2 h-4 w-4" />
-                )}
-                PDF İndir
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => void downloadPdf(current.id, current.subject)}
+                  disabled={pdfLoading}
+                >
+                  {pdfLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileDown className="mr-2 h-4 w-4" />
+                  )}
+                  PDF İndir
+                </Button>
+                {canDelete ? (
+                  <Button
+                    variant="outline"
+                    className="text-red-700 hover:bg-red-50"
+                    disabled={deleting}
+                    onClick={() => void removeNotice(current.id)}
+                  >
+                    {deleting ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="mr-2 h-4 w-4" />
+                    )}
+                    Sil
+                  </Button>
+                ) : null}
+              </div>
             </div>
 
             <dl className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-2">
@@ -751,11 +796,13 @@ function RequestsPanel({
   requests,
   canApprove,
   canCreate,
+  canDelete,
   onChanged,
 }: {
   requests: StaffCommsRequest[]
   canApprove: boolean
   canCreate: boolean
+  canDelete: boolean
   onChanged: () => void
 }) {
   const [templates, setTemplates] = useState<CommsTemplate[]>([])
@@ -765,6 +812,7 @@ function RequestsPanel({
   const [customizing, setCustomizing] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [deciding, setDeciding] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     if (!canCreate) return
@@ -820,6 +868,27 @@ function RequestsPanel({
       onChanged()
     } finally {
       setDeciding(false)
+    }
+  }
+
+  const removeRequest = async (id: string) => {
+    if (!canDelete || deleting) return
+    if (!window.confirm("Bu talebi silmek istediğinize emin misiniz?")) return
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/comms/requests/${id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert(j.error || "Silinemedi")
+        return
+      }
+      setSelectedId(null)
+      onChanged()
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -950,9 +1019,20 @@ function RequestsPanel({
                 <p className="text-sm font-medium text-red-700">Gerekçe: {selected.rejectReason}</p>
               ) : null}
               <DialogFooter className="gap-2">
-                <Button variant="outline" onClick={() => setSelectedId(null)} disabled={deciding}>
+                <Button variant="outline" onClick={() => setSelectedId(null)} disabled={deciding || deleting}>
                   Kapat
                 </Button>
+                {canDelete ? (
+                  <Button
+                    variant="outline"
+                    className="text-red-700 hover:bg-red-50"
+                    disabled={deleting}
+                    onClick={() => void removeRequest(selected.id)}
+                  >
+                    {deleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                    Sil
+                  </Button>
+                ) : null}
                 {canApprove && selected.status === "PENDING" ? (
                   <>
                     <Button
@@ -1001,6 +1081,7 @@ function GroupsPanel({
   actorId,
   canCreate,
   canSendAnnouncement,
+  canDelete,
   selectedId,
   onSelect,
   onChanged,
@@ -1010,6 +1091,7 @@ function GroupsPanel({
   actorId: string
   canCreate: boolean
   canSendAnnouncement: boolean
+  canDelete: boolean
   selectedId: string | null
   onSelect: (id: string | null) => void
   onChanged: () => void
@@ -1145,6 +1227,53 @@ function GroupsPanel({
     onChanged()
   }
 
+  const deleteMessage = async (messageId: string) => {
+    if (!selectedId || !canDelete) return
+    if (!window.confirm("Bu mesajı silmek istediğinize emin misiniz?")) return
+    const res = await fetch(`/api/comms/class-groups/${selectedId}/messages/${messageId}`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    })
+    const j = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      alert(j.error || "Mesaj silinemedi")
+      return
+    }
+    await loadThread(selectedId)
+  }
+
+  const deleteAnnouncement = async (announcementId: string) => {
+    if (!canDelete) return
+    if (!window.confirm("Bu duyuruyu silmek istediğinize emin misiniz?")) return
+    const res = await fetch(`/api/comms/class-announcements/${announcementId}`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    })
+    const j = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      alert(j.error || "Duyuru silinemedi")
+      return
+    }
+    if (selectedId) await loadThread(selectedId)
+    onChanged()
+  }
+
+  const deleteGroup = async () => {
+    if (!selectedId || !canDelete) return
+    if (!window.confirm("Bu sınıf grubunu ve tüm mesaj/duyurularını silmek istediğinize emin misiniz?")) return
+    const res = await fetch(`/api/comms/class-groups/${selectedId}`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    })
+    const j = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      alert(j.error || "Grup silinemedi")
+      return
+    }
+    onSelect(null)
+    onChanged()
+  }
+
   const toggleParents = async () => {
     if (!selectedId || !detail) return
     const res = await fetch(`/api/comms/class-groups/${selectedId}`, {
@@ -1258,6 +1387,17 @@ function GroupsPanel({
                 <Button size="sm" variant="outline" onClick={() => void addTeacher()} disabled={!addTeacherId}>
                   Ekle
                 </Button>
+                {canDelete ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-red-700 hover:bg-red-50"
+                    onClick={() => void deleteGroup()}
+                  >
+                    <Trash2 className="mr-1 h-3.5 w-3.5" />
+                    Grubu sil
+                  </Button>
+                ) : null}
               </div>
             ) : null}
             {showAnnouncementForm && canSendAnnouncement ? (
@@ -1304,15 +1444,29 @@ function GroupsPanel({
               {timeline.map((item) => {
                 if (item.kind === "announcement") {
                   return (
-                    <div key={`a-${item.id}`} className="flex w-full justify-center">
-                      <div className="w-full max-w-lg rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 shadow-sm">
-                        <p className="text-[11px] font-bold uppercase tracking-wide text-amber-800">Duyuru</p>
-                        <p className="mt-1 text-sm font-semibold text-slate-900">{item.subject}</p>
-                        <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{item.body}</p>
-                        <p className="mt-2 text-xs text-slate-500">
-                          {item.sender?.displayName || "Sistem"} · {formatCommsDate(item.createdAt)}
+                    <div key={`a-${item.id}`} className="group flex w-full justify-start gap-1">
+                      <div className="max-w-[78%] rounded-2xl rounded-bl-md border border-amber-300 bg-amber-100 px-3.5 py-2 shadow-sm">
+                        <p className="mb-0.5 text-[11px] font-bold text-amber-800">
+                          Duyuru · {item.sender?.displayName || "Sistem"}
+                        </p>
+                        <p className="text-sm font-semibold text-amber-950">{item.subject}</p>
+                        <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-amber-950">
+                          {item.body}
+                        </p>
+                        <p className="mt-1 text-right text-[10px] text-amber-700/80">
+                          {formatCommsDate(item.createdAt)}
                         </p>
                       </div>
+                      {canDelete ? (
+                        <button
+                          type="button"
+                          title="Duyuruyu sil"
+                          className="mt-1 h-7 w-7 shrink-0 rounded-full text-red-600 opacity-70 hover:bg-red-50 hover:opacity-100"
+                          onClick={() => void deleteAnnouncement(item.id)}
+                        >
+                          <Trash2 className="mx-auto h-3.5 w-3.5" />
+                        </button>
+                      ) : null}
                     </div>
                   )
                 }
@@ -1321,8 +1475,18 @@ function GroupsPanel({
                 return (
                   <div
                     key={`m-${item.id}`}
-                    className={`flex w-full ${mine ? "justify-end" : "justify-start"}`}
+                    className={`group flex w-full items-start gap-1 ${mine ? "justify-end" : "justify-start"}`}
                   >
+                    {canDelete && mine ? (
+                      <button
+                        type="button"
+                        title="Mesajı sil"
+                        className="mt-1 h-7 w-7 shrink-0 rounded-full text-red-600 opacity-70 hover:bg-red-50 hover:opacity-100"
+                        onClick={() => void deleteMessage(item.id)}
+                      >
+                        <Trash2 className="mx-auto h-3.5 w-3.5" />
+                      </button>
+                    ) : null}
                     <div
                       className={`max-w-[78%] rounded-2xl px-3.5 py-2 shadow-sm ${
                         mine
@@ -1350,6 +1514,16 @@ function GroupsPanel({
                         {formatCommsDate(item.createdAt)}
                       </p>
                     </div>
+                    {canDelete && !mine ? (
+                      <button
+                        type="button"
+                        title="Mesajı sil"
+                        className="mt-1 h-7 w-7 shrink-0 rounded-full text-red-600 opacity-70 hover:bg-red-50 hover:opacity-100"
+                        onClick={() => void deleteMessage(item.id)}
+                      >
+                        <Trash2 className="mx-auto h-3.5 w-3.5" />
+                      </button>
+                    ) : null}
                   </div>
                 )
               })}

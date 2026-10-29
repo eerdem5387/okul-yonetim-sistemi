@@ -4,6 +4,7 @@ import { resolveStaffActor } from "@/lib/hr/actor"
 import { resolveChatActor } from "@/lib/comms/identity"
 import {
   canCreateClassGroup,
+  canDeleteComms,
   canManageTemplates,
   canSendClassAnnouncement,
   canSendOfficialNotice,
@@ -30,6 +31,7 @@ export async function GET(request: NextRequest) {
         approveRequests: false,
         createClassGroup: false,
         createRequest: false,
+        deleteComms: false,
       },
       badges: { unreadNotices: 0, pendingRequests: 0, unreadAnnouncements },
     })
@@ -68,6 +70,7 @@ export async function GET(request: NextRequest) {
       createClassGroup: canCreateClassGroup(actor.department),
       // Onay mercileri talep oluşturmaz; personel oluşturur
       createRequest: !approveRequests && !sendOfficial,
+      deleteComms: canDeleteComms(actor.department),
     },
     badges: { unreadNotices, pendingRequests, unreadAnnouncements: 0 },
   })

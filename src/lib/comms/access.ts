@@ -25,6 +25,11 @@ export function canCreateClassGroup(department: StaffDepartment): boolean {
   return department === "KURUCU" || department === "MUDUR" || department === "SUPER_ADMIN"
 }
 
+/** Sistem yöneticisi / Kurucu / Müdür — ileti, duyuru, sohbet, grup silme */
+export function canDeleteComms(department: StaffDepartment): boolean {
+  return department === "KURUCU" || department === "MUDUR" || department === "SUPER_ADMIN"
+}
+
 /** İhtar / talimat / idari duyuru gönderme */
 export async function canSendOfficialNotice(staffId: string, department: StaffDepartment): Promise<boolean> {
   if (isNativeOfficialSender(department)) return true
