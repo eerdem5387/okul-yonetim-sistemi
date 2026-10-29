@@ -5,6 +5,10 @@ import { prisma } from "@/lib/prisma"
 import { resolveStaffActor } from "@/lib/hr/actor"
 import { resolveChatActor } from "@/lib/comms/identity"
 import { canSendClassAnnouncement } from "@/lib/comms/access"
+import {
+  syncClassGroupParentsForClass,
+  syncClassGroupParentsForParent,
+} from "@/lib/comms/sync-class-group-parents"
 
 export const dynamic = "force-dynamic"
 
@@ -13,6 +17,7 @@ export async function GET(request: NextRequest) {
   if (!chat) return NextResponse.json({ error: "Yetkisiz" }, { status: 401 })
 
   if (chat.kind === "parent") {
+    await syncClassGroupParentsForParent(chat.parentId)
     const acks = await prisma.classAnnouncementAck.findMany({
       where: { parentId: chat.parentId },
       include: {
@@ -71,13 +76,18 @@ export async function POST(request: NextRequest) {
 
   const group = await prisma.classGroup.findUnique({
     where: { id: classGroupId },
-    include: { members: { where: { role: "PARENT" }, select: { parentId: true } } },
+    select: { id: true, classId: true },
   })
   if (!group) return NextResponse.json({ error: "Sınıf grubu bulunamadı" }, { status: 404 })
 
-  const parentIds = group.members.map((m) => m.parentId!).filter(Boolean)
+  // Gönderim öncesi sınıf roster'ını gruba senkronize et
+  const synced = await syncClassGroupParentsForClass(group.classId)
+  const parentIds = synced.parentIds
   if (!parentIds.length) {
-    return NextResponse.json({ error: "Bu grupta veli yok" }, { status: 400 })
+    return NextResponse.json(
+      { error: "Bu sınıf grubunda veli yok. Öğrencilerin sınıfa atanmış ve veli hesabı açık olmalı." },
+      { status: 400 }
+    )
   }
 
   const batchId = randomUUID()

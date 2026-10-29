@@ -4,6 +4,11 @@ import { prisma } from "@/lib/prisma"
 import { resolveStaffActor } from "@/lib/hr/actor"
 import { resolveChatActor } from "@/lib/comms/identity"
 import { canCreateClassGroup } from "@/lib/comms/access"
+import {
+  resolveParentIdsForClass,
+  syncClassGroupParentsForClass,
+  syncClassGroupParentsForParent,
+} from "@/lib/comms/sync-class-group-parents"
 
 export const dynamic = "force-dynamic"
 
@@ -12,6 +17,8 @@ export async function GET(request: NextRequest) {
   if (!chat) return NextResponse.json({ error: "Yetkisiz" }, { status: 401 })
 
   if (chat.kind === "parent") {
+    // Öğrenci sonradan sınıfa atandıysa üyelik burada tamamlanır
+    await syncClassGroupParentsForParent(chat.parentId)
     const groups = await prisma.classGroup.findMany({
       where: { members: { some: { parentId: chat.parentId } } },
       include: {
@@ -75,12 +82,7 @@ export async function POST(request: NextRequest) {
     if (!guide) return NextResponse.json({ error: "Geçerli rehberlik personeli seçin" }, { status: 400 })
   }
 
-  // Sınıftaki velileri otomatik üye yap
-  const parentLinks = await prisma.parentStudent.findMany({
-    where: { student: { classAssignments: { some: { classId } } }, parent: { isActive: true } },
-    select: { parentId: true },
-  })
-  const parentIds = [...new Set(parentLinks.map((p) => p.parentId))]
+  const parentIds = await resolveParentIdsForClass(classId)
 
   const group = await prisma.classGroup.create({
     data: {
@@ -103,5 +105,7 @@ export async function POST(request: NextRequest) {
       _count: { select: { members: true } },
     },
   })
+  // Aynı sınıftaki diğer gruplar da güncel roster ile hizalansın
+  await syncClassGroupParentsForClass(classId)
   return NextResponse.json({ group }, { status: 201 })
 }

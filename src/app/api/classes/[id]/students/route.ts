@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { getRenewalTargetContext, registrationStatusText } from "@/lib/student-registration-meta"
+import { syncClassGroupParentsForClass } from "@/lib/comms/sync-class-group-parents"
 
 /**
  * GET /api/classes/[id]/students
@@ -186,6 +187,13 @@ export async function POST(
       data: validToAdd.map((studentId) => ({ classId, studentId })),
       skipDuplicates: true,
     })
+
+    // İç haberleşme: sınıf gruplarına veli üyeliği + mevcut duyuru ack backfill
+    try {
+      await syncClassGroupParentsForClass(classId)
+    } catch (syncErr) {
+      console.error("class group parent sync after student add:", syncErr)
+    }
 
     const skippedAlreadyInClass = uniqueIds.filter((sid) => alreadyIn.has(sid)).length
 
