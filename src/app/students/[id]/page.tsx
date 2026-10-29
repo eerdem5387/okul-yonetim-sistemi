@@ -30,7 +30,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { StudentAttendancePanel } from "@/components/students/student-attendance-panel"
 import { StudentWeeklySchedulePanel } from "@/components/students/student-weekly-schedule-panel"
-import { StudentChatPanel } from "@/components/chat/StudentChatPanel"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 
@@ -490,7 +489,6 @@ export default function StudentDetailDashboardPage() {
             <TabsTrigger value="activities">Faaliyetler</TabsTrigger>
             <TabsTrigger value="clubs">Kulüpler</TabsTrigger>
             <TabsTrigger value="meetings">Veli Görüşmeleri</TabsTrigger>
-            <TabsTrigger value="messages">Haberleşme</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -1071,19 +1069,6 @@ export default function StudentDetailDashboardPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="messages">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5" />
-                  Haberleşme
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <StudentChatPanel studentId={studentId} />
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
       </div>
     </div>

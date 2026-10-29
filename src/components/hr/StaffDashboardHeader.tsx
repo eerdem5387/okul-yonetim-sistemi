@@ -1,10 +1,13 @@
 "use client"
 
 import {
+  AlertTriangle,
   CalendarOff,
   CalendarRange,
   ClipboardCheck,
+  FileWarning,
   GraduationCap,
+  Megaphone,
   MessageSquare,
   Stethoscope,
 } from "lucide-react"
@@ -29,9 +32,24 @@ export interface StaffDashboardData {
     currentOutcome: StaffRetentionOutcome | null
     meetingCount: number
   }
+  officialNotices?: {
+    ihtar: number
+    talimat: number
+    personelDuyurusu: number
+    total: number
+    unseen: number
+  }
 }
 
 export function StaffDashboardHeader({ data }: { data: StaffDashboardData }) {
+  const notices = data.officialNotices ?? {
+    ihtar: 0,
+    talimat: 0,
+    personelDuyurusu: 0,
+    total: 0,
+    unseen: 0,
+  }
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -94,6 +112,48 @@ export function StaffDashboardHeader({ data }: { data: StaffDashboardData }) {
             tone="amber"
           />
         )}
+      </div>
+
+      <div>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Resmi iç haberleşme
+        </p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <HrStatCard
+            label="İhtar"
+            value={notices.ihtar}
+            icon={AlertTriangle}
+            tone="rose"
+            hint="Bu personele gönderilen ihtarlar"
+          />
+          <HrStatCard
+            label="Talimat"
+            value={notices.talimat}
+            icon={FileWarning}
+            tone="amber"
+            hint="Bu personele gönderilen talimatlar"
+          />
+          <HrStatCard
+            label="Personel duyurusu"
+            value={notices.personelDuyurusu}
+            icon={Megaphone}
+            tone="blue"
+            hint="Bu personele gönderilen duyurular"
+          />
+          <HrStatCard
+            label="Toplam resmi ileti"
+            value={notices.total}
+            icon={MessageSquare}
+            tone="emerald"
+            hint={
+              notices.unseen > 0
+                ? `${notices.unseen} henüz görülmedi`
+                : notices.total > 0
+                  ? "Tümü görüldü"
+                  : "Kayıt yok"
+            }
+          />
+        </div>
       </div>
     </div>
   )

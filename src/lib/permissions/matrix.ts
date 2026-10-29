@@ -54,4 +54,8 @@ export function matrixToEntries(
   return entries
 }
 
-export { PERMISSION_ACTION_LABELS, type PermissionAction } from "./constants"
+export {
+  PERMISSION_ACTION_LABELS,
+  permissionActionLabel,
+  type PermissionAction,
+} from "./constants"

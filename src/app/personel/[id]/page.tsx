@@ -180,6 +180,7 @@ export default function StaffDetailPage() {
         leaves: data.leaves,
         schedule: data.schedule,
         retention: data.retention,
+        officialNotices: data.officialNotices,
       })
     }
   }, [staffId])

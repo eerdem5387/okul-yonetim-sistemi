@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Loader2 } from "lucide-react"
 import {
-  PERMISSION_ACTION_LABELS,
+  permissionActionLabel,
   type PermissionAction,
   type PermissionMatrixModule,
 } from "@/lib/permissions/matrix"
@@ -97,8 +97,7 @@ export function PermissionMatrixEditor({
                               : "Kapalı"
                         }
                       >
-                        {PERMISSION_ACTION_LABELS[act.action as PermissionAction] ??
-                          act.action}
+                        {permissionActionLabel(mod.module, act.action as PermissionAction)}
                       </button>
                     ))}
                   </div>

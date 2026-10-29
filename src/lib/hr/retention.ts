@@ -299,29 +299,38 @@ function countInclusiveDays(start: Date, end: Date): number {
 }
 
 export async function getStaffDashboardData(staffId: string) {
-  const [staff, leaves, scheduleItems, retentionCycle, targetYear] = await Promise.all([
-    prisma.staff.findUnique({
-      where: { id: staffId },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        department: true,
-        subject: true,
-        isActive: true,
-      },
-    }),
-    prisma.staffLeave.findMany({
-      where: { staffId, status: "APPROVED" },
-      orderBy: { startDate: "desc" },
-    }),
-    prisma.schedule.findMany({
-      where: { teacherId: staffId, isActive: true },
-      select: { dayOfWeek: true, startTime: true, endTime: true },
-    }),
-    getRetentionCycleByStaff(staffId),
-    getDefaultTargetYear(),
-  ])
+  const [staff, leaves, scheduleItems, retentionCycle, targetYear, noticeGroups, unseenNotices] =
+    await Promise.all([
+      prisma.staff.findUnique({
+        where: { id: staffId },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          department: true,
+          subject: true,
+          isActive: true,
+        },
+      }),
+      prisma.staffLeave.findMany({
+        where: { staffId, status: "APPROVED" },
+        orderBy: { startDate: "desc" },
+      }),
+      prisma.schedule.findMany({
+        where: { teacherId: staffId, isActive: true },
+        select: { dayOfWeek: true, startTime: true, endTime: true },
+      }),
+      getRetentionCycleByStaff(staffId),
+      getDefaultTargetYear(),
+      prisma.officialNotice.groupBy({
+        by: ["type"],
+        where: { recipientStaffId: staffId },
+        _count: { _all: true },
+      }),
+      prisma.officialNotice.count({
+        where: { recipientStaffId: staffId, seenAt: null },
+      }),
+    ])
 
   if (!staff) return null
 
@@ -350,6 +359,19 @@ export async function getStaffDashboardData(staffId: string) {
   for (const s of scheduleItems) {
     weeklyMinutes += Math.max(0, parseMinutes(s.endTime) - parseMinutes(s.startTime))
   }
+
+  const noticesByType = {
+    IHTAR: 0,
+    TALIMAT: 0,
+    PERSONEL_DUYURU: 0,
+  }
+  for (const row of noticeGroups) {
+    if (row.type in noticesByType) {
+      noticesByType[row.type as keyof typeof noticesByType] = row._count._all
+    }
+  }
+  const noticesTotal =
+    noticesByType.IHTAR + noticesByType.TALIMAT + noticesByType.PERSONEL_DUYURU
 
   return {
     staff,
@@ -380,5 +402,12 @@ export async function getStaffDashboardData(staffId: string) {
           lastMeetingAt: null,
           meetingCount: 0,
         },
+    officialNotices: {
+      ihtar: noticesByType.IHTAR,
+      talimat: noticesByType.TALIMAT,
+      personelDuyurusu: noticesByType.PERSONEL_DUYURU,
+      total: noticesTotal,
+      unseen: unseenNotices,
+    },
   }
 }

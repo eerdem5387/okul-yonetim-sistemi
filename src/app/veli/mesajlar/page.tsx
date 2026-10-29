@@ -3,11 +3,10 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
-import { ChatLayout } from "@/components/chat/ChatLayout"
+import { CommsLayout } from "@/components/comms/CommsLayout"
 
 export default function ParentMessagesPage() {
   const router = useRouter()
-  const [parentId, setParentId] = useState<string | null>(null)
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
@@ -18,7 +17,6 @@ export default function ParentMessagesPage() {
       router.replace("/veli-login")
       return
     }
-    setParentId(pid)
     setReady(true)
   }, [router])
 
@@ -30,5 +28,5 @@ export default function ParentMessagesPage() {
     )
   }
 
-  return <ChatLayout actor={{ kind: "parent", id: parentId! }} />
+  return <CommsLayout kind="parent" />
 }

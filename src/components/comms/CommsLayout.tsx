@@ -1,0 +1,1067 @@
+"use client"
+
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { Loader2, Plus, RefreshCw } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { getAuthHeaders } from "./auth"
+import { formatCommsDate, NOTICE_TYPE_LABEL, REQUEST_STATUS_LABEL, TEMPLATE_KIND_LABEL } from "@/lib/comms/labels"
+import type {
+  ClassGroupSummary,
+  CommsMe,
+  CommsTemplate,
+  OfficialNotice,
+  StaffCommsRequest,
+} from "./types"
+
+type Tab = "inbox" | "sent" | "compose" | "requests" | "groups" | "templates" | "class-announcements"
+
+export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
+  const [me, setMe] = useState<CommsMe | null>(null)
+  const [tab, setTab] = useState<Tab>(kind === "parent" ? "groups" : "inbox")
+  const [loading, setLoading] = useState(true)
+  const [notices, setNotices] = useState<OfficialNotice[]>([])
+  const [requests, setRequests] = useState<StaffCommsRequest[]>([])
+  const [groups, setGroups] = useState<ClassGroupSummary[]>([])
+  const [templates, setTemplates] = useState<CommsTemplate[]>([])
+  const [selectedNotice, setSelectedNotice] = useState<OfficialNotice | null>(null)
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
+
+  const loadMe = useCallback(async () => {
+    const res = await fetch("/api/comms/me", { headers: getAuthHeaders(), cache: "no-store" })
+    const json = await res.json()
+    if (res.ok) setMe(json)
+  }, [])
+
+  const refresh = useCallback(async () => {
+    setLoading(true)
+    try {
+      await loadMe()
+      if (kind === "staff") {
+        const [inbox, sent, req, grp, tpl] = await Promise.all([
+          fetch("/api/comms/notices?box=inbox", { headers: getAuthHeaders(), cache: "no-store" }).then((r) => r.json()),
+          fetch("/api/comms/notices?box=sent", { headers: getAuthHeaders(), cache: "no-store" }).then((r) => r.json()),
+          fetch("/api/comms/requests?box=all", { headers: getAuthHeaders(), cache: "no-store" }).then((r) => r.json()),
+          fetch("/api/comms/class-groups", { headers: getAuthHeaders(), cache: "no-store" }).then((r) => r.json()),
+          fetch("/api/comms/templates?active=0", { headers: getAuthHeaders(), cache: "no-store" }).then((r) => r.json()),
+        ])
+        if (tab === "sent") setNotices(sent.notices || [])
+        else setNotices(inbox.notices || [])
+        setRequests(req.requests || [])
+        setGroups(grp.groups || [])
+        setTemplates(tpl.templates || [])
+      } else {
+        const [grp, ann] = await Promise.all([
+          fetch("/api/comms/class-groups", { headers: getAuthHeaders(), cache: "no-store" }).then((r) => r.json()),
+          fetch("/api/comms/class-announcements", { headers: getAuthHeaders(), cache: "no-store" }).then((r) => r.json()),
+        ])
+        setGroups(grp.groups || [])
+        setNotices(
+          (ann.announcements || []).map((a: OfficialNotice & { seenAt?: string | null }) => ({
+            id: a.id,
+            type: "PERSONEL_DUYURU" as const,
+            subject: (a as { subject: string }).subject,
+            body: (a as { body: string }).body,
+            createdAt: (a as { createdAt: string }).createdAt,
+            seenAt: a.seenAt ?? null,
+            senderStaff: (a as { senderStaff?: OfficialNotice["senderStaff"] }).senderStaff,
+          }))
+        )
+      }
+    } finally {
+      setLoading(false)
+    }
+  }, [kind, loadMe, tab])
+
+  useEffect(() => {
+    void refresh()
+  }, [refresh])
+
+  useEffect(() => {
+    if (kind !== "staff") return
+    const box = tab === "sent" ? "sent" : "inbox"
+    if (tab !== "inbox" && tab !== "sent") return
+    void fetch(`/api/comms/notices?box=${box}`, { headers: getAuthHeaders(), cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) => setNotices(j.notices || []))
+  }, [tab, kind])
+
+  const caps = me?.capabilities
+  const tabs = useMemo(() => {
+    if (kind === "parent") {
+      return [
+        { key: "groups" as const, label: "Sınıf grupları" },
+        { key: "class-announcements" as const, label: `Sınıf duyuruları${me?.badges.unreadAnnouncements ? ` (${me.badges.unreadAnnouncements})` : ""}` },
+      ]
+    }
+    const list: { key: Tab; label: string }[] = [
+      { key: "inbox", label: `Gelen${me?.badges.unreadNotices ? ` (${me.badges.unreadNotices})` : ""}` },
+    ]
+    if (caps?.sendOfficial) list.push({ key: "sent", label: "Gönderilen" }, { key: "compose", label: "Oluştur" })
+    list.push({ key: "requests", label: `Talepler${me?.badges.pendingRequests ? ` (${me.badges.pendingRequests})` : ""}` })
+    list.push({ key: "groups", label: "Sınıf grupları" })
+    if (caps?.sendClassAnnouncement) list.push({ key: "class-announcements", label: "Sınıf duyurusu" })
+    if (caps?.manageTemplates) list.push({ key: "templates", label: "Şablonlar" })
+    return list
+  }, [kind, caps, me])
+
+  return (
+    <div className="flex h-full min-h-0 flex-1 flex-col bg-white">
+      <header className="flex items-center justify-between gap-3 border-b px-4 py-3">
+        <div>
+          <h1 className="text-base font-semibold text-gray-900">İç Haberleşme Sistemi</h1>
+          <p className="text-xs text-gray-500">
+            {kind === "staff" ? "Resmi personel iletişimi ve sınıf grupları" : "Sınıf grupları ve duyurular"}
+          </p>
+        </div>
+        <Button size="sm" variant="outline" onClick={() => void refresh()}>
+          <RefreshCw className="h-4 w-4" />
+        </Button>
+      </header>
+
+      <div className="flex flex-wrap gap-1 border-b px-3 py-2">
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setTab(t.key)}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+              tab === t.key ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex min-h-0 flex-1">
+        {loading ? (
+          <div className="flex flex-1 items-center justify-center">
+            <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+          </div>
+        ) : tab === "compose" && kind === "staff" ? (
+          <ComposeNotice
+            onDone={() => {
+              setTab("sent")
+              void refresh()
+            }}
+          />
+        ) : tab === "templates" ? (
+          <TemplatesAdmin
+            templates={templates}
+            onChanged={() => void refresh()}
+          />
+        ) : tab === "requests" ? (
+          <RequestsPanel
+            requests={requests}
+            canApprove={Boolean(caps?.approveRequests)}
+            canCreate={Boolean(caps?.createRequest)}
+            onChanged={() => void refresh()}
+          />
+        ) : tab === "groups" ? (
+          <GroupsPanel
+            groups={groups}
+            kind={kind}
+            canCreate={Boolean(caps?.createClassGroup)}
+            selectedId={selectedGroupId}
+            onSelect={setSelectedGroupId}
+            onChanged={() => void refresh()}
+          />
+        ) : tab === "class-announcements" ? (
+          kind === "parent" ? (
+            <ParentAnnouncements notices={notices} onAcked={() => void refresh()} />
+          ) : (
+            <ComposeClassAnnouncement groups={groups} onDone={() => void refresh()} />
+          )
+        ) : (
+          <NoticesPanel
+            notices={notices}
+            selected={selectedNotice}
+            onSelect={setSelectedNotice}
+            mode={tab === "sent" ? "sent" : "inbox"}
+            onAcked={() => void refresh()}
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+
+function NoticesPanel({
+  notices,
+  selected,
+  onSelect,
+  mode,
+  onAcked,
+}: {
+  notices: OfficialNotice[]
+  selected: OfficialNotice | null
+  onSelect: (n: OfficialNotice | null) => void
+  mode: "inbox" | "sent"
+  onAcked: () => void
+}) {
+  const current = selected && notices.find((n) => n.id === selected.id) ? selected : notices[0] || null
+
+  const ack = async (id: string) => {
+    const res = await fetch(`/api/comms/notices/${id}/ack`, { method: "POST", headers: getAuthHeaders() })
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      alert(j.error || "İşlem başarısız")
+      return
+    }
+    onAcked()
+  }
+
+  return (
+    <>
+      <aside className="w-full max-w-sm border-r overflow-y-auto">
+        {notices.length === 0 ? (
+          <p className="p-4 text-sm text-gray-500">Kayıt yok.</p>
+        ) : (
+          <ul className="divide-y">
+            {notices.map((n) => (
+              <li key={n.id}>
+                <button
+                  type="button"
+                  onClick={() => onSelect(n)}
+                  className={`w-full px-3 py-3 text-left hover:bg-slate-50 ${current?.id === n.id ? "bg-blue-50" : ""}`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold uppercase text-blue-700">{NOTICE_TYPE_LABEL[n.type]}</span>
+                    <span className="text-[11px] text-gray-400">{formatCommsDate(n.createdAt)}</span>
+                  </div>
+                  <p className="mt-0.5 truncate text-sm font-medium text-gray-900">{n.subject}</p>
+                  <p className="truncate text-xs text-gray-500">
+                    {mode === "sent"
+                      ? `${n.recipientStaff?.firstName} ${n.recipientStaff?.lastName}`
+                      : `${n.senderStaff?.firstName} ${n.senderStaff?.lastName}`}
+                    {!n.seenAt && mode === "inbox" ? " · Görülmedi" : n.seenAt ? " · Görüldü" : ""}
+                  </p>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </aside>
+      <main className="flex-1 overflow-y-auto p-5">
+        {!current ? (
+          <p className="text-sm text-gray-500">Bir kayıt seçin.</p>
+        ) : (
+          <article className="mx-auto max-w-2xl space-y-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                {NOTICE_TYPE_LABEL[current.type]}
+              </p>
+              <h2 className="mt-1 text-xl font-semibold text-gray-900">{current.subject}</h2>
+              <p className="mt-1 text-sm text-gray-500">
+                {mode === "inbox"
+                  ? `Gönderen: ${current.senderStaff?.firstName} ${current.senderStaff?.lastName}`
+                  : `Alıcı: ${current.recipientStaff?.firstName} ${current.recipientStaff?.lastName}`}
+              </p>
+            </div>
+            <div className="whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-relaxed text-gray-800">
+              {current.body}
+            </div>
+            <p className="border-t border-slate-200 pt-3 text-xs font-medium text-slate-600">
+              Oluşturulma tarihi: {formatCommsDate(current.createdAt)}
+            </p>
+            {mode === "inbox" && !current.seenAt ? (
+              <Button onClick={() => void ack(current.id)}>Görüldü</Button>
+            ) : null}
+            {current.seenAt ? (
+              <p className="text-xs text-emerald-700">Görüldü: {formatCommsDate(current.seenAt)}</p>
+            ) : null}
+          </article>
+        )}
+      </main>
+    </>
+  )
+}
+
+function ComposeNotice({ onDone }: { onDone: () => void }) {
+  const [type, setType] = useState<"IHTAR" | "TALIMAT" | "PERSONEL_DUYURU">("IHTAR")
+  const [templates, setTemplates] = useState<CommsTemplate[]>([])
+  const [staff, setStaff] = useState<{ id: string; firstName: string; lastName: string; department: string }[]>([])
+  const [templateId, setTemplateId] = useState("")
+  const [selected, setSelected] = useState<Record<string, boolean>>({})
+  const [allStaff, setAllStaff] = useState(false)
+  const [subject, setSubject] = useState("")
+  const [body, setBody] = useState("")
+  const [customizing, setCustomizing] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [q, setQ] = useState("")
+
+  useEffect(() => {
+    void Promise.all([
+      fetch(`/api/comms/templates?kind=${type}`, { headers: getAuthHeaders(), cache: "no-store" }).then((r) => r.json()),
+      fetch("/api/comms/staff", { headers: getAuthHeaders(), cache: "no-store" }).then((r) => r.json()),
+    ]).then(([t, s]) => {
+      setTemplates(t.templates || [])
+      setStaff(s.staff || [])
+      setTemplateId("")
+      setSubject("")
+      setBody("")
+      setCustomizing(false)
+    })
+  }, [type])
+
+  const tpl = templates.find((t) => t.id === templateId)
+
+  useEffect(() => {
+    if (!tpl || customizing) return
+    setSubject(tpl.title)
+    setBody(tpl.body)
+  }, [tpl, customizing])
+
+  const filtered = staff.filter((s) => {
+    const hay = `${s.firstName} ${s.lastName} ${s.department}`.toLocaleLowerCase("tr-TR")
+    return hay.includes(q.trim().toLocaleLowerCase("tr-TR"))
+  })
+
+  const submit = async () => {
+    const recipientStaffIds = Object.entries(selected)
+      .filter(([, v]) => v)
+      .map(([id]) => id)
+    if (!allStaff && recipientStaffIds.length === 0) {
+      alert("Alıcı seçin")
+      return
+    }
+    if (!subject.trim() || !body.trim()) {
+      alert("Konu ve metin zorunlu")
+      return
+    }
+    setBusy(true)
+    try {
+      const res = await fetch("/api/comms/notices", {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          type,
+          templateId: templateId || undefined,
+          subject,
+          body,
+          allStaff,
+          recipientStaffIds,
+        }),
+      })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert(j.error || "Gönderilemedi")
+        return
+      }
+      alert(`${j.count} kişiye iletildi`)
+      onDone()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="grid flex-1 grid-cols-1 gap-4 overflow-y-auto p-4 lg:grid-cols-2">
+      <div className="space-y-3">
+        <div className="flex gap-2">
+          {(["IHTAR", "TALIMAT", "PERSONEL_DUYURU"] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setType(t)}
+              className={`rounded-md px-3 py-1.5 text-sm ${type === t ? "bg-blue-600 text-white" : "bg-slate-100"}`}
+            >
+              {NOTICE_TYPE_LABEL[t]}
+            </button>
+          ))}
+        </div>
+        <select
+          className="w-full rounded-md border px-3 py-2 text-sm"
+          value={templateId}
+          onChange={(e) => {
+            setTemplateId(e.target.value)
+            setCustomizing(false)
+          }}
+        >
+          <option value="">Şablon seçin</option>
+          {templates.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.title}
+            </option>
+          ))}
+        </select>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={allStaff} onChange={(e) => setAllStaff(e.target.checked)} />
+          Tüm personele gönder
+        </label>
+        {!allStaff ? (
+          <>
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Personel ara…" />
+            <div className="max-h-64 overflow-y-auto rounded-md border">
+              {filtered.map((s) => (
+                <label key={s.id} className="flex items-center gap-2 border-b px-3 py-2 text-sm last:border-0">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(selected[s.id])}
+                    onChange={() => setSelected((prev) => ({ ...prev, [s.id]: !prev[s.id] }))}
+                  />
+                  {s.firstName} {s.lastName}
+                </label>
+              ))}
+            </div>
+          </>
+        ) : null}
+        <Button onClick={() => void submit()} disabled={busy || !templateId}>
+          {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+          Gönder
+        </Button>
+      </div>
+      <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <p className="text-xs font-semibold uppercase text-slate-500">Şablon önizleme</p>
+        {!tpl ? (
+          <p className="text-sm text-slate-500">Önce şablon seçin.</p>
+        ) : (
+          <>
+            <Input value={subject} onChange={(e) => setSubject(e.target.value)} disabled={!customizing} />
+            <textarea
+              className="min-h-[16rem] w-full rounded-md border px-3 py-2 text-sm"
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              disabled={!customizing}
+            />
+            {!customizing ? (
+              <Button variant="outline" onClick={() => setCustomizing(true)}>
+                Bu {NOTICE_TYPE_LABEL[type].toLocaleLowerCase("tr-TR")} için şablonu özelleştir
+              </Button>
+            ) : (
+              <p className="text-xs text-amber-700">Metni serbestçe düzenleyebilirsiniz. Her alıcıya ayrı kayıt oluşur.</p>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function TemplatesAdmin({
+  templates,
+  onChanged,
+}: {
+  templates: CommsTemplate[]
+  onChanged: () => void
+}) {
+  const [kind, setKind] = useState("IHTAR")
+  const [title, setTitle] = useState("")
+  const [body, setBody] = useState("")
+  const [busy, setBusy] = useState(false)
+  const [grants, setGrants] = useState<
+    { id: string; firstName: string; lastName: string; department: string; sendOfficial: boolean }[]
+  >([])
+  const [grantQ, setGrantQ] = useState("")
+
+  useEffect(() => {
+    void fetch("/api/comms/grants", { headers: getAuthHeaders(), cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) => setGrants(j.staff || []))
+      .catch(() => setGrants([]))
+  }, [])
+
+  const save = async () => {
+    setBusy(true)
+    try {
+      const res = await fetch("/api/comms/templates", {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ kind, title, body }),
+      })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert(j.error || "Kaydedilemedi")
+        return
+      }
+      setTitle("")
+      setBody("")
+      onChanged()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const toggleGrant = async (staffId: string, granted: boolean) => {
+    const res = await fetch("/api/comms/grants", {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ staffId, granted }),
+    })
+    const j = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      alert(j.error || "Güncellenemedi")
+      return
+    }
+    setGrants((prev) => prev.map((s) => (s.id === staffId ? { ...s, sendOfficial: granted } : s)))
+  }
+
+  const filteredGrants = grants.filter((s) => {
+    const hay = `${s.firstName} ${s.lastName} ${s.department}`.toLocaleLowerCase("tr-TR")
+    return hay.includes(grantQ.trim().toLocaleLowerCase("tr-TR"))
+  })
+
+  return (
+    <div className="flex-1 space-y-4 overflow-y-auto p-4">
+      <div className="grid gap-3 rounded-xl border p-4 md:grid-cols-2">
+        <select className="rounded-md border px-3 py-2 text-sm" value={kind} onChange={(e) => setKind(e.target.value)}>
+          {Object.entries(TEMPLATE_KIND_LABEL).map(([k, v]) => (
+            <option key={k} value={k}>
+              {v}
+            </option>
+          ))}
+        </select>
+        <Input placeholder="Başlık" value={title} onChange={(e) => setTitle(e.target.value)} />
+        <textarea
+          className="md:col-span-2 min-h-[8rem] rounded-md border px-3 py-2 text-sm"
+          placeholder="Şablon metni"
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+        />
+        <Button onClick={() => void save()} disabled={busy}>
+          Şablon ekle
+        </Button>
+      </div>
+      <ul className="divide-y rounded-xl border">
+        {templates.map((t) => (
+          <li key={t.id} className="flex items-start justify-between gap-3 px-4 py-3">
+            <div>
+              <p className="text-xs font-semibold text-blue-700">{TEMPLATE_KIND_LABEL[t.kind as keyof typeof TEMPLATE_KIND_LABEL]}</p>
+              <p className="font-medium">{t.title}</p>
+              <p className="line-clamp-2 text-xs text-gray-500">{t.body}</p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                void fetch(`/api/comms/templates/${t.id}`, {
+                  method: "PATCH",
+                  headers: getAuthHeaders(),
+                  body: JSON.stringify({ isActive: !t.isActive }),
+                }).then(onChanged)
+              }
+            >
+              {t.isActive ? "Pasifleştir" : "Aktifleştir"}
+            </Button>
+          </li>
+        ))}
+      </ul>
+
+      <div className="space-y-2 rounded-xl border p-4">
+        <p className="text-sm font-semibold">Resmi gönderim yetkisi (send_official)</p>
+        <p className="text-xs text-gray-500">
+          Kurucu ve Müdür native yetkilidir. Diğer personele buradan messaging.create grant verilir.
+        </p>
+        <Input value={grantQ} onChange={(e) => setGrantQ(e.target.value)} placeholder="Personel ara…" />
+        <ul className="max-h-64 divide-y overflow-y-auto rounded-md border">
+          {filteredGrants.map((s) => (
+            <li key={s.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+              <span>
+                {s.firstName} {s.lastName}
+                <span className="ml-2 text-xs text-gray-400">{s.department}</span>
+              </span>
+              <Button
+                size="sm"
+                variant={s.sendOfficial ? "default" : "outline"}
+                onClick={() => void toggleGrant(s.id, !s.sendOfficial)}
+              >
+                {s.sendOfficial ? "Yetkili" : "Ver"}
+              </Button>
+            </li>
+          ))}
+          {filteredGrants.length === 0 ? (
+            <li className="p-3 text-xs text-gray-500">Kayıt yok.</li>
+          ) : null}
+        </ul>
+      </div>
+    </div>
+  )
+}
+
+function RequestsPanel({
+  requests,
+  canApprove,
+  canCreate,
+  onChanged,
+}: {
+  requests: StaffCommsRequest[]
+  canApprove: boolean
+  canCreate: boolean
+  onChanged: () => void
+}) {
+  const [templates, setTemplates] = useState<CommsTemplate[]>([])
+  const [templateId, setTemplateId] = useState("")
+  const [subject, setSubject] = useState("")
+  const [body, setBody] = useState("")
+  const [customizing, setCustomizing] = useState(false)
+
+  useEffect(() => {
+    if (!canCreate) return
+    void fetch("/api/comms/templates?kind=PERSONEL_TALEP", { headers: getAuthHeaders(), cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) => setTemplates(j.templates || []))
+  }, [canCreate])
+
+  const tpl = templates.find((t) => t.id === templateId)
+  useEffect(() => {
+    if (!tpl || customizing) return
+    setSubject(tpl.title)
+    setBody(tpl.body)
+  }, [tpl, customizing])
+
+  const create = async () => {
+    const res = await fetch("/api/comms/requests", {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ templateId, subject, body }),
+    })
+    const j = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      alert(j.error || "Gönderilemedi")
+      return
+    }
+    setTemplateId("")
+    setSubject("")
+    setBody("")
+    setCustomizing(false)
+    onChanged()
+  }
+
+  const decide = async (id: string, decision: "approve" | "reject") => {
+    let rejectReason: string | undefined
+    if (decision === "reject") {
+      rejectReason = window.prompt("Red gerekçesi (opsiyonel)") || undefined
+    }
+    const res = await fetch(`/api/comms/requests/${id}/decide`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ decision, rejectReason }),
+    })
+    const j = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      alert(j.error || "İşlem başarısız")
+      return
+    }
+    onChanged()
+  }
+
+  return (
+    <div className="flex-1 space-y-4 overflow-y-auto p-4">
+      {canCreate ? (
+        <div className="space-y-2 rounded-xl border p-4">
+          <p className="text-sm font-semibold">Yeni talep</p>
+          <select
+            className="w-full rounded-md border px-3 py-2 text-sm"
+            value={templateId}
+            onChange={(e) => {
+              setTemplateId(e.target.value)
+              setCustomizing(false)
+            }}
+          >
+            <option value="">Şablon seçin</option>
+            {templates.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.title}
+              </option>
+            ))}
+          </select>
+          <Input value={subject} onChange={(e) => setSubject(e.target.value)} disabled={!customizing && !templateId} placeholder="Konu" />
+          <textarea
+            className="min-h-[8rem] w-full rounded-md border px-3 py-2 text-sm"
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            disabled={!customizing && !templateId}
+          />
+          {templateId && !customizing ? (
+            <Button variant="outline" size="sm" onClick={() => setCustomizing(true)}>
+              Bu talep için şablonu özelleştir
+            </Button>
+          ) : null}
+          <Button size="sm" onClick={() => void create()} disabled={!templateId}>
+            Talebi gönder
+          </Button>
+        </div>
+      ) : null}
+      <ul className="divide-y rounded-xl border">
+        {requests.map((r) => (
+          <li key={r.id} className="space-y-2 px-4 py-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-medium">{r.subject}</p>
+              <span className="text-xs font-semibold text-slate-600">{REQUEST_STATUS_LABEL[r.status]}</span>
+            </div>
+            <p className="whitespace-pre-wrap text-sm text-gray-700">{r.body}</p>
+            <p className="text-xs text-gray-500">
+              {r.requesterStaff?.firstName} {r.requesterStaff?.lastName} · {formatCommsDate(r.createdAt)}
+            </p>
+            {r.rejectReason ? <p className="text-xs text-red-700">Gerekçe: {r.rejectReason}</p> : null}
+            {canApprove && r.status === "PENDING" ? (
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => void decide(r.id, "approve")}>
+                  Onayla
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => void decide(r.id, "reject")}>
+                  Reddet
+                </Button>
+              </div>
+            ) : null}
+          </li>
+        ))}
+        {requests.length === 0 ? <li className="p-4 text-sm text-gray-500">Talep yok.</li> : null}
+      </ul>
+    </div>
+  )
+}
+
+function GroupsPanel({
+  groups,
+  kind,
+  canCreate,
+  selectedId,
+  onSelect,
+  onChanged,
+}: {
+  groups: ClassGroupSummary[]
+  kind: "staff" | "parent"
+  canCreate: boolean
+  selectedId: string | null
+  onSelect: (id: string | null) => void
+  onChanged: () => void
+}) {
+  const [classes, setClasses] = useState<{ id: string; name: string }[]>([])
+  const [classId, setClassId] = useState("")
+  const [title, setTitle] = useState("")
+  const [counselorStaffId, setCounselorStaffId] = useState("")
+  const [guides, setGuides] = useState<{ id: string; firstName: string; lastName: string; department: string }[]>([])
+  const [messages, setMessages] = useState<{ id: string; body: string; createdAt: string; sender: { displayName: string } | null }[]>([])
+  const [detail, setDetail] = useState<{ parentsCanPost: boolean; counselorStaffId?: string | null } | null>(null)
+  const [text, setText] = useState("")
+  const [teachers, setTeachers] = useState<{ id: string; firstName: string; lastName: string }[]>([])
+  const [addTeacherId, setAddTeacherId] = useState("")
+
+  useEffect(() => {
+    if (kind !== "staff") return
+    void Promise.all([
+      canCreate
+        ? fetch("/api/comms/classes", { headers: getAuthHeaders(), cache: "no-store" }).then((r) => r.json())
+        : Promise.resolve({ classes: [] }),
+      fetch("/api/comms/staff", { headers: getAuthHeaders(), cache: "no-store" }).then((r) => r.json()),
+    ]).then(([c, s]) => {
+      setClasses(c.classes || [])
+      setGuides(
+        (s.staff || []).filter(
+          (x: { department: string }) => x.department === "REHBERLIK" || x.department === "BAS_REHBERLIK"
+        )
+      )
+      setTeachers(s.staff || [])
+    })
+  }, [canCreate, kind])
+
+  useEffect(() => {
+    if (!selectedId) {
+      setMessages([])
+      setDetail(null)
+      return
+    }
+    void Promise.all([
+      fetch(`/api/comms/class-groups/${selectedId}/messages`, { headers: getAuthHeaders(), cache: "no-store" }).then((r) => r.json()),
+      fetch(`/api/comms/class-groups/${selectedId}`, { headers: getAuthHeaders(), cache: "no-store" }).then((r) => r.json()),
+    ]).then(([m, d]) => {
+      setMessages(m.messages || [])
+      setDetail(d.group || null)
+    })
+  }, [selectedId])
+
+  const create = async () => {
+    const res = await fetch("/api/comms/class-groups", {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ classId, title, counselorStaffId: counselorStaffId || undefined }),
+    })
+    const j = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      alert(j.error || "Oluşturulamadı")
+      return
+    }
+    setClassId("")
+    setTitle("")
+    setCounselorStaffId("")
+    onChanged()
+    onSelect(j.group.id)
+  }
+
+  const send = async () => {
+    if (!selectedId || !text.trim()) return
+    const res = await fetch(`/api/comms/class-groups/${selectedId}/messages`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ body: text }),
+    })
+    const j = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      alert(j.error || "Gönderilemedi")
+      return
+    }
+    setText("")
+    const m = await fetch(`/api/comms/class-groups/${selectedId}/messages`, {
+      headers: getAuthHeaders(),
+      cache: "no-store",
+    }).then((r) => r.json())
+    setMessages(m.messages || [])
+  }
+
+  const toggleParents = async () => {
+    if (!selectedId || !detail) return
+    const res = await fetch(`/api/comms/class-groups/${selectedId}`, {
+      method: "PATCH",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ parentsCanPost: !detail.parentsCanPost }),
+    })
+    const j = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      alert(j.error || "Güncellenemedi")
+      return
+    }
+    setDetail((d) => (d ? { ...d, parentsCanPost: !d.parentsCanPost } : d))
+    onChanged()
+  }
+
+  const addTeacher = async () => {
+    if (!selectedId || !addTeacherId) return
+    const res = await fetch(`/api/comms/class-groups/${selectedId}/members`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ staffIds: [addTeacherId] }),
+    })
+    const j = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      alert(j.error || "Eklenemedi")
+      return
+    }
+    setAddTeacherId("")
+    onChanged()
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1">
+      <aside className="w-full max-w-xs overflow-y-auto border-r">
+        {canCreate ? (
+          <div className="space-y-2 border-b p-3">
+            <select className="w-full rounded-md border px-2 py-1.5 text-sm" value={classId} onChange={(e) => setClassId(e.target.value)}>
+              <option value="">Sınıf seçin</option>
+              {classes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <Input placeholder="Grup adı" value={title} onChange={(e) => setTitle(e.target.value)} />
+            <select
+              className="w-full rounded-md border px-2 py-1.5 text-sm"
+              value={counselorStaffId}
+              onChange={(e) => setCounselorStaffId(e.target.value)}
+            >
+              <option value="">Rehberlik (opsiyonel)</option>
+              {guides.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.firstName} {g.lastName}
+                </option>
+              ))}
+            </select>
+            <Button size="sm" onClick={() => void create()} disabled={!classId || !title.trim()}>
+              Grup oluştur
+            </Button>
+          </div>
+        ) : null}
+        <ul className="divide-y">
+          {groups.map((g) => (
+            <li key={g.id}>
+              <button
+                type="button"
+                className={`w-full px-3 py-3 text-left hover:bg-slate-50 ${selectedId === g.id ? "bg-blue-50" : ""}`}
+                onClick={() => onSelect(g.id)}
+              >
+                <p className="text-sm font-medium">{g.title}</p>
+                <p className="text-xs text-gray-500">{g.class.name}</p>
+              </button>
+            </li>
+          ))}
+          {groups.length === 0 ? <li className="p-4 text-sm text-gray-500">Grup yok.</li> : null}
+        </ul>
+      </aside>
+      <main className="flex flex-1 flex-col">
+        {!selectedId ? (
+          <p className="p-4 text-sm text-gray-500">Bir grup seçin.</p>
+        ) : (
+          <>
+            {kind === "staff" && detail ? (
+              <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
+                <Button size="sm" variant="outline" onClick={() => void toggleParents()}>
+                  Veli yazma: {detail.parentsCanPost ? "Açık" : "Kapalı"}
+                </Button>
+                <select
+                  className="rounded-md border px-2 py-1 text-sm"
+                  value={addTeacherId}
+                  onChange={(e) => setAddTeacherId(e.target.value)}
+                >
+                  <option value="">Öğretmen ekle</option>
+                  {teachers.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.firstName} {t.lastName}
+                    </option>
+                  ))}
+                </select>
+                <Button size="sm" variant="outline" onClick={() => void addTeacher()} disabled={!addTeacherId}>
+                  Ekle
+                </Button>
+              </div>
+            ) : null}
+            <div className="flex-1 space-y-2 overflow-y-auto p-4">
+              {messages.map((m) => (
+                <div key={m.id} className="rounded-lg border bg-slate-50 px-3 py-2">
+                  <p className="text-xs font-semibold text-slate-500">
+                    {m.sender?.displayName || "Sistem"} · {formatCommsDate(m.createdAt)}
+                  </p>
+                  <p className="text-sm whitespace-pre-wrap">{m.body}</p>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2 border-t p-3">
+              <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Mesaj yazın…" />
+              <Button onClick={() => void send()}>Gönder</Button>
+            </div>
+          </>
+        )}
+      </main>
+    </div>
+  )
+}
+
+function ComposeClassAnnouncement({
+  groups,
+  onDone,
+}: {
+  groups: ClassGroupSummary[]
+  onDone: () => void
+}) {
+  const [templates, setTemplates] = useState<CommsTemplate[]>([])
+  const [classGroupId, setClassGroupId] = useState("")
+  const [templateId, setTemplateId] = useState("")
+  const [subject, setSubject] = useState("")
+  const [body, setBody] = useState("")
+  const [customizing, setCustomizing] = useState(false)
+
+  useEffect(() => {
+    void fetch("/api/comms/templates?kind=SINIF_DUYURU", { headers: getAuthHeaders(), cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) => setTemplates(j.templates || []))
+  }, [])
+
+  const tpl = templates.find((t) => t.id === templateId)
+  useEffect(() => {
+    if (!tpl || customizing) return
+    setSubject(tpl.title)
+    setBody(tpl.body)
+  }, [tpl, customizing])
+
+  const send = async () => {
+    const res = await fetch("/api/comms/class-announcements", {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ classGroupId, templateId, subject, body }),
+    })
+    const j = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      alert(j.error || "Gönderilemedi")
+      return
+    }
+    alert(`${j.recipientCount} veliye duyuru iletildi`)
+    onDone()
+  }
+
+  return (
+    <div className="mx-auto w-full max-w-xl space-y-3 overflow-y-auto p-4">
+      <select className="w-full rounded-md border px-3 py-2 text-sm" value={classGroupId} onChange={(e) => setClassGroupId(e.target.value)}>
+        <option value="">Sınıf grubu seçin</option>
+        {groups.map((g) => (
+          <option key={g.id} value={g.id}>
+            {g.title} · {g.class.name}
+          </option>
+        ))}
+      </select>
+      <select
+        className="w-full rounded-md border px-3 py-2 text-sm"
+        value={templateId}
+        onChange={(e) => {
+          setTemplateId(e.target.value)
+          setCustomizing(false)
+        }}
+      >
+        <option value="">Şablon seçin</option>
+        {templates.map((t) => (
+          <option key={t.id} value={t.id}>
+            {t.title}
+          </option>
+        ))}
+      </select>
+      <Input value={subject} onChange={(e) => setSubject(e.target.value)} disabled={!customizing} />
+      <textarea
+        className="min-h-[10rem] w-full rounded-md border px-3 py-2 text-sm"
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        disabled={!customizing}
+      />
+      {templateId && !customizing ? (
+        <Button variant="outline" onClick={() => setCustomizing(true)}>
+          Bu sınıf duyurusu için şablonu özelleştir
+        </Button>
+      ) : null}
+      <Button onClick={() => void send()} disabled={!classGroupId || !templateId}>
+        Sınıf duyurusunu gönder
+      </Button>
+    </div>
+  )
+}
+
+function ParentAnnouncements({
+  notices,
+  onAcked,
+}: {
+  notices: OfficialNotice[]
+  onAcked: () => void
+}) {
+  const ack = async (id: string) => {
+    const res = await fetch(`/api/comms/class-announcements/${id}/ack`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+    })
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      alert(j.error || "İşlem başarısız")
+      return
+    }
+    onAcked()
+  }
+
+  return (
+    <div className="flex-1 space-y-3 overflow-y-auto p-4">
+      {notices.map((n) => (
+        <article key={n.id} className="rounded-xl border p-4">
+          <h3 className="font-semibold">{n.subject}</h3>
+          <p className="mt-2 whitespace-pre-wrap text-sm text-gray-800">{n.body}</p>
+          <p className="mt-3 border-t pt-2 text-xs text-slate-600">
+            Oluşturulma tarihi: {formatCommsDate(n.createdAt)}
+          </p>
+          {!n.seenAt ? (
+            <Button className="mt-2" size="sm" onClick={() => void ack(n.id)}>
+              Görüldü
+            </Button>
+          ) : (
+            <p className="mt-2 text-xs text-emerald-700">Görüldü: {formatCommsDate(n.seenAt)}</p>
+          )}
+        </article>
+      ))}
+      {notices.length === 0 ? <p className="text-sm text-gray-500">Duyuru yok.</p> : null}
+    </div>
+  )
+}

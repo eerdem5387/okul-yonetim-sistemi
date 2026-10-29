@@ -20,7 +20,7 @@ import {
   Calendar,
 } from "lucide-react"
 import { useState, useEffect, useMemo } from "react"
-import { UnreadBadge } from "@/components/chat/UnreadBadge"
+import { UnreadBadge } from "@/components/comms/UnreadBadge"
 import { checkNavPermission, useStaffPermissions } from "@/hooks/use-staff-permissions"
 import { MobileMenuButton } from "@/components/layout/mobile-menu-button"
 import { extraGrantedNavItems } from "@/lib/permissions/nav-catalog"
@@ -30,7 +30,7 @@ type NavDef = { name: string; href: string; icon: LucideIcon; module: string; ac
 
 const baseNavigation: NavDef[] = [
   { name: "Dashboard", href: "/rehberlik", icon: LayoutDashboard, module: "dashboard", action: "view" },
-  { name: "İç Haberleşme Sistemi", href: "/mesajlar", icon: MessageSquare, module: "messaging", action: "view" },
+  { name: "İç Haberleşme", href: "/mesajlar", icon: MessageSquare, module: "messaging", action: "view" },
   { name: "Neredeyiz?", href: "/rehberlik/neredeyiz", icon: Target, module: "neredeyiz", action: "view" },
   { name: "Sınıf Yönetimi", href: "/sinif-yonetimi", icon: School, module: "classes", action: "view" },
   { name: "Ders Programı", href: "/ders-programi", icon: Calendar, module: "schedules", action: "view" },

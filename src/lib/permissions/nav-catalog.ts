@@ -32,7 +32,7 @@ export type PermissionNavItem = {
 
 /** Rol menüsünde olmayan ama StaffPermission ile açılabilecek sayfalar. */
 export const PERMISSION_NAV_CATALOG: PermissionNavItem[] = [
-  { module: "messaging", name: "İç Haberleşme Sistemi", href: "/mesajlar", icon: MessageSquare },
+  { module: "messaging", name: "İç Haberleşme", href: "/mesajlar", icon: MessageSquare },
   { module: "staff", name: "Personel Yönetimi", href: "/personel", icon: Briefcase },
   { module: "hr", name: "İzinler", href: "/personel/izinler", icon: ClipboardList },
   { module: "hr_recruitment", name: "İK Başvuruları", href: "/ik-basvurular", icon: UserSearch },

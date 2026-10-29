@@ -62,7 +62,6 @@ model Student {
   activities           Activity[]
   activityParticipants ActivityParticipant[]
   parentMeetings       ParentMeeting[]
-  chatConversations    Conversation[]
   classAssignments     ClassStudent[] // Sınıf atamaları (FAZ 2)
   parents              ParentStudent[] // Veli ilişkileri (FAZ 1 - Genişletme)
   homeworkAssignments  HomeworkAssignment[] // Ödev atamaları (FAZ 2)
@@ -706,11 +705,17 @@ model Staff {
   clubMembershipRequestsRequested ClubMembershipRequest[] @relation("ClubMembershipRequestedBy")
   clubMembershipRequestsReviewed  ClubMembershipRequest[] @relation("ClubMembershipReviewedBy")
 
-  // İç Haberleşme (Chat)
-  chatParticipants ConversationParticipant[] @relation("StaffChatParticipants")
-  createdChatConversations Conversation[]    @relation("ConversationCreator")
-  sentMessages     Message[]                 @relation("StaffSentMessages")
-  messageReceipts  MessageReceipt[]          @relation("StaffMessageReceipts")
+  // İç Haberleşme (Resmi)
+  createdCommsTemplates     CommsTemplate[]       @relation("CommsTemplateCreator")
+  sentOfficialNotices       OfficialNotice[]      @relation("OfficialNoticeSender")
+  receivedOfficialNotices   OfficialNotice[]      @relation("OfficialNoticeRecipient")
+  staffCommsRequests        StaffCommsRequest[]   @relation("StaffCommsRequester")
+  decidedStaffCommsRequests StaffCommsRequest[]   @relation("StaffCommsDecider")
+  createdClassGroups        ClassGroup[]          @relation("ClassGroupCreator")
+  counselingClassGroups     ClassGroup[]          @relation("ClassGroupCounselor")
+  classGroupMemberships     ClassGroupMember[]    @relation("ClassGroupStaffMember")
+  sentClassGroupMessages    ClassGroupMessage[]   @relation("ClassGroupStaffSender")
+  sentClassAnnouncements    ClassAnnouncement[]   @relation("ClassAnnouncementSender")
 
   // HRM
   leaves         StaffLeave[]
@@ -740,7 +745,6 @@ model Branch {
   staffLinks      StaffBranch[]
   scheduleCourses ScheduleCourse[]
   subjects        Subject[]
-  chatConversations Conversation[]
 
   @@index([isActive, sortOrder])
   @@map("branches")
@@ -1336,7 +1340,7 @@ model Class {
   counselor    Staff?         @relation("ClassCounselor", fields: [counselorId], references: [id], onDelete: SetNull)
   students     ClassStudent[] // Sınıfa kayıtlı öğrenciler
   schedules    Schedule[] // Sınıfın ders programı
-  chatConversations Conversation[]
+  classGroups  ClassGroup[]
   subjects     Subject[] // Neredeyiz modülü için dersler (FAZ 3)
   homeworks    Homework[] // Sınıfın ödevleri (FAZ 2)
   attendances  Attendance[] // Sınıfın yoklamaları (FAZ 2)
@@ -1680,10 +1684,10 @@ model Parent {
   // İlişkiler
   students ParentStudent[] // Bu hesaba bağlı veliler (anne, baba, vasi)
 
-  // İç Haberleşme (Chat)
-  chatParticipants ConversationParticipant[] @relation("ParentChatParticipants")
-  sentMessages     Message[]                 @relation("ParentSentMessages")
-  messageReceipts  MessageReceipt[]          @relation("ParentMessageReceipts")
+  // İç Haberleşme (Sınıf grupları)
+  classGroupMemberships  ClassGroupMember[]  @relation("ClassGroupParentMember")
+  sentClassGroupMessages ClassGroupMessage[] @relation("ClassGroupParentSender")
+  classAnnouncementAcks  ClassAnnouncementAck[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2189,128 +2193,191 @@ enum CommentType {
 }
 
 // ============================================
-// İÇ HABERLEŞME (CHAT) MODÜLÜ
-// Yalnızca Staff ve Parent arasında çalışır.
+// İÇ HABERLEŞME (RESMİ) MODÜLÜ
 // ============================================
 
-enum ConversationType {
-  PRIVATE // 1:1 özel sohbet
-  GROUP // Grup sohbeti (yöneticilerin oluşturduğu)
-  ANNOUNCEMENT // Duyuru kanalı (sadece adminler mesaj atabilir)
+enum CommsTemplateKind {
+  IHTAR
+  TALIMAT
+  PERSONEL_DUYURU
+  PERSONEL_TALEP
+  SINIF_DUYURU
 }
 
-enum ParticipantRole {
-  ADMIN // Sohbet yöneticisi (yalnızca grup/duyuruda anlamlı)
-  MEMBER
+enum OfficialNoticeType {
+  IHTAR
+  TALIMAT
+  PERSONEL_DUYURU
 }
 
-enum MessageType {
-  TEXT
-  IMAGE
-  DOCUMENT
+enum StaffCommsRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
-model Conversation {
-  id        String           @id @default(cuid())
-  type      ConversationType
-  title     String? // Grup veya duyuru kanalı adı (PRIVATE için null)
-  /// Grupta üyeler yazabilsin. Kapalıyken yalnızca ADMIN yazar, diğerleri okur.
-  membersCanPost Boolean         @default(true)
+enum ClassGroupMemberRole {
+  COUNSELOR
+  TEACHER
+  PARENT
+}
+
+model CommsTemplate {
+  id               String            @id @default(cuid())
+  kind             CommsTemplateKind
+  title            String
+  body             String            @db.Text
+  isActive         Boolean           @default(true)
   createdByStaffId String?
-  createdByStaff   Staff?          @relation("ConversationCreator", fields: [createdByStaffId], references: [id], onDelete: SetNull)
-  studentId        String?
-  student          Student?        @relation(fields: [studentId], references: [id], onDelete: SetNull)
-  classId          String?
-  class            Class?          @relation(fields: [classId], references: [id], onDelete: SetNull)
-  branchId         String?
-  branch           Branch?         @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  /// Okul kaydından beslenen kalıcı kanal anahtarı. Elle açılan sohbetlerde boş.
-  systemKey        String?         @unique
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
+  createdByStaff   Staff?            @relation("CommsTemplateCreator", fields: [createdByStaffId], references: [id], onDelete: SetNull)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 
-  participants ConversationParticipant[]
-  messages     Message[]
+  notices           OfficialNotice[]
+  staffRequests     StaffCommsRequest[]
+  classAnnouncements ClassAnnouncement[]
 
-  @@index([type])
-  @@index([updatedAt])
-  @@index([studentId])
-  @@index([classId])
-  @@index([branchId])
-  @@index([createdByStaffId])
-  @@map("conversations")
+  @@index([kind, isActive])
+  @@map("comms_templates")
 }
 
-// Sohbet katılımcıları. Polymorphic: tam olarak staffId VEYA parentId dolu olur.
-model ConversationParticipant {
-  id             String          @id @default(cuid())
-  conversationId String
-  conversation   Conversation    @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  role           ParticipantRole @default(MEMBER)
-  /// membersCanPost=false iken: bu üye yine de yazabilsin mi? ADMIN her zaman yazar.
-  canPost        Boolean         @default(false)
+/// Personel resmi iletisi — her alıcı için ayrı satır
+model OfficialNotice {
+  id                String             @id @default(cuid())
+  type              OfficialNoticeType
+  templateId        String?
+  template          CommsTemplate?     @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  subject           String
+  body              String             @db.Text
+  senderStaffId     String
+  senderStaff       Staff              @relation("OfficialNoticeSender", fields: [senderStaffId], references: [id], onDelete: Cascade)
+  recipientStaffId  String
+  recipientStaff    Staff              @relation("OfficialNoticeRecipient", fields: [recipientStaffId], references: [id], onDelete: Cascade)
+  batchId           String
+  seenAt            DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 
-  staffId  String?
-  staff    Staff?  @relation("StaffChatParticipants", fields: [staffId], references: [id], onDelete: Cascade)
-  parentId String?
-  parent   Parent? @relation("ParentChatParticipants", fields: [parentId], references: [id], onDelete: Cascade)
+  @@index([recipientStaffId, createdAt])
+  @@index([senderStaffId, createdAt])
+  @@index([batchId])
+  @@index([type, createdAt])
+  @@map("official_notices")
+}
 
-  joinedAt DateTime @default(now())
+model StaffCommsRequest {
+  id               String                  @id @default(cuid())
+  templateId       String?
+  template         CommsTemplate?          @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  subject          String
+  body             String                  @db.Text
+  requesterStaffId String
+  requesterStaff   Staff                   @relation("StaffCommsRequester", fields: [requesterStaffId], references: [id], onDelete: Cascade)
+  status           StaffCommsRequestStatus @default(PENDING)
+  decidedByStaffId String?
+  decidedByStaff   Staff?                  @relation("StaffCommsDecider", fields: [decidedByStaffId], references: [id], onDelete: SetNull)
+  decidedAt        DateTime?
+  rejectReason     String?
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
 
-  @@unique([conversationId, staffId])
-  @@unique([conversationId, parentId])
-  @@index([conversationId])
+  @@index([status, createdAt])
+  @@index([requesterStaffId, createdAt])
+  @@map("staff_comms_requests")
+}
+
+model ClassGroup {
+  id               String   @id @default(cuid())
+  classId          String
+  class            Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  title            String
+  counselorStaffId String?
+  counselorStaff   Staff?   @relation("ClassGroupCounselor", fields: [counselorStaffId], references: [id], onDelete: SetNull)
+  createdByStaffId String?
+  createdByStaff   Staff?   @relation("ClassGroupCreator", fields: [createdByStaffId], references: [id], onDelete: SetNull)
+  parentsCanPost   Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  members        ClassGroupMember[]
+  messages       ClassGroupMessage[]
+  announcements  ClassAnnouncement[]
+
+  @@index([classId])
+  @@index([counselorStaffId])
+  @@map("class_groups")
+}
+
+model ClassGroupMember {
+  id           String              @id @default(cuid())
+  classGroupId String
+  classGroup   ClassGroup          @relation(fields: [classGroupId], references: [id], onDelete: Cascade)
+  role         ClassGroupMemberRole
+  staffId      String?
+  staff        Staff?              @relation("ClassGroupStaffMember", fields: [staffId], references: [id], onDelete: Cascade)
+  parentId     String?
+  parent       Parent?             @relation("ClassGroupParentMember", fields: [parentId], references: [id], onDelete: Cascade)
+  joinedAt     DateTime            @default(now())
+
+  @@unique([classGroupId, staffId])
+  @@unique([classGroupId, parentId])
+  @@index([classGroupId])
   @@index([staffId])
   @@index([parentId])
-  @@map("conversation_participants")
+  @@map("class_group_members")
 }
 
-model Message {
-  id             String       @id @default(cuid())
-  conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-
-  // Polymorphic gönderici
+model ClassGroupMessage {
+  id             String     @id @default(cuid())
+  classGroupId   String
+  classGroup     ClassGroup @relation(fields: [classGroupId], references: [id], onDelete: Cascade)
+  body           String     @db.Text
+  attachmentUrl  String?
   senderStaffId  String?
-  senderStaff    Staff?  @relation("StaffSentMessages", fields: [senderStaffId], references: [id], onDelete: SetNull)
+  senderStaff    Staff?     @relation("ClassGroupStaffSender", fields: [senderStaffId], references: [id], onDelete: SetNull)
   senderParentId String?
-  senderParent   Parent? @relation("ParentSentMessages", fields: [senderParentId], references: [id], onDelete: SetNull)
+  senderParent   Parent?    @relation("ClassGroupParentSender", fields: [senderParentId], references: [id], onDelete: SetNull)
+  createdAt      DateTime   @default(now())
 
-  body          String      @db.Text
-  type          MessageType @default(TEXT)
-  attachmentUrl String? // Vercel Blob URL
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  receipts MessageReceipt[]
-
-  @@index([conversationId])
-  @@index([conversationId, createdAt])
-  @@index([senderStaffId])
-  @@index([senderParentId])
-  @@map("messages")
+  @@index([classGroupId, createdAt])
+  @@map("class_group_messages")
 }
 
-model MessageReceipt {
-  id        String  @id @default(cuid())
-  messageId String
-  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+/// Sınıf / veli duyurusu — her veli için ayrı ack
+model ClassAnnouncement {
+  id               String         @id @default(cuid())
+  classGroupId     String
+  classGroup       ClassGroup     @relation(fields: [classGroupId], references: [id], onDelete: Cascade)
+  templateId       String?
+  template         CommsTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  subject          String
+  body             String         @db.Text
+  senderStaffId    String
+  senderStaff      Staff          @relation("ClassAnnouncementSender", fields: [senderStaffId], references: [id], onDelete: Cascade)
+  batchId          String
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
-  // Polymorphic okuyucu
-  readerStaffId  String?
-  readerStaff    Staff?  @relation("StaffMessageReceipts", fields: [readerStaffId], references: [id], onDelete: Cascade)
-  readerParentId String?
-  readerParent   Parent? @relation("ParentMessageReceipts", fields: [readerParentId], references: [id], onDelete: Cascade)
+  acks ClassAnnouncementAck[]
 
-  readAt DateTime @default(now())
+  @@index([classGroupId, createdAt])
+  @@index([senderStaffId, createdAt])
+  @@index([batchId])
+  @@map("class_announcements")
+}
 
-  @@unique([messageId, readerStaffId])
-  @@unique([messageId, readerParentId])
-  @@index([messageId])
-  @@index([readerStaffId])
-  @@index([readerParentId])
-  @@map("message_receipts")
+model ClassAnnouncementAck {
+  id             String           @id @default(cuid())
+  announcementId String
+  announcement   ClassAnnouncement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  parentId       String
+  parent         Parent           @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  seenAt         DateTime?
+  createdAt      DateTime         @default(now())
+
+  @@unique([announcementId, parentId])
+  @@index([parentId, seenAt])
+  @@map("class_announcement_acks")
 }
 
 // ─── Muhasebe entegrasyonu (kurucu finans paneli) ───────────────────────────

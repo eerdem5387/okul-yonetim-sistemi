@@ -5,7 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { User, LogOut, ChevronLeft, ChevronRight, Users, MessageSquare } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { UnreadBadge } from "@/components/chat/UnreadBadge"
+import { UnreadBadge } from "@/components/comms/UnreadBadge"
 
 interface VeliSidebarProps {
   className?: string
@@ -40,7 +40,7 @@ export default function VeliSidebar({ className }: VeliSidebarProps) {
 
   const navigation = [
     { name: "Öğrencim", href: "/veli/panel", icon: User },
-    { name: "Mesajlar", href: "/veli/mesajlar", icon: MessageSquare },
+    { name: "İç Haberleşme", href: "/veli/mesajlar", icon: MessageSquare },
     { name: "Kulüp Seçimi", href: "/parent", icon: Users },
   ]
 

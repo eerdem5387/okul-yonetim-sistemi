@@ -24,7 +24,7 @@ import {
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { UnreadBadge } from "@/components/chat/UnreadBadge"
+import { UnreadBadge } from "@/components/comms/UnreadBadge"
 import { checkNavPermission, useStaffPermissions } from "@/hooks/use-staff-permissions"
 import { MobileMenuButton } from "@/components/layout/mobile-menu-button"
 import { extraGrantedNavItems } from "@/lib/permissions/nav-catalog"
@@ -43,7 +43,7 @@ type NavItem = {
 
 const ALL_NAV: NavItem[] = [
   { name: "Ana Sayfa", href: "/ogretmen", icon: Home, module: "dashboard", action: "view" },
-  { name: "İç Haberleşme Sistemi", href: "/mesajlar", icon: MessageSquare, module: "messaging", action: "view" },
+  { name: "İç Haberleşme", href: "/mesajlar", icon: MessageSquare, module: "messaging", action: "view" },
   { name: "Neredeyiz?", href: "/ogretmen/neredeyiz", icon: Target, module: "neredeyiz", action: "view" },
   // Kendi programı — schedules yetkisinden bağımsız (yönetim sayfası /ders-programi ayrı)
   { name: "Ders Programım", href: "/ogretmen/ders-programim", icon: Calendar, module: "dashboard", action: "view" },

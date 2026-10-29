@@ -545,7 +545,7 @@ export default function RootLayout({
       <html lang="tr">
         <head>
           <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-          <title>İç Haberleşme Sistemi - Öğretmen Paneli</title>
+          <title>İç Haberleşme - Öğretmen Paneli</title>
           <meta name="description" content="Okul iç haberleşme sistemi" />
           <link rel="icon" href="/logo.png?v=2" type="image/png" />
           <link rel="apple-touch-icon" href="/logo.png?v=2" />
