@@ -14,6 +14,13 @@ export const NOTICE_TYPE_LABEL: Record<OfficialNoticeType, string> = {
   PERSONEL_DUYURU: "Personel duyurusu",
 }
 
+/** Liste / detay etiket renkleri */
+export const NOTICE_TYPE_TEXT_CLASS: Record<OfficialNoticeType, string> = {
+  IHTAR: "text-red-700",
+  TALIMAT: "text-emerald-700",
+  PERSONEL_DUYURU: "text-blue-700",
+}
+
 export const REQUEST_STATUS_LABEL: Record<StaffCommsRequestStatus, string> = {
   PENDING: "Bekliyor",
   APPROVED: "Onaylandı",

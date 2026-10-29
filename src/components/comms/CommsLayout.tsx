@@ -6,7 +6,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { getAuthHeaders } from "./auth"
 import { ComposeNoticeWizard } from "./ComposeNoticeWizard"
-import { formatCommsDate, NOTICE_TYPE_LABEL, REQUEST_STATUS_LABEL, TEMPLATE_KIND_LABEL } from "@/lib/comms/labels"
+import {
+  formatCommsDate,
+  NOTICE_TYPE_LABEL,
+  NOTICE_TYPE_TEXT_CLASS,
+  REQUEST_STATUS_LABEL,
+  TEMPLATE_KIND_LABEL,
+} from "@/lib/comms/labels"
 import type {
   ClassGroupSummary,
   CommsMe,
@@ -217,6 +223,7 @@ export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
           <GroupsPanel
             groups={groups}
             kind={kind}
+            actorId={me?.actor.id || ""}
             canCreate={Boolean(caps?.createClassGroup)}
             selectedId={selectedGroupId}
             onSelect={setSelectedGroupId}
@@ -286,7 +293,9 @@ function NoticesPanel({
                   className={`w-full px-3 py-3 text-left hover:bg-slate-50 ${current?.id === n.id ? "bg-blue-50" : ""}`}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-semibold uppercase text-blue-700">{NOTICE_TYPE_LABEL[n.type]}</span>
+                    <span className={`text-xs font-semibold uppercase ${NOTICE_TYPE_TEXT_CLASS[n.type]}`}>
+                      {NOTICE_TYPE_LABEL[n.type]}
+                    </span>
                     <span className="text-[11px] text-gray-400">{formatCommsDate(n.createdAt)}</span>
                   </div>
                   <p className="mt-0.5 truncate text-sm font-medium text-gray-900">{n.subject}</p>
@@ -308,7 +317,9 @@ function NoticesPanel({
         ) : (
           <article className="mx-auto max-w-2xl space-y-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+              <p
+                className={`text-xs font-semibold uppercase tracking-wide ${NOTICE_TYPE_TEXT_CLASS[current.type]}`}
+              >
                 {NOTICE_TYPE_LABEL[current.type]}
               </p>
               <h2 className="mt-1 text-xl font-semibold text-gray-900">{current.subject}</h2>
@@ -655,6 +666,7 @@ function RequestsPanel({
 function GroupsPanel({
   groups,
   kind,
+  actorId,
   canCreate,
   selectedId,
   onSelect,
@@ -662,6 +674,7 @@ function GroupsPanel({
 }: {
   groups: ClassGroupSummary[]
   kind: "staff" | "parent"
+  actorId: string
   canCreate: boolean
   selectedId: string | null
   onSelect: (id: string | null) => void
@@ -672,7 +685,14 @@ function GroupsPanel({
   const [title, setTitle] = useState("")
   const [counselorStaffId, setCounselorStaffId] = useState("")
   const [guides, setGuides] = useState<{ id: string; firstName: string; lastName: string; department: string }[]>([])
-  const [messages, setMessages] = useState<{ id: string; body: string; createdAt: string; sender: { displayName: string } | null }[]>([])
+  const [messages, setMessages] = useState<
+    {
+      id: string
+      body: string
+      createdAt: string
+      sender: { kind: "staff" | "parent"; id: string; displayName: string } | null
+    }[]
+  >([])
   const [detail, setDetail] = useState<{ parentsCanPost: boolean; counselorStaffId?: string | null } | null>(null)
   const [text, setText] = useState("")
   const [teachers, setTeachers] = useState<{ id: string; firstName: string; lastName: string }[]>([])
@@ -855,19 +875,62 @@ function GroupsPanel({
                 </Button>
               </div>
             ) : null}
-            <div className="flex-1 space-y-2 overflow-y-auto p-4">
-              {messages.map((m) => (
-                <div key={m.id} className="rounded-lg border bg-slate-50 px-3 py-2">
-                  <p className="text-xs font-semibold text-slate-500">
-                    {m.sender?.displayName || "Sistem"} · {formatCommsDate(m.createdAt)}
-                  </p>
-                  <p className="text-sm whitespace-pre-wrap">{m.body}</p>
-                </div>
-              ))}
+            <div className="flex flex-1 flex-col gap-2 overflow-y-auto bg-[#eef2f7] p-4">
+              {messages.map((m) => {
+                const mine =
+                  Boolean(actorId) &&
+                  m.sender?.id === actorId &&
+                  m.sender?.kind === kind
+                return (
+                  <div
+                    key={m.id}
+                    className={`flex w-full ${mine ? "justify-end" : "justify-start"}`}
+                  >
+                    <div
+                      className={`max-w-[78%] rounded-2xl px-3.5 py-2 shadow-sm ${
+                        mine
+                          ? "rounded-br-md bg-blue-600 text-white"
+                          : "rounded-bl-md border border-slate-200 bg-white text-slate-900"
+                      }`}
+                    >
+                      {!mine ? (
+                        <p className="mb-0.5 text-[11px] font-semibold text-slate-500">
+                          {m.sender?.displayName || "Sistem"}
+                        </p>
+                      ) : null}
+                      <p className={`text-sm whitespace-pre-wrap leading-relaxed ${mine ? "text-white" : "text-slate-800"}`}>
+                        {m.body}
+                      </p>
+                      <p
+                        className={`mt-1 text-right text-[10px] ${
+                          mine ? "text-blue-100" : "text-slate-400"
+                        }`}
+                      >
+                        {formatCommsDate(m.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })}
+              {messages.length === 0 ? (
+                <p className="py-8 text-center text-sm text-slate-500">Henüz mesaj yok.</p>
+              ) : null}
             </div>
-            <div className="flex gap-2 border-t p-3">
-              <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Mesaj yazın…" />
-              <Button onClick={() => void send()}>Gönder</Button>
+            <div className="flex gap-2 border-t bg-white p-3">
+              <Input
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Mesaj yazın…"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault()
+                    void send()
+                  }
+                }}
+              />
+              <Button onClick={() => void send()} disabled={!text.trim()}>
+                Gönder
+              </Button>
             </div>
           </>
         )}
