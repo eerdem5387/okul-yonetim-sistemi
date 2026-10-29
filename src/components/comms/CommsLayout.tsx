@@ -126,13 +126,8 @@ export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
 
   const tabs = useMemo(() => {
     if (kind === "parent") {
-      return [
-        { key: "groups" as const, label: "Sınıf Grupları" },
-        {
-          key: "class-announcements" as const,
-          label: `Sınıf Duyuruları${me?.badges.unreadAnnouncements ? ` (${me.badges.unreadAnnouncements})` : ""}`,
-        },
-      ]
+      // Duyurular sınıf grubu sohbetinde; ayrı sekme yok
+      return [{ key: "groups" as const, label: "Sınıf Grupları" }]
     }
     const list: { key: Tab; label: string }[] = []
     // İhtar / Talimat / Duyuru yalnızca resmi gönderim yetkilisinde (Kurucu/Müdür/grant)
@@ -156,7 +151,6 @@ export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
         ? `Gelen Talepler${me?.badges.pendingRequests ? ` (${me.badges.pendingRequests})` : ""}`
         : `Talepler${me?.badges.pendingRequests ? ` (${me.badges.pendingRequests})` : ""}`,
     })
-    if (caps?.sendClassAnnouncement) list.push({ key: "class-announcements", label: "Sınıf Duyuruları" })
     list.push({ key: "groups", label: "Sınıf Grupları" })
     if (caps?.manageTemplates) list.push({ key: "templates", label: "Şablonlar" })
     return list
@@ -170,7 +164,7 @@ export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
         <div>
           <h1 className="text-lg font-semibold text-gray-900">İç Haberleşme Sistemi</h1>
           <p className="text-sm text-gray-500">
-            {kind === "staff" ? "Resmi personel iletişimi ve sınıf grupları" : "Sınıf grupları ve duyurular"}
+            {kind === "staff" ? "Resmi personel iletişimi ve sınıf grupları" : "Sınıf grubu sohbeti ve duyurular"}
           </p>
         </div>
         <Button size="sm" variant="outline" onClick={() => void refresh()}>
@@ -178,27 +172,29 @@ export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
         </Button>
       </header>
 
-      <div className="border-b bg-slate-50/80 px-3 py-3 sm:px-4">
-        <div className="flex flex-wrap gap-2">
-          {tabs.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => {
-                setTab(t.key)
-                setSelectedNotice(null)
-              }}
-              className={`rounded-xl px-4 py-3 text-sm font-semibold transition sm:text-base ${
-                tab === t.key
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+      {tabs.length > 1 ? (
+        <div className="border-b bg-slate-50/80 px-3 py-3 sm:px-4">
+          <div className="flex flex-wrap gap-2">
+            {tabs.map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => {
+                  setTab(t.key)
+                  setSelectedNotice(null)
+                }}
+                className={`rounded-xl px-4 py-3 text-sm font-semibold transition sm:text-base ${
+                  tab === t.key
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <div className="flex min-h-0 flex-1 flex-col">
         {loading ? (
@@ -231,22 +227,17 @@ export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
             canCreate={Boolean(caps?.createRequest)}
             onChanged={() => void refresh()}
           />
-        ) : tab === "groups" ? (
+        ) : tab === "groups" || (kind === "parent" && tab === "class-announcements") ? (
           <GroupsPanel
             groups={groups}
             kind={kind}
             actorId={me?.actor.id || ""}
             canCreate={Boolean(caps?.createClassGroup)}
+            canSendAnnouncement={Boolean(caps?.sendClassAnnouncement)}
             selectedId={selectedGroupId}
             onSelect={setSelectedGroupId}
             onChanged={() => void refresh()}
           />
-        ) : tab === "class-announcements" ? (
-          kind === "parent" ? (
-            <ParentAnnouncements notices={inboxNotices} onAcked={() => void refresh()} />
-          ) : (
-            <ComposeClassAnnouncement groups={groups} onDone={() => void refresh()} />
-          )
         ) : tab === "sent" && caps?.sendOfficial ? (
           <NoticesPanel
             notices={sentNotices}
@@ -986,11 +977,30 @@ function RequestsPanel({
   )
 }
 
+type GroupTimelineItem =
+  | {
+      kind: "message"
+      id: string
+      body: string
+      createdAt: string
+      sender: { kind: "staff" | "parent"; id: string; displayName: string } | null
+    }
+  | {
+      kind: "announcement"
+      id: string
+      subject: string
+      body: string
+      createdAt: string
+      sender: { kind: "staff"; id: string; displayName: string } | null
+      seenAt: string | null
+    }
+
 function GroupsPanel({
   groups,
   kind,
   actorId,
   canCreate,
+  canSendAnnouncement,
   selectedId,
   onSelect,
   onChanged,
@@ -999,6 +1009,7 @@ function GroupsPanel({
   kind: "staff" | "parent"
   actorId: string
   canCreate: boolean
+  canSendAnnouncement: boolean
   selectedId: string | null
   onSelect: (id: string | null) => void
   onChanged: () => void
@@ -1008,18 +1019,29 @@ function GroupsPanel({
   const [title, setTitle] = useState("")
   const [counselorStaffId, setCounselorStaffId] = useState("")
   const [guides, setGuides] = useState<{ id: string; firstName: string; lastName: string; department: string }[]>([])
-  const [messages, setMessages] = useState<
-    {
-      id: string
-      body: string
-      createdAt: string
-      sender: { kind: "staff" | "parent"; id: string; displayName: string } | null
-    }[]
-  >([])
+  const [timeline, setTimeline] = useState<GroupTimelineItem[]>([])
   const [detail, setDetail] = useState<{ parentsCanPost: boolean; counselorStaffId?: string | null } | null>(null)
   const [text, setText] = useState("")
   const [teachers, setTeachers] = useState<{ id: string; firstName: string; lastName: string }[]>([])
   const [addTeacherId, setAddTeacherId] = useState("")
+  const [showAnnouncementForm, setShowAnnouncementForm] = useState(false)
+  const [annTemplates, setAnnTemplates] = useState<CommsTemplate[]>([])
+  const [annTemplateId, setAnnTemplateId] = useState("")
+  const [annSubject, setAnnSubject] = useState("")
+  const [annBody, setAnnBody] = useState("")
+  const [annCustomizing, setAnnCustomizing] = useState(false)
+
+  const loadThread = useCallback(async (groupId: string) => {
+    const [m, d] = await Promise.all([
+      fetch(`/api/comms/class-groups/${groupId}/messages`, { headers: getAuthHeaders(), cache: "no-store" }).then((r) =>
+        r.json()
+      ),
+      fetch(`/api/comms/class-groups/${groupId}`, { headers: getAuthHeaders(), cache: "no-store" }).then((r) => r.json()),
+    ])
+    setTimeline((m.timeline as GroupTimelineItem[]) || (m.messages as GroupTimelineItem[]) || [])
+    setDetail(d.group || null)
+    if (kind === "parent") notifyCommsUnreadChanged()
+  }, [kind])
 
   useEffect(() => {
     if (kind !== "staff") return
@@ -1040,19 +1062,28 @@ function GroupsPanel({
   }, [canCreate, kind])
 
   useEffect(() => {
+    if (!canSendAnnouncement) return
+    void fetch("/api/comms/templates?kind=SINIF_DUYURU", { headers: getAuthHeaders(), cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) => setAnnTemplates(j.templates || []))
+  }, [canSendAnnouncement])
+
+  useEffect(() => {
+    const tpl = annTemplates.find((t) => t.id === annTemplateId)
+    if (!tpl || annCustomizing) return
+    setAnnSubject(tpl.title)
+    setAnnBody(tpl.body)
+  }, [annTemplates, annTemplateId, annCustomizing])
+
+  useEffect(() => {
     if (!selectedId) {
-      setMessages([])
+      setTimeline([])
       setDetail(null)
+      setShowAnnouncementForm(false)
       return
     }
-    void Promise.all([
-      fetch(`/api/comms/class-groups/${selectedId}/messages`, { headers: getAuthHeaders(), cache: "no-store" }).then((r) => r.json()),
-      fetch(`/api/comms/class-groups/${selectedId}`, { headers: getAuthHeaders(), cache: "no-store" }).then((r) => r.json()),
-    ]).then(([m, d]) => {
-      setMessages(m.messages || [])
-      setDetail(d.group || null)
-    })
-  }, [selectedId])
+    void loadThread(selectedId)
+  }, [selectedId, loadThread])
 
   const create = async () => {
     const res = await fetch("/api/comms/class-groups", {
@@ -1085,11 +1116,33 @@ function GroupsPanel({
       return
     }
     setText("")
-    const m = await fetch(`/api/comms/class-groups/${selectedId}/messages`, {
+    await loadThread(selectedId)
+  }
+
+  const sendAnnouncement = async () => {
+    if (!selectedId || !annTemplateId || !annSubject.trim() || !annBody.trim()) return
+    const res = await fetch("/api/comms/class-announcements", {
+      method: "POST",
       headers: getAuthHeaders(),
-      cache: "no-store",
-    }).then((r) => r.json())
-    setMessages(m.messages || [])
+      body: JSON.stringify({
+        classGroupId: selectedId,
+        templateId: annTemplateId,
+        subject: annSubject,
+        body: annBody,
+      }),
+    })
+    const j = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      alert(j.error || "Duyuru gönderilemedi")
+      return
+    }
+    setShowAnnouncementForm(false)
+    setAnnTemplateId("")
+    setAnnSubject("")
+    setAnnBody("")
+    setAnnCustomizing(false)
+    await loadThread(selectedId)
+    onChanged()
   }
 
   const toggleParents = async () => {
@@ -1181,6 +1234,15 @@ function GroupsPanel({
                 <Button size="sm" variant="outline" onClick={() => void toggleParents()}>
                   Veli yazma: {detail.parentsCanPost ? "Açık" : "Kapalı"}
                 </Button>
+                {canSendAnnouncement ? (
+                  <Button
+                    size="sm"
+                    variant={showAnnouncementForm ? "default" : "outline"}
+                    onClick={() => setShowAnnouncementForm((v) => !v)}
+                  >
+                    Duyuru gönder
+                  </Button>
+                ) : null}
                 <select
                   className="rounded-md border px-2 py-1 text-sm"
                   value={addTeacherId}
@@ -1198,15 +1260,67 @@ function GroupsPanel({
                 </Button>
               </div>
             ) : null}
+            {showAnnouncementForm && canSendAnnouncement ? (
+              <div className="space-y-2 border-b bg-amber-50/60 px-3 py-3">
+                <p className="text-sm font-semibold text-amber-950">Sınıf duyurusu</p>
+                <select
+                  className="w-full rounded-md border px-2 py-1.5 text-sm"
+                  value={annTemplateId}
+                  onChange={(e) => {
+                    setAnnTemplateId(e.target.value)
+                    setAnnCustomizing(false)
+                  }}
+                >
+                  <option value="">Şablon seçin</option>
+                  {annTemplates.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.title}
+                    </option>
+                  ))}
+                </select>
+                <Input
+                  value={annSubject}
+                  onChange={(e) => setAnnSubject(e.target.value)}
+                  disabled={!annCustomizing && !annTemplateId}
+                  placeholder="Konu"
+                />
+                <textarea
+                  className="min-h-[6rem] w-full rounded-md border px-2 py-1.5 text-sm"
+                  value={annBody}
+                  onChange={(e) => setAnnBody(e.target.value)}
+                  disabled={!annCustomizing && !annTemplateId}
+                />
+                {annTemplateId && !annCustomizing ? (
+                  <Button size="sm" variant="outline" onClick={() => setAnnCustomizing(true)}>
+                    Şablonu özelleştir
+                  </Button>
+                ) : null}
+                <Button size="sm" onClick={() => void sendAnnouncement()} disabled={!annTemplateId}>
+                  Duyuruyu gönder
+                </Button>
+              </div>
+            ) : null}
             <div className="flex flex-1 flex-col gap-2 overflow-y-auto bg-[#eef2f7] p-4">
-              {messages.map((m) => {
+              {timeline.map((item) => {
+                if (item.kind === "announcement") {
+                  return (
+                    <div key={`a-${item.id}`} className="flex w-full justify-center">
+                      <div className="w-full max-w-lg rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 shadow-sm">
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-amber-800">Duyuru</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-900">{item.subject}</p>
+                        <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{item.body}</p>
+                        <p className="mt-2 text-xs text-slate-500">
+                          {item.sender?.displayName || "Sistem"} · {formatCommsDate(item.createdAt)}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                }
                 const mine =
-                  Boolean(actorId) &&
-                  m.sender?.id === actorId &&
-                  m.sender?.kind === kind
+                  Boolean(actorId) && item.sender?.id === actorId && item.sender?.kind === kind
                 return (
                   <div
-                    key={m.id}
+                    key={`m-${item.id}`}
                     className={`flex w-full ${mine ? "justify-end" : "justify-start"}`}
                   >
                     <div
@@ -1218,24 +1332,28 @@ function GroupsPanel({
                     >
                       {!mine ? (
                         <p className="mb-0.5 text-[11px] font-semibold text-slate-500">
-                          {m.sender?.displayName || "Sistem"}
+                          {item.sender?.displayName || "Sistem"}
                         </p>
                       ) : null}
-                      <p className={`text-sm whitespace-pre-wrap leading-relaxed ${mine ? "text-white" : "text-slate-800"}`}>
-                        {m.body}
+                      <p
+                        className={`whitespace-pre-wrap text-sm leading-relaxed ${
+                          mine ? "text-white" : "text-slate-800"
+                        }`}
+                      >
+                        {item.body}
                       </p>
                       <p
                         className={`mt-1 text-right text-[10px] ${
                           mine ? "text-blue-100" : "text-slate-400"
                         }`}
                       >
-                        {formatCommsDate(m.createdAt)}
+                        {formatCommsDate(item.createdAt)}
                       </p>
                     </div>
                   </div>
                 )
               })}
-              {messages.length === 0 ? (
+              {timeline.length === 0 ? (
                 <p className="py-8 text-center text-sm text-slate-500">Henüz mesaj yok.</p>
               ) : null}
             </div>
@@ -1262,164 +1380,3 @@ function GroupsPanel({
   )
 }
 
-function ComposeClassAnnouncement({
-  groups,
-  onDone,
-}: {
-  groups: ClassGroupSummary[]
-  onDone: () => void
-}) {
-  const [templates, setTemplates] = useState<CommsTemplate[]>([])
-  const [classGroupId, setClassGroupId] = useState("")
-  const [templateId, setTemplateId] = useState("")
-  const [subject, setSubject] = useState("")
-  const [body, setBody] = useState("")
-  const [customizing, setCustomizing] = useState(false)
-
-  useEffect(() => {
-    void fetch("/api/comms/templates?kind=SINIF_DUYURU", { headers: getAuthHeaders(), cache: "no-store" })
-      .then((r) => r.json())
-      .then((j) => setTemplates(j.templates || []))
-  }, [])
-
-  const tpl = templates.find((t) => t.id === templateId)
-  useEffect(() => {
-    if (!tpl || customizing) return
-    setSubject(tpl.title)
-    setBody(tpl.body)
-  }, [tpl, customizing])
-
-  const send = async () => {
-    const res = await fetch("/api/comms/class-announcements", {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ classGroupId, templateId, subject, body }),
-    })
-    const j = await res.json().catch(() => ({}))
-    if (!res.ok) {
-      alert(j.error || "Gönderilemedi")
-      return
-    }
-    alert(`${j.recipientCount} veliye duyuru iletildi`)
-    onDone()
-  }
-
-  return (
-    <div className="mx-auto w-full max-w-xl space-y-3 overflow-y-auto p-4">
-      <select className="w-full rounded-md border px-3 py-2 text-sm" value={classGroupId} onChange={(e) => setClassGroupId(e.target.value)}>
-        <option value="">Sınıf grubu seçin</option>
-        {groups.map((g) => (
-          <option key={g.id} value={g.id}>
-            {g.title} · {g.class.name}
-          </option>
-        ))}
-      </select>
-      <select
-        className="w-full rounded-md border px-3 py-2 text-sm"
-        value={templateId}
-        onChange={(e) => {
-          setTemplateId(e.target.value)
-          setCustomizing(false)
-        }}
-      >
-        <option value="">Şablon seçin</option>
-        {templates.map((t) => (
-          <option key={t.id} value={t.id}>
-            {t.title}
-          </option>
-        ))}
-      </select>
-      <Input value={subject} onChange={(e) => setSubject(e.target.value)} disabled={!customizing} />
-      <textarea
-        className="min-h-[10rem] w-full rounded-md border px-3 py-2 text-sm"
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-        disabled={!customizing}
-      />
-      {templateId && !customizing ? (
-        <Button variant="outline" onClick={() => setCustomizing(true)}>
-          Bu sınıf duyurusu için şablonu özelleştir
-        </Button>
-      ) : null}
-      <Button onClick={() => void send()} disabled={!classGroupId || !templateId}>
-        Sınıf duyurusunu gönder
-      </Button>
-    </div>
-  )
-}
-
-function ParentAnnouncements({
-  notices,
-  onAcked,
-}: {
-  notices: OfficialNotice[]
-  onAcked: () => void
-}) {
-  const [ackingId, setAckingId] = useState<string | null>(null)
-
-  const ack = async (id: string) => {
-    if (ackingId) return
-    setAckingId(id)
-    try {
-      const res = await fetch(`/api/comms/class-announcements/${id}/ack`, {
-        method: "POST",
-        headers: getAuthHeaders(),
-      })
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}))
-        alert(j.error || "İşlem başarısız")
-        return
-      }
-      notifyCommsUnreadChanged()
-      onAcked()
-    } finally {
-      setAckingId(null)
-    }
-  }
-
-  return (
-    <div className="flex-1 space-y-3 overflow-y-auto p-4">
-      {notices.map((n) => (
-        <article
-          key={n.id}
-          className={`rounded-xl border p-4 ${
-            n.seenAt ? "border-slate-200 bg-white" : "border-amber-300 bg-amber-50/50"
-          }`}
-        >
-          <div className="flex items-start justify-between gap-2">
-            <h3 className={`font-semibold ${n.seenAt ? "text-gray-800" : "text-gray-900"}`}>{n.subject}</h3>
-            {n.seenAt ? (
-              <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
-                Görüldü
-              </span>
-            ) : (
-              <span className="shrink-0 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white">
-                Yeni
-              </span>
-            )}
-          </div>
-          <p className="mt-2 whitespace-pre-wrap text-sm text-gray-800">{n.body}</p>
-          <p className="mt-3 border-t pt-2 text-xs text-slate-600">
-            Oluşturulma tarihi: {formatCommsDate(n.createdAt)}
-          </p>
-          {!n.seenAt ? (
-            <Button
-              className="mt-2"
-              size="sm"
-              disabled={ackingId === n.id}
-              onClick={() => void ack(n.id)}
-            >
-              {ackingId === n.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Görüldü
-            </Button>
-          ) : (
-            <p className="mt-2 text-sm font-medium text-emerald-700">
-              Görüldü kaydı: {formatCommsDate(n.seenAt)}
-            </p>
-          )}
-        </article>
-      ))}
-      {notices.length === 0 ? <p className="text-sm text-gray-500">Duyuru yok.</p> : null}
-    </div>
-  )
-}
