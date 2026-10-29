@@ -168,7 +168,7 @@ export function ComposeNoticeWizard({
             <p className="text-sm text-slate-500">Tek kişi, birden fazla kişi veya tüm personeli seçebilirsiniz.</p>
             <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium">
               <input type="checkbox" checked={allStaff} onChange={(e) => setAllStaff(e.target.checked)} />
-              Tüm aktif personele gönder
+              Tüm personele gönder (gönderim yetkilileri hariç)
             </label>
             {!allStaff ? (
               <>
@@ -197,7 +197,9 @@ export function ComposeNoticeWizard({
                 <p className="text-xs text-slate-500">{recipientCount} kişi seçildi</p>
               </>
             ) : (
-              <p className="text-sm text-slate-600">Tüm aktif personel alıcı olacak (gönderen hariç).</p>
+              <p className="text-sm text-slate-600">
+                Gönderim yetkisi olmayan tüm aktif personel alıcı olacak.
+              </p>
             )}
           </div>
         ) : null}

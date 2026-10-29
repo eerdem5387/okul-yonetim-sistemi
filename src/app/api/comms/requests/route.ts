@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { resolveStaffActor } from "@/lib/hr/actor"
-import { isRequestApprover } from "@/lib/comms/access"
+import { canSendOfficialNotice, isRequestApprover } from "@/lib/comms/access"
 
 export const dynamic = "force-dynamic"
 
@@ -34,6 +34,18 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const actor = await resolveStaffActor(request)
   if (!actor) return NextResponse.json({ error: "Yetkisiz" }, { status: 401 })
+  if (isRequestApprover(actor.department)) {
+    return NextResponse.json(
+      { error: "Onay mercileri talep oluşturmaz; gelen talepleri onaylar" },
+      { status: 403 }
+    )
+  }
+  if (await canSendOfficialNotice(actor.staffId, actor.department)) {
+    return NextResponse.json(
+      { error: "Resmi gönderim yetkilileri talep oluşturmaz" },
+      { status: 403 }
+    )
+  }
 
   const body = await request.json().catch(() => null)
   const subject = String(body?.subject || "").trim()

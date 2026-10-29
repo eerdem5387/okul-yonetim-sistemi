@@ -4,7 +4,7 @@ import { randomUUID } from "crypto"
 import type { OfficialNoticeType } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { resolveStaffActor } from "@/lib/hr/actor"
-import { canSendOfficialNotice } from "@/lib/comms/access"
+import { canSendOfficialNotice, filterOfficialNoticeRecipientIds, listOfficialNoticeRecipients } from "@/lib/comms/access"
 
 export const dynamic = "force-dynamic"
 
@@ -53,17 +53,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "type, subject ve body zorunlu" }, { status: 400 })
   }
 
-  let targets = recipientIds
+  let targets: string[]
   if (allStaff) {
-    const rows = await prisma.staff.findMany({
-      where: { isActive: true, id: { not: actor.staffId } },
-      select: { id: true },
-    })
+    const rows = await listOfficialNoticeRecipients(actor.staffId)
     targets = rows.map((r) => r.id)
+  } else {
+    targets = await filterOfficialNoticeRecipientIds(recipientIds, actor.staffId)
   }
-  targets = [...new Set(targets)].filter((id) => id && id !== actor.staffId)
   if (targets.length === 0) {
-    return NextResponse.json({ error: "En az bir alıcı seçin" }, { status: 400 })
+    return NextResponse.json(
+      { error: "En az bir alıcı seçin (gönderim yetkilileri alıcı olamaz)" },
+      { status: 400 }
+    )
   }
 
   if (templateId) {

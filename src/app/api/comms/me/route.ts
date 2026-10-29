@@ -38,11 +38,15 @@ export async function GET(request: NextRequest) {
   const actor = await resolveStaffActor(request)
   if (!actor) return NextResponse.json({ error: "Yetkisiz" }, { status: 401 })
 
-  const [sendOfficial, sendClassAnnouncement, unreadNotices, pendingRequests] = await Promise.all([
-    canSendOfficialNotice(actor.staffId, actor.department),
+  const approveRequests = isRequestApprover(actor.department)
+  const sendOfficial = await canSendOfficialNotice(actor.staffId, actor.department)
+  const [sendClassAnnouncement, unreadNotices, pendingRequests] = await Promise.all([
     canSendClassAnnouncement(actor.staffId, actor.department),
-    prisma.officialNotice.count({ where: { recipientStaffId: actor.staffId, seenAt: null } }),
-    isRequestApprover(actor.department)
+    // Gönderim yetkilileri resmi ileti almaz
+    sendOfficial
+      ? Promise.resolve(0)
+      : prisma.officialNotice.count({ where: { recipientStaffId: actor.staffId, seenAt: null } }),
+    approveRequests
       ? prisma.staffCommsRequest.count({ where: { status: "PENDING" } })
       : prisma.staffCommsRequest.count({
           where: { requesterStaffId: actor.staffId, status: "PENDING" },
@@ -60,9 +64,10 @@ export async function GET(request: NextRequest) {
       sendOfficial,
       sendClassAnnouncement,
       manageTemplates: canManageTemplates(actor.department),
-      approveRequests: isRequestApprover(actor.department),
+      approveRequests,
       createClassGroup: canCreateClassGroup(actor.department),
-      createRequest: true,
+      // Onay mercileri talep oluşturmaz; personel oluşturur
+      createRequest: !approveRequests && !sendOfficial,
     },
     badges: { unreadNotices, pendingRequests, unreadAnnouncements: 0 },
   })

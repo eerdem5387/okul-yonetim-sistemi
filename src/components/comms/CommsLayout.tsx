@@ -43,7 +43,6 @@ export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
   const [templates, setTemplates] = useState<CommsTemplate[]>([])
   const [selectedNotice, setSelectedNotice] = useState<OfficialNotice | null>(null)
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
-  const [composeMode, setComposeMode] = useState<"create" | "inbox">("create")
 
   const loadMe = useCallback(async () => {
     const res = await fetch("/api/comms/me", { headers: getAuthHeaders(), cache: "no-store" })
@@ -123,7 +122,9 @@ export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
     }
     list.push({
       key: "requests",
-      label: `Talepler${me?.badges.pendingRequests ? ` (${me.badges.pendingRequests})` : ""}`,
+      label: caps?.approveRequests
+        ? `Gelen Talepler${me?.badges.pendingRequests ? ` (${me.badges.pendingRequests})` : ""}`
+        : `Talepler${me?.badges.pendingRequests ? ` (${me.badges.pendingRequests})` : ""}`,
     })
     if (caps?.sendOfficial) list.push({ key: "sent", label: "Gönderilen İletiler" })
     if (caps?.sendClassAnnouncement) list.push({ key: "class-announcements", label: "Sınıf Duyuruları" })
@@ -158,9 +159,6 @@ export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
               onClick={() => {
                 setTab(t.key)
                 setSelectedNotice(null)
-                if (t.key === "ihtar" || t.key === "talimat" || t.key === "duyuru") {
-                  setComposeMode(caps?.sendOfficial ? "create" : "inbox")
-                }
               }}
               className={`rounded-xl px-4 py-3 text-sm font-semibold transition sm:text-base ${
                 tab === t.key
@@ -175,34 +173,11 @@ export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col">
-        {composeType && kind === "staff" && caps?.sendOfficial ? (
-          <div className="flex gap-2 border-b px-4 py-2">
-            <button
-              type="button"
-              onClick={() => setComposeMode("create")}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
-                composeMode === "create" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700"
-              }`}
-            >
-              Yeni oluştur
-            </button>
-            <button
-              type="button"
-              onClick={() => setComposeMode("inbox")}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
-                composeMode === "inbox" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700"
-              }`}
-            >
-              Gelen{typeInbox.filter((n) => !n.seenAt).length ? ` (${typeInbox.filter((n) => !n.seenAt).length})` : ""}
-            </button>
-          </div>
-        ) : null}
-
         {loading ? (
           <div className="flex flex-1 items-center justify-center">
             <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
           </div>
-        ) : composeType && kind === "staff" && caps?.sendOfficial && composeMode === "create" ? (
+        ) : composeType && kind === "staff" && caps?.sendOfficial ? (
           <ComposeNoticeWizard
             key={composeType}
             type={composeType}
@@ -563,8 +538,24 @@ function RequestsPanel({
     onChanged()
   }
 
+  const pending = requests.filter((r) => r.status === "PENDING")
+  const decided = requests.filter((r) => r.status !== "PENDING")
+  const queue = canApprove ? [...pending, ...decided] : requests
+
   return (
     <div className="flex-1 space-y-4 overflow-y-auto p-4">
+      {canApprove ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <p className="text-sm font-semibold text-amber-900">Gelen talepler — onay kuyruğu</p>
+          <p className="mt-0.5 text-xs text-amber-800">
+            Personelden gelen talepleri onaylayın veya reddedin. Bu merciden talep oluşturulmaz.
+          </p>
+          <p className="mt-2 text-sm font-medium text-amber-950">
+            Bekleyen: {pending.length}
+          </p>
+        </div>
+      ) : null}
+
       {canCreate ? (
         <div className="space-y-2 rounded-xl border p-4">
           <p className="text-sm font-semibold">Yeni talep</p>
@@ -600,8 +591,39 @@ function RequestsPanel({
           </Button>
         </div>
       ) : null}
+
+      {canApprove && pending.length > 0 ? (
+        <div className="space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Onay bekleyenler</p>
+          <ul className="divide-y rounded-xl border border-amber-200">
+            {pending.map((r) => (
+              <li key={r.id} className="space-y-3 bg-white px-4 py-4">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-semibold text-slate-900">{r.subject}</p>
+                  <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+                    Bekliyor
+                  </span>
+                </div>
+                <p className="whitespace-pre-wrap text-sm text-gray-700">{r.body}</p>
+                <p className="text-xs text-gray-500">
+                  {r.requesterStaff?.firstName} {r.requesterStaff?.lastName} · {formatCommsDate(r.createdAt)}
+                </p>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={() => void decide(r.id, "approve")}>
+                    Onayla
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => void decide(r.id, "reject")}>
+                    Reddet
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       <ul className="divide-y rounded-xl border">
-        {requests.map((r) => (
+        {(canApprove ? decided : queue).map((r) => (
           <li key={r.id} className="space-y-2 px-4 py-3">
             <div className="flex items-center justify-between gap-2">
               <p className="font-medium">{r.subject}</p>
@@ -612,19 +634,13 @@ function RequestsPanel({
               {r.requesterStaff?.firstName} {r.requesterStaff?.lastName} · {formatCommsDate(r.createdAt)}
             </p>
             {r.rejectReason ? <p className="text-xs text-red-700">Gerekçe: {r.rejectReason}</p> : null}
-            {canApprove && r.status === "PENDING" ? (
-              <div className="flex gap-2">
-                <Button size="sm" onClick={() => void decide(r.id, "approve")}>
-                  Onayla
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => void decide(r.id, "reject")}>
-                  Reddet
-                </Button>
-              </div>
-            ) : null}
           </li>
         ))}
-        {requests.length === 0 ? <li className="p-4 text-sm text-gray-500">Talep yok.</li> : null}
+        {(canApprove ? decided : queue).length === 0 && !(canApprove && pending.length > 0) ? (
+          <li className="p-4 text-sm text-gray-500">
+            {canApprove ? "Henüz karara bağlanmış talep yok." : "Talep yok."}
+          </li>
+        ) : null}
       </ul>
     </div>
   )

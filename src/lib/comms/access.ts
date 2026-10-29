@@ -48,3 +48,47 @@ export async function listActiveStaffIds(): Promise<string[]> {
   })
   return rows.map((r) => r.id)
 }
+
+/**
+ * Resmi ileti alıcıları: gönderim yetkilileri (Kurucu/Müdür/grant) hiyerarşide alıcı değildir.
+ */
+export async function listOfficialNoticeRecipients(excludeStaffId?: string): Promise<
+  Array<{ id: string; firstName: string; lastName: string; department: StaffDepartment; subject: string | null }>
+> {
+  const staff = await prisma.staff.findMany({
+    where: {
+      isActive: true,
+      ...(excludeStaffId ? { id: { not: excludeStaffId } } : {}),
+      department: { notIn: ["KURUCU", "MUDUR", "SUPER_ADMIN"] },
+    },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      department: true,
+      subject: true,
+    },
+    orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+  })
+
+  const grants = await prisma.staffPermission.findMany({
+    where: {
+      module: COMMS_MODULE,
+      action: SEND_OFFICIAL_ACTION,
+      granted: true,
+      staffId: { in: staff.map((s) => s.id) },
+    },
+    select: { staffId: true },
+  })
+  const granted = new Set(grants.map((g) => g.staffId))
+  return staff.filter((s) => !granted.has(s.id))
+}
+
+export async function filterOfficialNoticeRecipientIds(
+  candidateIds: string[],
+  excludeStaffId?: string
+): Promise<string[]> {
+  const eligible = await listOfficialNoticeRecipients(excludeStaffId)
+  const allowed = new Set(eligible.map((s) => s.id))
+  return [...new Set(candidateIds)].filter((id) => id && allowed.has(id))
+}
