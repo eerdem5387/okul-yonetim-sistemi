@@ -56,7 +56,7 @@ const allNavigation = [
   { name: "Veli Görüşmeleri", href: "/yonetim/parent-meetings", icon: MessageSquare, roles: ["admin", "principal", "student_affairs"] },
   // 6. Öğrenci Yönetimi
   { name: "Öğrenci Yönetimi", href: "/students", icon: UserPlus, roles: ["admin", "principal", "student_affairs"] },
-  { name: "Öğrenci Dashboard", href: "/ogrenci-dashboard", icon: LayoutDashboard, roles: ["admin", "principal", "student_affairs"] },
+  { name: "Öğrenci Dashboard", href: "/ogrenci-dashboard", icon: LayoutDashboard, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
   // 7. Personel Yönetimi
   { name: "Personel Yönetimi", href: "/personel", icon: Briefcase, roles: ["admin", "principal", "student_affairs"] },
   { name: "İK Başvuruları", href: "/ik-basvurular", icon: UserSearch, roles: ["admin", "principal", "student_affairs"] },
@@ -87,7 +87,6 @@ const allNavigation = [
   { name: "Faaliyet Yönetimi", href: "/faaliyet-yonetimi", icon: Award, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
   { name: "Sınav Yönetimi", href: "/rehberlik/sinavlar", icon: FileText, roles: ["admin", "counselor", "head_counselor"] },
   { name: "Öğrenci Görüşleri", href: "/rehberlik/gorusler", icon: MessageSquare, roles: ["admin", "counselor", "head_counselor"] },
-  { name: "Öğrenci Dashboard", href: "/rehberlik/ogrenci-dashboard", icon: LayoutDashboard, roles: ["admin", "counselor", "head_counselor"] },
   { name: "Forma Sözleşmesi", href: "/uniform", icon: Shirt, roles: ["admin", "principal", "student_affairs"] },
   { name: "Yemek Sözleşmesi", href: "/meal", icon: Utensils, roles: ["admin", "principal", "student_affairs"] },
   { name: "Servis Sözleşmesi", href: "/service", icon: Bus, roles: ["admin", "principal", "student_affairs"] },
@@ -148,7 +147,6 @@ export function Sidebar() {
     "/faaliyet-yonetimi": "activity_events.view",
     "/rehberlik/sinavlar": "exams.view",
     "/rehberlik/gorusler": "student_comments.view",
-    "/rehberlik/ogrenci-dashboard": "students.view",
     "/uniform": "registrations.view",
     "/meal": "registrations.view",
     "/service": "registrations.view",

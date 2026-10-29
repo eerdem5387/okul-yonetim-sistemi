@@ -153,8 +153,13 @@ export default function OgrenciDashboardPage() {
       }
 
       const role = localStorage.getItem("auth_role")
-      // Admin, Principal, Student Affairs için erişim
-      if (role !== "admin" && role !== "principal" && role !== "student_affairs") {
+      if (
+        role !== "admin" &&
+        role !== "principal" &&
+        role !== "student_affairs" &&
+        role !== "counselor" &&
+        role !== "head_counselor"
+      ) {
         router.push("/login")
         return
       }
