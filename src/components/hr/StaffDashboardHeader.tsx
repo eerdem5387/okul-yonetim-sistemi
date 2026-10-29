@@ -134,7 +134,7 @@ export function StaffDashboardHeader({ data }: { data: StaffDashboardData }) {
             hint="Bu personele gönderilen talimatlar"
           />
           <HrStatCard
-            label="Personel duyurusu"
+            label="İdari Duyuru"
             value={notices.personelDuyurusu}
             icon={Megaphone}
             tone="blue"

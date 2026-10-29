@@ -19,7 +19,14 @@ export async function POST(_request: NextRequest, context: Ctx) {
     return NextResponse.json({ error: "Bu ileti size ait değil" }, { status: 403 })
   }
   if (notice.seenAt) {
-    return NextResponse.json({ notice })
+    const existing = await prisma.officialNotice.findUnique({
+      where: { id },
+      include: {
+        senderStaff: { select: { id: true, firstName: true, lastName: true } },
+        recipientStaff: { select: { id: true, firstName: true, lastName: true } },
+      },
+    })
+    return NextResponse.json({ notice: existing, alreadySeen: true })
   }
 
   const updated = await prisma.officialNotice.update({
@@ -27,6 +34,7 @@ export async function POST(_request: NextRequest, context: Ctx) {
     data: { seenAt: new Date() },
     include: {
       senderStaff: { select: { id: true, firstName: true, lastName: true } },
+      recipientStaff: { select: { id: true, firstName: true, lastName: true } },
     },
   })
   return NextResponse.json({ notice: updated })

@@ -1,11 +1,13 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Check, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { getAuthHeaders } from "./auth"
+import { PlaceholderInsertBar } from "./PlaceholderInsert"
 import { NOTICE_TYPE_LABEL } from "@/lib/comms/labels"
+import { RECIPIENT_NAME_TOKEN } from "@/lib/comms/placeholders"
 import type { CommsTemplate } from "./types"
 
 type NoticeType = "IHTAR" | "TALIMAT" | "PERSONEL_DUYURU"
@@ -36,6 +38,7 @@ export function ComposeNoticeWizard({
   const [customizing, setCustomizing] = useState(false)
   const [busy, setBusy] = useState(false)
   const [q, setQ] = useState("")
+  const bodyRef = useRef<HTMLTextAreaElement>(null)
 
   const label = NOTICE_TYPE_LABEL[type]
   const labelLower = label.toLocaleLowerCase("tr-TR")
@@ -249,6 +252,15 @@ export function ComposeNoticeWizard({
               <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <p className="text-base font-semibold text-slate-900">{subject}</p>
                 <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{body}</p>
+                {body.includes(RECIPIENT_NAME_TOKEN) ? (
+                  <p className="text-xs text-blue-700">
+                    {RECIPIENT_NAME_TOKEN} gönderimde her alıcının ad soyadı ile değiştirilir.
+                  </p>
+                ) : (
+                  <p className="text-xs text-amber-700">
+                    Alıcı adı için şablona {RECIPIENT_NAME_TOKEN} eklemeniz önerilir (özelleştir ile).
+                  </p>
+                )}
                 <Button variant="outline" onClick={() => setCustomizing(true)}>
                   Bu {labelLower} için şablonu özelleştir
                 </Button>
@@ -256,11 +268,13 @@ export function ComposeNoticeWizard({
             ) : (
               <div className="space-y-3">
                 <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Konu" />
+                <PlaceholderInsertBar textareaRef={bodyRef} value={body} onChange={setBody} />
                 <textarea
+                  ref={bodyRef}
                   className="min-h-[16rem] w-full rounded-md border px-3 py-2 text-sm"
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
-                  placeholder="Metin"
+                  placeholder={`Örn: Sayın ${RECIPIENT_NAME_TOKEN},\n\n...`}
                 />
                 <p className="text-xs text-amber-700">Metni serbestçe düzenleyebilirsiniz.</p>
               </div>
@@ -283,7 +297,11 @@ export function ComposeNoticeWizard({
                 {body}
               </div>
               <p className="text-xs text-slate-500">
-                Gönderildiğinde her alıcı için bağımsız kayıt oluşur. Alıcılar Görüldü ile dijital iz bırakır.
+                Gönderildiğinde her alıcı için bağımsız kayıt oluşur.
+                {body.includes(RECIPIENT_NAME_TOKEN)
+                  ? ` ${RECIPIENT_NAME_TOKEN} her kayıta alıcının adı yazılarak kaydedilir.`
+                  : ""}{" "}
+                Alıcılar Görüldü ile dijital iz bırakır.
               </p>
             </div>
           </div>

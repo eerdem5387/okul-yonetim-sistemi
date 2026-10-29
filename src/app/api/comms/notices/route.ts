@@ -5,6 +5,7 @@ import type { OfficialNoticeType } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { resolveStaffActor } from "@/lib/hr/actor"
 import { canSendOfficialNotice, filterOfficialNoticeRecipientIds, listOfficialNoticeRecipients } from "@/lib/comms/access"
+import { applyNoticePlaceholders } from "@/lib/comms/placeholders"
 
 export const dynamic = "force-dynamic"
 
@@ -74,17 +75,28 @@ export async function POST(request: NextRequest) {
     if (!tpl) return NextResponse.json({ error: "Şablon bulunamadı" }, { status: 400 })
   }
 
+  const recipientRows = await prisma.staff.findMany({
+    where: { id: { in: targets } },
+    select: { id: true, firstName: true, lastName: true },
+  })
+  const nameById = new Map(
+    recipientRows.map((r) => [r.id, `${r.firstName} ${r.lastName}`.trim()] as const)
+  )
+
   const batchId = randomUUID()
   await prisma.officialNotice.createMany({
-    data: targets.map((recipientStaffId) => ({
-      type,
-      templateId,
-      subject,
-      body: text,
-      senderStaffId: actor.staffId,
-      recipientStaffId,
-      batchId,
-    })),
+    data: targets.map((recipientStaffId) => {
+      const recipientFullName = nameById.get(recipientStaffId) || ""
+      return {
+        type,
+        templateId,
+        subject: applyNoticePlaceholders(subject, { recipientFullName }),
+        body: applyNoticePlaceholders(text, { recipientFullName }),
+        senderStaffId: actor.staffId,
+        recipientStaffId,
+        batchId,
+      }
+    }),
   })
 
   return NextResponse.json({ ok: true, batchId, count: targets.length }, { status: 201 })

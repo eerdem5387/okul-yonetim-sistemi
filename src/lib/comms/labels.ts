@@ -3,7 +3,7 @@ import type { CommsTemplateKind, OfficialNoticeType, StaffCommsRequestStatus } f
 export const TEMPLATE_KIND_LABEL: Record<CommsTemplateKind, string> = {
   IHTAR: "İhtar",
   TALIMAT: "Talimat",
-  PERSONEL_DUYURU: "Personel duyurusu",
+  PERSONEL_DUYURU: "İdari Duyuru",
   PERSONEL_TALEP: "Personel talebi",
   SINIF_DUYURU: "Sınıf duyurusu",
 }
@@ -11,7 +11,7 @@ export const TEMPLATE_KIND_LABEL: Record<CommsTemplateKind, string> = {
 export const NOTICE_TYPE_LABEL: Record<OfficialNoticeType, string> = {
   IHTAR: "İhtar",
   TALIMAT: "Talimat",
-  PERSONEL_DUYURU: "Personel duyurusu",
+  PERSONEL_DUYURU: "İdari Duyuru",
 }
 
 /** Liste / detay etiket renkleri */

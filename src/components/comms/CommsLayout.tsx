@@ -1,11 +1,14 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { Loader2, RefreshCw } from "lucide-react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { FileDown, Loader2, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { getAuthHeaders } from "./auth"
 import { ComposeNoticeWizard } from "./ComposeNoticeWizard"
+import { PlaceholderInsertBar } from "./PlaceholderInsert"
+import { notifyCommsUnreadChanged } from "./unread-events"
+import { RECIPIENT_NAME_TOKEN } from "@/lib/comms/placeholders"
 import {
   formatCommsDate,
   NOTICE_TYPE_LABEL,
@@ -94,6 +97,7 @@ export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
       }
     } finally {
       setLoading(false)
+      notifyCommsUnreadChanged()
     }
   }, [kind, loadMe])
 
@@ -128,7 +132,7 @@ export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
       list.push(
         { key: "ihtar", label: "İhtar" },
         { key: "talimat", label: "Talimat" },
-        { key: "duyuru", label: "Duyuru" },
+        { key: "duyuru", label: "İdari Duyuru" },
         { key: "sent", label: "Gönderilen İletiler" }
       )
     } else {
@@ -266,80 +270,277 @@ function NoticesPanel({
   mode: "inbox" | "sent"
   onAcked: () => void
 }) {
-  const current = selected && notices.find((n) => n.id === selected.id) ? selected : notices[0] || null
+  const [acking, setAcking] = useState(false)
+  const [pdfLoading, setPdfLoading] = useState(false)
+  const [typeFilter, setTypeFilter] = useState<"ALL" | NoticeType>("ALL")
+  const [seenFilter, setSeenFilter] = useState<"ALL" | "SEEN" | "UNSEEN">("ALL")
+  const [query, setQuery] = useState("")
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLocaleLowerCase("tr-TR")
+    return notices.filter((n) => {
+      if (typeFilter !== "ALL" && n.type !== typeFilter) return false
+      if (seenFilter === "SEEN" && !n.seenAt) return false
+      if (seenFilter === "UNSEEN" && n.seenAt) return false
+      if (!q) return true
+      const hay = [
+        n.subject,
+        n.body,
+        n.senderStaff?.firstName,
+        n.senderStaff?.lastName,
+        n.recipientStaff?.firstName,
+        n.recipientStaff?.lastName,
+        NOTICE_TYPE_LABEL[n.type],
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLocaleLowerCase("tr-TR")
+      return hay.includes(q)
+    })
+  }, [notices, typeFilter, seenFilter, query])
+
+  // Her zaman listeden güncel kaydı al (ack sonrası stale selected.seenAt olmasın)
+  const current =
+    (selected ? filtered.find((n) => n.id === selected.id) : null) ||
+    (selected ? notices.find((n) => n.id === selected.id) : null) ||
+    filtered[0] ||
+    null
 
   const ack = async (id: string) => {
-    const res = await fetch(`/api/comms/notices/${id}/ack`, { method: "POST", headers: getAuthHeaders() })
-    if (!res.ok) {
+    if (acking) return
+    setAcking(true)
+    try {
+      const res = await fetch(`/api/comms/notices/${id}/ack`, { method: "POST", headers: getAuthHeaders() })
       const j = await res.json().catch(() => ({}))
-      alert(j.error || "İşlem başarısız")
-      return
+      if (!res.ok) {
+        alert(j.error || "İşlem başarısız")
+        return
+      }
+      if (j.notice) onSelect(j.notice as OfficialNotice)
+      notifyCommsUnreadChanged()
+      onAcked()
+    } finally {
+      setAcking(false)
     }
-    onAcked()
+  }
+
+  const downloadPdf = async (id: string, subject: string) => {
+    if (pdfLoading) return
+    setPdfLoading(true)
+    try {
+      const res = await fetch(`/api/comms/notices/${id}/pdf`, { headers: getAuthHeaders() })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        alert(j.error || "PDF indirilemedi")
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `${NOTICE_TYPE_LABEL[(notices.find((n) => n.id === id)?.type || "IHTAR") as NoticeType]}-${subject.slice(0, 40)}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch {
+      alert("PDF indirilemedi")
+    } finally {
+      setPdfLoading(false)
+    }
   }
 
   return (
     <>
-      <aside className="w-full max-w-sm border-r overflow-y-auto">
-        {notices.length === 0 ? (
-          <p className="p-4 text-sm text-gray-500">Kayıt yok.</p>
-        ) : (
-          <ul className="divide-y">
-            {notices.map((n) => (
-              <li key={n.id}>
-                <button
-                  type="button"
-                  onClick={() => onSelect(n)}
-                  className={`w-full px-3 py-3 text-left hover:bg-slate-50 ${current?.id === n.id ? "bg-blue-50" : ""}`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className={`text-xs font-semibold uppercase ${NOTICE_TYPE_TEXT_CLASS[n.type]}`}>
-                      {NOTICE_TYPE_LABEL[n.type]}
-                    </span>
-                    <span className="text-[11px] text-gray-400">{formatCommsDate(n.createdAt)}</span>
-                  </div>
-                  <p className="mt-0.5 truncate text-sm font-medium text-gray-900">{n.subject}</p>
-                  <p className="truncate text-xs text-gray-500">
-                    {mode === "sent"
-                      ? `${n.recipientStaff?.firstName} ${n.recipientStaff?.lastName}`
-                      : `${n.senderStaff?.firstName} ${n.senderStaff?.lastName}`}
-                    {!n.seenAt && mode === "inbox" ? " · Görülmedi" : n.seenAt ? " · Görüldü" : ""}
-                  </p>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </aside>
-      <main className="flex-1 overflow-y-auto p-5">
-        {!current ? (
-          <p className="text-sm text-gray-500">Bir kayıt seçin.</p>
-        ) : (
-          <article className="mx-auto max-w-2xl space-y-4">
-            <div>
-              <p
-                className={`text-xs font-semibold uppercase tracking-wide ${NOTICE_TYPE_TEXT_CLASS[current.type]}`}
-              >
-                {NOTICE_TYPE_LABEL[current.type]}
-              </p>
-              <h2 className="mt-1 text-xl font-semibold text-gray-900">{current.subject}</h2>
-              <p className="mt-1 text-sm text-gray-500">
-                {mode === "inbox"
-                  ? `Gönderen: ${current.senderStaff?.firstName} ${current.senderStaff?.lastName}`
-                  : `Alıcı: ${current.recipientStaff?.firstName} ${current.recipientStaff?.lastName}`}
-              </p>
-            </div>
-            <div className="whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-relaxed text-gray-800">
-              {current.body}
-            </div>
-            <p className="border-t border-slate-200 pt-3 text-xs font-medium text-slate-600">
-              Oluşturulma tarihi: {formatCommsDate(current.createdAt)}
+      <aside className="flex w-full max-w-sm flex-col border-r">
+        <div className="space-y-2 border-b bg-slate-50 p-3">
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={mode === "sent" ? "Alıcı veya konu ara…" : "Gönderen veya konu ara…"}
+            className="h-9 bg-white text-sm"
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value as "ALL" | NoticeType)}
+              className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-800"
+              aria-label="Tür filtresi"
+            >
+              <option value="ALL">Tüm türler</option>
+              <option value="IHTAR">İhtar</option>
+              <option value="TALIMAT">Talimat</option>
+              <option value="PERSONEL_DUYURU">İdari Duyuru</option>
+            </select>
+            <select
+              value={seenFilter}
+              onChange={(e) => setSeenFilter(e.target.value as "ALL" | "SEEN" | "UNSEEN")}
+              className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-800"
+              aria-label="Görülme filtresi"
+            >
+              <option value="ALL">Tümü</option>
+              <option value="SEEN">Görüldü</option>
+              <option value="UNSEEN">Bekliyor</option>
+            </select>
+          </div>
+          <p className="text-xs text-slate-500">
+            {filtered.length} / {notices.length} kayıt
+          </p>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {filtered.length === 0 ? (
+            <p className="p-4 text-sm text-gray-500">
+              {notices.length === 0 ? "Kayıt yok." : "Filtreye uyan kayıt yok."}
             </p>
+          ) : (
+            <ul className="divide-y">
+              {filtered.map((n) => {
+                const unread = mode === "inbox" && !n.seenAt
+                return (
+                  <li key={n.id}>
+                    <button
+                      type="button"
+                      onClick={() => onSelect(n)}
+                      className={`w-full border-l-4 px-3 py-3 text-left transition ${
+                        current?.id === n.id ? "bg-blue-50" : "hover:bg-slate-50"
+                      } ${unread ? "border-l-amber-500 bg-amber-50/40" : "border-l-transparent"}`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className={`text-xs font-semibold uppercase ${NOTICE_TYPE_TEXT_CLASS[n.type]}`}>
+                          {NOTICE_TYPE_LABEL[n.type]}
+                        </span>
+                        <span className="text-[11px] text-gray-400">{formatCommsDate(n.createdAt)}</span>
+                      </div>
+                      <p
+                        className={`mt-0.5 truncate text-sm ${
+                          unread ? "font-bold text-gray-900" : "font-medium text-gray-700"
+                        }`}
+                      >
+                        {n.subject}
+                      </p>
+                      <div className="mt-1 flex items-center justify-between gap-2">
+                        <p className="truncate text-xs text-gray-500">
+                          {mode === "sent"
+                            ? `${n.recipientStaff?.firstName} ${n.recipientStaff?.lastName}`
+                            : `${n.senderStaff?.firstName} ${n.senderStaff?.lastName}`}
+                        </p>
+                        {mode === "inbox" ? (
+                          unread ? (
+                            <span className="shrink-0 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                              Yeni
+                            </span>
+                          ) : (
+                            <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
+                              Görüldü
+                            </span>
+                          )
+                        ) : n.seenAt ? (
+                          <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
+                            Görüldü
+                          </span>
+                        ) : (
+                          <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+                            Bekliyor
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+      </aside>
+      <main className="flex-1 overflow-y-auto p-6">
+        {!current ? (
+          <p className="text-base text-gray-500">Bir kayıt seçin.</p>
+        ) : (
+          <article className="mx-auto max-w-3xl space-y-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p
+                    className={`text-sm font-bold uppercase tracking-wide ${NOTICE_TYPE_TEXT_CLASS[current.type]}`}
+                  >
+                    {NOTICE_TYPE_LABEL[current.type]}
+                  </p>
+                  {current.seenAt ? (
+                    <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
+                      Görüldü
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-amber-500 px-2.5 py-0.5 text-xs font-bold text-white">
+                      {mode === "inbox" ? "Görülmedi" : "Bekliyor"}
+                    </span>
+                  )}
+                </div>
+                <h2 className="mt-2 text-2xl font-bold leading-snug text-gray-900">{current.subject}</h2>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => void downloadPdf(current.id, current.subject)}
+                disabled={pdfLoading}
+              >
+                {pdfLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <FileDown className="mr-2 h-4 w-4" />
+                )}
+                PDF İndir
+              </Button>
+            </div>
+
+            <dl className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-2">
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {mode === "inbox" ? "Gönderen" : "Alıcı"}
+                </dt>
+                <dd className="mt-1 text-base font-semibold text-gray-900">
+                  {mode === "inbox"
+                    ? `${current.senderStaff?.firstName || ""} ${current.senderStaff?.lastName || ""}`.trim() ||
+                      "—"
+                    : `${current.recipientStaff?.firstName || ""} ${current.recipientStaff?.lastName || ""}`.trim() ||
+                      "—"}
+                </dd>
+              </div>
+              {mode === "sent" ? (
+                <div>
+                  <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Gönderen</dt>
+                  <dd className="mt-1 text-base font-semibold text-gray-900">
+                    {`${current.senderStaff?.firstName || ""} ${current.senderStaff?.lastName || ""}`.trim() ||
+                      "—"}
+                  </dd>
+                </div>
+              ) : null}
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Oluşturulma</dt>
+                <dd className="mt-1 text-base font-medium text-gray-800">{formatCommsDate(current.createdAt)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Görüldü kaydı</dt>
+                <dd
+                  className={`mt-1 text-base font-medium ${
+                    current.seenAt ? "text-emerald-700" : "text-amber-700"
+                  }`}
+                >
+                  {current.seenAt ? formatCommsDate(current.seenAt) : "Henüz görülmedi"}
+                </dd>
+              </div>
+            </dl>
+
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">İleti metni</p>
+              <div className="whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 p-5 text-base leading-7 text-gray-900">
+                {current.body}
+              </div>
+            </div>
+
             {mode === "inbox" && !current.seenAt ? (
-              <Button onClick={() => void ack(current.id)}>Görüldü</Button>
-            ) : null}
-            {current.seenAt ? (
-              <p className="text-xs text-emerald-700">Görüldü: {formatCommsDate(current.seenAt)}</p>
+              <Button onClick={() => void ack(current.id)} disabled={acking}>
+                {acking ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Görüldü
+              </Button>
             ) : null}
           </article>
         )}
@@ -358,7 +559,9 @@ function TemplatesAdmin({
   const [kind, setKind] = useState("IHTAR")
   const [title, setTitle] = useState("")
   const [body, setBody] = useState("")
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const bodyRef = useRef<HTMLTextAreaElement>(null)
   const [grants, setGrants] = useState<
     { id: string; firstName: string; lastName: string; department: string; sendOfficial: boolean }[]
   >([])
@@ -371,21 +574,38 @@ function TemplatesAdmin({
       .catch(() => setGrants([]))
   }, [])
 
+  const resetForm = () => {
+    setEditingId(null)
+    setKind("IHTAR")
+    setTitle("")
+    setBody("")
+  }
+
+  const startEdit = (t: CommsTemplate) => {
+    setEditingId(t.id)
+    setKind(t.kind)
+    setTitle(t.title)
+    setBody(t.body)
+  }
+
   const save = async () => {
+    if (!title.trim() || !body.trim()) {
+      alert("Başlık ve şablon metni zorunlu")
+      return
+    }
     setBusy(true)
     try {
-      const res = await fetch("/api/comms/templates", {
-        method: "POST",
+      const res = await fetch(editingId ? `/api/comms/templates/${editingId}` : "/api/comms/templates", {
+        method: editingId ? "PATCH" : "POST",
         headers: getAuthHeaders(),
-        body: JSON.stringify({ kind, title, body }),
+        body: JSON.stringify(editingId ? { title, body } : { kind, title, body }),
       })
       const j = await res.json().catch(() => ({}))
       if (!res.ok) {
         alert(j.error || "Kaydedilemedi")
         return
       }
-      setTitle("")
-      setBody("")
+      resetForm()
       onChanged()
     } finally {
       setBusy(false)
@@ -414,7 +634,12 @@ function TemplatesAdmin({
   return (
     <div className="flex-1 space-y-4 overflow-y-auto p-4">
       <div className="grid gap-3 rounded-xl border p-4 md:grid-cols-2">
-        <select className="rounded-md border px-3 py-2 text-sm" value={kind} onChange={(e) => setKind(e.target.value)}>
+        <select
+          className="rounded-md border px-3 py-2 text-sm disabled:bg-slate-100"
+          value={kind}
+          onChange={(e) => setKind(e.target.value)}
+          disabled={Boolean(editingId)}
+        >
           {Object.entries(TEMPLATE_KIND_LABEL).map(([k, v]) => (
             <option key={k} value={k}>
               {v}
@@ -422,37 +647,53 @@ function TemplatesAdmin({
           ))}
         </select>
         <Input placeholder="Başlık" value={title} onChange={(e) => setTitle(e.target.value)} />
-        <textarea
-          className="md:col-span-2 min-h-[8rem] rounded-md border px-3 py-2 text-sm"
-          placeholder="Şablon metni"
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-        />
-        <Button onClick={() => void save()} disabled={busy}>
-          Şablon ekle
-        </Button>
+        <div className="md:col-span-2 space-y-2">
+          <PlaceholderInsertBar textareaRef={bodyRef} value={body} onChange={setBody} />
+          <textarea
+            ref={bodyRef}
+            className="min-h-[10rem] w-full rounded-md border px-3 py-2 text-sm"
+            placeholder={`Örn: Sayın ${RECIPIENT_NAME_TOKEN},\n\nAşağıdaki duyuruyu bilgilerinize sunarız:\n\n[Duyuru metni]\n\nSaygılarımızla.`}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+          />
+        </div>
+        <div className="flex flex-wrap gap-2 md:col-span-2">
+          <Button onClick={() => void save()} disabled={busy}>
+            {editingId ? "Şablonu güncelle" : "Şablon ekle"}
+          </Button>
+          {editingId ? (
+            <Button type="button" variant="outline" onClick={resetForm} disabled={busy}>
+              Vazgeç
+            </Button>
+          ) : null}
+        </div>
       </div>
       <ul className="divide-y rounded-xl border">
         {templates.map((t) => (
           <li key={t.id} className="flex items-start justify-between gap-3 px-4 py-3">
-            <div>
+            <div className="min-w-0">
               <p className="text-xs font-semibold text-blue-700">{TEMPLATE_KIND_LABEL[t.kind as keyof typeof TEMPLATE_KIND_LABEL]}</p>
               <p className="font-medium">{t.title}</p>
-              <p className="line-clamp-2 text-xs text-gray-500">{t.body}</p>
+              <p className="line-clamp-3 whitespace-pre-wrap text-xs text-gray-500">{t.body}</p>
             </div>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() =>
-                void fetch(`/api/comms/templates/${t.id}`, {
-                  method: "PATCH",
-                  headers: getAuthHeaders(),
-                  body: JSON.stringify({ isActive: !t.isActive }),
-                }).then(onChanged)
-              }
-            >
-              {t.isActive ? "Pasifleştir" : "Aktifleştir"}
-            </Button>
+            <div className="flex shrink-0 flex-col gap-2">
+              <Button size="sm" variant="outline" onClick={() => startEdit(t)}>
+                Düzenle
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  void fetch(`/api/comms/templates/${t.id}`, {
+                    method: "PATCH",
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ isActive: !t.isActive }),
+                  }).then(onChanged)
+                }
+              >
+                {t.isActive ? "Pasifleştir" : "Aktifleştir"}
+              </Button>
+            </div>
           </li>
         ))}
       </ul>
@@ -574,10 +815,10 @@ function RequestsPanel({
       ) : null}
 
       {canCreate ? (
-        <div className="space-y-2 rounded-xl border p-4">
-          <p className="text-sm font-semibold">Yeni talep</p>
+        <div className="space-y-3 rounded-xl border p-5">
+          <p className="text-base font-semibold">Yeni talep</p>
           <select
-            className="w-full rounded-md border px-3 py-2 text-sm"
+            className="w-full rounded-md border px-3 py-2.5 text-base"
             value={templateId}
             onChange={(e) => {
               setTemplateId(e.target.value)
@@ -591,19 +832,25 @@ function RequestsPanel({
               </option>
             ))}
           </select>
-          <Input value={subject} onChange={(e) => setSubject(e.target.value)} disabled={!customizing && !templateId} placeholder="Konu" />
+          <Input
+            className="h-11 text-base"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            disabled={!customizing && !templateId}
+            placeholder="Konu"
+          />
           <textarea
-            className="min-h-[8rem] w-full rounded-md border px-3 py-2 text-sm"
+            className="min-h-[10rem] w-full rounded-md border px-3 py-3 text-base leading-7"
             value={body}
             onChange={(e) => setBody(e.target.value)}
             disabled={!customizing && !templateId}
           />
           {templateId && !customizing ? (
-            <Button variant="outline" size="sm" onClick={() => setCustomizing(true)}>
+            <Button variant="outline" onClick={() => setCustomizing(true)}>
               Bu talep için şablonu özelleştir
             </Button>
           ) : null}
-          <Button size="sm" onClick={() => void create()} disabled={!templateId}>
+          <Button onClick={() => void create()} disabled={!templateId}>
             Talebi gönder
           </Button>
         </div>
@@ -611,50 +858,85 @@ function RequestsPanel({
 
       {canApprove && pending.length > 0 ? (
         <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Onay bekleyenler</p>
-          <ul className="divide-y rounded-xl border border-amber-200">
-            {pending.map((r) => (
-              <li key={r.id} className="space-y-3 bg-white px-4 py-4">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="font-semibold text-slate-900">{r.subject}</p>
-                  <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
-                    Bekliyor
-                  </span>
-                </div>
-                <p className="whitespace-pre-wrap text-sm text-gray-700">{r.body}</p>
-                <p className="text-xs text-gray-500">
-                  {r.requesterStaff?.firstName} {r.requesterStaff?.lastName} · {formatCommsDate(r.createdAt)}
-                </p>
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={() => void decide(r.id, "approve")}>
-                    Onayla
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => void decide(r.id, "reject")}>
-                    Reddet
-                  </Button>
-                </div>
-              </li>
-            ))}
+          <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Onay bekleyenler</p>
+          <ul className="space-y-4">
+            {pending.map((r) => {
+              const requester =
+                `${r.requesterStaff?.firstName || ""} ${r.requesterStaff?.lastName || ""}`.trim() || "—"
+              return (
+                <li
+                  key={r.id}
+                  className="space-y-4 rounded-xl border border-amber-300 border-l-4 border-l-amber-500 bg-amber-50/40 px-5 py-5"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-xl font-bold leading-snug text-slate-900">
+                      {r.subject}
+                      <span className="font-bold text-slate-800"> — {requester}</span>
+                    </p>
+                    <span className="shrink-0 rounded-full bg-amber-500 px-3 py-1 text-sm font-bold text-white">
+                      Bekliyor
+                    </span>
+                  </div>
+                  <p className="whitespace-pre-wrap text-base leading-7 text-gray-800">{r.body}</p>
+                  <p className="text-base font-medium text-slate-600">{formatCommsDate(r.createdAt)}</p>
+                  <div className="flex gap-2">
+                    <Button onClick={() => void decide(r.id, "approve")}>Onayla</Button>
+                    <Button variant="outline" onClick={() => void decide(r.id, "reject")}>
+                      Reddet
+                    </Button>
+                  </div>
+                </li>
+              )
+            })}
           </ul>
         </div>
       ) : null}
 
-      <ul className="divide-y rounded-xl border">
-        {(canApprove ? decided : queue).map((r) => (
-          <li key={r.id} className="space-y-2 px-4 py-3">
-            <div className="flex items-center justify-between gap-2">
-              <p className="font-medium">{r.subject}</p>
-              <span className="text-xs font-semibold text-slate-600">{REQUEST_STATUS_LABEL[r.status]}</span>
-            </div>
-            <p className="whitespace-pre-wrap text-sm text-gray-700">{r.body}</p>
-            <p className="text-xs text-gray-500">
-              {r.requesterStaff?.firstName} {r.requesterStaff?.lastName} · {formatCommsDate(r.createdAt)}
-            </p>
-            {r.rejectReason ? <p className="text-xs text-red-700">Gerekçe: {r.rejectReason}</p> : null}
-          </li>
-        ))}
+      <ul className="space-y-4">
+        {(canApprove ? decided : queue).map((r) => {
+          const requester =
+            `${r.requesterStaff?.firstName || ""} ${r.requesterStaff?.lastName || ""}`.trim() || "—"
+          const statusTone =
+            r.status === "APPROVED"
+              ? {
+                  card: "border-emerald-300 border-l-emerald-600 bg-emerald-50/40",
+                  badge: "bg-emerald-600 text-white",
+                }
+              : r.status === "REJECTED"
+                ? {
+                    card: "border-red-300 border-l-red-600 bg-red-50/40",
+                    badge: "bg-red-600 text-white",
+                  }
+                : {
+                    card: "border-amber-300 border-l-amber-500 bg-amber-50/40",
+                    badge: "bg-amber-500 text-white",
+                  }
+          return (
+            <li
+              key={r.id}
+              className={`space-y-3 rounded-xl border border-l-4 px-5 py-5 ${statusTone.card}`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-xl font-bold leading-snug text-slate-900">
+                  {r.subject}
+                  <span className="font-bold text-slate-800"> — {requester}</span>
+                </p>
+                <span
+                  className={`shrink-0 rounded-full px-3 py-1 text-sm font-bold ${statusTone.badge}`}
+                >
+                  {REQUEST_STATUS_LABEL[r.status]}
+                </span>
+              </div>
+              <p className="whitespace-pre-wrap text-base leading-7 text-gray-800">{r.body}</p>
+              <p className="text-base font-medium text-slate-600">{formatCommsDate(r.createdAt)}</p>
+              {r.rejectReason ? (
+                <p className="text-base font-medium text-red-700">Gerekçe: {r.rejectReason}</p>
+              ) : null}
+            </li>
+          )
+        })}
         {(canApprove ? decided : queue).length === 0 && !(canApprove && pending.length > 0) ? (
-          <li className="p-4 text-sm text-gray-500">
+          <li className="rounded-xl border p-5 text-base text-gray-500">
             {canApprove ? "Henüz karara bağlanmış talep yok." : "Talep yok."}
           </li>
         ) : null}
@@ -1032,34 +1314,67 @@ function ParentAnnouncements({
   notices: OfficialNotice[]
   onAcked: () => void
 }) {
+  const [ackingId, setAckingId] = useState<string | null>(null)
+
   const ack = async (id: string) => {
-    const res = await fetch(`/api/comms/class-announcements/${id}/ack`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-    })
-    if (!res.ok) {
-      const j = await res.json().catch(() => ({}))
-      alert(j.error || "İşlem başarısız")
-      return
+    if (ackingId) return
+    setAckingId(id)
+    try {
+      const res = await fetch(`/api/comms/class-announcements/${id}/ack`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        alert(j.error || "İşlem başarısız")
+        return
+      }
+      notifyCommsUnreadChanged()
+      onAcked()
+    } finally {
+      setAckingId(null)
     }
-    onAcked()
   }
 
   return (
     <div className="flex-1 space-y-3 overflow-y-auto p-4">
       {notices.map((n) => (
-        <article key={n.id} className="rounded-xl border p-4">
-          <h3 className="font-semibold">{n.subject}</h3>
+        <article
+          key={n.id}
+          className={`rounded-xl border p-4 ${
+            n.seenAt ? "border-slate-200 bg-white" : "border-amber-300 bg-amber-50/50"
+          }`}
+        >
+          <div className="flex items-start justify-between gap-2">
+            <h3 className={`font-semibold ${n.seenAt ? "text-gray-800" : "text-gray-900"}`}>{n.subject}</h3>
+            {n.seenAt ? (
+              <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
+                Görüldü
+              </span>
+            ) : (
+              <span className="shrink-0 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                Yeni
+              </span>
+            )}
+          </div>
           <p className="mt-2 whitespace-pre-wrap text-sm text-gray-800">{n.body}</p>
           <p className="mt-3 border-t pt-2 text-xs text-slate-600">
             Oluşturulma tarihi: {formatCommsDate(n.createdAt)}
           </p>
           {!n.seenAt ? (
-            <Button className="mt-2" size="sm" onClick={() => void ack(n.id)}>
+            <Button
+              className="mt-2"
+              size="sm"
+              disabled={ackingId === n.id}
+              onClick={() => void ack(n.id)}
+            >
+              {ackingId === n.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Görüldü
             </Button>
           ) : (
-            <p className="mt-2 text-xs text-emerald-700">Görüldü: {formatCommsDate(n.seenAt)}</p>
+            <p className="mt-2 text-sm font-medium text-emerald-700">
+              Görüldü kaydı: {formatCommsDate(n.seenAt)}
+            </p>
           )}
         </article>
       ))}
