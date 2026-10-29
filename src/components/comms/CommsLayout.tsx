@@ -17,6 +17,7 @@ import type {
 
 type NoticeType = "IHTAR" | "TALIMAT" | "PERSONEL_DUYURU"
 type Tab =
+  | "inbox"
   | "ihtar"
   | "talimat"
   | "duyuru"
@@ -34,7 +35,7 @@ const COMPOSE_TABS: Record<"ihtar" | "talimat" | "duyuru", NoticeType> = {
 
 export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
   const [me, setMe] = useState<CommsMe | null>(null)
-  const [tab, setTab] = useState<Tab>(kind === "parent" ? "groups" : "ihtar")
+  const [tab, setTab] = useState<Tab>(kind === "parent" ? "groups" : "inbox")
   const [loading, setLoading] = useState(true)
   const [inboxNotices, setInboxNotices] = useState<OfficialNotice[]>([])
   const [sentNotices, setSentNotices] = useState<OfficialNotice[]>([])
@@ -95,6 +96,16 @@ export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
   }, [refresh])
 
   const caps = me?.capabilities
+
+  // Yetkiye göre varsayılan / yasaklı sekmeyi düzelt
+  useEffect(() => {
+    if (kind !== "staff" || !caps) return
+    if (caps.sendOfficial && tab === "inbox") setTab("ihtar")
+    if (!caps.sendOfficial && (tab === "ihtar" || tab === "talimat" || tab === "duyuru" || tab === "sent")) {
+      setTab("inbox")
+    }
+  }, [caps, kind, tab])
+
   const tabs = useMemo(() => {
     if (kind === "parent") {
       return [
@@ -106,19 +117,20 @@ export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
       ]
     }
     const list: { key: Tab; label: string }[] = []
+    // İhtar / Talimat / Duyuru yalnızca resmi gönderim yetkilisinde (Kurucu/Müdür/grant)
     if (caps?.sendOfficial) {
       list.push(
         { key: "ihtar", label: "İhtar" },
         { key: "talimat", label: "Talimat" },
-        { key: "duyuru", label: "Duyuru" }
+        { key: "duyuru", label: "Duyuru" },
+        { key: "sent", label: "Gönderilen İletiler" }
       )
     } else {
-      // Gönderim yoksa gelen kutusu tipi olarak aç
-      list.push(
-        { key: "ihtar", label: "İhtar" },
-        { key: "talimat", label: "Talimat" },
-        { key: "duyuru", label: "Duyuru" }
-      )
+      // Personel / rehberlik / öğretmen: yalnızca gelen resmi iletiler
+      list.push({
+        key: "inbox",
+        label: `Gelen${me?.badges.unreadNotices ? ` (${me.badges.unreadNotices})` : ""}`,
+      })
     }
     list.push({
       key: "requests",
@@ -126,7 +138,6 @@ export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
         ? `Gelen Talepler${me?.badges.pendingRequests ? ` (${me.badges.pendingRequests})` : ""}`
         : `Talepler${me?.badges.pendingRequests ? ` (${me.badges.pendingRequests})` : ""}`,
     })
-    if (caps?.sendOfficial) list.push({ key: "sent", label: "Gönderilen İletiler" })
     if (caps?.sendClassAnnouncement) list.push({ key: "class-announcements", label: "Sınıf Duyuruları" })
     list.push({ key: "groups", label: "Sınıf Grupları" })
     if (caps?.manageTemplates) list.push({ key: "templates", label: "Şablonlar" })
@@ -134,7 +145,6 @@ export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
   }, [kind, caps, me])
 
   const composeType = tab in COMPOSE_TABS ? COMPOSE_TABS[tab as keyof typeof COMPOSE_TABS] : null
-  const typeInbox = composeType ? inboxNotices.filter((n) => n.type === composeType) : inboxNotices
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col bg-white">
@@ -186,9 +196,9 @@ export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
               void refresh()
             }}
           />
-        ) : composeType && kind === "staff" ? (
+        ) : tab === "inbox" && kind === "staff" ? (
           <NoticesPanel
-            notices={typeInbox}
+            notices={inboxNotices}
             selected={selectedNotice}
             onSelect={setSelectedNotice}
             mode="inbox"
@@ -218,7 +228,7 @@ export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
           ) : (
             <ComposeClassAnnouncement groups={groups} onDone={() => void refresh()} />
           )
-        ) : tab === "sent" ? (
+        ) : tab === "sent" && caps?.sendOfficial ? (
           <NoticesPanel
             notices={sentNotices}
             selected={selectedNotice}
@@ -227,13 +237,9 @@ export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
             onAcked={() => void refresh()}
           />
         ) : (
-          <NoticesPanel
-            notices={typeInbox}
-            selected={selectedNotice}
-            onSelect={setSelectedNotice}
-            mode="inbox"
-            onAcked={() => void refresh()}
-          />
+          <div className="flex flex-1 items-center justify-center p-6 text-sm text-gray-500">
+            Bu alan için yetkiniz yok.
+          </div>
         )}
       </div>
     </div>
