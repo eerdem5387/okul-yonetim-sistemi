@@ -1,10 +1,11 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Loader2, Plus, RefreshCw } from "lucide-react"
+import { Loader2, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { getAuthHeaders } from "./auth"
+import { ComposeNoticeWizard } from "./ComposeNoticeWizard"
 import { formatCommsDate, NOTICE_TYPE_LABEL, REQUEST_STATUS_LABEL, TEMPLATE_KIND_LABEL } from "@/lib/comms/labels"
 import type {
   ClassGroupSummary,
@@ -14,18 +15,35 @@ import type {
   StaffCommsRequest,
 } from "./types"
 
-type Tab = "inbox" | "sent" | "compose" | "requests" | "groups" | "templates" | "class-announcements"
+type NoticeType = "IHTAR" | "TALIMAT" | "PERSONEL_DUYURU"
+type Tab =
+  | "ihtar"
+  | "talimat"
+  | "duyuru"
+  | "requests"
+  | "sent"
+  | "groups"
+  | "templates"
+  | "class-announcements"
+
+const COMPOSE_TABS: Record<"ihtar" | "talimat" | "duyuru", NoticeType> = {
+  ihtar: "IHTAR",
+  talimat: "TALIMAT",
+  duyuru: "PERSONEL_DUYURU",
+}
 
 export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
   const [me, setMe] = useState<CommsMe | null>(null)
-  const [tab, setTab] = useState<Tab>(kind === "parent" ? "groups" : "inbox")
+  const [tab, setTab] = useState<Tab>(kind === "parent" ? "groups" : "ihtar")
   const [loading, setLoading] = useState(true)
-  const [notices, setNotices] = useState<OfficialNotice[]>([])
+  const [inboxNotices, setInboxNotices] = useState<OfficialNotice[]>([])
+  const [sentNotices, setSentNotices] = useState<OfficialNotice[]>([])
   const [requests, setRequests] = useState<StaffCommsRequest[]>([])
   const [groups, setGroups] = useState<ClassGroupSummary[]>([])
   const [templates, setTemplates] = useState<CommsTemplate[]>([])
   const [selectedNotice, setSelectedNotice] = useState<OfficialNotice | null>(null)
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
+  const [composeMode, setComposeMode] = useState<"create" | "inbox">("create")
 
   const loadMe = useCallback(async () => {
     const res = await fetch("/api/comms/me", { headers: getAuthHeaders(), cache: "no-store" })
@@ -45,8 +63,8 @@ export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
           fetch("/api/comms/class-groups", { headers: getAuthHeaders(), cache: "no-store" }).then((r) => r.json()),
           fetch("/api/comms/templates?active=0", { headers: getAuthHeaders(), cache: "no-store" }).then((r) => r.json()),
         ])
-        if (tab === "sent") setNotices(sent.notices || [])
-        else setNotices(inbox.notices || [])
+        setInboxNotices(inbox.notices || [])
+        setSentNotices(sent.notices || [])
         setRequests(req.requests || [])
         setGroups(grp.groups || [])
         setTemplates(tpl.templates || [])
@@ -56,7 +74,7 @@ export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
           fetch("/api/comms/class-announcements", { headers: getAuthHeaders(), cache: "no-store" }).then((r) => r.json()),
         ])
         setGroups(grp.groups || [])
-        setNotices(
+        setInboxNotices(
           (ann.announcements || []).map((a: OfficialNotice & { seenAt?: string | null }) => ({
             id: a.id,
             type: "PERSONEL_DUYURU" as const,
@@ -71,46 +89,58 @@ export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
     } finally {
       setLoading(false)
     }
-  }, [kind, loadMe, tab])
+  }, [kind, loadMe])
 
   useEffect(() => {
     void refresh()
   }, [refresh])
 
-  useEffect(() => {
-    if (kind !== "staff") return
-    const box = tab === "sent" ? "sent" : "inbox"
-    if (tab !== "inbox" && tab !== "sent") return
-    void fetch(`/api/comms/notices?box=${box}`, { headers: getAuthHeaders(), cache: "no-store" })
-      .then((r) => r.json())
-      .then((j) => setNotices(j.notices || []))
-  }, [tab, kind])
-
   const caps = me?.capabilities
   const tabs = useMemo(() => {
     if (kind === "parent") {
       return [
-        { key: "groups" as const, label: "Sınıf grupları" },
-        { key: "class-announcements" as const, label: `Sınıf duyuruları${me?.badges.unreadAnnouncements ? ` (${me.badges.unreadAnnouncements})` : ""}` },
+        { key: "groups" as const, label: "Sınıf Grupları" },
+        {
+          key: "class-announcements" as const,
+          label: `Sınıf Duyuruları${me?.badges.unreadAnnouncements ? ` (${me.badges.unreadAnnouncements})` : ""}`,
+        },
       ]
     }
-    const list: { key: Tab; label: string }[] = [
-      { key: "inbox", label: `Gelen${me?.badges.unreadNotices ? ` (${me.badges.unreadNotices})` : ""}` },
-    ]
-    if (caps?.sendOfficial) list.push({ key: "sent", label: "Gönderilen" }, { key: "compose", label: "Oluştur" })
-    list.push({ key: "requests", label: `Talepler${me?.badges.pendingRequests ? ` (${me.badges.pendingRequests})` : ""}` })
-    list.push({ key: "groups", label: "Sınıf grupları" })
-    if (caps?.sendClassAnnouncement) list.push({ key: "class-announcements", label: "Sınıf duyurusu" })
+    const list: { key: Tab; label: string }[] = []
+    if (caps?.sendOfficial) {
+      list.push(
+        { key: "ihtar", label: "İhtar" },
+        { key: "talimat", label: "Talimat" },
+        { key: "duyuru", label: "Duyuru" }
+      )
+    } else {
+      // Gönderim yoksa gelen kutusu tipi olarak aç
+      list.push(
+        { key: "ihtar", label: "İhtar" },
+        { key: "talimat", label: "Talimat" },
+        { key: "duyuru", label: "Duyuru" }
+      )
+    }
+    list.push({
+      key: "requests",
+      label: `Talepler${me?.badges.pendingRequests ? ` (${me.badges.pendingRequests})` : ""}`,
+    })
+    if (caps?.sendOfficial) list.push({ key: "sent", label: "Gönderilen İletiler" })
+    if (caps?.sendClassAnnouncement) list.push({ key: "class-announcements", label: "Sınıf Duyuruları" })
+    list.push({ key: "groups", label: "Sınıf Grupları" })
     if (caps?.manageTemplates) list.push({ key: "templates", label: "Şablonlar" })
     return list
   }, [kind, caps, me])
 
+  const composeType = tab in COMPOSE_TABS ? COMPOSE_TABS[tab as keyof typeof COMPOSE_TABS] : null
+  const typeInbox = composeType ? inboxNotices.filter((n) => n.type === composeType) : inboxNotices
+
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col bg-white">
-      <header className="flex items-center justify-between gap-3 border-b px-4 py-3">
+      <header className="flex items-center justify-between gap-3 border-b px-4 py-4 sm:px-5">
         <div>
-          <h1 className="text-base font-semibold text-gray-900">İç Haberleşme Sistemi</h1>
-          <p className="text-xs text-gray-500">
+          <h1 className="text-lg font-semibold text-gray-900">İç Haberleşme Sistemi</h1>
+          <p className="text-sm text-gray-500">
             {kind === "staff" ? "Resmi personel iletişimi ve sınıf grupları" : "Sınıf grupları ve duyurular"}
           </p>
         </div>
@@ -119,38 +149,78 @@ export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
         </Button>
       </header>
 
-      <div className="flex flex-wrap gap-1 border-b px-3 py-2">
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => setTab(t.key)}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-              tab === t.key ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+      <div className="border-b bg-slate-50/80 px-3 py-3 sm:px-4">
+        <div className="flex flex-wrap gap-2">
+          {tabs.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => {
+                setTab(t.key)
+                setSelectedNotice(null)
+                if (t.key === "ihtar" || t.key === "talimat" || t.key === "duyuru") {
+                  setComposeMode(caps?.sendOfficial ? "create" : "inbox")
+                }
+              }}
+              className={`rounded-xl px-4 py-3 text-sm font-semibold transition sm:text-base ${
+                tab === t.key
+                  ? "bg-blue-600 text-white shadow-sm"
+                  : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 flex-col">
+        {composeType && kind === "staff" && caps?.sendOfficial ? (
+          <div className="flex gap-2 border-b px-4 py-2">
+            <button
+              type="button"
+              onClick={() => setComposeMode("create")}
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+                composeMode === "create" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700"
+              }`}
+            >
+              Yeni oluştur
+            </button>
+            <button
+              type="button"
+              onClick={() => setComposeMode("inbox")}
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+                composeMode === "inbox" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700"
+              }`}
+            >
+              Gelen{typeInbox.filter((n) => !n.seenAt).length ? ` (${typeInbox.filter((n) => !n.seenAt).length})` : ""}
+            </button>
+          </div>
+        ) : null}
+
         {loading ? (
           <div className="flex flex-1 items-center justify-center">
             <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
           </div>
-        ) : tab === "compose" && kind === "staff" ? (
-          <ComposeNotice
+        ) : composeType && kind === "staff" && caps?.sendOfficial && composeMode === "create" ? (
+          <ComposeNoticeWizard
+            key={composeType}
+            type={composeType}
             onDone={() => {
               setTab("sent")
               void refresh()
             }}
           />
-        ) : tab === "templates" ? (
-          <TemplatesAdmin
-            templates={templates}
-            onChanged={() => void refresh()}
+        ) : composeType && kind === "staff" ? (
+          <NoticesPanel
+            notices={typeInbox}
+            selected={selectedNotice}
+            onSelect={setSelectedNotice}
+            mode="inbox"
+            onAcked={() => void refresh()}
           />
+        ) : tab === "templates" ? (
+          <TemplatesAdmin templates={templates} onChanged={() => void refresh()} />
         ) : tab === "requests" ? (
           <RequestsPanel
             requests={requests}
@@ -169,16 +239,24 @@ export function CommsLayout({ kind }: { kind: "staff" | "parent" }) {
           />
         ) : tab === "class-announcements" ? (
           kind === "parent" ? (
-            <ParentAnnouncements notices={notices} onAcked={() => void refresh()} />
+            <ParentAnnouncements notices={inboxNotices} onAcked={() => void refresh()} />
           ) : (
             <ComposeClassAnnouncement groups={groups} onDone={() => void refresh()} />
           )
-        ) : (
+        ) : tab === "sent" ? (
           <NoticesPanel
-            notices={notices}
+            notices={sentNotices}
             selected={selectedNotice}
             onSelect={setSelectedNotice}
-            mode={tab === "sent" ? "sent" : "inbox"}
+            mode="sent"
+            onAcked={() => void refresh()}
+          />
+        ) : (
+          <NoticesPanel
+            notices={typeInbox}
+            selected={selectedNotice}
+            onSelect={setSelectedNotice}
+            mode="inbox"
             onAcked={() => void refresh()}
           />
         )}
@@ -275,167 +353,6 @@ function NoticesPanel({
         )}
       </main>
     </>
-  )
-}
-
-function ComposeNotice({ onDone }: { onDone: () => void }) {
-  const [type, setType] = useState<"IHTAR" | "TALIMAT" | "PERSONEL_DUYURU">("IHTAR")
-  const [templates, setTemplates] = useState<CommsTemplate[]>([])
-  const [staff, setStaff] = useState<{ id: string; firstName: string; lastName: string; department: string }[]>([])
-  const [templateId, setTemplateId] = useState("")
-  const [selected, setSelected] = useState<Record<string, boolean>>({})
-  const [allStaff, setAllStaff] = useState(false)
-  const [subject, setSubject] = useState("")
-  const [body, setBody] = useState("")
-  const [customizing, setCustomizing] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [q, setQ] = useState("")
-
-  useEffect(() => {
-    void Promise.all([
-      fetch(`/api/comms/templates?kind=${type}`, { headers: getAuthHeaders(), cache: "no-store" }).then((r) => r.json()),
-      fetch("/api/comms/staff", { headers: getAuthHeaders(), cache: "no-store" }).then((r) => r.json()),
-    ]).then(([t, s]) => {
-      setTemplates(t.templates || [])
-      setStaff(s.staff || [])
-      setTemplateId("")
-      setSubject("")
-      setBody("")
-      setCustomizing(false)
-    })
-  }, [type])
-
-  const tpl = templates.find((t) => t.id === templateId)
-
-  useEffect(() => {
-    if (!tpl || customizing) return
-    setSubject(tpl.title)
-    setBody(tpl.body)
-  }, [tpl, customizing])
-
-  const filtered = staff.filter((s) => {
-    const hay = `${s.firstName} ${s.lastName} ${s.department}`.toLocaleLowerCase("tr-TR")
-    return hay.includes(q.trim().toLocaleLowerCase("tr-TR"))
-  })
-
-  const submit = async () => {
-    const recipientStaffIds = Object.entries(selected)
-      .filter(([, v]) => v)
-      .map(([id]) => id)
-    if (!allStaff && recipientStaffIds.length === 0) {
-      alert("Alıcı seçin")
-      return
-    }
-    if (!subject.trim() || !body.trim()) {
-      alert("Konu ve metin zorunlu")
-      return
-    }
-    setBusy(true)
-    try {
-      const res = await fetch("/api/comms/notices", {
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          type,
-          templateId: templateId || undefined,
-          subject,
-          body,
-          allStaff,
-          recipientStaffIds,
-        }),
-      })
-      const j = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        alert(j.error || "Gönderilemedi")
-        return
-      }
-      alert(`${j.count} kişiye iletildi`)
-      onDone()
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <div className="grid flex-1 grid-cols-1 gap-4 overflow-y-auto p-4 lg:grid-cols-2">
-      <div className="space-y-3">
-        <div className="flex gap-2">
-          {(["IHTAR", "TALIMAT", "PERSONEL_DUYURU"] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setType(t)}
-              className={`rounded-md px-3 py-1.5 text-sm ${type === t ? "bg-blue-600 text-white" : "bg-slate-100"}`}
-            >
-              {NOTICE_TYPE_LABEL[t]}
-            </button>
-          ))}
-        </div>
-        <select
-          className="w-full rounded-md border px-3 py-2 text-sm"
-          value={templateId}
-          onChange={(e) => {
-            setTemplateId(e.target.value)
-            setCustomizing(false)
-          }}
-        >
-          <option value="">Şablon seçin</option>
-          {templates.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.title}
-            </option>
-          ))}
-        </select>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={allStaff} onChange={(e) => setAllStaff(e.target.checked)} />
-          Tüm personele gönder
-        </label>
-        {!allStaff ? (
-          <>
-            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Personel ara…" />
-            <div className="max-h-64 overflow-y-auto rounded-md border">
-              {filtered.map((s) => (
-                <label key={s.id} className="flex items-center gap-2 border-b px-3 py-2 text-sm last:border-0">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(selected[s.id])}
-                    onChange={() => setSelected((prev) => ({ ...prev, [s.id]: !prev[s.id] }))}
-                  />
-                  {s.firstName} {s.lastName}
-                </label>
-              ))}
-            </div>
-          </>
-        ) : null}
-        <Button onClick={() => void submit()} disabled={busy || !templateId}>
-          {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-          Gönder
-        </Button>
-      </div>
-      <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-        <p className="text-xs font-semibold uppercase text-slate-500">Şablon önizleme</p>
-        {!tpl ? (
-          <p className="text-sm text-slate-500">Önce şablon seçin.</p>
-        ) : (
-          <>
-            <Input value={subject} onChange={(e) => setSubject(e.target.value)} disabled={!customizing} />
-            <textarea
-              className="min-h-[16rem] w-full rounded-md border px-3 py-2 text-sm"
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              disabled={!customizing}
-            />
-            {!customizing ? (
-              <Button variant="outline" onClick={() => setCustomizing(true)}>
-                Bu {NOTICE_TYPE_LABEL[type].toLocaleLowerCase("tr-TR")} için şablonu özelleştir
-              </Button>
-            ) : (
-              <p className="text-xs text-amber-700">Metni serbestçe düzenleyebilirsiniz. Her alıcıya ayrı kayıt oluşur.</p>
-            )}
-          </>
-        )}
-      </div>
-    </div>
   )
 }
 
