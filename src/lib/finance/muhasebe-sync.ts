@@ -251,6 +251,16 @@ export type MuhasebeFinanceSummary = {
       channel?: string | null
       channelLabel?: string | null
       tag?: "PLANNED" | "CREDITED" | null
+      expenseTitle?: string | null
+      payeeIdentityNo?: string | null
+      invoiceNo?: string | null
+      notes?: string | null
+      bankName?: string | null
+      checkInstallments?: number | null
+      incomeCategory?: string | null
+      payerFirstName?: string | null
+      payerLastName?: string | null
+      payerIdentityNo?: string | null
     }>
     daily: Array<{ date: string; income: number; expense: number }>
   }

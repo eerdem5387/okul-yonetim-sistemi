@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState, type ReactNode } from "react"
+import { Fragment, useCallback, useEffect, useState, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import {
   AlertTriangle,
@@ -62,6 +62,16 @@ type LedgerRow = {
   channel?: string | null
   channelLabel?: string | null
   tag?: "PLANNED" | "CREDITED" | null
+  expenseTitle?: string | null
+  payeeIdentityNo?: string | null
+  invoiceNo?: string | null
+  notes?: string | null
+  bankName?: string | null
+  checkInstallments?: number | null
+  incomeCategory?: string | null
+  payerFirstName?: string | null
+  payerLastName?: string | null
+  payerIdentityNo?: string | null
 }
 
 type Finance = {
@@ -160,6 +170,67 @@ function channelText(row: LedgerRow) {
 
 function bookedTotal(rows: LedgerRow[]) {
   return rows.filter((row) => row.tag !== "PLANNED").reduce((sum, row) => sum + row.amount, 0)
+}
+
+function parseNoteField(notes: string | null | undefined, label: string): string | null {
+  if (!notes) return null
+  const match = notes.match(new RegExp(`${label}:\\s*([^·]+)`, "i"))
+  return match?.[1]?.trim() || null
+}
+
+function leftoverNotes(notes: string | null | undefined): string | null {
+  if (!notes?.trim()) return null
+  const cleaned = notes
+    .replace(/Talep eden:\s*[^·]+/gi, "")
+    .replace(/\s*[·]\s*[·]\s*/g, " · ")
+    .replace(/^\s*[·]\s*|\s*[·]\s*$/g, "")
+    .trim()
+  return cleaned || null
+}
+
+function StatementDetailFact({ label, value }: { label: string; value: string | null | undefined }) {
+  if (!value?.trim()) return null
+  return (
+    <div className="flex items-start justify-between gap-4 py-1.5">
+      <dt className="shrink-0 text-xs text-slate-500">{label}</dt>
+      <dd className="text-right text-xs font-medium text-slate-900">{value}</dd>
+    </div>
+  )
+}
+
+function statementDetailFacts(row: LedgerRow) {
+  const isExpense = row.side === "EXPENSE"
+  const requester = parseNoteField(row.notes, "Talep eden")
+  const notes = isExpense ? leftoverNotes(row.notes) : row.notes?.trim() || null
+  const payer = [row.payerFirstName, row.payerLastName].filter(Boolean).join(" ").trim()
+
+  return (
+    <dl className="divide-y divide-slate-100">
+      {isExpense ? (
+        <>
+          <StatementDetailFact label="Harcama türü" value={row.expenseTitle || row.title} />
+          <StatementDetailFact label="Ödeme yapılan / tedarikçi" value={row.payeeIdentityNo} />
+          <StatementDetailFact label="Talep eden" value={requester} />
+          <StatementDetailFact label="Açıklama" value={row.invoiceNo} />
+        </>
+      ) : (
+        <>
+          <StatementDetailFact label="Gelir kalemi" value={row.incomeCategory} />
+          <StatementDetailFact label="Ödeme yapan" value={payer || null} />
+          <StatementDetailFact label="TC kimlik" value={row.payerIdentityNo} />
+        </>
+      )}
+      <StatementDetailFact label="Ödeme kanalı" value={channelText(row)} />
+      <StatementDetailFact label="Banka" value={row.bankName} />
+      <StatementDetailFact
+        label="Çek vade sayısı"
+        value={row.checkInstallments != null ? String(row.checkInstallments) : null}
+      />
+      <StatementDetailFact label="Not" value={notes} />
+      <StatementDetailFact label="Tarih" value={reportDate(row.occurredAt)} />
+      <StatementDetailFact label="Tutar" value={moneyExact(row.amount)} />
+    </dl>
+  )
 }
 
 function titleCaseTr(value: string) {
@@ -998,6 +1069,9 @@ function StatementColumn({
   planned?: number
   divider?: boolean
 }) {
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const selected = rows.find((row) => row.id === selectedId) ?? null
+
   return (
     <section
       className={`border-b-[3px] border-slate-800 lg:border-b-0 ${
@@ -1026,32 +1100,73 @@ function StatementColumn({
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr key={row.id} className="border-b border-slate-300 bg-white align-top">
-                <td className="px-4 py-2.5 text-sm font-medium text-slate-800">
-                  <span className="inline-flex flex-wrap items-center gap-2">
-                    <span className="whitespace-normal break-words">{row.title}</span>
-                    {row.tag === "PLANNED" ? (
-                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
-                        Planlanmış
+            {rows.map((row) => {
+              const open = selectedId === row.id
+              return (
+                <Fragment key={row.id}>
+                  <tr
+                    className={`cursor-pointer border-b border-slate-300 align-top transition ${
+                      open ? "bg-indigo-50/70" : "bg-white hover:bg-slate-50"
+                    }`}
+                    onClick={() => setSelectedId(open ? null : row.id)}
+                    aria-expanded={open}
+                  >
+                    <td className="px-4 py-2.5 text-sm font-medium text-slate-800">
+                      <span className="inline-flex flex-wrap items-center gap-2">
+                        <span className="whitespace-normal break-words">{row.title}</span>
+                        {row.tag === "PLANNED" ? (
+                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                            Planlanmış
+                          </span>
+                        ) : null}
+                        {row.tag === "CREDITED" ? (
+                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+                            Hesaba geçti
+                          </span>
+                        ) : null}
                       </span>
-                    ) : null}
-                    {row.tag === "CREDITED" ? (
-                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
-                        Hesaba geçti
-                      </span>
-                    ) : null}
-                  </span>
-                </td>
-                <td className="whitespace-nowrap px-4 py-2.5 text-sm text-slate-600">{channelText(row)}</td>
-                <td className="whitespace-nowrap px-4 py-2.5 text-right text-sm font-medium tabular-nums text-slate-800">
-                  {moneyExact(row.amount)}
-                </td>
-                <td className="whitespace-nowrap px-4 py-2.5 text-sm text-slate-500">
-                  {reportDate(row.occurredAt)}
-                </td>
-              </tr>
-            ))}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-2.5 text-sm text-slate-600">{channelText(row)}</td>
+                    <td className="whitespace-nowrap px-4 py-2.5 text-right text-sm font-medium tabular-nums text-slate-800">
+                      {moneyExact(row.amount)}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-2.5 text-sm text-slate-500">
+                      {reportDate(row.occurredAt)}
+                    </td>
+                  </tr>
+                  {open && selected ? (
+                    <tr className="border-b border-indigo-200 bg-indigo-50/40">
+                      <td colSpan={4} className="px-4 py-3">
+                        <div
+                          role="dialog"
+                          aria-label={`${row.title} detayı`}
+                          className="max-w-md rounded-xl border border-slate-200 bg-white p-3 shadow-sm ring-1 ring-slate-100"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <div className="mb-2 flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                {row.side === "EXPENSE" ? "Gider detayı" : "Gelir detayı"}
+                              </p>
+                              <p className="mt-0.5 truncate text-sm font-semibold text-slate-900">{row.title}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedId(null)}
+                              className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                              aria-label="Detayı kapat"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                          {statementDetailFacts(selected)}
+                        </div>
+                      </td>
+                    </tr>
+                  ) : null}
+                </Fragment>
+              )
+            })}
             {rows.length === 0 ? (
               <tr>
                 <td className="px-4 py-3 text-sm text-slate-400" colSpan={4}>

@@ -2247,6 +2247,8 @@ model ConversationParticipant {
   conversationId String
   conversation   Conversation    @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   role           ParticipantRole @default(MEMBER)
+  /// membersCanPost=false iken: bu üye yine de yazabilsin mi? ADMIN her zaman yazar.
+  canPost        Boolean         @default(false)
 
   staffId  String?
   staff    Staff?  @relation("StaffChatParticipants", fields: [staffId], references: [id], onDelete: Cascade)

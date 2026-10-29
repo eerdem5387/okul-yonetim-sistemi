@@ -6,6 +6,7 @@ import {
   canCreateGroup,
   canStartPrivateWithParent,
   canStartPrivateWithStaff,
+  parentIdsForClass,
 } from "@/lib/chat/access-control"
 import {
   appendMessage,
@@ -35,6 +36,8 @@ interface CreateBody {
   branchId?: string
   classId?: string
   studentId?: string
+  /** true ise sınıf zorunlu; o sınıfın velileri otomatik eklenir, participants öğretmen için. */
+  parentGroup?: boolean
   target?: { staffId?: string; parentId?: string }
   participants?: ParticipantPayload[]
 }
@@ -138,9 +141,16 @@ export async function POST(request: NextRequest) {
     if (!body.title || !body.title.trim()) {
       return NextResponse.json({ error: "Başlık zorunludur" }, { status: 400 })
     }
-    if (!Array.isArray(body.participants) || body.participants.length === 0) {
-      return NextResponse.json({ error: "En az bir katılımcı eklenmeli" }, { status: 400 })
+
+    const isParentGroup = body.type === "GROUP" && Boolean(body.parentGroup)
+    if (isParentGroup && !body.classId) {
+      return NextResponse.json({ error: "Veli grubu için sınıf seçimi zorunludur" }, { status: 400 })
     }
+
+    let participants: ParticipantPayload[] = Array.isArray(body.participants)
+      ? [...body.participants]
+      : []
+
     if (body.classId) {
       if (actor.kind !== "staff") {
         return NextResponse.json({ error: "Sınıf bağlama yetkiniz yok" }, { status: 403 })
@@ -155,24 +165,42 @@ export async function POST(request: NextRequest) {
                 { schedules: { some: { teacherId: actor.staffId } } },
               ],
             },
-        select: { id: true },
+        select: { id: true, name: true },
       })
       if (!found) {
         return NextResponse.json({ error: "Bu sınıfı bağlayamazsınız" }, { status: 403 })
       }
+
+      if (isParentGroup) {
+        const parentIds = await parentIdsForClass(body.classId)
+        if (parentIds.length === 0) {
+          return NextResponse.json(
+            { error: "Bu sınıfta eklenecek veli bulunamadı" },
+            { status: 400 }
+          )
+        }
+        // Veli grubunda client yalnızca öğretmen seçer; veliler sınıftan gelir.
+        participants = [
+          ...participants.filter((row) => Boolean(row.staffId) && !row.parentId),
+          ...parentIds.map((parentId) => ({ parentId })),
+        ]
+      }
+    }
+
+    if (participants.length === 0) {
+      return NextResponse.json({ error: "En az bir katılımcı eklenmeli" }, { status: 400 })
     }
 
     const id = await createGroupConversation(actor, {
       title: body.title,
-      participants: body.participants,
+      participants,
       type: body.type,
       classId: body.classId,
       studentId: body.studentId,
     })
 
-    // Tüm katılımcıların user-* kanallarına haber ver
     const channels: string[] = []
-    for (const p of body.participants) {
+    for (const p of participants) {
       if (p.staffId) channels.push(userStaffChannel(p.staffId))
       else if (p.parentId) channels.push(userParentChannel(p.parentId))
     }

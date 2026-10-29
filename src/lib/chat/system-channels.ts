@@ -8,7 +8,8 @@ const SYNC_INTERVAL_MS = 5 * 60 * 1000
 
 /**
  * Okul kaydından beslenen kalıcı kanallar.
- * İdare, rehberlik, ders programındaki öğretmenler ve her aktif branşın zümresi.
+ * İdare, rehberlik ve ders programındaki sınıf öğretmenleri.
+ * Branş zümreleri otomatik açılmaz; elle grup olarak oluşturulur.
  * Kurucu, müdür ve süper admin bu kanallarda yöneticidir; yazmayı kapatabilir.
  */
 export async function syncSystemChannels(): Promise<void> {
@@ -22,20 +23,23 @@ export async function syncSystemChannels(): Promise<void> {
   }
 }
 
+async function removeAutoBranchZumreChannels(): Promise<void> {
+  await prisma.conversation.deleteMany({
+    where: { systemKey: { startsWith: "channel:branch:" } },
+  })
+}
+
 async function syncSystemChannelsNow(): Promise<void> {
+  await removeAutoBranchZumreChannels()
+
   const activeYear = await prisma.academicYear.findFirst({
     where: { isActive: true, parentActiveYearId: null },
     select: { id: true },
   })
-  const [admins, branches, teachersWithSchedule, staff] = await Promise.all([
+  const [admins, teachersWithSchedule, staff] = await Promise.all([
     prisma.staff.findMany({
       where: { isActive: true, department: { in: CHANNEL_ADMIN_DEPARTMENTS } },
       select: { id: true },
-    }),
-    prisma.branch.findMany({
-      where: { isActive: true },
-      select: { id: true, name: true },
-      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     }),
     prisma.schedule.findMany({
       where: activeYear ? { class: { academicYearId: activeYear.id } } : {},
@@ -44,12 +48,7 @@ async function syncSystemChannelsNow(): Promise<void> {
     }),
     prisma.staff.findMany({
       where: { isActive: true },
-      select: {
-        id: true,
-        department: true,
-        subject: true,
-        branchLinks: { select: { branchId: true } },
-      },
+      select: { id: true, department: true },
     }),
   ])
 
@@ -74,17 +73,6 @@ async function syncSystemChannelsNow(): Promise<void> {
       title: "Sınıf öğretmenleri",
       memberIds: idsWhere(staff, (row) => row.department === "OGRETMEN" && teachingIds.has(row.id)),
     },
-    ...branches.map((branch) => ({
-      key: `channel:branch:${branch.id}`,
-      title: `${branch.name} zümresi`,
-      memberIds: idsWhere(
-        staff,
-        (row) =>
-          row.department === "OGRETMEN" &&
-          (row.branchLinks.some((link) => link.branchId === branch.id) ||
-            row.subject?.trim().toLocaleLowerCase("tr") === branch.name.trim().toLocaleLowerCase("tr"))
-      ),
-    })),
   ]
 
   const existing = await prisma.conversation.findMany({
@@ -152,7 +140,7 @@ async function syncSystemChannelsNow(): Promise<void> {
 }
 
 function idsWhere(
-  staff: { id: string; department: StaffDepartment; subject: string | null; branchLinks: { branchId: string }[] }[],
+  staff: { id: string; department: StaffDepartment }[],
   predicate: (row: (typeof staff)[number]) => boolean
 ) {
   return new Set(staff.filter(predicate).map((row) => row.id))

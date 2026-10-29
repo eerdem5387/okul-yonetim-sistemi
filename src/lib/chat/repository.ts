@@ -295,7 +295,9 @@ interface ConversationListItem {
   className: string | null
   branchName: string | null
   participants: Array<{
+    id?: string
     role: "ADMIN" | "MEMBER"
+    canPost?: boolean
     staff: { id: string; firstName: string; lastName: string; department: string } | null
     parent: { id: string; displayName: string; studentTcNumber: string } | null
   }>
@@ -449,7 +451,9 @@ export async function listConversationsForActor(
       className: c.class?.name ?? null,
       branchName: c.branch?.name ?? null,
       participants: c.participants.map((p) => ({
+        id: p.id,
         role: p.role,
+        canPost: p.canPost,
         staff: p.staff,
         parent: p.parent
           ? {
@@ -568,7 +572,7 @@ export async function canActorSendMessage(
       id: true,
       type: true,
       membersCanPost: true,
-      participants: { select: { staffId: true, parentId: true } },
+      participants: { select: { staffId: true, parentId: true, canPost: true, role: true } },
     },
   })
   if (!conv) return { ok: false, reason: "not_found" }
@@ -583,20 +587,65 @@ export async function canActorSendMessage(
     return { ok: false, reason: "announcement_only_admin" }
   }
   if (conv.type === "GROUP" && !conv.membersCanPost && role !== "ADMIN") {
-    return { ok: false, reason: "posting_locked" }
+    const me = conv.participants.find((row) =>
+      actor.kind === "staff" ? row.staffId === actor.staffId : row.parentId === actor.parentId
+    )
+    if (!me?.canPost) return { ok: false, reason: "posting_locked" }
   }
   return { ok: true }
 }
 
-export async function canToggleMemberPosting(actor: ChatActor, conversationId: string): Promise<boolean> {
+export async function canManageGroupSettings(actor: ChatActor, conversationId: string): Promise<boolean> {
   if (actor.kind !== "staff") return false
   const conv = await prisma.conversation.findUnique({
     where: { id: conversationId },
-    select: { type: true, createdByStaffId: true },
+    select: { type: true },
   })
-  if (!conv || conv.type !== "GROUP") return false
+  if (!conv || (conv.type !== "GROUP" && conv.type !== "ANNOUNCEMENT")) return false
   const { isMember, role } = await isActorParticipant(actor, conversationId)
-  if (!isMember) return false
-  if (conv.createdByStaffId) return conv.createdByStaffId === actor.staffId
-  return role === "ADMIN"
+  return Boolean(isMember && role === "ADMIN")
+}
+
+/** @deprecated use canManageGroupSettings */
+export async function canToggleMemberPosting(actor: ChatActor, conversationId: string): Promise<boolean> {
+  return canManageGroupSettings(actor, conversationId)
+}
+
+/** Sohbeti kalıcı olarak silme yetkisi. Sistem kanalları silinemez. */
+export async function canDeleteConversation(
+  actor: ChatActor,
+  conversationId: string
+): Promise<
+  | { ok: true; participants: { staffId: string | null; parentId: string | null }[] }
+  | { ok: false; reason: string }
+> {
+  const conv = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    select: {
+      id: true,
+      type: true,
+      systemKey: true,
+      createdByStaffId: true,
+      participants: { select: { staffId: true, parentId: true } },
+    },
+  })
+  if (!conv) return { ok: false, reason: "not_found" }
+  if (conv.systemKey) return { ok: false, reason: "system_channel" }
+
+  const { isMember, role } = await isActorParticipant(actor, conversationId)
+  if (!isMember) return { ok: false, reason: "not_member" }
+
+  if (conv.type === "PRIVATE") {
+    // Özel sohbette her iki taraf da silebilir.
+  } else if (actor.kind !== "staff") {
+    return { ok: false, reason: "forbidden" }
+  } else if (role !== "ADMIN" && conv.createdByStaffId !== actor.staffId) {
+    return { ok: false, reason: "forbidden" }
+  }
+
+  return { ok: true, participants: conv.participants }
+}
+
+export async function deleteConversation(conversationId: string): Promise<void> {
+  await prisma.conversation.delete({ where: { id: conversationId } })
 }

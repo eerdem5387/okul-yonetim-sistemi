@@ -57,6 +57,52 @@ export async function GET(request: NextRequest) {
     activeYear?.name
   )
 
+  let finance = live?.founder ?? null
+  if (finance?.rows?.length) {
+    const cashIds = finance.rows
+      .map((row) => row.id)
+      .filter((id) => id && !id.startsWith("plan:"))
+    if (cashIds.length) {
+      const localEntries = await prisma.financeCashbookEntry.findMany({
+        where: { id: { in: cashIds } },
+        select: {
+          id: true,
+          expenseTitle: true,
+          payeeIdentityNo: true,
+          invoiceNo: true,
+          notes: true,
+          bankName: true,
+          checkInstallments: true,
+          incomeCategory: true,
+          payerFirstName: true,
+          payerLastName: true,
+          payerIdentityNo: true,
+        },
+      })
+      const byId = new Map(localEntries.map((entry) => [entry.id, entry]))
+      finance = {
+        ...finance,
+        rows: finance.rows.map((row) => {
+          const local = byId.get(row.id)
+          if (!local) return row
+          return {
+            ...row,
+            expenseTitle: row.expenseTitle ?? local.expenseTitle,
+            payeeIdentityNo: row.payeeIdentityNo ?? local.payeeIdentityNo,
+            invoiceNo: row.invoiceNo ?? local.invoiceNo,
+            notes: row.notes ?? local.notes,
+            bankName: row.bankName ?? local.bankName,
+            checkInstallments: row.checkInstallments ?? local.checkInstallments,
+            incomeCategory: row.incomeCategory ?? local.incomeCategory,
+            payerFirstName: row.payerFirstName ?? local.payerFirstName,
+            payerLastName: row.payerLastName ?? local.payerLastName,
+            payerIdentityNo: row.payerIdentityNo ?? local.payerIdentityNo,
+          }
+        }),
+      }
+    }
+  }
+
   return NextResponse.json({
     academicYear: activeYear,
     registrations: {
@@ -64,7 +110,7 @@ export async function GET(request: NextRequest) {
       newRegistrations: newRegistrationCount,
       renewals: renewalCount,
     },
-    finance: live?.founder ?? null,
-    financeAvailable: Boolean(live?.founder),
+    finance,
+    financeAvailable: Boolean(finance),
   })
 }

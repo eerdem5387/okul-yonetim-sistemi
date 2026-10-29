@@ -16,6 +16,7 @@ export interface ChatParticipantParent {
 export interface ChatParticipant {
   id?: string
   role: "ADMIN" | "MEMBER"
+  canPost?: boolean
   staff: ChatParticipantStaff | null
   parent: ChatParticipantParent | null
 }
@@ -82,6 +83,7 @@ export interface ContactParent {
   studentTcNumber: string
   studentNames: string[]
   studentClasses: string[]
+  studentClassIds?: string[]
   students?: { id: string; name: string }[]
 }
 

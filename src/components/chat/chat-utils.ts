@@ -42,6 +42,17 @@ export function conversationDisplayTitle(
   return "Özel Sohbet"
 }
 
+/** Liste/detayda sil butonu gösterilsin mi? */
+export function canDeleteConversationUi(
+  conv: ChatConversation,
+  actor: { kind: ChatActorKind; id: string }
+): boolean {
+  if (conv.systemKey) return false
+  if (conv.type === "PRIVATE") return true
+  if (actor.kind !== "staff") return false
+  return conv.myRole === "ADMIN" || conv.createdByStaffId === actor.id
+}
+
 export function conversationSubtitle(conv: ChatConversation): string {
   if (conv.type === "ANNOUNCEMENT") {
     return conv.branchName ? `${conv.branchName} duyurusu` : "Duyuru"

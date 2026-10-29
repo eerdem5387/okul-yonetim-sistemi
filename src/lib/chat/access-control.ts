@@ -28,6 +28,7 @@ export interface ContactParent {
   studentTcNumber: string
   studentNames: string[]
   studentClasses: string[]
+  studentClassIds: string[]
   students: { id: string; name: string }[]
 }
 
@@ -161,7 +162,11 @@ export async function getReachableParentsForActor(actor: ChatActor): Promise<Con
   let parentRows
   if (actor.isManager) {
     parentRows = await prisma.parent.findMany({
-      where: { isActive: true },
+      where: {
+        isActive: true,
+        // Öğrencisi olmayan / kopuk Parent hesaplarını listeleme
+        students: { some: {} },
+      },
       select: {
         id: true,
         studentTcNumber: true,
@@ -175,7 +180,7 @@ export async function getReachableParentsForActor(actor: ChatActor): Promise<Con
                 lastName: true,
                 grade: true,
                 classAssignments: {
-                  select: { class: { select: { name: true } } },
+                  select: { class: { select: { id: true, name: true } } },
                 },
               },
             },
@@ -212,7 +217,7 @@ export async function getReachableParentsForActor(actor: ChatActor): Promise<Con
                 lastName: true,
                 grade: true,
                 classAssignments: {
-                  select: { class: { select: { name: true } } },
+                  select: { class: { select: { id: true, name: true } } },
                 },
               },
             },
@@ -223,29 +228,56 @@ export async function getReachableParentsForActor(actor: ChatActor): Promise<Con
     })
   }
 
-  return parentRows.map((p) => {
-    const studentNames = p.students.map((s) =>
-      `${s.student.firstName} ${s.student.lastName}`.trim()
-    )
+  const contacts: ContactParent[] = []
+  for (const p of parentRows) {
+    if (p.students.length === 0) continue
+
+    const studentNames = p.students
+      .map((s) => `${s.student.firstName} ${s.student.lastName}`.trim())
+      .filter(Boolean)
+    const parentNames = p.students
+      .map((s) => s.parentName?.trim())
+      .filter((name): name is string => Boolean(name) && name.toLocaleLowerCase("tr-TR") !== "veli")
+
+    // İsim yoksa ve öğrenci adı da yoksa sahte "Veli" satırı üretme
+    const display = parentNames[0] || studentNames[0]
+    if (!display) continue
+
     const classes = new Set<string>()
+    const classIds = new Set<string>()
     for (const s of p.students) {
       for (const ca of s.student.classAssignments) {
         if (ca.class?.name) classes.add(ca.class.name)
+        if (ca.class?.id) classIds.add(ca.class.id)
       }
     }
-    const display = p.students[0]?.parentName?.trim() || studentNames[0] || "Veli"
-    return {
+
+    contacts.push({
       id: p.id,
       displayName: display,
       studentTcNumber: p.studentTcNumber,
       studentNames,
       studentClasses: Array.from(classes),
+      studentClassIds: Array.from(classIds),
       students: p.students.map((s) => ({
         id: s.student.id,
         name: `${s.student.firstName} ${s.student.lastName}`.trim(),
       })),
-    }
+    })
+  }
+  return contacts
+}
+
+/** Belirli bir sınıftaki öğrencilerin aktif velilerinin id listesi. */
+export async function parentIdsForClass(classId: string): Promise<string[]> {
+  const links = await prisma.parentStudent.findMany({
+    where: {
+      parent: { isActive: true },
+      student: { classAssignments: { some: { classId } } },
+    },
+    select: { parentId: true },
   })
+  return Array.from(new Set(links.map((row) => row.parentId)))
 }
 
 /**

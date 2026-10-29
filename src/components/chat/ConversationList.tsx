@@ -1,11 +1,13 @@
 "use client"
 
-import { useMemo } from "react"
-import { Megaphone, Users } from "lucide-react"
+import { useMemo, useState } from "react"
+import { Loader2, Megaphone, Trash2, Users } from "lucide-react"
 import {
+  canDeleteConversationUi,
   conversationDisplayTitle,
   conversationSubtitle,
   formatRelativeTime,
+  getAuthHeaders,
   lastMessagePreview,
 } from "./chat-utils"
 import type { ChatActorKind, ChatConversation } from "./types"
@@ -15,6 +17,7 @@ interface ConversationListProps {
   conversations: ChatConversation[]
   selectedId: string | null
   onSelect: (id: string) => void
+  onDeleted?: (id: string) => void
   actor: { kind: ChatActorKind; id: string }
 }
 
@@ -22,8 +25,11 @@ export function ConversationList({
   conversations,
   selectedId,
   onSelect,
+  onDeleted,
   actor,
 }: ConversationListProps) {
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
   const sorted = useMemo(
     () =>
       [...conversations].sort(
@@ -31,6 +37,28 @@ export function ConversationList({
       ),
     [conversations]
   )
+
+  const deleteConversation = async (c: ChatConversation) => {
+    const title = conversationDisplayTitle(c, actor)
+    if (!window.confirm(`“${title}” sohbetini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`)) {
+      return
+    }
+    setDeletingId(c.id)
+    try {
+      const res = await fetch(`/api/chat/conversations/${c.id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert(json?.error || "Sohbet silinemedi")
+        return
+      }
+      onDeleted?.(c.id)
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   if (sorted.length === 0) {
     return (
@@ -46,10 +74,11 @@ export function ConversationList({
         const title = conversationDisplayTitle(c, actor)
         const subtitle = conversationSubtitle(c)
         const isSelected = c.id === selectedId
+        const canDelete = canDeleteConversationUi(c, actor)
         const variant: "user" | "group" | "announcement" =
           c.type === "ANNOUNCEMENT" ? "announcement" : c.type === "GROUP" ? "group" : "user"
         return (
-          <li key={c.id}>
+          <li key={c.id} className="group relative">
             <button
               type="button"
               onClick={() => onSelect(c.id)}
@@ -90,6 +119,25 @@ export function ConversationList({
                 )}
               </div>
             </button>
+            {canDelete ? (
+              <button
+                type="button"
+                title="Sohbeti sil"
+                aria-label="Sohbeti sil"
+                disabled={deletingId === c.id}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  void deleteConversation(c)
+                }}
+                className="absolute right-2 top-2 rounded-md p-1.5 text-gray-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100 disabled:opacity-50"
+              >
+                {deletingId === c.id ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+              </button>
+            ) : null}
           </li>
         )
       })}

@@ -1,7 +1,17 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { resolveChatActor } from "@/lib/chat/identity"
-import { canToggleMemberPosting, isActorParticipant } from "@/lib/chat/repository"
+import {
+  canDeleteConversation,
+  canManageGroupSettings,
+  deleteConversation,
+  isActorParticipant,
+} from "@/lib/chat/repository"
+import {
+  triggerConversationUpdated,
+  userParentChannel,
+  userStaffChannel,
+} from "@/lib/chat/pusher-server"
 
 export const dynamic = "force-dynamic"
 
@@ -56,6 +66,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         participants: conv.participants.map((p) => ({
           id: p.id,
           role: p.role,
+          canPost: p.canPost,
           staff: p.staff,
           parent: p.parent
             ? {
@@ -73,18 +84,24 @@ export async function GET(request: NextRequest, context: RouteContext) {
   )
 }
 
-/** PATCH: Başlık güncelle (yalnızca sohbet ADMIN'i) */
+/** PATCH: Başlık / yazma kuralları / seçili yazarlar (yalnızca sohbet ADMIN'i) */
 export async function PATCH(request: NextRequest, context: RouteContext) {
   const actor = await resolveChatActor(request)
   if (!actor) return NextResponse.json({ error: "Yetkisiz" }, { status: 401 })
 
   const { id } = await context.params
-  const { isMember, role } = await isActorParticipant(actor, id)
-  if (!isMember || role !== "ADMIN") {
+  if (!(await canManageGroupSettings(actor, id))) {
     return NextResponse.json({ error: "Yetkisiz" }, { status: 403 })
   }
 
-  let body: { title?: string; membersCanPost?: boolean }
+  let body: {
+    title?: string
+    membersCanPost?: boolean
+    /** "all" | "admin" | "selected" — yazma modu */
+    postingMode?: "all" | "admin" | "selected"
+    /** postingMode=selected iken yazabilecek üyeler */
+    allowedPosters?: Array<{ staffId?: string; parentId?: string }>
+  }
   try {
     body = await request.json()
   } catch {
@@ -93,23 +110,91 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
   const data: { title?: string | null; membersCanPost?: boolean } = {}
   if (typeof body.title === "string") {
-    if (role !== "ADMIN") return NextResponse.json({ error: "Yetkisiz" }, { status: 403 })
     data.title = body.title.trim() || null
   }
-  if (typeof body.membersCanPost === "boolean") {
-    if (!(await canToggleMemberPosting(actor, id))) {
-      return NextResponse.json({ error: "Bu ayarı yalnızca grubu kuran kişi değiştirebilir." }, { status: 403 })
+
+  if (body.postingMode === "all") {
+    data.membersCanPost = true
+    await prisma.conversationParticipant.updateMany({
+      where: { conversationId: id, role: "MEMBER" },
+      data: { canPost: false },
+    })
+  } else if (body.postingMode === "admin") {
+    data.membersCanPost = false
+    await prisma.conversationParticipant.updateMany({
+      where: { conversationId: id, role: "MEMBER" },
+      data: { canPost: false },
+    })
+  } else if (body.postingMode === "selected") {
+    data.membersCanPost = false
+    const allowed = Array.isArray(body.allowedPosters) ? body.allowedPosters : []
+    const staffIds = allowed.map((row) => row.staffId).filter((v): v is string => Boolean(v))
+    const parentIds = allowed.map((row) => row.parentId).filter((v): v is string => Boolean(v))
+    await prisma.conversationParticipant.updateMany({
+      where: { conversationId: id, role: "MEMBER" },
+      data: { canPost: false },
+    })
+    if (staffIds.length) {
+      await prisma.conversationParticipant.updateMany({
+        where: { conversationId: id, role: "MEMBER", staffId: { in: staffIds } },
+        data: { canPost: true },
+      })
     }
+    if (parentIds.length) {
+      await prisma.conversationParticipant.updateMany({
+        where: { conversationId: id, role: "MEMBER", parentId: { in: parentIds } },
+        data: { canPost: true },
+      })
+    }
+  } else if (typeof body.membersCanPost === "boolean") {
     data.membersCanPost = body.membersCanPost
+    if (!body.membersCanPost) {
+      await prisma.conversationParticipant.updateMany({
+        where: { conversationId: id, role: "MEMBER" },
+        data: { canPost: false },
+      })
+    }
   }
-  if (Object.keys(data).length === 0) {
+
+  if (Object.keys(data).length === 0 && body.postingMode == null) {
     return NextResponse.json({ error: "Güncellenecek alan yok" }, { status: 400 })
   }
 
   const updated = await prisma.conversation.update({
     where: { id },
-    data,
+    data: Object.keys(data).length ? data : {},
     select: { id: true, title: true, membersCanPost: true },
   })
   return NextResponse.json({ conversation: updated })
+}
+
+/** DELETE: Sohbeti sil (özel: üye; grup/duyuru: admin veya kurucu; sistem kanalı silinemez) */
+export async function DELETE(_request: NextRequest, context: RouteContext) {
+  const actor = await resolveChatActor(_request)
+  if (!actor) return NextResponse.json({ error: "Yetkisiz" }, { status: 401 })
+
+  const { id } = await context.params
+  const allowed = await canDeleteConversation(actor, id)
+  if (!allowed.ok) {
+    const message =
+      allowed.reason === "system_channel"
+        ? "Kalıcı sistem kanalları silinemez."
+        : allowed.reason === "not_found"
+          ? "Sohbet bulunamadı"
+          : "Bu sohbeti silme yetkiniz yok"
+    const status = allowed.reason === "not_found" ? 404 : 403
+    return NextResponse.json({ error: message }, { status })
+  }
+
+  await deleteConversation(id)
+  const channels: string[] = []
+  for (const row of allowed.participants) {
+    if (row.staffId) channels.push(userStaffChannel(row.staffId))
+    if (row.parentId) channels.push(userParentChannel(row.parentId))
+  }
+  await triggerConversationUpdated(channels, {
+    conversationId: id,
+    reason: "deleted",
+  })
+  return NextResponse.json({ ok: true })
 }

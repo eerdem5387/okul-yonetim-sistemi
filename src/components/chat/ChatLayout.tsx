@@ -97,6 +97,16 @@ export function ChatLayout({ actor }: ChatLayoutProps) {
     () => conversations.find((c) => c.id === selectedId) || null,
     [conversations, selectedId]
   )
+
+  const handleDeleted = useCallback(
+    (id: string) => {
+      setConversations((prev) => prev.filter((row) => row.id !== id))
+      setSelectedId((current) => (current === id ? null : current))
+      void fetchConversations(search)
+    },
+    [fetchConversations, search]
+  )
+
   const pageTitle = actor.kind === "staff" ? "İç Haberleşme Sistemi" : "Mesajlar"
 
   return (
@@ -143,6 +153,7 @@ export function ChatLayout({ actor }: ChatLayoutProps) {
               conversations={visibleConversations}
               selectedId={selectedId}
               onSelect={setSelectedId}
+              onDeleted={handleDeleted}
               actor={actor}
             />
           )}
@@ -156,6 +167,7 @@ export function ChatLayout({ actor }: ChatLayoutProps) {
             conversation={selected}
             actor={actor}
             onConversationsChanged={fetchConversations}
+            onDeleted={handleDeleted}
           />
         ) : (
           <>
@@ -189,6 +201,7 @@ export function ChatLayout({ actor }: ChatLayoutProps) {
                 conversations={visibleConversations}
                 selectedId={selectedId}
                 onSelect={setSelectedId}
+                onDeleted={handleDeleted}
                 actor={actor}
               />
             </div>
@@ -202,6 +215,7 @@ export function ChatLayout({ actor }: ChatLayoutProps) {
           conversation={selected}
           actor={actor}
           onConversationsChanged={fetchConversations}
+          onDeleted={handleDeleted}
         />
       </main>
 
