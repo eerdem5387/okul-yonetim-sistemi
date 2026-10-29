@@ -1358,11 +1358,13 @@ function GroupsPanel({
           <p className="p-4 text-sm text-gray-500">Bir grup seçin.</p>
         ) : (
           <>
-            {kind === "staff" && detail ? (
+            {kind === "staff" && selectedId ? (
               <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
-                <Button size="sm" variant="outline" onClick={() => void toggleParents()}>
-                  Veli yazma: {detail.parentsCanPost ? "Açık" : "Kapalı"}
-                </Button>
+                {detail ? (
+                  <Button size="sm" variant="outline" onClick={() => void toggleParents()}>
+                    Veli yazma: {detail.parentsCanPost ? "Açık" : "Kapalı"}
+                  </Button>
+                ) : null}
                 {canSendAnnouncement ? (
                   <Button
                     size="sm"
@@ -1372,21 +1374,25 @@ function GroupsPanel({
                     Duyuru gönder
                   </Button>
                 ) : null}
-                <select
-                  className="rounded-md border px-2 py-1 text-sm"
-                  value={addTeacherId}
-                  onChange={(e) => setAddTeacherId(e.target.value)}
-                >
-                  <option value="">Öğretmen ekle</option>
-                  {teachers.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.firstName} {t.lastName}
-                    </option>
-                  ))}
-                </select>
-                <Button size="sm" variant="outline" onClick={() => void addTeacher()} disabled={!addTeacherId}>
-                  Ekle
-                </Button>
+                {detail ? (
+                  <>
+                    <select
+                      className="rounded-md border px-2 py-1 text-sm"
+                      value={addTeacherId}
+                      onChange={(e) => setAddTeacherId(e.target.value)}
+                    >
+                      <option value="">Öğretmen ekle</option>
+                      {teachers.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.firstName} {t.lastName}
+                        </option>
+                      ))}
+                    </select>
+                    <Button size="sm" variant="outline" onClick={() => void addTeacher()} disabled={!addTeacherId}>
+                      Ekle
+                    </Button>
+                  </>
+                ) : null}
                 {canDelete ? (
                   <Button
                     size="sm"

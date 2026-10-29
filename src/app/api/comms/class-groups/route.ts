@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { resolveStaffActor } from "@/lib/hr/actor"
 import { resolveChatActor } from "@/lib/comms/identity"
-import { canCreateClassGroup } from "@/lib/comms/access"
+import { canCreateClassGroup, isGuidanceDepartment } from "@/lib/comms/access"
 import {
   resolveParentIdsForClass,
   syncClassGroupParentsForClass,
@@ -34,13 +34,16 @@ export async function GET(request: NextRequest) {
   const actor = await resolveStaffActor(request)
   if (!actor) return NextResponse.json({ error: "Yetkisiz" }, { status: 401 })
 
+  // Kurucu/Müdür tüm grupları; rehberlik de sınıf duyurusu için tüm grupları görür
   const groups = await prisma.classGroup.findMany({
     where: {
       OR: [
         { createdByStaffId: actor.staffId },
         { counselorStaffId: actor.staffId },
         { members: { some: { staffId: actor.staffId } } },
-        ...(canCreateClassGroup(actor.department) ? [{}] : []),
+        ...(canCreateClassGroup(actor.department) || isGuidanceDepartment(actor.department)
+          ? [{}]
+          : []),
       ],
     },
     include: {

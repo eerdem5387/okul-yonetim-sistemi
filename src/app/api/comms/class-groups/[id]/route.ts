@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { resolveStaffActor } from "@/lib/hr/actor"
 import { resolveChatActor } from "@/lib/comms/identity"
-import { canCreateClassGroup, canDeleteComms } from "@/lib/comms/access"
+import { canCreateClassGroup, canDeleteComms, isGuidanceDepartment } from "@/lib/comms/access"
 
 export const dynamic = "force-dynamic"
 
@@ -39,6 +39,7 @@ async function canAccessGroup(
     return group
   }
   if (canCreateClassGroup(actor.department as never)) return group
+  if (isGuidanceDepartment(actor.department as never)) return group
   if (group.counselorStaffId === actor.staffId) return group
   if (group.createdByStaffId === actor.staffId) return group
   if (group.members.some((m) => m.staffId === actor.staffId)) return group

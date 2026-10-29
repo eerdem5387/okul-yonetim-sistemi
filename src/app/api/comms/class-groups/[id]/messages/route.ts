@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { resolveChatActor } from "@/lib/comms/identity"
+import { canCreateClassGroup, isGuidanceDepartment } from "@/lib/comms/access"
 
 export const dynamic = "force-dynamic"
 
@@ -39,7 +40,13 @@ export async function GET(request: NextRequest, context: Ctx) {
   })
   const group = await prisma.classGroup.findUnique({ where: { id } })
   if (!group) return NextResponse.json({ error: "Grup bulunamadı" }, { status: 404 })
-  if (!member && !(chat.kind === "staff" && group.createdByStaffId === chat.staffId)) {
+  const staffBypass =
+    chat.kind === "staff" &&
+    (group.createdByStaffId === chat.staffId ||
+      group.counselorStaffId === chat.staffId ||
+      canCreateClassGroup(chat.department) ||
+      isGuidanceDepartment(chat.department))
+  if (!member && !staffBypass) {
     return NextResponse.json({ error: "Yetkisiz" }, { status: 403 })
   }
 
@@ -155,7 +162,13 @@ export async function POST(request: NextRequest, context: Ctx) {
         ? { classGroupId: id, staffId: chat.staffId }
         : { classGroupId: id, parentId: chat.parentId },
   })
-  if (!member && !(chat.kind === "staff" && group.createdByStaffId === chat.staffId)) {
+  const staffBypassPost =
+    chat.kind === "staff" &&
+    (group.createdByStaffId === chat.staffId ||
+      group.counselorStaffId === chat.staffId ||
+      canCreateClassGroup(chat.department) ||
+      isGuidanceDepartment(chat.department))
+  if (!member && !staffBypassPost) {
     return NextResponse.json({ error: "Bu grupta değilsiniz" }, { status: 403 })
   }
 
