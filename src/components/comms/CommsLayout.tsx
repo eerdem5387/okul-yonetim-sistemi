@@ -4,6 +4,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { FileDown, Loader2, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { getAuthHeaders } from "./auth"
 import { ComposeNoticeWizard } from "./ComposeNoticeWizard"
 import { PlaceholderInsertBar } from "./PlaceholderInsert"
@@ -729,6 +737,25 @@ function TemplatesAdmin({
   )
 }
 
+function requestStatusTone(status: StaffCommsRequest["status"]) {
+  if (status === "APPROVED") {
+    return {
+      row: "border-l-emerald-600 bg-emerald-50/50 hover:bg-emerald-50",
+      badge: "bg-emerald-600 text-white",
+    }
+  }
+  if (status === "REJECTED") {
+    return {
+      row: "border-l-red-600 bg-red-50/50 hover:bg-red-50",
+      badge: "bg-red-600 text-white",
+    }
+  }
+  return {
+    row: "border-l-amber-500 bg-amber-50/50 hover:bg-amber-50",
+    badge: "bg-amber-500 text-white",
+  }
+}
+
 function RequestsPanel({
   requests,
   canApprove,
@@ -745,6 +772,8 @@ function RequestsPanel({
   const [subject, setSubject] = useState("")
   const [body, setBody] = useState("")
   const [customizing, setCustomizing] = useState(false)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [deciding, setDeciding] = useState(false)
 
   useEffect(() => {
     if (!canCreate) return
@@ -779,26 +808,37 @@ function RequestsPanel({
   }
 
   const decide = async (id: string, decision: "approve" | "reject") => {
+    if (deciding) return
     let rejectReason: string | undefined
     if (decision === "reject") {
       rejectReason = window.prompt("Red gerekçesi (opsiyonel)") || undefined
     }
-    const res = await fetch(`/api/comms/requests/${id}/decide`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ decision, rejectReason }),
-    })
-    const j = await res.json().catch(() => ({}))
-    if (!res.ok) {
-      alert(j.error || "İşlem başarısız")
-      return
+    setDeciding(true)
+    try {
+      const res = await fetch(`/api/comms/requests/${id}/decide`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ decision, rejectReason }),
+      })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert(j.error || "İşlem başarısız")
+        return
+      }
+      setSelectedId(null)
+      onChanged()
+    } finally {
+      setDeciding(false)
     }
-    onChanged()
   }
 
   const pending = requests.filter((r) => r.status === "PENDING")
   const decided = requests.filter((r) => r.status !== "PENDING")
-  const queue = canApprove ? [...pending, ...decided] : requests
+  const list = canApprove ? [...pending, ...decided] : requests
+  const selected = selectedId ? requests.find((r) => r.id === selectedId) || null : null
+  const selectedRequester = selected
+    ? `${selected.requesterStaff?.firstName || ""} ${selected.requesterStaff?.lastName || ""}`.trim() || "—"
+    : ""
 
   return (
     <div className="flex-1 space-y-4 overflow-y-auto p-4">
@@ -806,19 +846,17 @@ function RequestsPanel({
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
           <p className="text-sm font-semibold text-amber-900">Gelen talepler — onay kuyruğu</p>
           <p className="mt-0.5 text-xs text-amber-800">
-            Personelden gelen talepleri onaylayın veya reddedin. Bu merciden talep oluşturulmaz.
+            Satıra tıklayarak detayı açın. Onay / red işlemleri detay penceresinden yapılır.
           </p>
-          <p className="mt-2 text-sm font-medium text-amber-950">
-            Bekleyen: {pending.length}
-          </p>
+          <p className="mt-2 text-sm font-medium text-amber-950">Bekleyen: {pending.length}</p>
         </div>
       ) : null}
 
       {canCreate ? (
-        <div className="space-y-3 rounded-xl border p-5">
-          <p className="text-base font-semibold">Yeni talep</p>
+        <div className="space-y-3 rounded-xl border p-4">
+          <p className="text-sm font-semibold">Yeni talep</p>
           <select
-            className="w-full rounded-md border px-3 py-2.5 text-base"
+            className="w-full rounded-md border px-3 py-2 text-sm"
             value={templateId}
             onChange={(e) => {
               setTemplateId(e.target.value)
@@ -833,114 +871,117 @@ function RequestsPanel({
             ))}
           </select>
           <Input
-            className="h-11 text-base"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
             disabled={!customizing && !templateId}
             placeholder="Konu"
           />
           <textarea
-            className="min-h-[10rem] w-full rounded-md border px-3 py-3 text-base leading-7"
+            className="min-h-[8rem] w-full rounded-md border px-3 py-2 text-sm"
             value={body}
             onChange={(e) => setBody(e.target.value)}
             disabled={!customizing && !templateId}
           />
           {templateId && !customizing ? (
-            <Button variant="outline" onClick={() => setCustomizing(true)}>
+            <Button variant="outline" size="sm" onClick={() => setCustomizing(true)}>
               Bu talep için şablonu özelleştir
             </Button>
           ) : null}
-          <Button onClick={() => void create()} disabled={!templateId}>
+          <Button size="sm" onClick={() => void create()} disabled={!templateId}>
             Talebi gönder
           </Button>
         </div>
       ) : null}
 
-      {canApprove && pending.length > 0 ? (
-        <div className="space-y-3">
-          <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Onay bekleyenler</p>
-          <ul className="space-y-4">
-            {pending.map((r) => {
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+        {list.length === 0 ? (
+          <p className="p-4 text-sm text-gray-500">
+            {canApprove ? "Talep yok." : "Talep yok."}
+          </p>
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {list.map((r) => {
               const requester =
                 `${r.requesterStaff?.firstName || ""} ${r.requesterStaff?.lastName || ""}`.trim() || "—"
+              const tone = requestStatusTone(r.status)
               return (
-                <li
-                  key={r.id}
-                  className="space-y-4 rounded-xl border border-amber-300 border-l-4 border-l-amber-500 bg-amber-50/40 px-5 py-5"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="text-xl font-bold leading-snug text-slate-900">
-                      {r.subject}
-                      <span className="font-bold text-slate-800"> — {requester}</span>
-                    </p>
-                    <span className="shrink-0 rounded-full bg-amber-500 px-3 py-1 text-sm font-bold text-white">
-                      Bekliyor
+                <li key={r.id}>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedId(r.id)}
+                    className={`flex w-full items-center gap-3 border-l-4 px-3 py-2.5 text-left transition ${tone.row}`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-slate-900">
+                        {r.subject}
+                        <span className="font-semibold text-slate-700"> — {requester}</span>
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-500">{formatCommsDate(r.createdAt)}</p>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${tone.badge}`}
+                    >
+                      {REQUEST_STATUS_LABEL[r.status]}
                     </span>
-                  </div>
-                  <p className="whitespace-pre-wrap text-base leading-7 text-gray-800">{r.body}</p>
-                  <p className="text-base font-medium text-slate-600">{formatCommsDate(r.createdAt)}</p>
-                  <div className="flex gap-2">
-                    <Button onClick={() => void decide(r.id, "approve")}>Onayla</Button>
-                    <Button variant="outline" onClick={() => void decide(r.id, "reject")}>
-                      Reddet
-                    </Button>
-                  </div>
+                  </button>
                 </li>
               )
             })}
           </ul>
-        </div>
-      ) : null}
+        )}
+      </div>
 
-      <ul className="space-y-4">
-        {(canApprove ? decided : queue).map((r) => {
-          const requester =
-            `${r.requesterStaff?.firstName || ""} ${r.requesterStaff?.lastName || ""}`.trim() || "—"
-          const statusTone =
-            r.status === "APPROVED"
-              ? {
-                  card: "border-emerald-300 border-l-emerald-600 bg-emerald-50/40",
-                  badge: "bg-emerald-600 text-white",
-                }
-              : r.status === "REJECTED"
-                ? {
-                    card: "border-red-300 border-l-red-600 bg-red-50/40",
-                    badge: "bg-red-600 text-white",
-                  }
-                : {
-                    card: "border-amber-300 border-l-amber-500 bg-amber-50/40",
-                    badge: "bg-amber-500 text-white",
-                  }
-          return (
-            <li
-              key={r.id}
-              className={`space-y-3 rounded-xl border border-l-4 px-5 py-5 ${statusTone.card}`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-xl font-bold leading-snug text-slate-900">
-                  {r.subject}
-                  <span className="font-bold text-slate-800"> — {requester}</span>
-                </p>
-                <span
-                  className={`shrink-0 rounded-full px-3 py-1 text-sm font-bold ${statusTone.badge}`}
-                >
-                  {REQUEST_STATUS_LABEL[r.status]}
-                </span>
+      <Dialog open={Boolean(selected)} onOpenChange={(open) => !open && setSelectedId(null)}>
+        <DialogContent className="max-w-xl">
+          {selected ? (
+            <>
+              <DialogHeader>
+                <div className="flex flex-wrap items-center gap-2 pr-8">
+                  <DialogTitle className="text-left">{selected.subject}</DialogTitle>
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                      requestStatusTone(selected.status).badge
+                    }`}
+                  >
+                    {REQUEST_STATUS_LABEL[selected.status]}
+                  </span>
+                </div>
+                <DialogDescription className="text-left text-sm text-slate-600">
+                  Talep eden: <span className="font-semibold text-slate-900">{selectedRequester}</span>
+                  {" · "}
+                  {formatCommsDate(selected.createdAt)}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-relaxed text-slate-900">
+                {selected.body}
               </div>
-              <p className="whitespace-pre-wrap text-base leading-7 text-gray-800">{r.body}</p>
-              <p className="text-base font-medium text-slate-600">{formatCommsDate(r.createdAt)}</p>
-              {r.rejectReason ? (
-                <p className="text-base font-medium text-red-700">Gerekçe: {r.rejectReason}</p>
+              {selected.rejectReason ? (
+                <p className="text-sm font-medium text-red-700">Gerekçe: {selected.rejectReason}</p>
               ) : null}
-            </li>
-          )
-        })}
-        {(canApprove ? decided : queue).length === 0 && !(canApprove && pending.length > 0) ? (
-          <li className="rounded-xl border p-5 text-base text-gray-500">
-            {canApprove ? "Henüz karara bağlanmış talep yok." : "Talep yok."}
-          </li>
-        ) : null}
-      </ul>
+              <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={() => setSelectedId(null)} disabled={deciding}>
+                  Kapat
+                </Button>
+                {canApprove && selected.status === "PENDING" ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      disabled={deciding}
+                      onClick={() => void decide(selected.id, "reject")}
+                    >
+                      Reddet
+                    </Button>
+                    <Button disabled={deciding} onClick={() => void decide(selected.id, "approve")}>
+                      {deciding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      Onayla
+                    </Button>
+                  </>
+                ) : null}
+              </DialogFooter>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
