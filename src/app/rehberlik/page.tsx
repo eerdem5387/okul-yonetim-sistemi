@@ -93,6 +93,7 @@ export default function RehberlikPage() {
   }
 
   const quickLinks = [
+    { name: "İç Haberleşme", href: "/mesajlar", icon: MessageSquare, color: "from-sky-600 to-blue-600" },
     { name: "Neredeyiz?", href: "/rehberlik/neredeyiz", icon: Target, color: "from-blue-600 to-indigo-600" },
     { name: "Sınıf Yönetimi", href: "/sinif-yonetimi", icon: School, color: "from-indigo-600 to-purple-600" },
     { name: "Gezi Yönetimi", href: "/rehberlik/gezi", icon: MapPin, color: "from-green-600 to-emerald-600" },

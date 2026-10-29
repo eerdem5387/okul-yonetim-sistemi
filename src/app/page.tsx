@@ -328,6 +328,7 @@ export default function HomePage() {
           </CardHeader>
           <CardContent className="px-4 sm:px-6 pb-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
             {[
+              { href: "/mesajlar", label: "İç Haberleşme", icon: MessageSquare },
               { href: "/new-registration", label: "Yeni Kayıt", icon: Calendar },
               { href: "/renewal", label: "Kayıt Yenileme", icon: FileText },
               { href: "/students", label: "Öğrenciler", icon: UserPlus },

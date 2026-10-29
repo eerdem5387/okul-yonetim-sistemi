@@ -126,7 +126,6 @@ export function Sidebar() {
     "/finans/talepler": "finance.view",
     "/finans/gelir-gider": "finance.view",
     "/finans/yetkiler": "finance.view",
-    "/mesajlar": "messaging.view",
     "/new-registration": "registrations.view",
     "/renewal": "registrations.view",
     "/teklif-gorusmeleri": "applications.view",
@@ -161,6 +160,11 @@ export function Sidebar() {
 
     const teacherPortal = item.href.startsWith("/ogretmen")
     if (teacherPortal) return false
+
+    // İç haberleşme: tüm personelde görünür (hiyerarşi sayfa içinde)
+    if (item.href === "/mesajlar") {
+      return item.roles.includes(currentRole) || permState.isSuperAdmin
+    }
 
     if (permState.isSuperAdmin) {
       if ((item as { superAdminOnly?: boolean }).superAdminOnly) return true

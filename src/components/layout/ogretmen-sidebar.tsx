@@ -93,6 +93,8 @@ export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
       // Atanmış kulüpler öğretmen menüsünde her zaman görünür (yoksa boş durum gösterilir).
       if (item.href === "/ogretmen/kulupler") return true
       if (item.href === "/ogretmen/ders-programim") return true
+      // İç haberleşme: yetki matrisinden bağımsız
+      if (item.href === "/mesajlar") return true
       return checkNavPermission(permState, item.module, item.action, true)
     })
     const extras = extraGrantedNavItems({

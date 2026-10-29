@@ -96,8 +96,12 @@ export async function hasPermission(
     if (!staff) return false
     if (module === "gezi" && staff.hasGeziAccess) return true
     if (module === "activity_events" && staff.hasIbAccess) return true
-    if (module === "homework" || module === "attendance" || module === "messaging") {
+    if (module === "homework" || module === "attendance") {
       return action === "view" || action === "create" || action === "edit"
+    }
+    // İç haberleşme: herkese yalnızca görüntüleme; resmi gönderim ayrıca grant ister
+    if (module === "messaging") {
+      return action === "view"
     }
     return false
   }
@@ -107,6 +111,14 @@ export async function hasPermission(
     if (module === "attendance") {
       return action === "view" || action === "create" || action === "edit"
     }
+    if (module === "messaging") {
+      return action === "view"
+    }
+  }
+
+  // Tüm aktif personel: iç haberleşme menüsü / görüntüleme
+  if (module === "messaging" && action === "view") {
+    return true
   }
 
   return departmentFallbackAllows(department, module, action)
@@ -140,9 +152,10 @@ export async function getEffectivePermissionKeys(
         keys.add(permissionKey("activity_events", a))
       )
     }
-    ;["homework", "attendance", "messaging", "neredeyiz", "student_comments", "students"].forEach((mod) => {
+    ;["homework", "attendance", "neredeyiz", "student_comments", "students"].forEach((mod) => {
       ;["view", "create", "edit"].forEach((a) => keys.add(permissionKey(mod, a)))
     })
+    keys.add(permissionKey("messaging", "view"))
     // Ders Programım öğretmen paneline özel; okul ders programı yönetimi
     // yalnızca yetkilendirmeden verilen schedules.* ile açılır.
     implyViewKeys(keys)
@@ -159,6 +172,9 @@ export async function getEffectivePermissionKeys(
     const k = permissionKey(p.module, p.action)
     if (!map.has(k)) keys.add(k)
   }
+
+  // İç haberleşme her personelde görünür; gönderim (messaging.create) yalnızca native/grant
+  keys.add(permissionKey("messaging", "view"))
 
   implyViewKeys(keys)
   stripNonSuperAdminKeys(keys)

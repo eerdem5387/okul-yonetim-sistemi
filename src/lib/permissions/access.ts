@@ -63,7 +63,6 @@ const PATH_MODULE_PREFIXES: Array<{ prefix: string; module: string }> = [
   { prefix: "/service", module: "registrations" },
   { prefix: "/neredeyiz", module: "neredeyiz" },
   { prefix: "/basvurular", module: "applications" },
-  { prefix: "/mesajlar", module: "messaging" },
   { prefix: "/clubs", module: "clubs" },
   { prefix: "/gezi", module: "gezi" },
   { prefix: "/meal", module: "registrations" },
@@ -78,11 +77,24 @@ export function modulesForPath(pathname: string | null | undefined): string[] {
   return [...new Set(matches.map((entry) => entry.module))]
 }
 
+/** İç haberleşme: yetki matrisinden bağımsız; hiyerarşi UI/API yeteneklerinde. */
+export function isCommsPublicPath(pathname: string | null | undefined): boolean {
+  if (!pathname) return false
+  return (
+    pathname === "/mesajlar" ||
+    pathname.startsWith("/mesajlar/") ||
+    pathname === "/veli/mesajlar" ||
+    pathname.startsWith("/veli/mesajlar/")
+  )
+}
+
 export function canAccessPathByPermission(
   pathname: string | null | undefined,
   keys: readonly string[] | null | undefined
 ): boolean {
-  if (!pathname || !keys?.length) return false
+  if (!pathname) return false
+  if (isCommsPublicPath(pathname)) return true
+  if (!keys?.length) return false
   return modulesForPath(pathname).some((moduleId) =>
     hasAnyModulePermission(keys, moduleId)
   )

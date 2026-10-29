@@ -66,9 +66,10 @@ export function RehberlikSidebar() {
   }, [])
 
   const navigation = useMemo(() => {
-    const base = baseNavigation.filter((item) =>
-      checkNavPermission(permState, item.module, item.action, true)
-    )
+    const base = baseNavigation.filter((item) => {
+      if (item.href === "/mesajlar") return true
+      return checkNavPermission(permState, item.module, item.action, true)
+    })
     const extra = headCounselorNavigation.filter((item) =>
       checkNavPermission(permState, item.module, item.action, isHeadCounselor)
     )
