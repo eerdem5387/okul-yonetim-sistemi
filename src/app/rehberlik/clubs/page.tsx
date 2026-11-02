@@ -51,7 +51,7 @@ interface Club {
   createdAt: string
   selections: ClubSelection[]
   instructor?: { id: string; firstName: string; lastName: string; subject?: string | null } | null
-  _count?: { membershipRequests?: number; demandRequests?: number }
+  _count?: { membershipRequests?: number; demandRequests?: number; schedules?: number }
 }
 
 interface Student {
@@ -585,6 +585,15 @@ export default function ClubsPage() {
                         {club.exemptFromSelectionLimit && (
                           <span className="px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold rounded-full bg-amber-100 text-amber-800">
                             Kota dışı
+                          </span>
+                        )}
+                        {(club._count?.schedules ?? 0) > 0 ? (
+                          <span className="px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold rounded-full bg-blue-50 text-blue-700">
+                            Programlı ({club._count!.schedules})
+                          </span>
+                        ) : (
+                          <span className="px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold rounded-full bg-amber-50 text-amber-700">
+                            Program yok
                           </span>
                         )}
                         {selectedGrade !== "all" && (

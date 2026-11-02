@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { normalizeClubGradeLevels } from "@/lib/club-grade-levels"
 import { instructorSelect } from "@/lib/clubs/access"
+import { evaluateClubCompatibilityForStudent } from "@/lib/clubs/schedule-compatibility"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
+        const studentId = request.nextUrl.searchParams.get("studentId")?.trim() || ""
+
         const clubs = await prisma.club.findMany({
             include: {
                 instructor: { select: instructorSelect },
@@ -26,6 +29,7 @@ export async function GET() {
                     select: {
                         membershipRequests: { where: { status: "PENDING" } },
                         demandRequests: true,
+                        schedules: { where: { isActive: true, clubGroupId: null } },
                     },
                 },
             },
@@ -33,6 +37,31 @@ export async function GET() {
                 createdAt: "desc"
             }
         })
+
+        // Veli seçimi: programı olan + ÖÇG ile çakışmayan; mevcut seçimler her zaman dahil
+        if (studentId) {
+            const mine = await prisma.clubSelection.findMany({
+                where: { studentId },
+                select: { clubId: true },
+            })
+            const selectedSet = new Set(mine.map((m) => m.clubId))
+            const compat = await evaluateClubCompatibilityForStudent({
+                studentId,
+                clubIds: clubs.map((c) => c.id),
+            })
+            const filtered = clubs
+                .filter((c) => compat.get(c.id)?.selectable || selectedSet.has(c.id))
+                .map((c) => {
+                    const info = compat.get(c.id)
+                    return {
+                        ...c,
+                        scheduleSummary: info?.scheduleSummary ?? [],
+                        scheduleBlocks: info?.scheduleBlocks ?? [],
+                        scheduleSelectable: Boolean(info?.selectable),
+                    }
+                })
+            return NextResponse.json(filtered)
+        }
 
         return NextResponse.json(clubs)
     } catch (error) {

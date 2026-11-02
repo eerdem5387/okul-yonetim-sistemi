@@ -9,6 +9,7 @@ import { ArrowLeft, Users, Plus, Search, UserPlus, UserMinus } from "lucide-reac
 import Link from "next/link"
 import { formatClubGradeLevels } from "@/lib/club-grade-levels"
 import { ClubDetailEditor } from "@/components/clubs/club-detail-editor"
+import { ClubScheduleEditor } from "@/components/clubs/club-schedule-editor"
 
 interface Club {
   id: string
@@ -276,6 +277,10 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
               </div>
             </CardContent>
           </Card>
+
+          <div className="mt-4">
+            <ClubScheduleEditor clubId={club.id} />
+          </div>
         </div>
 
         {/* Öğrenci Listesi */}

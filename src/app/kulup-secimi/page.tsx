@@ -10,6 +10,7 @@ import {
   countQuotaSelections,
   MAX_CLUB_SELECTIONS,
 } from "@/lib/clubs/selection-quota"
+import { clubProgramsConflict, type ScheduleBlock } from "@/lib/clubs/schedule-blocks"
 
 type Club = {
   id: string
@@ -20,6 +21,9 @@ type Club = {
   selected: boolean
   demanded?: boolean
   exemptFromSelectionLimit?: boolean
+  scheduleSummary?: string[]
+  scheduleBlocks?: ScheduleBlock[]
+  scheduleSelectable?: boolean
 }
 
 type StudentBrief = {
@@ -69,10 +73,28 @@ export default function PublicClubSelectionPage() {
     }
   }
 
+  const conflictsWithSelected = (club: Club, selection: string[]) => {
+    const blocks = club.scheduleBlocks || []
+    for (const id of selection) {
+      if (id === club.id) continue
+      const other = clubs.find((c) => c.id === id)
+      if (clubProgramsConflict(blocks, other?.scheduleBlocks)) return true
+    }
+    return false
+  }
+
   const toggle = (club: Club) => {
     setMessage("")
     if (selected.includes(club.id)) {
       setSelected(selected.filter((id) => id !== club.id))
+      return
+    }
+    if (club.scheduleSelectable === false) {
+      setError("Bu kulüp öğrencinin ÖÇG programıyla çakışıyor veya programı tanımlı değil.")
+      return
+    }
+    if (conflictsWithSelected(club, selected)) {
+      setError("Bu kulüp seçtiğiniz diğer kulüp(ler)le aynı saatte çakışıyor.")
       return
     }
     const next = [...selected, club.id]
@@ -303,13 +325,27 @@ export default function PublicClubSelectionPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
+              <p className="text-xs text-slate-500">
+                Yalnızca ÖÇG programıyla çakışmayan kulüpler listelenir. Seçim yaptıkça aynı saatteki
+                kulüpler gizlenir.
+              </p>
               <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1">
-                {clubs.length === 0 && (
-                  <p className="rounded-xl border border-dashed border-gray-200 p-4 text-sm text-gray-500">
-                    {student.grade} için açık kulüp yok.
+                {clubs.filter(
+                  (c) =>
+                    (c.scheduleSelectable !== false || selected.includes(c.id)) &&
+                    (selected.includes(c.id) || !conflictsWithSelected(c, selected))
+                ).length === 0 && (
+                  <p className="rounded-xl border border-dashed border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                    Öğrencinin programına uygun kulüp bulunamadı.
                   </p>
                 )}
-                {clubs.map((club) => {
+                {clubs
+                  .filter(
+                    (c) =>
+                      (c.scheduleSelectable !== false || selected.includes(c.id)) &&
+                      (selected.includes(c.id) || !conflictsWithSelected(c, selected))
+                  )
+                  .map((club) => {
                   const isSelected = selected.includes(club.id)
                   const shownFilled = club.filled + (isSelected && !club.selected ? 1 : 0)
                   const cappedFilled = Math.min(shownFilled, club.capacity)
@@ -389,6 +425,11 @@ export default function PublicClubSelectionPage() {
                                 {club.description}
                               </p>
                             )}
+                            {club.scheduleSummary && club.scheduleSummary.length > 0 ? (
+                              <p className="text-[11px] text-slate-500 mb-1">
+                                {club.scheduleSummary.join(" · ")}
+                              </p>
+                            ) : null}
                             <div className="mt-2 space-y-1.5">
                               <div className="flex items-center justify-between gap-2">
                                 <span className="text-xs font-medium text-gray-600">Kontejan</span>

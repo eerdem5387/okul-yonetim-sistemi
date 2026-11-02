@@ -10,6 +10,7 @@ import {
   countQuotaSelections,
   MAX_CLUB_SELECTIONS,
 } from "@/lib/clubs/selection-quota"
+import { clubProgramsConflict, type ScheduleBlock } from "@/lib/clubs/schedule-blocks"
 
 interface Student {
   id: string
@@ -27,6 +28,9 @@ interface Club {
   gradeLevels?: number[]
   exemptFromSelectionLimit?: boolean
   selections?: Array<{ id: string; studentId: string; clubId: string }>
+  scheduleSummary?: string[]
+  scheduleBlocks?: ScheduleBlock[]
+  scheduleSelectable?: boolean
 }
 
 export default function ParentPage() {
@@ -135,9 +139,10 @@ export default function ParentPage() {
     }
   }, [router])
 
-  const fetchClubs = useCallback(async () => {
+  const fetchClubs = useCallback(async (studentId?: string) => {
     try {
-      const response = await fetch("/api/clubs")
+      const q = studentId ? `?studentId=${encodeURIComponent(studentId)}` : ""
+      const response = await fetch(`/api/clubs${q}`)
       if (!response.ok) throw new Error("Failed to fetch clubs")
       const data = await response.json()
       setClubs(Array.isArray(data) ? data : [])
@@ -148,15 +153,17 @@ export default function ParentPage() {
   }, [])
 
   useEffect(() => {
-    fetchClubs()
-  }, [fetchClubs])
+    if (selectedStudent?.id) {
+      void fetchClubs(selectedStudent.id)
+    }
+  }, [selectedStudent?.id, fetchClubs])
 
   // Otomatik veri yenileme - Her 10 saniyede bir kulüp kontenjanlarını güncelle
   useEffect(() => {
     // Eğer bir öğrenci seçiliyse, düzenli olarak kulüp verilerini güncelle
     if (selectedStudent) {
       const intervalId = setInterval(() => {
-        fetchClubs() // Kulüp kontenjanlarını yenile
+        void fetchClubs(selectedStudent.id)
         // Otomatik yenileme sırasında mevcut seçimleri koru (henüz onaylanmamış seçimler kaybolmasın)
         fetchStudentClubs(selectedStudent.id, true) // preserveCurrentSelections = true
       }, 10000) // 10 saniye
@@ -238,7 +245,7 @@ export default function ParentPage() {
       setSelectedClubs([])
       setSelecting(true)
       setShowReselectConfirm(false)
-      await fetchClubs()
+      await fetchClubs(selectedStudent.id)
     } catch (error) {
       console.error("Error clearing club selections:", error)
       alert("Mevcut seçimler iptal edilemedi.")
@@ -247,14 +254,34 @@ export default function ParentPage() {
     }
   }
 
+  const conflictsWithSelected = (club: Club, selection: string[]) => {
+    const blocks = club.scheduleBlocks || []
+    for (const id of selection) {
+      if (id === club.id) continue
+      const other = clubs.find((c) => c.id === id)
+      if (clubProgramsConflict(blocks, other?.scheduleBlocks)) return true
+    }
+    return false
+  }
+
   const handleClubToggle = async (clubId: string) => {
     if (selectedClubs.includes(clubId)) {
       // Seçimi kaldır
       setSelectedClubs(selectedClubs.filter(id => id !== clubId))
     } else {
+      const club = clubs.find((c) => c.id === clubId)
+      if (club?.scheduleSelectable === false) {
+        alert("Bu kulüp öğrencinin ÖÇG programıyla çakışıyor veya programı tanımlı değil.")
+        return
+      }
+      if (club && conflictsWithSelected(club, selectedClubs)) {
+        alert("Bu kulüp seçtiğiniz diğer kulüp(ler)le aynı saatte çakışıyor.")
+        return
+      }
       const next = [...selectedClubs, clubId]
       const visibleClubs = clubs.filter((item) =>
-        clubMatchesStudentGrade(item.gradeLevels, selectedStudent?.grade)
+        clubMatchesStudentGrade(item.gradeLevels, selectedStudent?.grade) &&
+        item.scheduleSelectable !== false
       )
       const visibleSelected = next.filter((id) => visibleClubs.some((c) => c.id === id))
       if (countQuotaSelections(visibleSelected, visibleClubs) > MAX_CLUB_SELECTIONS) {
@@ -265,16 +292,16 @@ export default function ParentPage() {
       }
       
       // Seçim yapmadan önce GÜNCEL verileri çek (race condition önlemi)
-      await fetchClubs()
+      if (selectedStudent) await fetchClubs(selectedStudent.id)
       
       // Kapasite kontrolü - seçili olan diğer kulüplerin de kontejanını hesaba kat
-      const club = clubs.find(c => c.id === clubId)
-      if (club) {
-        const currentSelections = (club.selections?.length || 0)
+      const fresh = clubs.find(c => c.id === clubId) || club
+      if (fresh) {
+        const currentSelections = (fresh.selections?.length || 0)
         
         // Eğer bu kulüp zaten doluysa
-        if (currentSelections >= club.capacity) {
-          alert(`❌ ${club.name} kulübünün kontenjanı dolmuştur!\n\nTalep oluştur butonunu kullanabilirsiniz.`)
+        if (currentSelections >= fresh.capacity) {
+          alert(`❌ ${fresh.name} kulübünün kontenjanı dolmuştur!\n\nTalep oluştur butonunu kullanabilirsiniz.`)
           return
         }
       }
@@ -328,7 +355,7 @@ export default function ParentPage() {
     }
 
     // Onaylamadan önce son bir kez GÜNCEL verileri çek
-    await fetchClubs()
+    await fetchClubs(selectedStudent.id)
     
     // Seçili kulüplerin hala uygun olup olmadığını kontrol et
     if (selectedClubs.length > 0) {
@@ -382,7 +409,7 @@ export default function ParentPage() {
 
       if (response.ok) {
         // Başarılı kayıt sonrası kulüp listesini yenile (kontejan güncellemesi için)
-        await fetchClubs()
+        await fetchClubs(selectedStudent.id)
         
         // Kaydedilen kulüp sayısını sakla (state güncellenmeden önce)
         const savedClubCount = selectedClubs.length
@@ -538,9 +565,31 @@ export default function ParentPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6 pb-4 sm:pb-6">
+                  <p className="text-xs sm:text-sm text-slate-500">
+                    Yalnızca öğrencinin ÖÇG programıyla çakışmayan kulüpler listelenir. Bir kulüp
+                    seçildiğinde aynı saatteki diğerleri gizlenir.
+                  </p>
                   <div className="space-y-2 sm:space-y-3 max-h-64 sm:max-h-96 overflow-y-auto pr-1 sm:pr-2 custom-scrollbar">
-                    {clubs.filter((club) => clubMatchesStudentGrade(club.gradeLevels, selectedStudent.grade)).length > 0 ? (
-                      clubs.filter((club) => clubMatchesStudentGrade(club.gradeLevels, selectedStudent.grade)).map((club) => {
+                    {(() => {
+                      const gradeClubs = clubs.filter(
+                        (club) =>
+                          clubMatchesStudentGrade(club.gradeLevels, selectedStudent.grade) &&
+                          (club.scheduleSelectable !== false || selectedClubs.includes(club.id))
+                      )
+                      const listClubs = gradeClubs.filter(
+                        (club) =>
+                          selectedClubs.includes(club.id) ||
+                          !conflictsWithSelected(club, selectedClubs)
+                      )
+                      if (listClubs.length === 0) {
+                        return (
+                          <p className="text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-3">
+                            Öğrencinin programına uygun kulüp bulunamadı. ÖÇG yerleşimini veya kulüp
+                            program atamalarını kontrol edin.
+                          </p>
+                        )
+                      }
+                      return listClubs.map((club) => {
                         const isSelected = selectedClubs.includes(club.id)
                         // Seçili kulüpler için +1 ekle (henüz kaydedilmemiş olsa bile)
                         // Bu sayede seçim yapıldığında kontejan otomatik olarak artar
@@ -551,11 +600,7 @@ export default function ParentPage() {
                         return (
                           <div
                             key={club.id}
-                            className={`relative group transition-all duration-300 ${
-                              isFull && !isSelected
-                                ? "opacity-100"
-                                : "opacity-100"
-                            }`}
+                            className="relative group transition-all duration-300"
                           >
                             <button
                               onClick={() => !isFull && handleClubToggle(club.id)}
@@ -596,6 +641,11 @@ export default function ParentPage() {
                                       {club.description}
                                     </p>
                                   )}
+                                  {club.scheduleSummary && club.scheduleSummary.length > 0 ? (
+                                    <p className="text-[11px] sm:text-xs text-slate-500 mb-1">
+                                      {club.scheduleSummary.join(" · ")}
+                                    </p>
+                                  ) : null}
                                   
                                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2 sm:mt-3">
                                     <div className="flex items-center gap-2">
@@ -675,12 +725,7 @@ export default function ParentPage() {
                           </div>
                         )
                       })
-                    ) : (
-                      <div className="p-6 sm:p-8 text-center text-gray-500">
-                        <p className="text-base sm:text-lg mb-1 sm:mb-2">Bu sınıfa açık kulüp yok</p>
-                        <p className="text-xs sm:text-sm">{selectedStudent.grade} için tanımlı kulüp bulunmuyor</p>
-                      </div>
-                    )}
+                    })()}
                   </div>
 
                   {selectedClubs.some((id) => {

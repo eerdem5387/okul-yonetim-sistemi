@@ -5,6 +5,7 @@ import {
   isOverClubSelectionQuota,
   MAX_CLUB_SELECTIONS,
 } from "@/lib/clubs/selection-quota"
+import { assertClubSelectionScheduleCompatible } from "@/lib/clubs/schedule-compatibility"
 
 export async function GET(request: NextRequest) {
     try {
@@ -49,6 +50,14 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "clubSelections must be an array" }, { status: 400 })
         }
 
+        const clubIds = clubSelections.map((s: { clubId: string }) => s.clubId)
+        if (clubIds.length > 0) {
+            const scheduleCheck = await assertClubSelectionScheduleCompatible(studentId, clubIds)
+            if (!scheduleCheck.ok) {
+                return NextResponse.json({ error: scheduleCheck.error }, { status: 400 })
+            }
+        }
+
         const result = await prisma.$transaction(async (tx) => {
             const student = await tx.student.findUnique({
                 where: { id: studentId },
@@ -74,7 +83,6 @@ export async function POST(request: NextRequest) {
             }
 
             const fullClubs: { name: string }[] = []
-            const clubIds = clubSelections.map((s: { clubId: string }) => s.clubId)
 
             const clubs = await tx.club.findMany({
                 where: { id: { in: clubIds } },

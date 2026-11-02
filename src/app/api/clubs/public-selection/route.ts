@@ -6,6 +6,10 @@ import {
   isOverClubSelectionQuota,
   MAX_CLUB_SELECTIONS,
 } from "@/lib/clubs/selection-quota"
+import {
+  assertClubSelectionScheduleCompatible,
+  evaluateClubCompatibilityForStudent,
+} from "@/lib/clubs/schedule-compatibility"
 
 function normalizeTc(raw: unknown): string | null {
   const tc = String(raw ?? "").replace(/\D/g, "")
@@ -44,22 +48,40 @@ async function clubPayload(studentId: string, studentGrade: string) {
     }),
   ])
 
-  const visible = clubs.filter((club) => clubMatchesStudentGrade(club.gradeLevels, studentGrade))
+  const gradeVisible = clubs.filter((club) =>
+    clubMatchesStudentGrade(club.gradeLevels, studentGrade)
+  )
+  const gradeIds = new Set(gradeVisible.map((club) => club.id))
+  const selectedClubIds = mine.map((row) => row.clubId).filter((id) => gradeIds.has(id))
+  const selectedSet = new Set(selectedClubIds)
+  const compat = await evaluateClubCompatibilityForStudent({
+    studentId,
+    clubIds: gradeVisible.map((c) => c.id),
+  })
+  // Programı olan / ÖÇG ile uyumlu + zaten seçilmiş kulüpler
+  const visible = gradeVisible.filter(
+    (club) => compat.get(club.id)?.selectable || selectedSet.has(club.id)
+  )
   const visibleIds = new Set(visible.map((club) => club.id))
   const demandedIds = new Set(myDemands.map((d) => d.clubId))
-  const selectedClubIds = mine.map((row) => row.clubId).filter((id) => visibleIds.has(id))
 
   return {
-    clubs: visible.map((club) => ({
-      id: club.id,
-      name: club.name,
-      description: club.description,
-      capacity: club.capacity,
-      filled: club._count.selections,
-      selected: club.selections.length > 0,
-      demanded: demandedIds.has(club.id),
-      exemptFromSelectionLimit: club.exemptFromSelectionLimit,
-    })),
+    clubs: visible.map((club) => {
+      const info = compat.get(club.id)
+      return {
+        id: club.id,
+        name: club.name,
+        description: club.description,
+        capacity: club.capacity,
+        filled: club._count.selections,
+        selected: club.selections.length > 0,
+        demanded: demandedIds.has(club.id),
+        exemptFromSelectionLimit: club.exemptFromSelectionLimit,
+        scheduleSummary: info?.scheduleSummary ?? [],
+        scheduleBlocks: info?.scheduleBlocks ?? [],
+        scheduleSelectable: Boolean(info?.selectable),
+      }
+    }),
     selectedClubIds,
     demandedClubIds: [...demandedIds].filter((id) => visibleIds.has(id)),
     maxQuotaClubs: MAX_CLUB_SELECTIONS,
@@ -95,6 +117,13 @@ export async function POST(request: NextRequest) {
     const clubIds = Array.from(
       new Set(rawClubIds.map((id) => String(id ?? "").trim()).filter((id) => id.length > 0))
     )
+
+    if (clubIds.length > 0) {
+      const scheduleCheck = await assertClubSelectionScheduleCompatible(student.id, clubIds)
+      if (!scheduleCheck.ok) {
+        return NextResponse.json({ error: scheduleCheck.error }, { status: 400 })
+      }
+    }
 
     const result = await prisma.$transaction(async (tx) => {
       const clubs = clubIds.length
