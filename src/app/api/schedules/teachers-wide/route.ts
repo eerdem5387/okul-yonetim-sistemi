@@ -71,6 +71,7 @@ export async function GET() {
         },
         select: {
           id: true,
+          instructorId: true,
           dayOfWeek: true,
           startTime: true,
           endTime: true,
@@ -133,7 +134,8 @@ export async function GET() {
     }
 
     for (const c of clubSchedules) {
-      const teacherId = c.club.instructorId || c.club.instructor?.id
+      const teacherId =
+        c.instructorId || c.club.instructorId || c.club.instructor?.id || null
       if (!teacherId || !teacherIds.has(teacherId)) continue
       items.push({
         id: `club:${c.id}`,

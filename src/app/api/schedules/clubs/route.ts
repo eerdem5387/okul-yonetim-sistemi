@@ -12,6 +12,7 @@ import {
   listGradeEtutExams,
 } from "@/lib/schedules/grade-etut-exams"
 import { isStaffEligibleAsScheduleInstructor } from "@/lib/staff-counseling"
+import { hasTimeConflict } from "@/lib/schedules/time-conflict"
 
 export const dynamic = "force-dynamic"
 
@@ -198,6 +199,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: denemeErr }, { status: 400 })
     }
 
+    // Kulüp seviyesi atama: aynı gün/saatteki eski satırları (grup programı dahil) kaldır.
+    // Editörde görünmeyen grup kayıtları "zaten programda" hatasına yol açıyordu.
+    if (!clubGroupId) {
+      const existing = await prisma.clubSchedule.findMany({
+        where: { clubId, dayOfWeek, isActive: true },
+        select: { id: true, startTime: true, endTime: true },
+      })
+      const conflictIds = existing
+        .filter((s) => hasTimeConflict(s.startTime, s.endTime, startTime, endTime))
+        .map((s) => s.id)
+      if (conflictIds.length > 0) {
+        await prisma.clubSchedule.deleteMany({ where: { id: { in: conflictIds } } })
+      }
+    }
+
     const freeErr = await assertClubSlotFree({
       clubId,
       clubGroupId,
@@ -211,7 +227,7 @@ export async function POST(request: NextRequest) {
     }
 
     const row = await prisma.$transaction(async (tx) => {
-      // Grupsuz (eski) atamalarda kulüp instructor güncellenir;
+      // Grupsuz atamalarda kulüp instructor güncellenir;
       // grup programında öğretmen schedule’a yazılır — diğer grupları ezmez.
       if (hasInstructor && !clubGroupId) {
         await tx.club.update({

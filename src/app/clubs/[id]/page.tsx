@@ -279,7 +279,10 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
           </Card>
 
           <div className="mt-4">
-            <ClubScheduleEditor clubId={club.id} />
+            <ClubScheduleEditor
+              clubId={club.id}
+              initialInstructorId={club.instructorId || club.instructor?.id || null}
+            />
           </div>
         </div>
 

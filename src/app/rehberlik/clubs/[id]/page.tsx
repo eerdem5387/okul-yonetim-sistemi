@@ -286,7 +286,10 @@ export default function RehberlikClubDetailPage() {
               </Card>
 
               <div className="mt-4">
-                <ClubScheduleEditor clubId={club.id} />
+                <ClubScheduleEditor
+                  clubId={club.id}
+                  initialInstructorId={club.instructorId || club.instructor?.id || null}
+                />
               </div>
             </div>
 
