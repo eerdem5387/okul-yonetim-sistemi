@@ -26,13 +26,17 @@ const DAY_OPTIONS = [
   { value: 5, label: "Cuma" },
 ]
 
+function slotKeyOf(s: Pick<EtutSlot, "startTime" | "endTime">) {
+  return `${s.startTime}|${s.endTime}`
+}
+
 export function ClubScheduleEditor({ clubId }: { clubId: string }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [schedules, setSchedules] = useState<ScheduleRow[]>([])
   const [etutSlots, setEtutSlots] = useState<EtutSlot[]>([])
   const [dayOfWeek, setDayOfWeek] = useState(1)
-  const [slotKey, setSlotKey] = useState("")
+  const [selectedSlotKeys, setSelectedSlotKeys] = useState<string[]>([])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -51,10 +55,9 @@ export function ClubScheduleEditor({ clubId }: { clubId: string }) {
       setSchedules(clubLevel)
       const slots = Array.isArray(data.etutSlots) ? (data.etutSlots as EtutSlot[]) : []
       setEtutSlots(slots)
-      setSlotKey((prev) => {
-        if (prev) return prev
-        if (slots.length === 0) return ""
-        return `${slots[0].startTime}|${slots[0].endTime}`
+      setSelectedSlotKeys((prev) => {
+        if (prev.length > 0) return prev.filter((k) => slots.some((s) => slotKeyOf(s) === k))
+        return slots.length > 0 ? [slotKeyOf(slots[0])] : []
       })
     } catch {
       setSchedules([])
@@ -68,30 +71,43 @@ export function ClubScheduleEditor({ clubId }: { clubId: string }) {
     void load()
   }, [load])
 
+  const toggleSlot = (key: string) => {
+    setSelectedSlotKeys((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    )
+  }
+
   const add = async () => {
-    if (!slotKey) {
-      alert("Etüt saati seçin")
+    if (selectedSlotKeys.length === 0) {
+      alert("En az bir etüt saati seçin")
       return
     }
-    const [startTime, endTime] = slotKey.split("|")
     setSaving(true)
     try {
-      const res = await fetch("/api/schedules/clubs", {
-        method: "POST",
-        headers: { ...staffAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clubId,
-          dayOfWeek,
-          startTime,
-          endTime,
-        }),
-      })
-      const j = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        alert((j as { error?: string }).error || "Program eklenemedi")
-        return
+      const errors: string[] = []
+      for (const key of selectedSlotKeys) {
+        const [startTime, endTime] = key.split("|")
+        const res = await fetch("/api/schedules/clubs", {
+          method: "POST",
+          headers: { ...staffAuthHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({
+            clubId,
+            dayOfWeek,
+            startTime,
+            endTime,
+          }),
+        })
+        const j = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          const label =
+            etutSlots.find((s) => slotKeyOf(s) === key)?.label || `${startTime}–${endTime}`
+          errors.push(`${label}: ${(j as { error?: string }).error || "eklenemedi"}`)
+        }
       }
       await load()
+      if (errors.length > 0) {
+        alert(errors.join("\n"))
+      }
     } finally {
       setSaving(false)
     }
@@ -125,8 +141,8 @@ export function ClubScheduleEditor({ clubId }: { clubId: string }) {
         <div>
           <h3 className="font-semibold text-slate-900">Haftalık kulüp programı</h3>
           <p className="mt-0.5 text-sm text-slate-500">
-            Veli seçiminde öğrenci yalnızca ÖÇG programıyla çakışmayan kulüpleri görür. En az bir
-            etüt saati tanımlayın.
+            Veli seçiminde öğrenci yalnızca ÖÇG programıyla çakışmayan kulüpleri görür. Aynı gün için
+            bir veya iki etüt saatini birlikte seçebilirsiniz.
           </p>
         </div>
       </div>
@@ -180,24 +196,44 @@ export function ClubScheduleEditor({ clubId }: { clubId: string }) {
             </div>
             <div className="sm:col-span-2">
               <Label className="text-xs">Etüt saati</Label>
-              <select
-                className="mt-1 w-full rounded-md border px-2 py-2 text-sm"
-                value={slotKey}
-                onChange={(e) => setSlotKey(e.target.value)}
-              >
-                {etutSlots.length === 0 ? (
-                  <option value="">Etüt slotu yok (ders programı şablonunu kontrol edin)</option>
-                ) : (
-                  etutSlots.map((s) => (
-                    <option key={`${s.startTime}-${s.endTime}`} value={`${s.startTime}|${s.endTime}`}>
-                      {s.label || `${s.startTime}–${s.endTime}`}
-                    </option>
-                  ))
-                )}
-              </select>
+              {etutSlots.length === 0 ? (
+                <p className="mt-1 rounded-md border border-dashed px-2 py-2 text-sm text-slate-500">
+                  Etüt slotu yok (ders programı şablonunu kontrol edin)
+                </p>
+              ) : (
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {etutSlots.map((s) => {
+                    const key = slotKeyOf(s)
+                    const checked = selectedSlotKeys.includes(key)
+                    return (
+                      <label
+                        key={key}
+                        className={`inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors ${
+                          checked
+                            ? "border-blue-500 bg-blue-50 text-blue-800"
+                            : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-slate-300"
+                          checked={checked}
+                          onChange={() => toggleSlot(key)}
+                        />
+                        <span className="font-medium">{s.label || `${s.startTime}–${s.endTime}`}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           </div>
-          <Button type="button" size="sm" onClick={() => void add()} disabled={saving || !slotKey}>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => void add()}
+            disabled={saving || selectedSlotKeys.length === 0}
+          >
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
             Programa ekle
           </Button>
