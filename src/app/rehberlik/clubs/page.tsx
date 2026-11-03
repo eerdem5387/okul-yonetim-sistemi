@@ -240,23 +240,26 @@ export default function ClubsPage() {
   )
 
   const filteredClubs = useMemo(() => {
-    return clubs.filter((club) => {
-      const isFull = club.selections.length >= club.capacity
-      const isEmpty = club.selections.length === 0
-      const hasCapacity = !isFull && !isEmpty
+    return clubs
+      .filter((club) => {
+        const isFull = club.selections.length >= club.capacity
+        const isEmpty = club.selections.length === 0
+        const hasCapacity = !isFull && !isEmpty
 
-      const matchesStatus =
-        statusFilter === "all" ||
-        (statusFilter === "full" && isFull) ||
-        (statusFilter === "empty" && isEmpty) ||
-        (statusFilter === "available" && hasCapacity)
+        const matchesStatus =
+          statusFilter === "all" ||
+          (statusFilter === "full" && isFull) ||
+          (statusFilter === "empty" && isEmpty) ||
+          (statusFilter === "available" && hasCapacity)
 
-      const matchesGrade =
-        selectedGrade === "all" ||
-        club.selections.some((selection) => selection.student?.grade === selectedGrade)
+        const matchesGrade =
+          selectedGrade === "all" ||
+          club.selections.some((selection) => selection.student?.grade === selectedGrade)
 
-      return matchesStatus && matchesGrade
-    })
+        return matchesStatus && matchesGrade
+      })
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name, "tr", { sensitivity: "base" }))
   }, [clubs, selectedGrade, statusFilter])
 
   const handleResetFilters = () => {
