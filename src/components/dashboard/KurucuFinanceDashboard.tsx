@@ -388,6 +388,51 @@ export function KurucuFinanceDashboard() {
           </Notice>
         ) : null}
 
+        {pendingRequests.length > 0 ? (
+          <section className="rounded-2xl border border-amber-200/80 bg-amber-50/90 px-4 py-3.5 shadow-sm sm:px-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <ClipboardList className="h-4 w-4 text-amber-700" />
+                  <p className="text-sm font-semibold text-amber-950">
+                    {pendingRequests.length} bekleyen talep
+                  </p>
+                </div>
+                <ul className="mt-2 space-y-1">
+                  {pendingRequests.slice(0, 3).map((row) => {
+                    const numeric = row.total == null || row.total === "" ? null : Number(row.total)
+                    const amount =
+                      numeric != null && Number.isFinite(numeric)
+                        ? moneyExact(numeric)
+                        : "Tutar yok"
+                    return (
+                      <li key={row.id} className="truncate text-sm text-amber-900/90">
+                        <span className="font-medium">{row.title || "Ürün / hizmet adı yok"}</span>
+                        <span className="text-amber-800/70">
+                          {" "}
+                          · {row.requesterName || "—"} · {amount}
+                        </span>
+                      </li>
+                    )
+                  })}
+                  {pendingRequests.length > 3 ? (
+                    <li className="text-xs font-medium text-amber-800/80">
+                      +{pendingRequests.length - 3} talep daha
+                    </li>
+                  ) : null}
+                </ul>
+              </div>
+              <button
+                type="button"
+                onClick={() => open("pending")}
+                className="inline-flex shrink-0 items-center justify-center rounded-xl bg-amber-700 px-3.5 py-2 text-sm font-medium text-white hover:bg-amber-800"
+              >
+                Talepleri incele
+              </button>
+            </div>
+          </section>
+        ) : null}
+
         {loading && !data ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 xl:gap-5">
             {Array.from({ length: 11 }).map((_, index) => (
