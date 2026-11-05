@@ -1,16 +1,12 @@
 import { prisma } from "@/lib/prisma"
 import { effectiveClubGradeLevels } from "@/lib/club-grade-levels"
-import { DAY_LABELS, hasTimeConflict } from "@/lib/schedules/time-conflict"
+import { hasTimeConflict } from "@/lib/schedules/time-conflict"
 import { parseStudentGradeLevel } from "@/lib/student-grade-level"
 
 type Block = { dayOfWeek: number; startTime: string; endTime: string }
 
 function keyOf(b: Block) {
   return `${b.dayOfWeek}|${b.startTime}|${b.endTime}`
-}
-
-function labelOf(b: Block) {
-  return `${DAY_LABELS[b.dayOfWeek] || `Gün ${b.dayOfWeek}`} ${b.startTime}–${b.endTime}`
 }
 
 function blocksConflict(a: Block, b: Block) {
@@ -20,59 +16,33 @@ function blocksConflict(a: Block, b: Block) {
   )
 }
 
-export type OcgGradeLoad = {
-  grade: number
-  slots: { label: string; students: number }[]
-}
-
-export type ClubConflictRow = {
-  id: string
-  name: string
-  grades: number[]
-  slots: string[]
-  conflictScore: number
-  severity: "high" | "medium" | "low" | "none"
-  details: { grade: number; load: number; notes: string[] }[]
-}
-
 export type SwapSuggestion = {
   clubAId: string
   clubAName: string
   clubBId: string
   clubBName: string
-  aSlots: string[]
-  bSlots: string[]
-  aGrades: number[]
-  bGrades: number[]
-  sharedGrades: number[]
-  before: number
-  after: number
-  gain: number
+  /** Yer değişince ekstra kulüp seçebilir hale gelen öğrenci sayısı */
+  extraStudents: number
+  /** Avantaj gören ÖÇG grup adları */
+  benefitingGroups: string[]
   summary: string
 }
 
 export type OcgScheduleInsights = {
   generatedAt: string
   summary: {
-    clubsTotal: number
     clubsWithSchedule: number
-    clubsWithoutSchedule: number
-    highConflictCount: number
-    zeroConflictCount: number
-    swapCount: number
+    suggestionCount: number
   }
   headline: string
-  gradeLoads: OcgGradeLoad[]
-  clubs: ClubConflictRow[]
-  withoutSchedule: { id: string; name: string; grades: number[] }[]
   swaps: SwapSuggestion[]
 }
 
-function severityOf(score: number): ClubConflictRow["severity"] {
-  if (score <= 0) return "none"
-  if (score >= 300) return "high"
-  if (score >= 150) return "medium"
-  return "low"
+type StudentBusy = {
+  studentId: string
+  gradeLevel: number
+  busy: Block[]
+  groupNames: string[]
 }
 
 export async function buildOcgScheduleInsights(): Promise<OcgScheduleInsights> {
@@ -98,7 +68,10 @@ export async function buildOcgScheduleInsights(): Promise<OcgScheduleInsights> {
       where: { isActive: true },
       select: {
         id: true,
-        students: { select: { student: { select: { grade: true } } } },
+        name: true,
+        students: {
+          select: { student: { select: { id: true, grade: true } } },
+        },
       },
     }),
     prisma.studyGroupSession.findMany({
@@ -112,37 +85,53 @@ export async function buildOcgScheduleInsights(): Promise<OcgScheduleInsights> {
     }),
   ])
 
-  const gradeBusy = new Map<number, Block[]>()
-  const gradeBusyStudents = new Map<number, Map<string, number>>()
+  const sessionsByGroup = new Map<string, Block[]>()
+  for (const s of studySessions) {
+    const list = sessionsByGroup.get(s.studyGroupId) || []
+    list.push({
+      dayOfWeek: s.dayOfWeek,
+      startTime: s.startTime,
+      endTime: s.endTime,
+    })
+    sessionsByGroup.set(s.studyGroupId, list)
+  }
 
+  const studentMap = new Map<string, StudentBusy>()
   for (const g of studyGroups) {
-    const sessions = studySessions.filter((s) => s.studyGroupId === g.id)
+    const sessions = sessionsByGroup.get(g.id) || []
     if (sessions.length === 0) continue
-    const gradeCounts = new Map<number, number>()
-    for (const m of g.students) {
-      const lv = parseStudentGradeLevel(m.student.grade)
-      if (lv == null) continue
-      gradeCounts.set(lv, (gradeCounts.get(lv) || 0) + 1)
-    }
-    for (const [grade, count] of gradeCounts) {
-      if (!gradeBusy.has(grade)) gradeBusy.set(grade, [])
-      if (!gradeBusyStudents.has(grade)) gradeBusyStudents.set(grade, new Map())
-      const blocks = gradeBusy.get(grade)!
-      const slotMap = gradeBusyStudents.get(grade)!
-      for (const s of sessions) {
-        const b: Block = {
-          dayOfWeek: s.dayOfWeek,
-          startTime: s.startTime,
-          endTime: s.endTime,
+    for (const row of g.students) {
+      const gradeLevel = parseStudentGradeLevel(row.student.grade)
+      if (gradeLevel == null) continue
+      const existing = studentMap.get(row.student.id)
+      if (!existing) {
+        studentMap.set(row.student.id, {
+          studentId: row.student.id,
+          gradeLevel,
+          busy: [...sessions],
+          groupNames: [g.name],
+        })
+      } else {
+        for (const sess of sessions) {
+          if (!existing.busy.some((b) => keyOf(b) === keyOf(sess))) {
+            existing.busy.push(sess)
+          }
         }
-        if (!blocks.some((x) => keyOf(x) === keyOf(b))) blocks.push(b)
-        slotMap.set(keyOf(b), (slotMap.get(keyOf(b)) || 0) + count)
+        if (!existing.groupNames.includes(g.name)) {
+          existing.groupNames.push(g.name)
+        }
       }
     }
   }
+  const students = [...studentMap.values()]
 
   const clubBlocks = new Map<string, Block[]>()
+  const clubMeta = new Map<string, { name: string; grades: number[] }>()
   for (const club of clubs) {
+    clubMeta.set(club.id, {
+      name: club.name,
+      grades: effectiveClubGradeLevels(club.gradeLevels),
+    })
     const rows = clubSchedules.filter((s) => s.clubId === club.id)
     const clubLevel = rows.filter((s) => !s.clubGroupId)
     const use = clubLevel.length > 0 ? clubLevel : rows
@@ -158,151 +147,98 @@ export async function buildOcgScheduleInsights(): Promise<OcgScheduleInsights> {
     clubBlocks.set(club.id, uniq)
   }
 
-  function conflictIf(clubGrades: number[], blocks: Block[]) {
-    let score = 0
-    for (const grade of clubGrades) {
-      const busyBlocks = gradeBusy.get(grade) || []
-      const slotMap = gradeBusyStudents.get(grade) || new Map()
-      for (const b of blocks) {
-        for (const ob of busyBlocks) {
-          if (blocksConflict(b, ob)) score += slotMap.get(keyOf(ob)) || 0
-        }
-      }
-    }
-    return score
+  function canSelect(student: StudentBusy, grades: number[], slots: Block[]) {
+    if (!grades.includes(student.gradeLevel)) return false
+    if (slots.length === 0) return false
+    return !student.busy.some((busy) => slots.some((slot) => blocksConflict(slot, busy)))
   }
 
-  const scored: ClubConflictRow[] = []
-  const withoutSchedule: OcgScheduleInsights["withoutSchedule"] = []
-
-  for (const club of clubs) {
-    const grades = effectiveClubGradeLevels(club.gradeLevels)
-    const blocks = clubBlocks.get(club.id) || []
-    if (blocks.length === 0) {
-      withoutSchedule.push({ id: club.id, name: club.name, grades })
-      continue
-    }
-    let conflictScore = 0
-    const details: ClubConflictRow["details"] = []
-    for (const grade of grades) {
-      const slotMap = gradeBusyStudents.get(grade) || new Map()
-      let load = 0
-      const notes: string[] = []
-      for (const b of blocks) {
-        for (const ob of gradeBusy.get(grade) || []) {
-          if (!blocksConflict(b, ob)) continue
-          const n = slotMap.get(keyOf(ob)) || 0
-          load += n
-          conflictScore += n
-          notes.push(`${labelOf(b)} ↔ ÖÇG ${labelOf(ob)} (~${n} öğrenci)`)
-        }
-      }
-      if (load > 0) details.push({ grade, load, notes: notes.slice(0, 4) })
-    }
-    scored.push({
-      id: club.id,
-      name: club.name,
-      grades,
-      slots: blocks.map(labelOf),
-      conflictScore,
-      severity: severityOf(conflictScore),
-      details,
-    })
-  }
-
-  scored.sort(
-    (a, b) =>
-      b.conflictScore - a.conflictScore ||
-      a.name.localeCompare(b.name, "tr", { sensitivity: "base" })
-  )
+  const scheduledClubIds = [...clubBlocks.entries()]
+    .filter(([, blocks]) => blocks.length > 0)
+    .map(([id]) => id)
 
   const swaps: SwapSuggestion[] = []
-  for (let i = 0; i < scored.length; i++) {
-    for (let j = i + 1; j < scored.length; j++) {
-      const A = scored[i]
-      const B = scored[j]
-      const sharedGrades = A.grades.filter((g) => B.grades.includes(g))
-      if (sharedGrades.length === 0) continue
-      const aBlocks = clubBlocks.get(A.id) || []
-      const bBlocks = clubBlocks.get(B.id) || []
-      if (!aBlocks.length || !bBlocks.length) continue
-      const aKeys = aBlocks.map(keyOf).sort().join(",")
-      const bKeys = bBlocks.map(keyOf).sort().join(",")
-      if (aKeys === bKeys) continue
 
-      const before = conflictIf(A.grades, aBlocks) + conflictIf(B.grades, bBlocks)
-      const after = conflictIf(A.grades, bBlocks) + conflictIf(B.grades, aBlocks)
-      const gain = before - after
-      if (gain < 40) continue
+  for (let i = 0; i < scheduledClubIds.length; i++) {
+    for (let j = i + 1; j < scheduledClubIds.length; j++) {
+      const aId = scheduledClubIds[i]
+      const bId = scheduledClubIds[j]
+      const aMeta = clubMeta.get(aId)!
+      const bMeta = clubMeta.get(bId)!
+      const aSlots = clubBlocks.get(aId)!
+      const bSlots = clubBlocks.get(bId)!
+
+      if (!aMeta.grades.some((g) => bMeta.grades.includes(g))) continue
+      if (aSlots.map(keyOf).sort().join(",") === bSlots.map(keyOf).sort().join(",")) continue
+
+      const gained = new Set<string>()
+      const gainedGroups = new Set<string>()
+
+      for (const student of students) {
+        const canABefore = canSelect(student, aMeta.grades, aSlots)
+        const canBBefore = canSelect(student, bMeta.grades, bSlots)
+        const canAAfter = canSelect(student, aMeta.grades, bSlots)
+        const canBAfter = canSelect(student, bMeta.grades, aSlots)
+
+        const selectableBefore = (canABefore ? 1 : 0) + (canBBefore ? 1 : 0)
+        const selectableAfter = (canAAfter ? 1 : 0) + (canBAfter ? 1 : 0)
+        if (selectableAfter <= selectableBefore) continue
+
+        gained.add(student.studentId)
+        for (const name of student.groupNames) gainedGroups.add(name)
+      }
+
+      const extraStudents = gained.size
+      if (extraStudents < 5) continue
+
+      const benefitingGroups = [...gainedGroups].sort((a, b) =>
+        a.localeCompare(b, "tr", { sensitivity: "base" })
+      )
+      const groupPart =
+        benefitingGroups.length === 0
+          ? "ilgili ÖÇG gruplarındaki"
+          : benefitingGroups.length <= 5
+            ? `${benefitingGroups.join(", ")} ÖÇG’lerindeki`
+            : `${benefitingGroups.slice(0, 5).join(", ")} ve ${benefitingGroups.length - 5} ÖÇG daha içindeki`
 
       swaps.push({
-        clubAId: A.id,
-        clubAName: A.name,
-        clubBId: B.id,
-        clubBName: B.name,
-        aSlots: A.slots,
-        bSlots: B.slots,
-        aGrades: A.grades,
-        bGrades: B.grades,
-        sharedGrades,
-        before,
-        after,
-        gain,
-        summary: `${A.name} programını (${A.slots.join(", ")}) ile ${B.name} programını (${B.slots.join(", ")}) yer değiştirirseniz ortak sınıflarda (~${sharedGrades.join(", ")}) ÖÇG çakışması yaklaşık ${gain} birim azalır.`,
+        clubAId: aId,
+        clubAName: aMeta.name,
+        clubBId: bId,
+        clubBName: bMeta.name,
+        extraStudents,
+        benefitingGroups,
+        summary: `${aMeta.name} ile ${bMeta.name} kulüplerinin program yerlerini birbirleriyle değiştirirseniz, ${groupPart} yaklaşık ${extraStudents} öğrenci daha fazla kulüp seçebilecek.`,
       })
     }
   }
-  swaps.sort((a, b) => b.gain - a.gain || a.clubAName.localeCompare(b.clubAName, "tr"))
 
-  // Deduplicate similar swap themes: keep top N unique club pairs by gain
-  const seenPairs = new Set<string>()
-  const uniqueSwaps: SwapSuggestion[] = []
+  swaps.sort(
+    (a, b) =>
+      b.extraStudents - a.extraStudents ||
+      a.clubAName.localeCompare(b.clubAName, "tr", { sensitivity: "base" })
+  )
+
+  const seen = new Set<string>()
+  const unique: SwapSuggestion[] = []
   for (const s of swaps) {
-    const pair = [s.clubAId, s.clubBId].sort().join(":")
-    if (seenPairs.has(pair)) continue
-    seenPairs.add(pair)
-    uniqueSwaps.push(s)
-    if (uniqueSwaps.length >= 20) break
-  }
-
-  const gradeLoads: OcgGradeLoad[] = [...gradeBusyStudents.entries()]
-    .sort((a, b) => a[0] - b[0])
-    .map(([grade, slotMap]) => ({
-      grade,
-      slots: [...slotMap.entries()]
-        .map(([k, students]) => {
-          const [d, st, et] = k.split("|")
-          return {
-            label: labelOf({ dayOfWeek: Number(d), startTime: st, endTime: et }),
-            students,
-          }
-        })
-        .sort((a, b) => b.students - a.students),
-    }))
-
-  const highConflictCount = scored.filter((c) => c.severity === "high").length
-  const zeroConflictCount = scored.filter((c) => c.severity === "none").length
-
-  let headline =
-    "Kulüp etütleri ile ÖÇG programları karşılaştırıldı. Öneriler yalnızca yol gösterir; otomatik değişiklik yapılmaz."
-  if (highConflictCount > 0) {
-    headline = `${highConflictCount} kulüp ÖÇG ile yüksek çakışıyor. Aşağıdaki takas önerilerine göre programları güncelleyerek daha fazla öğrencinin kulüp seçmesini sağlayabilirsiniz.`
+    const key = [s.clubAId, s.clubBId].sort().join(":")
+    if (seen.has(key)) continue
+    seen.add(key)
+    unique.push(s)
+    if (unique.length >= 25) break
   }
 
   return {
     generatedAt: new Date().toISOString(),
     summary: {
-      clubsTotal: clubs.length,
-      clubsWithSchedule: scored.length,
-      clubsWithoutSchedule: withoutSchedule.length,
-      highConflictCount,
-      zeroConflictCount,
-      swapCount: uniqueSwaps.length,
+      clubsWithSchedule: scheduledClubIds.length,
+      suggestionCount: unique.length,
     },
-    headline,
-    gradeLoads,
-    clubs: scored,
-    withoutSchedule,
-    swaps: uniqueSwaps,
+    headline:
+      unique.length > 0
+        ? "Aşağıda program yer değişikliği önerileri var. Her kartta hangi iki kulübü değiştirirseniz kaç öğrencinin daha fazla kulüp seçebileceği yazıyor."
+        : "Şu an anlamlı bir program yer değişimi önerisi bulunamadı.",
+    swaps: unique,
   }
 }

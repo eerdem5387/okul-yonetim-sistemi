@@ -285,8 +285,8 @@ export default function ClubsPage() {
           <Link href="/clubs/ocg-uyumu" className="flex-1 sm:flex-initial">
             <Button variant="outline" size="sm" className="w-full text-xs sm:text-sm">
               <CalendarClock className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">ÖÇG Uyumu</span>
-              <span className="sm:hidden">ÖÇG</span>
+              <span className="hidden sm:inline">Program Önerileri</span>
+              <span className="sm:hidden">Öneriler</span>
             </Button>
           </Link>
           <Link href="/clubs/uye-onaylari" className="flex-1 sm:flex-initial">
