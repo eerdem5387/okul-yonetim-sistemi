@@ -22,9 +22,15 @@ function asStatus(value: unknown): "PENDING" | "APPROVED" | "COMPLETED" | "REJEC
 export async function upsertFinanceExpenseRequest(
   tenantId: string,
   data: Record<string, unknown>,
+  options?: { notify?: boolean },
 ) {
   const id = String(data.id ?? "")
   if (!id) throw new Error("expense_request id gerekli")
+
+  const existing = await prisma.financeExpenseRequest.findUnique({
+    where: { id },
+    select: { status: true },
+  })
 
   const totalRaw = data.total
   const payload = {
@@ -53,11 +59,28 @@ export async function upsertFinanceExpenseRequest(
     syncedAt: new Date(),
   }
 
-  await prisma.financeExpenseRequest.upsert({
+  const row = await prisma.financeExpenseRequest.upsert({
     where: { id },
     create: { id, ...payload },
     update: payload,
   })
+
+  const shouldNotify =
+    options?.notify !== false &&
+    row.status === "PENDING" &&
+    existing?.status !== "PENDING"
+
+  if (shouldNotify) {
+    // Serverless'ta fire-and-forget çoğu zaman kesilir; push'u await et.
+    try {
+      const { notifyFoundersPendingExpenseRequest } = await import(
+        "@/lib/notifications/finance-push"
+      )
+      await notifyFoundersPendingExpenseRequest(row)
+    } catch (err) {
+      console.error("[finance-push]", err)
+    }
+  }
 }
 
 export async function upsertFinanceCashbookEntry(
@@ -106,7 +129,7 @@ export async function applyFinanceSnapshot(snapshot: {
   cashbookEntries?: Record<string, unknown>[]
 }) {
   for (const row of snapshot.expenseRequests ?? []) {
-    await upsertFinanceExpenseRequest(snapshot.tenantId, row)
+    await upsertFinanceExpenseRequest(snapshot.tenantId, row, { notify: false })
   }
   for (const row of snapshot.cashbookEntries ?? []) {
     await upsertFinanceCashbookEntry(snapshot.tenantId, row)

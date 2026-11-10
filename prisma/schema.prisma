@@ -726,11 +726,30 @@ model Staff {
   conductedRetentionMeetings StaffRetentionMeeting[] @relation("ConductedRetentionMeetings")
   conductedHrApplicationMeetings HrJobApplicationMeeting[] @relation("ConductedHrApplicationMeetings")
 
+  pushDevices StaffPushDevice[]
+
   @@index([tcNumber])
   @@index([department])
   @@index([isActive])
   @@index([firstName, lastName])
   @@map("staff")
+}
+
+/// Mobil uygulama Expo push token kaydı (cihaz başına)
+model StaffPushDevice {
+  id         String   @id @default(cuid())
+  staffId    String
+  token      String   @unique
+  platform   String? // ios | android
+  appVersion String?
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  staff Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId])
+  @@map("staff_push_devices")
 }
 
 /// Okul genelinde ortak branş / ders kataloğu (Matematik, Fizik, …)
