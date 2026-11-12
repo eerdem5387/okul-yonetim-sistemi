@@ -3,6 +3,13 @@ import { prisma } from "@/lib/prisma"
 import { syncRenewalPlaceholderForPrimaryYear } from "@/lib/academic-year-renewal-placeholder"
 import { runAcademicYearActivationRollover } from "@/lib/academic-year-rollover"
 import { resolveCalendarFromBody } from "@/lib/academic-year-mutation"
+import { formatAcademicYearName, parseAcademicYearSpan } from "@/lib/academic-year-ui"
+
+function normalizeAcademicYearName(raw: string): string {
+  const span = parseAcademicYearSpan({ name: raw })
+  if (span) return formatAcademicYearName(span.startYear, span.endYear)
+  return raw.trim()
+}
 
 function mapYearJson(r: {
   id: string
@@ -61,7 +68,18 @@ export async function POST(request: NextRequest) {
     const activeFlag = Boolean(body.isActive)
 
     if (!name?.trim()) {
-      return NextResponse.json({ error: "Akademik yıl adı zorunludur" }, { status: 400 })
+      return NextResponse.json(
+        { error: "Akademik yıl zorunludur (başlangıç yılı seçilerek türetilir)" },
+        { status: 400 },
+      )
+    }
+
+    const normalizedName = normalizeAcademicYearName(name)
+    if (!parseAcademicYearSpan({ name: normalizedName })) {
+      return NextResponse.json(
+        { error: "Geçerli bir akademik yıl seçin (ör. 2027 → 2027-2028)." },
+        { status: 400 },
+      )
     }
 
     const cal = resolveCalendarFromBody(body, activeFlag)
@@ -87,7 +105,7 @@ export async function POST(request: NextRequest) {
         }
         return tx.academicYear.create({
           data: {
-            name: name.trim(),
+            name: normalizedName,
             startDate: cal.data.start,
             endDate: cal.data.end,
             isActive: true,
@@ -106,7 +124,7 @@ export async function POST(request: NextRequest) {
 
     const academicYear = await prisma.academicYear.create({
       data: {
-        name: name.trim(),
+        name: normalizedName,
         startDate: cal.data.start,
         endDate: cal.data.end,
         isActive: false,

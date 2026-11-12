@@ -1,17 +1,53 @@
+const YEAR_SPAN_RE = /(\d{4})\s*[-–/]\s*(\d{4})/
+
+/** Akademik yıl adı: "2027-2028 Akademik Yılı" */
+export function formatAcademicYearName(startYear: number, endYear: number = startYear + 1): string {
+  return `${startYear}-${endYear} Akademik Yılı`
+}
+
+/** Sözleşme etiketi: "2027-2028" */
+export function formatAcademicYearLabel(startYear: number, endYear: number = startYear + 1): string {
+  return `${startYear}-${endYear}`
+}
+
+/** Form seçenekleri (başlangıç yılı). */
+export function academicYearStartOptions(centerYear = new Date().getFullYear(), span = 8): number[] {
+  const start = centerYear - 3
+  return Array.from({ length: span }, (_, i) => start + i)
+}
+
+/**
+ * Yıldan yıl aralığını çıkarır (isim veya startDate).
+ * Serbest metin / seçici fark etmez; sıralama ve «sonraki yıl» hesabı buna dayanır.
+ */
+export function parseAcademicYearSpan(y: {
+  name?: string | null
+  startDate?: Date | string | null
+}): { startYear: number; endYear: number } | null {
+  const name = y.name?.trim() ?? ""
+  const m = name.match(YEAR_SPAN_RE)
+  if (m) {
+    const startYear = Number.parseInt(m[1], 10)
+    const endYear = Number.parseInt(m[2], 10)
+    if (!Number.isNaN(startYear) && !Number.isNaN(endYear)) return { startYear, endYear }
+  }
+  if (y.startDate != null && y.startDate !== "") {
+    const start = new Date(y.startDate)
+    if (!Number.isNaN(start.getTime())) {
+      const startYear = start.getFullYear()
+      return { startYear, endYear: startYear + 1 }
+    }
+  }
+  return null
+}
+
 /** Sözleşme / istatistiklerde kullanılan "YYYY-YYYY" etiketi (mevcut new-registration uyumu). */
 export function contractYearLabelFromAcademicYear(y: {
   name: string
   startDate?: Date | string | null
 }): string {
-  const m = y.name.match(/(\d{4})\s*[-–/]\s*(\d{4})/)
-  if (m) return `${m[1]}-${m[2]}`
-  if (y.startDate != null && y.startDate !== "") {
-    const start = new Date(y.startDate)
-    if (!Number.isNaN(start.getTime())) {
-      const y0 = start.getFullYear()
-      return `${y0}-${y0 + 1}`
-    }
-  }
+  const span = parseAcademicYearSpan(y)
+  if (span) return formatAcademicYearLabel(span.startYear, span.endYear)
   return y.name.trim() || ""
 }
 
@@ -20,18 +56,28 @@ export function followingContractYearLabelFromRow(y: {
   name: string
   startDate?: Date | string | null
 }): string | null {
-  const m = y.name.match(/(\d{4})[-–/](\d{4})/)
-  if (m) {
-    const a = parseInt(m[1], 10)
-    const b = parseInt(m[2], 10)
-    if (Number.isNaN(a) || Number.isNaN(b)) return null
-    return `${a + 1}-${b + 1}`
-  }
-  if (y.startDate == null || y.startDate === "") return null
-  const start = new Date(y.startDate)
-  if (Number.isNaN(start.getTime())) return null
-  const y0 = start.getFullYear()
-  return `${y0 + 1}-${y0 + 2}`
+  const span = parseAcademicYearSpan(y)
+  if (!span) return null
+  return formatAcademicYearLabel(span.startYear + 1, span.endYear + 1)
+}
+
+function compareAcademicYearsChrono(
+  a: { name: string; startDate?: string | null },
+  b: { name: string; startDate?: string | null },
+): number {
+  const sa = parseAcademicYearSpan(a)
+  const sb = parseAcademicYearSpan(b)
+  if (sa && sb && sa.startYear !== sb.startYear) return sa.startYear - sb.startYear
+  if (sa && !sb) return -1
+  if (!sa && sb) return 1
+
+  const aTime = a.startDate ? new Date(a.startDate).getTime() : NaN
+  const bTime = b.startDate ? new Date(b.startDate).getTime() : NaN
+  const aHas = !Number.isNaN(aTime)
+  const bHas = !Number.isNaN(bTime)
+  if (aHas && bHas && aTime !== bTime) return aTime - bTime
+  if (aHas !== bHas) return aHas ? -1 : 1
+  return a.name.localeCompare(b.name, "tr")
 }
 
 export type AcademicYearListItem = {
@@ -131,13 +177,9 @@ export function resolveActiveAndNextAcademicYear(years: AcademicYearListItem[]):
   next: AcademicYearListItem | null
 } {
   if (!years.length) return { active: null, next: null }
-  const sorted = [...years].sort((a, b) => {
-    const ta = a.startDate ? new Date(a.startDate).getTime() : 0
-    const tb = b.startDate ? new Date(b.startDate).getTime() : 0
-    if (ta !== tb) return ta - tb
-    return a.name.localeCompare(b.name, "tr")
-  })
-  const primaries = sorted.filter((y) => !y.parentActiveYearId)
+  const primaries = [...years]
+    .filter((y) => !y.parentActiveYearId)
+    .sort(compareAcademicYearsChrono)
   const byFlag = primaries.find((y) => y.isActive)
   const now = Date.now()
   const byDateRange = primaries.find((y) => {
@@ -150,22 +192,22 @@ export function resolveActiveAndNextAcademicYear(years: AcademicYearListItem[]):
   if (!active) return { active: null, next: null }
 
   /**
-   * «Bir sonraki yıl» yalnızca ana kayıtlar (parentActiveYearId yok) arasından seçilir.
-   * Taslak yıllarda başlangıç tarihi olmadığı için eski sıralamada (null = 0) listenin başına
-   * düşüyorlardı; aktif yıl sonda kalınca idx+1 boş kalıyordu. Tarihli yıllar önce (kronolojik),
-   * tarihsiz taslaklar sonra sıralanır.
+   * «Bir sonraki yıl»: ana kayıtlarda startYear (isimden veya startDate’ten) aktiften büyük
+   * olan ilk yıl. Takvimsiz taslaklar da isimdeki YYYY-YYYY ile doğru sıraya girer.
    */
-  const primariesChrono = [...primaries].sort((a, b) => {
-    const aTime = a.startDate ? new Date(a.startDate).getTime() : NaN
-    const bTime = b.startDate ? new Date(b.startDate).getTime() : NaN
-    const aHas = !Number.isNaN(aTime)
-    const bHas = !Number.isNaN(bTime)
-    if (aHas && bHas && aTime !== bTime) return aTime - bTime
-    if (aHas !== bHas) return aHas ? -1 : 1
-    return a.name.localeCompare(b.name, "tr")
-  })
-  const idx = primariesChrono.findIndex((y) => y.id === active.id)
+  const activeSpan = parseAcademicYearSpan(active)
   const next =
-    idx >= 0 && idx < primariesChrono.length - 1 ? primariesChrono[idx + 1]! : null
+    (activeSpan
+      ? primaries.find((y) => {
+          if (y.id === active.id) return false
+          const span = parseAcademicYearSpan(y)
+          return span != null && span.startYear > activeSpan.startYear
+        })
+      : null) ??
+    (() => {
+      const idx = primaries.findIndex((y) => y.id === active.id)
+      return idx >= 0 && idx < primaries.length - 1 ? primaries[idx + 1]! : null
+    })()
+
   return { active, next }
 }

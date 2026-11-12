@@ -6,6 +6,11 @@ import {
   getCurrentAcademicTermPhase,
   validateAcademicYearTermDates,
 } from "@/lib/academic-year-terms"
+import {
+  academicYearStartOptions,
+  formatAcademicYearName,
+  parseAcademicYearSpan,
+} from "@/lib/academic-year-ui"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -28,7 +33,8 @@ import {
 } from "lucide-react"
 
 const INITIAL_YEAR_FORM = {
-  name: "",
+  /** Başlangıç yılı (örn. 2027 → 2027-2028). Ad bundan türetilir. */
+  startYear: "" as number | "",
   startDate: "",
   endDate: "",
   term1Start: "",
@@ -242,9 +248,10 @@ export default function YonetimPage() {
 
   const openAcademicYearEditor = async (year: AcademicYear) => {
     setEditingYear(year)
+    const span = parseAcademicYearSpan(year)
     setYearFormData({
       ...INITIAL_YEAR_FORM,
-      name: year.name,
+      startYear: span?.startYear ?? "",
       startDate: year.startDate?.split("T")[0] ?? "",
       endDate: year.endDate?.split("T")[0] ?? "",
       term1Start: year.term1Start?.split("T")[0] ?? "",
@@ -406,10 +413,15 @@ export default function YonetimPage() {
   const handleYearSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!yearFormData.name.trim()) {
-      error("Akademik yıl adı zorunludur!")
+    const startYearNum =
+      typeof yearFormData.startYear === "number"
+        ? yearFormData.startYear
+        : Number.parseInt(String(yearFormData.startYear), 10)
+    if (!Number.isFinite(startYearNum) || startYearNum < 2000 || startYearNum > 2100) {
+      error("Akademik yıl seçin (başlangıç yılı).")
       return
     }
+    const derivedName = formatAcademicYearName(startYearNum)
 
     const wantActive = yearFormData.isActive
     const anyCal =
@@ -499,7 +511,7 @@ export default function YonetimPage() {
       const method = editingYear ? "PUT" : "POST"
 
       const payload = {
-        name: yearFormData.name.trim(),
+        name: derivedName,
         isActive: yearFormData.isActive,
         startDate: yearFormData.startDate || null,
         endDate: yearFormData.endDate || null,
@@ -600,10 +612,15 @@ export default function YonetimPage() {
     
     // Eğer akademik yıl henüz kaydedilmemişse, önce kaydet
     if (!academicYearId) {
-      if (!yearFormData.name.trim()) {
-        error("Önce akademik yıl adını girin!")
+      const holidayStartYear =
+        typeof yearFormData.startYear === "number"
+          ? yearFormData.startYear
+          : Number.parseInt(String(yearFormData.startYear), 10)
+      if (!Number.isFinite(holidayStartYear) || holidayStartYear < 2000) {
+        error("Önce akademik yılı seçin!")
         return
       }
+      const holidayYearName = formatAcademicYearName(holidayStartYear)
       const anyCal =
         !!(
           yearFormData.startDate ||
@@ -640,11 +657,11 @@ export default function YonetimPage() {
           !yearFormData.term2Start ||
           !yearFormData.term2End
         ) {
-          error("Takvimi tam doldurun veya yalnızca yıl adıyla kaydedin; tatil için tam takvim gerekir.")
+          error("Takvimi tam doldurun veya yalnızca yılı seçerek kaydedin; tatil için tam takvim gerekir.")
           return
         }
       } else {
-        error("Önce akademik yılı kaydedin (yıl adı yeterli). Tatiller için takvimin de dolu olması gerekir.")
+        error("Önce akademik yılı kaydedin (yıl seçimi yeterli). Tatiller için takvimin de dolu olması gerekir.")
         return
       }
 
@@ -676,7 +693,7 @@ export default function YonetimPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            name: yearFormData.name.trim(),
+            name: holidayYearName,
             isActive: yearFormData.isActive,
             startDate: yearFormData.startDate || null,
             endDate: yearFormData.endDate || null,
@@ -958,7 +975,11 @@ export default function YonetimPage() {
                 onClick={() => {
                   setShowYearForm(true)
                   setEditingYear(null)
-                  setYearFormData({ ...INITIAL_YEAR_FORM })
+                  const active = academicYears.find((y) => y.isActive && !y.parentActiveYearId)
+                  const activeSpan = active ? parseAcademicYearSpan(active) : null
+                  const suggested =
+                    activeSpan?.startYear != null ? activeSpan.startYear + 1 : new Date().getFullYear()
+                  setYearFormData({ ...INITIAL_YEAR_FORM, startYear: suggested })
                 }}
                 className="text-xs sm:text-sm"
               >
@@ -1329,28 +1350,47 @@ export default function YonetimPage() {
             </CardHeader>
             <CardContent className="px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
               <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
-                Gelecek yılı henüz takvimi belli olmadan kaydetmek için yalnızca adı girip «Aktif» kutusunu işaretlemeyin.
-                Sistemde hâlihazırda aktif bir yıl varken yeni satır mantıken bir sonraki öğretim yılıdır; bu durumda
-                başlangıç/bitiş, dönemler, hafta tatili ve resmi tatiller yalnızca «Aktif akademik yıl olarak işaretle»
-                seçildiğinde görünür. Bu yılı aktif yaptığınızda takvim alanları zorunludur. Başka bir aktif yıl varken
-                bu kaydı aktif yaparsanız sınıf atamaları silinir, öğrenciler bir üst sınıfa geçer; 8. ve 12. sınıflar
-                mezun olur. Kayıt yenileme etiketi aktif yılın adı veya başlangıç tarihinden türetilir.
+                Akademik yılı serbest metin yazmayın; başlangıç yılını seçin. Sistem adı ve «bir sonraki /
+                geçmiş yıl» hesabını bu seçimden yapar. Takvim henüz belli değilse yalnızca yılı seçip «Aktif»
+                kutusunu işaretlemeyin. Aktif yapınca takvim alanları zorunludur. Başka bir aktif yıl varken bu
+                kaydı aktif yaparsanız sınıf atamaları silinir, öğrenciler bir üst sınıfa geçer; 8. ve 12.
+                sınıflar mezun olur.
               </p>
               <form onSubmit={handleYearSubmit} className="space-y-3 sm:space-y-4">
-                <div>
-                  <Label htmlFor="yearName" className="text-xs sm:text-sm">
-                    Akademik Yıl Adı *
-                  </Label>
-                  <Input
-                    id="yearName"
-                    value={yearFormData.name}
-                    onChange={(e) =>
-                      setYearFormData({ ...yearFormData, name: e.target.value })
-                    }
-                    placeholder="Örn: 2024-2025 Eğitim Öğretim Yılı"
-                    required
-                    className="h-9 sm:h-10 text-xs sm:text-sm"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div>
+                    <Label htmlFor="startYear" className="text-xs sm:text-sm">
+                      Başlangıç yılı *
+                    </Label>
+                    <select
+                      id="startYear"
+                      value={yearFormData.startYear === "" ? "" : String(yearFormData.startYear)}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        setYearFormData({
+                          ...yearFormData,
+                          startYear: v === "" ? "" : Number.parseInt(v, 10),
+                        })
+                      }}
+                      required
+                      className="mt-1 flex h-9 sm:h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-xs sm:text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <option value="">Seçin…</option>
+                      {academicYearStartOptions().map((y) => (
+                        <option key={y} value={y}>
+                          {y} → {y + 1}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-xs sm:text-sm">Kayıt adı</Label>
+                    <div className="mt-1 flex h-9 sm:h-10 items-center rounded-md border border-dashed border-input bg-muted/40 px-3 text-xs sm:text-sm text-muted-foreground">
+                      {typeof yearFormData.startYear === "number"
+                        ? formatAcademicYearName(yearFormData.startYear)
+                        : "Yıl seçilince otomatik oluşur"}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-2 pt-1">
