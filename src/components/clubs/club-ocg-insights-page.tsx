@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, ArrowLeftRight, ExternalLink, Loader2, RefreshCw } from "lucide-react"
+import { ArrowLeft, ArrowLeftRight, Check, ExternalLink, Loader2, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import type { OcgScheduleInsights } from "@/lib/clubs/ocg-schedule-insights"
@@ -12,6 +12,8 @@ export function ClubOcgInsightsPage({ basePath }: { basePath: string }) {
   const [data, setData] = useState<OcgScheduleInsights | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [applyingKey, setApplyingKey] = useState<string | null>(null)
+  const [actionMessage, setActionMessage] = useState("")
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -40,6 +42,39 @@ export function ClubOcgInsightsPage({ basePath }: { basePath: string }) {
     void load()
   }, [load])
 
+  const applySwap = async (clubAId: string, clubBId: string, clubAName: string, clubBName: string) => {
+    const key = `${clubAId}:${clubBId}`
+    const ok = window.confirm(
+      `«${clubAName}» ile «${clubBName}» kulüplerinin program yerlerini değiştirmek istiyor musunuz?`,
+    )
+    if (!ok) return
+
+    setApplyingKey(key)
+    setActionMessage("")
+    setError("")
+    try {
+      const res = await fetch("/api/clubs/ocg-insights/apply-swap", {
+        method: "POST",
+        headers: {
+          ...staffAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ clubAId, clubBId }),
+      })
+      const json = (await res.json().catch(() => ({}))) as { error?: string; message?: string }
+      if (!res.ok) {
+        setError(json.error || "Yer değişimi uygulanamadı")
+        return
+      }
+      setActionMessage(json.message || "Program yerleri değiştirildi.")
+      await load()
+    } catch {
+      setError("Yer değişimi uygulanamadı")
+    } finally {
+      setApplyingKey(null)
+    }
+  }
+
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 max-w-3xl mx-auto">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -53,8 +88,8 @@ export function ClubOcgInsightsPage({ basePath }: { basePath: string }) {
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Program değişikliği önerileri</h1>
             <p className="text-gray-600 mt-1 text-sm">
-              İki kulübün etüt yerlerini değiştirirseniz kaç öğrencinin daha fazla kulüp
-              seçebileceğini gösterir. Otomatik değişiklik yapılmaz.
+              İki kulübün etüt yerlerini değiştirirseniz kaç öğrencinin daha fazla kulüp seçebileceğini
+              gösterir. «Değişikliği Uygula» ile yerleri tek tıkla takas edebilirsiniz.
             </p>
           </div>
         </div>
@@ -67,6 +102,12 @@ export function ClubOcgInsightsPage({ basePath }: { basePath: string }) {
           Yenile
         </Button>
       </div>
+
+      {actionMessage ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          {actionMessage}
+        </div>
+      ) : null}
 
       {loading && !data ? (
         <Card>
@@ -133,6 +174,20 @@ export function ClubOcgInsightsPage({ basePath }: { basePath: string }) {
                       </div>
                     ) : null}
                     <div className="flex flex-wrap gap-2 pt-1">
+                      <Button
+                        size="sm"
+                        disabled={applyingKey === `${s.clubAId}:${s.clubBId}` || loading}
+                        onClick={() =>
+                          void applySwap(s.clubAId, s.clubBId, s.clubAName, s.clubBName)
+                        }
+                      >
+                        {applyingKey === `${s.clubAId}:${s.clubBId}` ? (
+                          <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                        ) : (
+                          <Check className="h-3.5 w-3.5 mr-1.5" />
+                        )}
+                        Değişikliği Uygula
+                      </Button>
                       <Link href={`${basePath}/${s.clubAId}`}>
                         <Button size="sm" variant="outline">
                           {s.clubAName}
