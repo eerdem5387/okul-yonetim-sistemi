@@ -567,7 +567,7 @@ export default function ClubsPage() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {filteredClubs.length > 0 ? (
           filteredClubs.map((club) => {
             const capacityPercentage = (club.selections.length / club.capacity) * 100
@@ -599,81 +599,77 @@ export default function ClubsPage() {
                 className="card-soft hover:shadow-xl transition-all duration-200 border-0 cursor-pointer"
                 onClick={() => (window.location.href = `/rehberlik/clubs/${club.id}`)}
               >
-                <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 lg:pt-6">
-                  <div className="flex justify-between items-start gap-2 sm:gap-3">
-                    <div className="flex-1 min-w-0">
-                      <CardTitle className="flex items-start gap-2 sm:gap-3 text-base sm:text-lg">
-                        <Users className="mt-0.5 h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 icon-blue flex-shrink-0" />
-                        <span className="whitespace-normal break-words">{club.name}</span>
-                      </CardTitle>
-                      <p className="mt-1 text-xs sm:text-sm text-muted-foreground truncate" title={`${club.selections.length}/${club.capacity} öğrenci · ${gradeCompact}`}>
-                        {club.selections.length}/{club.capacity} öğrenci · {gradeCompact}
-                      </p>
-                      <div className="mt-1.5 flex flex-nowrap items-center gap-1.5 overflow-x-auto">
-                        <span className={`shrink-0 px-2 py-0.5 text-[10px] sm:text-xs font-semibold rounded-full ${statusColor}`}>
-                          {isFull ? "Dolu" : isEmpty ? "Boş" : "Kontenjan Var"}
-                        </span>
-                        {club.exemptFromSelectionLimit && (
-                          <span className="shrink-0 px-2 py-0.5 text-[10px] sm:text-xs font-semibold rounded-full bg-amber-100 text-amber-800">
-                            Kota dışı
-                          </span>
-                        )}
-                        {scheduleDays ? (
-                          <span className="shrink-0 px-2 py-0.5 text-[10px] sm:text-xs font-semibold rounded-full bg-blue-50 text-blue-700" title={scheduleDays}>
-                            {scheduleDays}
-                          </span>
-                        ) : (
-                          <span className="shrink-0 px-2 py-0.5 text-[10px] sm:text-xs font-semibold rounded-full bg-amber-50 text-amber-700">
-                            Program yok
-                          </span>
-                        )}
-                        {selectedGrade !== "all" && (
-                          <span className="shrink-0 px-1.5 py-0.5 text-[10px] sm:text-xs font-semibold rounded-full bg-blue-50 text-blue-600">
-                            {selectedGrade}
-                          </span>
-                        )}
-                      </div>
-                      <p className="mt-1 text-[11px] sm:text-xs text-gray-500 truncate">
-                        Öğretmen:{" "}
-                        {club.instructor
-                          ? `${club.instructor.firstName} ${club.instructor.lastName}`
-                          : "Atanmadı"}
-                        {(club._count?.membershipRequests ?? 0) > 0
-                          ? ` · ${club._count!.membershipRequests} bekleyen talep`
-                          : ""}
-                      </p>
-                    </div>
-                    <div className="flex gap-1 sm:gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 sm:h-8 px-2 text-[10px] sm:text-xs gap-1"
-                        onClick={() => setDemandsClub({ id: club.id, name: club.name })}
-                      >
-                        <Inbox className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                        Talepler
-                        {(club._count?.demandRequests ?? 0) > 0
-                          ? ` (${club._count!.demandRequests})`
-                          : ""}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => (window.location.href = `/rehberlik/clubs/${club.id}`)}
-                        className="h-7 w-7 sm:h-8 sm:w-8 p-0"
-                      >
-                        <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleDelete(club.id)}
-                        className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                      </Button>
-                    </div>
+                <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 lg:pt-6 space-y-2">
+                  <CardTitle className="flex items-start gap-2 text-base sm:text-lg">
+                    <Users className="mt-0.5 h-4 w-4 sm:h-5 sm:w-5 icon-blue flex-shrink-0" />
+                    <span className="leading-snug text-pretty hyphens-none">{club.name}</span>
+                  </CardTitle>
+                  <div className="flex flex-wrap items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 sm:h-8 px-2 text-[10px] sm:text-xs gap-1"
+                      onClick={() => setDemandsClub({ id: club.id, name: club.name })}
+                    >
+                      <Inbox className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                      Talepler
+                      {(club._count?.demandRequests ?? 0) > 0
+                        ? ` (${club._count!.demandRequests})`
+                        : ""}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => (window.location.href = `/rehberlik/clubs/${club.id}`)}
+                      className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                    >
+                      <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDelete(club.id)}
+                      className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                    </Button>
                   </div>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    {club.selections.length}/{club.capacity} öğrenci · {gradeCompact}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className={`px-2 py-0.5 text-[10px] sm:text-xs font-semibold rounded-full ${statusColor}`}>
+                      {isFull ? "Dolu" : isEmpty ? "Boş" : "Kontenjan Var"}
+                    </span>
+                    {club.exemptFromSelectionLimit && (
+                      <span className="px-2 py-0.5 text-[10px] sm:text-xs font-semibold rounded-full bg-amber-100 text-amber-800">
+                        Kota dışı
+                      </span>
+                    )}
+                    {scheduleDays ? (
+                      <span className="px-2 py-0.5 text-[10px] sm:text-xs font-semibold rounded-full bg-blue-50 text-blue-700">
+                        {scheduleDays}
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 text-[10px] sm:text-xs font-semibold rounded-full bg-amber-50 text-amber-700">
+                        Program yok
+                      </span>
+                    )}
+                    {selectedGrade !== "all" && (
+                      <span className="px-1.5 py-0.5 text-[10px] sm:text-xs font-semibold rounded-full bg-blue-50 text-blue-600">
+                        {selectedGrade}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] sm:text-xs text-gray-500">
+                    Öğretmen:{" "}
+                    {club.instructor
+                      ? `${club.instructor.firstName} ${club.instructor.lastName}`
+                      : "Atanmadı"}
+                    {(club._count?.membershipRequests ?? 0) > 0
+                      ? ` · ${club._count!.membershipRequests} bekleyen talep`
+                      : ""}
+                  </p>
                 </CardHeader>
                 <CardContent className="pt-0 px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
                   {club.description && (
