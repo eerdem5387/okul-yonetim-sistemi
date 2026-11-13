@@ -25,6 +25,19 @@ export async function GET(request: NextRequest) {
                         }
                     }
                 },
+                schedules: {
+                    where: {
+                        isActive: true,
+                        OR: [{ clubGroupId: null }, { clubGroup: { isActive: true } }],
+                    },
+                    select: {
+                        dayOfWeek: true,
+                        startTime: true,
+                        endTime: true,
+                        clubGroupId: true,
+                    },
+                    orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
+                },
                 _count: {
                     select: {
                         membershipRequests: { where: { status: "PENDING" } },

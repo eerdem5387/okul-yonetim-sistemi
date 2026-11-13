@@ -1,5 +1,10 @@
 import { prisma } from "@/lib/prisma"
 import { effectiveClubGradeLevels } from "@/lib/club-grade-levels"
+import {
+  resolveScheduleInstructorId,
+  wouldInstructorConflictAfterClubSwap,
+  type ClubScheduleBlock,
+} from "@/lib/clubs/club-instructor-conflicts"
 import { hasTimeConflict } from "@/lib/schedules/time-conflict"
 import { parseStudentGradeLevel } from "@/lib/student-grade-level"
 
@@ -48,7 +53,7 @@ type StudentBusy = {
 export async function buildOcgScheduleInsights(): Promise<OcgScheduleInsights> {
   const [clubs, clubSchedules, studyGroups, studySessions] = await Promise.all([
     prisma.club.findMany({
-      select: { id: true, name: true, gradeLevels: true },
+      select: { id: true, name: true, gradeLevels: true, instructorId: true },
       orderBy: { name: "asc" },
     }),
     prisma.clubSchedule.findMany({
@@ -57,11 +62,14 @@ export async function buildOcgScheduleInsights(): Promise<OcgScheduleInsights> {
         OR: [{ clubGroupId: null }, { clubGroup: { isActive: true } }],
       },
       select: {
+        id: true,
         clubId: true,
         dayOfWeek: true,
         startTime: true,
         endTime: true,
         clubGroupId: true,
+        instructorId: true,
+        club: { select: { instructorId: true } },
       },
     }),
     prisma.studyGroup.findMany({
@@ -126,7 +134,19 @@ export async function buildOcgScheduleInsights(): Promise<OcgScheduleInsights> {
   const students = [...studentMap.values()]
 
   const clubBlocks = new Map<string, Block[]>()
+  const clubInstructorBlocks = new Map<string, ClubScheduleBlock[]>()
   const clubMeta = new Map<string, { name: string; grades: number[] }>()
+
+  // Tüm aktif satırlar: takas sonrası öğretmen çakışması için (swap ile aynı kapsam)
+  const allInstructorBlocks: ClubScheduleBlock[] = clubSchedules.map((s) => ({
+    id: s.id,
+    clubId: s.clubId,
+    dayOfWeek: s.dayOfWeek,
+    startTime: s.startTime,
+    endTime: s.endTime,
+    instructorId: resolveScheduleInstructorId(s),
+  }))
+
   for (const club of clubs) {
     clubMeta.set(club.id, {
       name: club.name,
@@ -136,6 +156,7 @@ export async function buildOcgScheduleInsights(): Promise<OcgScheduleInsights> {
     const clubLevel = rows.filter((s) => !s.clubGroupId)
     const use = clubLevel.length > 0 ? clubLevel : rows
     const uniq: Block[] = []
+    const instructorBlocks: ClubScheduleBlock[] = []
     for (const s of use) {
       const b: Block = {
         dayOfWeek: s.dayOfWeek,
@@ -143,8 +164,17 @@ export async function buildOcgScheduleInsights(): Promise<OcgScheduleInsights> {
         endTime: s.endTime,
       }
       if (!uniq.some((x) => keyOf(x) === keyOf(b))) uniq.push(b)
+      instructorBlocks.push({
+        id: s.id,
+        clubId: club.id,
+        dayOfWeek: s.dayOfWeek,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        instructorId: resolveScheduleInstructorId(s) || club.instructorId || null,
+      })
     }
     clubBlocks.set(club.id, uniq)
+    clubInstructorBlocks.set(club.id, instructorBlocks)
   }
 
   function canSelect(student: StudentBusy, grades: number[], slots: Block[]) {
@@ -170,6 +200,15 @@ export async function buildOcgScheduleInsights(): Promise<OcgScheduleInsights> {
 
       if (!aMeta.grades.some((g) => bMeta.grades.includes(g))) continue
       if (aSlots.map(keyOf).sort().join(",") === bSlots.map(keyOf).sort().join(",")) continue
+
+      const instructorConflict = wouldInstructorConflictAfterClubSwap({
+        clubAId: aId,
+        clubBId: bId,
+        aBlocks: clubInstructorBlocks.get(aId) || [],
+        bBlocks: clubInstructorBlocks.get(bId) || [],
+        otherBlocks: allInstructorBlocks,
+      })
+      if (instructorConflict) continue
 
       const gained = new Set<string>()
       const gainedGroups = new Set<string>()

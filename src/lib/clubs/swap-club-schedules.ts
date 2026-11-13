@@ -1,5 +1,11 @@
 import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
+import {
+  loadActiveClubScheduleBlocks,
+  resolveScheduleInstructorId,
+  wouldInstructorConflictAfterClubSwap,
+  type ClubScheduleBlock,
+} from "@/lib/clubs/club-instructor-conflicts"
 
 type Slot = { dayOfWeek: number; startTime: string; endTime: string }
 type ScheduleRow = {
@@ -34,10 +40,22 @@ async function loadEffectiveRows(tx: Prisma.TransactionClient, clubId: string) {
       isActive: true,
       OR: [{ clubGroupId: null }, { clubGroup: { isActive: true } }],
     },
+    include: { club: { select: { instructorId: true } } },
     orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }, { endTime: "asc" }],
   })
   const clubLevel = rows.filter((r) => r.clubGroupId == null)
   return clubLevel.length > 0 ? clubLevel : rows
+}
+
+function toBlocks(clubId: string, rows: Awaited<ReturnType<typeof loadEffectiveRows>>): ClubScheduleBlock[] {
+  return rows.map((r) => ({
+    id: r.id,
+    clubId,
+    dayOfWeek: r.dayOfWeek,
+    startTime: r.startTime,
+    endTime: r.endTime,
+    instructorId: resolveScheduleInstructorId(r),
+  }))
 }
 
 async function clearSlotOccupants(
@@ -142,6 +160,16 @@ export async function swapClubScheduleSlots(clubAId: string, clubBId: string) {
     if (aSlots.map(slotKey).sort().join(",") === bSlots.map(slotKey).sort().join(",")) {
       throw new Error("Bu iki kulübün programları zaten aynı.")
     }
+
+    const otherBlocks = await loadActiveClubScheduleBlocks(tx)
+    const conflictErr = wouldInstructorConflictAfterClubSwap({
+      clubAId,
+      clubBId,
+      aBlocks: toBlocks(clubAId, aRows),
+      bBlocks: toBlocks(clubBId, bRows),
+      otherBlocks,
+    })
+    if (conflictErr) throw new Error(conflictErr)
 
     const preferClubLevelA = aRows.every((r) => r.clubGroupId == null)
     const preferClubLevelB = bRows.every((r) => r.clubGroupId == null)

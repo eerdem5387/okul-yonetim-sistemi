@@ -9,7 +9,8 @@ import { RehberlikSidebar } from "@/components/layout/rehberlik-sidebar"
 import Link from "next/link"
 import { ClubGradeLevelField } from "@/components/clubs/club-grade-level-field"
 import { ClubDemandsDialog } from "@/components/clubs/club-demands-dialog"
-import { CLUB_GRADE_LEVELS, formatClubGradeLevels } from "@/lib/club-grade-levels"
+import { CLUB_GRADE_LEVELS, formatClubGradeLevelsCompact } from "@/lib/club-grade-levels"
+import { DAY_LABELS } from "@/lib/schedules/time-conflict"
 import { 
   Plus, 
   Trash2, 
@@ -42,6 +43,13 @@ interface ClubSelection {
   student: ClubStudent
 }
 
+interface ClubScheduleSlot {
+  dayOfWeek: number
+  startTime: string
+  endTime: string
+  clubGroupId: string | null
+}
+
 interface Club {
   id: string
   name: string
@@ -52,7 +60,17 @@ interface Club {
   createdAt: string
   selections: ClubSelection[]
   instructor?: { id: string; firstName: string; lastName: string; subject?: string | null } | null
+  schedules?: ClubScheduleSlot[]
   _count?: { membershipRequests?: number; demandRequests?: number; schedules?: number }
+}
+
+function clubScheduleDayLabel(schedules: ClubScheduleSlot[] | undefined): string | null {
+  if (!schedules?.length) return null
+  const clubLevel = schedules.filter((s) => s.clubGroupId == null)
+  const use = clubLevel.length > 0 ? clubLevel : schedules
+  const days = [...new Set(use.map((s) => s.dayOfWeek))].sort((a, b) => a - b)
+  if (days.length === 0) return null
+  return days.map((d) => DAY_LABELS[d] || `Gün ${d}`).join(", ")
 }
 
 interface Student {
@@ -572,6 +590,8 @@ export default function ClubsPage() {
               selectedGrade === "all"
                 ? club.selections
                 : club.selections.filter((selection) => selection.student?.grade === selectedGrade)
+            const scheduleDays = clubScheduleDayLabel(club.schedules)
+            const gradeCompact = formatClubGradeLevelsCompact(club.gradeLevels)
 
             return (
               <Card
@@ -586,34 +606,34 @@ export default function ClubsPage() {
                         <Users className="mt-0.5 h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 icon-blue flex-shrink-0" />
                         <span className="whitespace-normal break-words">{club.name}</span>
                       </CardTitle>
-                      <div className="mt-1.5 sm:mt-2 flex flex-wrap items-center gap-1.5 sm:gap-2">
-                        <CardDescription className="text-xs sm:text-sm">
-                          {club.selections.length}/{club.capacity} öğrenci · {formatClubGradeLevels(club.gradeLevels)}
-                        </CardDescription>
-                        <span className={`px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold rounded-full ${statusColor}`}>
+                      <p className="mt-1 text-xs sm:text-sm text-muted-foreground truncate" title={`${club.selections.length}/${club.capacity} öğrenci · ${gradeCompact}`}>
+                        {club.selections.length}/{club.capacity} öğrenci · {gradeCompact}
+                      </p>
+                      <div className="mt-1.5 flex flex-nowrap items-center gap-1.5 overflow-x-auto">
+                        <span className={`shrink-0 px-2 py-0.5 text-[10px] sm:text-xs font-semibold rounded-full ${statusColor}`}>
                           {isFull ? "Dolu" : isEmpty ? "Boş" : "Kontenjan Var"}
                         </span>
                         {club.exemptFromSelectionLimit && (
-                          <span className="px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold rounded-full bg-amber-100 text-amber-800">
+                          <span className="shrink-0 px-2 py-0.5 text-[10px] sm:text-xs font-semibold rounded-full bg-amber-100 text-amber-800">
                             Kota dışı
                           </span>
                         )}
-                        {(club._count?.schedules ?? 0) > 0 ? (
-                          <span className="px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold rounded-full bg-blue-50 text-blue-700">
-                            Programlı ({club._count!.schedules})
+                        {scheduleDays ? (
+                          <span className="shrink-0 px-2 py-0.5 text-[10px] sm:text-xs font-semibold rounded-full bg-blue-50 text-blue-700" title={scheduleDays}>
+                            {scheduleDays}
                           </span>
                         ) : (
-                          <span className="px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold rounded-full bg-amber-50 text-amber-700">
+                          <span className="shrink-0 px-2 py-0.5 text-[10px] sm:text-xs font-semibold rounded-full bg-amber-50 text-amber-700">
                             Program yok
                           </span>
                         )}
                         {selectedGrade !== "all" && (
-                          <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold rounded-full bg-blue-50 text-blue-600">
+                          <span className="shrink-0 px-1.5 py-0.5 text-[10px] sm:text-xs font-semibold rounded-full bg-blue-50 text-blue-600">
                             {selectedGrade}
                           </span>
                         )}
                       </div>
-                      <p className="mt-1 text-[11px] sm:text-xs text-gray-500">
+                      <p className="mt-1 text-[11px] sm:text-xs text-gray-500 truncate">
                         Öğretmen:{" "}
                         {club.instructor
                           ? `${club.instructor.firstName} ${club.instructor.lastName}`

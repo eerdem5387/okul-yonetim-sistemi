@@ -37,3 +37,27 @@ export function formatClubGradeLevels(gradeLevels: number[] | null | undefined):
   if (levels.length === LISE.length && LISE.every((n) => levels.includes(n))) return "Lise (9-12)"
   return levels.map((n) => `${n}. sınıf`).join(", ")
 }
+
+/** Kartlar için kısa gösterim: "5–7, 9–11" */
+export function formatClubGradeLevelsCompact(gradeLevels: number[] | null | undefined): string {
+  const levels = normalizeClubGradeLevels(gradeLevels)
+  if (levels.length === 0 || levels.length === CLUB_GRADE_LEVELS.length) return "5–12"
+  if (levels.length === ORTAOKUL.length && ORTAOKUL.every((n) => levels.includes(n))) return "5–8"
+  if (levels.length === LISE.length && LISE.every((n) => levels.includes(n))) return "9–12"
+
+  const ranges: string[] = []
+  let start = levels[0]!
+  let prev = levels[0]!
+  for (let i = 1; i < levels.length; i++) {
+    const n = levels[i]!
+    if (n === prev + 1) {
+      prev = n
+      continue
+    }
+    ranges.push(start === prev ? String(start) : `${start}–${prev}`)
+    start = n
+    prev = n
+  }
+  ranges.push(start === prev ? String(start) : `${start}–${prev}`)
+  return ranges.join(", ")
+}
