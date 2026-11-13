@@ -81,33 +81,33 @@ export function ClubSchedulesPanel({ refreshKey = 0, onRosterChanged }: Props) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [rosterId, setRosterId] = useState<string | null>(null)
-  const [exportingPdf, setExportingPdf] = useState(false)
+  const [exportingExcel, setExportingExcel] = useState(false)
 
-  const downloadWeeklyPdf = async () => {
-    setExportingPdf(true)
+  const downloadWeeklyExcel = async () => {
+    setExportingExcel(true)
     setError("")
     try {
-      const res = await fetch("/api/schedules/clubs/weekly-pdf", {
+      const res = await fetch("/api/schedules/clubs/weekly-excel", {
         headers: staffAuthHeaders(),
         cache: "no-store",
       })
       if (!res.ok) {
         const json = (await res.json().catch(() => ({}))) as { error?: string }
-        throw new Error(json.error || "PDF indirilemedi")
+        throw new Error(json.error || "Excel indirilemedi")
       }
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `haftalik-kulup-programi-${new Date().toISOString().slice(0, 10)}.pdf`
+      a.download = `haftalik-kulup-programi-${new Date().toISOString().slice(0, 10)}.xlsx`
       document.body.appendChild(a)
       a.click()
       a.remove()
       URL.revokeObjectURL(url)
     } catch (e) {
-      setError(e instanceof Error ? e.message : "PDF indirilemedi")
+      setError(e instanceof Error ? e.message : "Excel indirilemedi")
     } finally {
-      setExportingPdf(false)
+      setExportingExcel(false)
     }
   }
 
@@ -175,15 +175,15 @@ export function ClubSchedulesPanel({ refreshKey = 0, onRosterChanged }: Props) {
           variant="outline"
           size="sm"
           className="shrink-0"
-          disabled={exportingPdf || loading}
-          onClick={() => void downloadWeeklyPdf()}
+          disabled={exportingExcel || loading}
+          onClick={() => void downloadWeeklyExcel()}
         >
-          {exportingPdf ? (
+          {exportingExcel ? (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
           ) : (
             <Download className="h-4 w-4 mr-2" />
           )}
-          Haftalık kulüp PDF
+          Haftalık kulüp Excel
         </Button>
       </div>
 
