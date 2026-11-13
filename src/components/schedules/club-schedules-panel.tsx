@@ -1,9 +1,11 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Loader2 } from "lucide-react"
+import { Download, Loader2 } from "lucide-react"
 import { ClubScheduleRosterDialog } from "@/components/schedules/club-schedule-roster-dialog"
+import { Button } from "@/components/ui/button"
 import { DAY_NAMES, WEEKDAY_INDEXES } from "@/lib/schedules/lesson-slots"
+import { staffAuthHeaders } from "@/lib/permissions/client"
 
 type Instructor = {
   id: string
@@ -79,6 +81,35 @@ export function ClubSchedulesPanel({ refreshKey = 0, onRosterChanged }: Props) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [rosterId, setRosterId] = useState<string | null>(null)
+  const [exportingPdf, setExportingPdf] = useState(false)
+
+  const downloadWeeklyPdf = async () => {
+    setExportingPdf(true)
+    setError("")
+    try {
+      const res = await fetch("/api/schedules/clubs/weekly-pdf", {
+        headers: staffAuthHeaders(),
+        cache: "no-store",
+      })
+      if (!res.ok) {
+        const json = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(json.error || "PDF indirilemedi")
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `haftalik-kulup-programi-${new Date().toISOString().slice(0, 10)}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "PDF indirilemedi")
+    } finally {
+      setExportingPdf(false)
+    }
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -131,12 +162,29 @@ export function ClubSchedulesPanel({ refreshKey = 0, onRosterChanged }: Props) {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-lg font-semibold text-gray-900">Haftalık etüt programı — Kulüpler</h2>
-        <p className="text-sm text-gray-600">
-          Bir kulüp hücresine tıklayarak o gün/saatteki öğrencileri görüp ekleyip çıkarabilirsiniz.
-          Program ataması grup kartındaki <strong>Program ata</strong> ile yapılır.
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Haftalık etüt programı — Kulüpler</h2>
+          <p className="text-sm text-gray-600">
+            Bir kulüp hücresine tıklayarak o gün/saatteki öğrencileri görüp ekleyip çıkarabilirsiniz.
+            Program ataması grup kartındaki <strong>Program ata</strong> ile yapılır.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="shrink-0"
+          disabled={exportingPdf || loading}
+          onClick={() => void downloadWeeklyPdf()}
+        >
+          {exportingPdf ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4 mr-2" />
+          )}
+          Haftalık kulüp PDF
+        </Button>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
