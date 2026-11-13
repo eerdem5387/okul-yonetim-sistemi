@@ -73,7 +73,8 @@ export async function GET(
           regCtx.target,
           cs.student.id,
           regCtx.renewedStudentIds,
-          regCtx.newRegistrationStudentIds
+          regCtx.newRegistrationStudentIds,
+          regCtx.futureYearOnlyNewRegistrationStudentIds
         ),
       }
     })

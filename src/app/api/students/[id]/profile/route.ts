@@ -29,7 +29,8 @@ export async function GET(
       regCtx.target,
       id,
       regCtx.renewedStudentIds,
-      regCtx.newRegistrationStudentIds
+      regCtx.newRegistrationStudentIds,
+      regCtx.futureYearOnlyNewRegistrationStudentIds
     )
 
     const [

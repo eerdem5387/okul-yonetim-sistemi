@@ -455,8 +455,12 @@ export function registrationStatusText(
   target: RenewalTargetInfo | null,
   studentId: string,
   renewedStudentIds: Set<string>,
-  newRegistrationStudentIds: Set<string>
+  newRegistrationStudentIds: Set<string>,
+  futureYearOnlyNewRegistrationStudentIds?: Set<string>
 ): string {
+  if (futureYearOnlyNewRegistrationStudentIds?.has(studentId)) {
+    return "Sonraki yıl ön kayıt (eğitim başlamadı)"
+  }
   if (newRegistrationStudentIds.has(studentId)) return "Yeni Kayıt"
   if (renewedStudentIds.has(studentId)) {
     const label = target?.label?.trim() || "ilgili yıl"

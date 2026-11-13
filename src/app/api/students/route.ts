@@ -134,7 +134,8 @@ export async function GET(request: NextRequest) {
                     regCtx.target,
                     s.id,
                     regCtx.renewedStudentIds,
-                    regCtx.newRegistrationStudentIds
+                    regCtx.newRegistrationStudentIds,
+                    regCtx.futureYearOnlyNewRegistrationStudentIds
                 ),
             }))
         }

@@ -97,7 +97,13 @@ type Finance = {
 
 type Payload = {
   academicYear: { id: string; name: string } | null
-  registrations: { total: number; newRegistrations: number; renewals: number }
+  registrations: {
+    total: number
+    newRegistrations: number
+    renewals: number
+    preEnrollmentNextYear?: number
+    preEnrollmentTargetYear?: { id: string; name: string; label: string } | null
+  }
   finance: Finance | null
   financeAvailable: boolean
 }
@@ -461,6 +467,16 @@ export function KurucuFinanceDashboard() {
               label="Kayıt yenileme sayısı"
               value={regs ? String(regs.renewals) : "—"}
               hint={renewalShare == null ? undefined : `Pay %${renewalShare}`}
+            />
+            <Metric
+              icon={<CalendarRange className="h-5 w-5" />}
+              label="Sonraki yıl ön kayıt"
+              value={regs ? String(regs.preEnrollmentNextYear ?? 0) : "—"}
+              hint={
+                regs?.preEnrollmentTargetYear?.label
+                  ? `${regs.preEnrollmentTargetYear.label} — kayıtlı, eğitim henüz başlamadı`
+                  : "Kayıtlı; bünyede eğitime henüz başlamadı"
+              }
             />
 
             <Metric

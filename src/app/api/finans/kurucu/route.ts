@@ -7,6 +7,10 @@ import { fetchMuhasebeFinanceSummary } from "@/lib/finance/muhasebe-sync"
 import { getRenewalTargetContext } from "@/lib/student-registration-meta"
 import { buildEnrollmentRegistrationGradeBreakdown } from "@/lib/enrolled-grade-counts"
 import { k12GradeWhereClause } from "@/lib/student-grade-level"
+import {
+  contractYearLabelFromAcademicYear,
+  resolveActiveAndNextAcademicYear,
+} from "@/lib/academic-year-ui"
 
 export const dynamic = "force-dynamic"
 
@@ -30,11 +34,22 @@ export async function GET(request: NextRequest) {
     select: { id: true, name: true },
   })
 
-  const [ctx, students] = await Promise.all([
+  const [ctx, students, yearRows] = await Promise.all([
     getRenewalTargetContext(prisma),
     prisma.student.findMany({
       where: k12GradeWhereClause(),
       select: { id: true, grade: true },
+    }),
+    prisma.academicYear.findMany({
+      where: { parentActiveYearId: null },
+      select: {
+        id: true,
+        name: true,
+        startDate: true,
+        endDate: true,
+        isActive: true,
+        parentActiveYearId: true,
+      },
     }),
   ])
   const breakdown = buildEnrollmentRegistrationGradeBreakdown({
@@ -50,6 +65,25 @@ export async function GET(request: NextRequest) {
     newRegistrationCount += row.newRegistration
     renewalCount += row.renewed
   }
+
+  const { next: nextAcademicYear } = resolveActiveAndNextAcademicYear(
+    yearRows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      startDate: r.startDate?.toISOString() ?? null,
+      endDate: r.endDate?.toISOString() ?? null,
+      isActive: r.isActive,
+      parentActiveYearId: r.parentActiveYearId,
+    })),
+  )
+  const preEnrollmentNextYear = ctx.futureYearOnlyNewRegistrationStudentIds.size
+  const preEnrollmentTargetYear = nextAcademicYear
+    ? {
+        id: nextAcademicYear.id,
+        name: nextAcademicYear.name,
+        label: contractYearLabelFromAcademicYear(nextAcademicYear),
+      }
+    : null
 
   const live = await fetchMuhasebeFinanceSummary(
     ledgerMonth,
@@ -109,6 +143,9 @@ export async function GET(request: NextRequest) {
       total: newRegistrationCount + renewalCount,
       newRegistrations: newRegistrationCount,
       renewals: renewalCount,
+      /** Bir sonraki yıl için kayıtlı; henüz eğitim-öğretime başlamamış (mevcut öğrenci sayılmaz) */
+      preEnrollmentNextYear,
+      preEnrollmentTargetYear,
     },
     finance,
     financeAvailable: Boolean(finance),
