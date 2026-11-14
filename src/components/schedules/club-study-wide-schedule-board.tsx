@@ -20,12 +20,6 @@ type Instructor = {
   subject?: string | null
 }
 
-type EtutSlot = {
-  label: string
-  startTime: string
-  endTime: string
-}
-
 type ClubScheduleRow = {
   id: string
   clubId: string
@@ -34,6 +28,8 @@ type ClubScheduleRow = {
   startTime: string
   endTime: string
   room: string | null
+  instructorId?: string | null
+  instructor?: Instructor | null
   club: {
     id: string
     name: string
@@ -48,26 +44,6 @@ type ClubScheduleRow = {
   exclusions?: Array<{ studentId: string }>
 }
 
-type ClubGroupCol = {
-  key: string
-  kind: "club"
-  id: string
-  title: string
-  subtitle: string
-  instructorLabel: string
-}
-
-type StudyGroupCol = {
-  key: string
-  kind: "study"
-  id: string
-  title: string
-  subtitle: string
-  instructorLabel: string
-}
-
-type Column = ClubGroupCol | StudyGroupCol
-
 type StudySessionCell = {
   id: string
   dayOfWeek: number
@@ -77,6 +53,7 @@ type StudySessionCell = {
   topic: string
   groupId: string
   groupName: string
+  teacherId: string
   teacherLabel: string
 }
 
@@ -89,16 +66,44 @@ type GradeEtutExamRow = {
   title: string
 }
 
-type PeriodRow = {
-  key: string
-  dayOfWeek: number
-  dayLabel: string
-  slot: EtutSlot
+type TeacherCol = {
+  id: string
+  name: string
 }
+
+type CellItem =
+  | {
+      kind: "club"
+      key: string
+      scheduleId: string
+      label: string
+      timeLabel: string
+      countLabel: string
+      room: string | null
+    }
+  | {
+      kind: "study"
+      key: string
+      label: string
+      timeLabel: string
+      topic: string
+      room: string | null
+    }
 
 function teacherName(t: Instructor | null | undefined): string {
   if (!t) return ""
   return `${t.firstName} ${t.lastName}`.trim()
+}
+
+function resolveClubInstructor(s: ClubScheduleRow): Instructor | null {
+  return s.instructor ?? s.club.instructor ?? null
+}
+
+function clubCellLabel(s: ClubScheduleRow): string {
+  const clubName = s.club.name.trim() || "Kulüp"
+  const groupName = s.clubGroup?.name?.trim()
+  if (groupName && groupName !== clubName) return `${clubName} (${groupName})`
+  return clubName
 }
 
 export function ClubStudyWideScheduleBoard({
@@ -114,26 +119,10 @@ export function ClubStudyWideScheduleBoard({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [clubSchedules, setClubSchedules] = useState<ClubScheduleRow[]>([])
-  const [clubGroups, setClubGroups] = useState<
-    Array<{
-      id: string
-      name: string
-      clubId: string
-      club: {
-        id: string
-        name: string
-        instructor: Instructor | null
-      }
-      _count: { students: number; schedules: number }
-    }>
-  >([])
   const [studySessions, setStudySessions] = useState<StudySessionCell[]>([])
-  const [studyGroups, setStudyGroups] = useState<
-    Array<{ id: string; name: string; sessionCount: number }>
-  >([])
-  const [etutSlots, setEtutSlots] = useState<EtutSlot[]>([])
   const [gradeEtutExams, setGradeEtutExams] = useState<GradeEtutExamRow[]>([])
   const [rosterId, setRosterId] = useState<string | null>(null)
+  const [hasEtutSlots, setHasEtutSlots] = useState(true)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -153,15 +142,14 @@ export function ClubStudyWideScheduleBoard({
       const studyData = await studyRes.json()
 
       setClubSchedules(Array.isArray(clubData.schedules) ? clubData.schedules : [])
-      setClubGroups(Array.isArray(clubData.groups) ? clubData.groups : [])
 
       const groups = Array.isArray(studyData.groups) ? studyData.groups : []
       const sessions: StudySessionCell[] = []
-      const studyCols: Array<{ id: string; name: string; sessionCount: number }> = []
       for (const g of groups) {
         const list = Array.isArray(g.sessions) ? g.sessions : []
-        studyCols.push({ id: g.id, name: g.name, sessionCount: list.length })
         for (const s of list) {
+          const tid = String(s.teacher?.id ?? s.teacherId ?? "").trim()
+          if (!tid) continue
           sessions.push({
             id: s.id,
             dayOfWeek: s.dayOfWeek,
@@ -171,52 +159,27 @@ export function ClubStudyWideScheduleBoard({
             topic: s.topic || "",
             groupId: g.id,
             groupName: g.name,
+            teacherId: tid,
             teacherLabel: teacherName(s.teacher),
           })
         }
       }
       setStudySessions(sessions)
-      setStudyGroups(studyCols)
 
-      const slotSeen = new Set<string>()
-      const slots: EtutSlot[] = []
-
-      // Kulüp API etüt slotları
-      for (const s of Array.isArray(clubData.etutSlots) ? clubData.etutSlots : []) {
-        const start = normalizeTime(s.startTime)
-        const end = normalizeTime(s.endTime)
-        const key = `${start}|${end}`
-        if (slotSeen.has(key)) continue
-        slotSeen.add(key)
-        slots.push({
-          label: String(s.label || `${start}`),
-          startTime: start,
-          endTime: end,
-        })
-      }
-
-      // Şablondan eksik etütleri tamamla
-      if (templatesRes.ok) {
+      let etutFound = Array.isArray(clubData.etutSlots) && clubData.etutSlots.length > 0
+      if (!etutFound && templatesRes.ok) {
         const tmpl = await templatesRes.json()
         for (const t of Array.isArray(tmpl.templates) ? tmpl.templates : []) {
           for (const s of Array.isArray(t.slots) ? t.slots : []) {
-            if (normalizeSlotKind(s.kind, s.label) !== "ETUT") continue
-            const start = normalizeTime(s.startTime)
-            const end = normalizeTime(s.endTime)
-            const key = `${start}|${end}`
-            if (slotSeen.has(key)) continue
-            slotSeen.add(key)
-            slots.push({
-              label: String(s.label || `${start}`),
-              startTime: start,
-              endTime: end,
-            })
+            if (normalizeSlotKind(s.kind, s.label) === "ETUT") {
+              etutFound = true
+              break
+            }
           }
+          if (etutFound) break
         }
       }
-
-      slots.sort((a, b) => a.startTime.localeCompare(b.startTime))
-      setEtutSlots(slots)
+      setHasEtutSlots(etutFound)
 
       if (denemeRes.ok) {
         const d = await denemeRes.json()
@@ -227,11 +190,9 @@ export function ClubStudyWideScheduleBoard({
     } catch (e) {
       setError(e instanceof Error ? e.message : "Yüklenemedi")
       setClubSchedules([])
-      setClubGroups([])
       setStudySessions([])
-      setStudyGroups([])
-      setEtutSlots([])
       setGradeEtutExams([])
+      setHasEtutSlots(false)
     } finally {
       setLoading(false)
     }
@@ -241,150 +202,113 @@ export function ClubStudyWideScheduleBoard({
     void load()
   }, [load])
 
-  const columns = useMemo(() => {
-    const cols: Column[] = []
+  const teacherColumns = useMemo(() => {
+    const map = new Map<string, TeacherCol>()
 
     if (kindFilter === "all" || kindFilter === "club") {
-      for (const g of clubGroups) {
-        const scheduled =
-          (g._count?.schedules ?? 0) > 0 ||
-          clubSchedules.some((s) => (s.clubGroupId || s.clubGroup?.id) === g.id)
-        if (onlyScheduled && !scheduled) continue
-        cols.push({
-          key: `club:${g.id}`,
-          kind: "club",
-          id: g.id,
-          title: g.club.name,
-          subtitle: g.name,
-          instructorLabel: teacherName(g.club.instructor),
-        })
-      }
-
-      // Grupsuz kulüp programları (eski kayıtlar)
-      const orphanClubs = new Map<
-        string,
-        { name: string; instructor: Instructor | null; hasSchedule: boolean }
-      >()
       for (const s of clubSchedules) {
-        const gid = s.clubGroupId || s.clubGroup?.id
-        if (gid) continue
-        orphanClubs.set(s.clubId, {
-          name: s.club.name,
-          instructor: s.club.instructor,
-          hasSchedule: true,
-        })
+        if (!WEEKDAY_INDEXES.includes(s.dayOfWeek as (typeof WEEKDAY_INDEXES)[number])) continue
+        const staff = resolveClubInstructor(s)
+        if (!staff?.id) continue
+        if (!map.has(staff.id)) {
+          map.set(staff.id, { id: staff.id, name: teacherName(staff) })
+        }
       }
-      for (const [clubId, info] of orphanClubs) {
-        if (onlyScheduled && !info.hasSchedule) continue
-        cols.push({
-          key: `club-orphan:${clubId}`,
+    }
+
+    if (kindFilter === "all" || kindFilter === "study") {
+      for (const s of studySessions) {
+        if (!WEEKDAY_INDEXES.includes(s.dayOfWeek as (typeof WEEKDAY_INDEXES)[number])) continue
+        if (!s.teacherId) continue
+        if (!map.has(s.teacherId)) {
+          map.set(s.teacherId, {
+            id: s.teacherId,
+            name: s.teacherLabel || "Öğretmen",
+          })
+        }
+      }
+    }
+
+    const cols = [...map.values()].sort((a, b) =>
+      a.name.localeCompare(b.name, "tr", { sensitivity: "base" }),
+    )
+    return onlyScheduled ? cols : cols
+  }, [clubSchedules, studySessions, kindFilter, onlyScheduled])
+
+  const cellMap = useMemo(() => {
+    const map = new Map<string, CellItem[]>()
+
+    const push = (teacherId: string, day: number, item: CellItem) => {
+      const key = `${teacherId}|${day}`
+      const list = map.get(key) ?? []
+      if (!list.some((x) => x.key === item.key)) list.push(item)
+      map.set(key, list)
+    }
+
+    if (kindFilter === "all" || kindFilter === "club") {
+      for (const s of clubSchedules) {
+        if (!WEEKDAY_INDEXES.includes(s.dayOfWeek as (typeof WEEKDAY_INDEXES)[number])) continue
+        const staff = resolveClubInstructor(s)
+        if (!staff?.id) continue
+        const start = normalizeTime(s.startTime)
+        const end = normalizeTime(s.endTime)
+        const total = s.clubGroup
+          ? s.clubGroup._count.students
+          : s.club._count.selections
+        const muaf = s.exclusions?.length ?? 0
+        push(staff.id, s.dayOfWeek, {
           kind: "club",
-          id: `orphan:${clubId}`,
-          title: info.name,
-          subtitle: "Kulüp",
-          instructorLabel: teacherName(info.instructor),
+          key: `club:${s.id}`,
+          scheduleId: s.id,
+          label: clubCellLabel(s),
+          timeLabel: `${start}–${end}`,
+          countLabel: `${Math.max(0, total - muaf)} öğr.`,
+          room: s.room,
         })
       }
     }
 
     if (kindFilter === "all" || kindFilter === "study") {
-      for (const g of studyGroups) {
-        if (onlyScheduled && g.sessionCount === 0) continue
-        cols.push({
-          key: `study:${g.id}`,
+      for (const s of studySessions) {
+        if (!WEEKDAY_INDEXES.includes(s.dayOfWeek as (typeof WEEKDAY_INDEXES)[number])) continue
+        if (!s.teacherId) continue
+        push(s.teacherId, s.dayOfWeek, {
           kind: "study",
-          id: g.id,
-          title: g.name,
-          subtitle: "ÖÇG",
-          instructorLabel: "",
+          key: `study:${s.id}`,
+          label: s.groupName,
+          timeLabel: `${s.startTime}–${s.endTime}`,
+          topic: s.topic,
+          room: s.room,
         })
       }
     }
 
-    cols.sort((a, b) => {
-      if (a.kind !== b.kind) return a.kind === "club" ? -1 : 1
-      return `${a.title} ${a.subtitle}`.localeCompare(`${b.title} ${b.subtitle}`, "tr")
-    })
-
-    return cols
-  }, [clubGroups, clubSchedules, studyGroups, kindFilter, onlyScheduled])
-
-  const periodRows = useMemo(() => {
-    const rows: PeriodRow[] = []
-    for (const day of WEEKDAY_INDEXES) {
-      for (const slot of etutSlots) {
-        rows.push({
-          key: `${day}|${slot.startTime}|${slot.endTime}`,
-          dayOfWeek: day,
-          dayLabel: DAY_NAMES[day],
-          slot,
-        })
-      }
-    }
-    return rows
-  }, [etutSlots])
-
-  const dayRowSpans = useMemo(() => {
-    const map = new Map<number, number>()
-    for (const day of WEEKDAY_INDEXES) {
-      map.set(day, etutSlots.length)
+    for (const [, list] of map) {
+      list.sort((a, b) => a.timeLabel.localeCompare(b.timeLabel, "tr"))
     }
     return map
-  }, [etutSlots.length])
+  }, [clubSchedules, studySessions, kindFilter])
 
-  const firstPeriodKeyByDay = useMemo(() => {
-    const map = new Map<number, string>()
-    for (const row of periodRows) {
-      if (!map.has(row.dayOfWeek)) map.set(row.dayOfWeek, row.key)
-    }
-    return map
-  }, [periodRows])
-
-  const clubCellMap = useMemo(() => {
-    const map = new Map<string, ClubScheduleRow[]>()
-    for (const s of clubSchedules) {
-      const groupId = s.clubGroupId || s.clubGroup?.id
-      const colId = groupId || `orphan:${s.clubId}`
-      const key = `${colId}|${s.dayOfWeek}|${normalizeTime(s.startTime)}|${normalizeTime(s.endTime)}`
-      const list = map.get(key) ?? []
-      list.push(s)
-      map.set(key, list)
-    }
-    return map
-  }, [clubSchedules])
-
-  const studyCellMap = useMemo(() => {
-    const map = new Map<string, StudySessionCell[]>()
-    for (const s of studySessions) {
-      const key = `${s.groupId}|${s.dayOfWeek}|${s.startTime}|${s.endTime}`
-      const list = map.get(key) ?? []
-      list.push(s)
-      map.set(key, list)
-    }
-    return map
-  }, [studySessions])
-
-  const denemeBySlot = useMemo(() => {
-    const map = new Map<string, number[]>()
+  const denemeByDay = useMemo(() => {
+    const map = new Map<number, number[]>()
     for (const e of gradeEtutExams) {
-      const key = `${e.dayOfWeek}|${normalizeTime(e.startTime)}|${normalizeTime(e.endTime)}`
-      const list = map.get(key) ?? []
+      const list = map.get(e.dayOfWeek) ?? []
       if (!list.includes(e.grade)) list.push(e.grade)
-      map.set(key, list)
+      map.set(e.dayOfWeek, list)
     }
     for (const [, grades] of map) grades.sort((a, b) => a - b)
     return map
   }, [gradeEtutExams])
 
-  const stats = useMemo(
-    () => ({
-      clubs: columns.filter((c) => c.kind === "club").length,
-      studies: columns.filter((c) => c.kind === "study").length,
-      clubSessions: clubSchedules.length,
-      studySessions: studySessions.length,
-    }),
-    [columns, clubSchedules.length, studySessions.length]
-  )
+  const stats = useMemo(() => {
+    const clubItems = [...cellMap.values()].flat().filter((i) => i.kind === "club").length
+    const studyItems = [...cellMap.values()].flat().filter((i) => i.kind === "study").length
+    return {
+      teachers: teacherColumns.length,
+      clubSessions: clubItems,
+      studySessions: studyItems,
+    }
+  }, [teacherColumns.length, cellMap])
 
   if (loading) {
     return (
@@ -405,9 +329,7 @@ export function ClubStudyWideScheduleBoard({
         {sheet === "groups" ? (
           <div className="flex h-full min-h-0 flex-col gap-2">
             <div className="flex flex-wrap items-center gap-3 shrink-0 text-[11px] text-gray-600 px-0.5">
-              <span>
-                {stats.clubs} kulüp grubu · {stats.studies} ÖÇG
-              </span>
+              <span>{stats.teachers} öğretmen</span>
               <span className="text-gray-400">
                 ({stats.clubSessions} kulüp + {stats.studySessions} ÖÇG oturumu)
               </span>
@@ -423,172 +345,112 @@ export function ClubStudyWideScheduleBoard({
               <span className="text-gray-400">· kulüp hücresine tıklayınca öğrenci listesi</span>
             </div>
 
-            {etutSlots.length === 0 ? (
+            {!hasEtutSlots ? (
               <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-900">
                 Henüz etüt saati yok. <strong>Ders saatleri</strong> içinde türü{" "}
                 <strong>Etüt</strong> olan satırlar ekleyin.
               </div>
-            ) : columns.length === 0 ? (
+            ) : teacherColumns.length === 0 ? (
               <div className="rounded-xl border border-dashed border-gray-200 bg-white px-4 py-6 text-sm text-gray-500 text-center">
-                Gösterilecek kulüp / ÖÇG yok. Grup oluşturup <strong>Program ata</strong> ile etüt
-                yerleştirin veya “Tümü” / program filtresini değiştirin.
+                Gösterilecek öğretmen yok. Kulüp / ÖÇG programı atayıp öğretmen bağlayın veya
+                filtreyi değiştirin.
               </div>
             ) : (
               <div className="min-h-0 flex-1 overflow-auto rounded-xl border-2 border-slate-800 bg-white shadow-sm">
                 <table className="border-collapse text-left border border-slate-800">
                   <thead className="sticky top-0 z-20">
                     <tr className="bg-slate-900 text-white">
-                      <th className="sticky left-0 z-30 border-b border-r-2 border-slate-700 bg-slate-950 px-2 py-2 text-[10px] font-semibold min-w-[4.5rem] w-[4.5rem]">
+                      <th className="sticky left-0 z-30 border-b border-r-2 border-slate-700 bg-slate-950 px-2 py-2 text-[10px] font-semibold min-w-[5.5rem] w-[5.5rem]">
                         Gün
                       </th>
-                      <th className="sticky left-[4.5rem] z-30 border-b border-r-2 border-slate-600 bg-slate-900 px-2 py-2 text-[10px] font-semibold min-w-[4.5rem] w-[4.5rem]">
-                        Etüt
-                      </th>
-                      {columns.map((col, i) => (
+                      {teacherColumns.map((col, i) => (
                         <th
-                          key={col.key}
-                          className={`border-b border-slate-700 px-2 py-2 text-center min-w-[9.5rem] ${
+                          key={col.id}
+                          className={`border-b border-slate-700 px-2 py-2 text-center min-w-[9.5rem] bg-slate-900 ${
                             i === 0 ? "" : "border-l-[3px] border-l-slate-500"
-                          } ${col.kind === "club" ? "bg-amber-950/40" : "bg-violet-950/40"}`}
+                          }`}
                         >
                           <span className="block text-[11px] font-bold leading-snug">
-                            {col.title}
+                            {col.name}
                           </span>
-                          <span
-                            className={`block text-[10px] font-normal mt-0.5 leading-snug ${
-                              col.kind === "club" ? "text-amber-200" : "text-violet-200"
-                            }`}
-                          >
-                            {col.kind === "club" ? col.subtitle : "ÖÇG"}
-                          </span>
-                          {col.instructorLabel ? (
-                            <span className="block text-[10px] font-medium mt-1 leading-snug text-white">
-                              {col.instructorLabel}
-                            </span>
-                          ) : null}
                         </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {periodRows.map((period) => {
-                      const showDay = firstPeriodKeyByDay.get(period.dayOfWeek) === period.key
-                      const span = dayRowSpans.get(period.dayOfWeek) ?? 1
-                      const denemeKey = `${period.dayOfWeek}|${period.slot.startTime}|${period.slot.endTime}`
-                      const denemeGrades = denemeBySlot.get(denemeKey) ?? []
-
+                    {WEEKDAY_INDEXES.map((day) => {
+                      const denemeGrades = denemeByDay.get(day) ?? []
                       return (
-                        <tr key={period.key} className="bg-amber-50/30">
-                          {showDay ? (
-                            <th
-                              rowSpan={span}
-                              className="sticky left-0 z-10 border border-slate-800 border-r-2 bg-slate-100 px-2 py-1 align-middle text-[11px] font-bold text-slate-800 w-[4.5rem]"
-                            >
-                              {period.dayLabel}
-                            </th>
-                          ) : null}
-                          <th className="sticky left-[4.5rem] z-10 border border-slate-800 border-r-2 bg-amber-50 px-2 py-1 text-left text-[10px] font-medium text-amber-900 whitespace-nowrap w-[4.5rem]">
-                            <div>{period.slot.label}</div>
-                            <div className="text-[9px] font-normal opacity-70">
-                              {period.slot.startTime}–{period.slot.endTime}
-                            </div>
+                        <tr key={day} className="bg-amber-50/30">
+                          <th className="sticky left-0 z-10 border border-slate-800 border-r-2 bg-slate-100 px-2 py-2 align-middle text-[11px] font-bold text-slate-800 w-[5.5rem]">
+                            <div>{DAY_NAMES[day]}</div>
                             {denemeGrades.length > 0 && (
-                              <div className="mt-0.5 text-[8px] font-semibold text-rose-700 leading-tight">
+                              <div className="mt-1 text-[8px] font-semibold text-rose-700 leading-tight">
                                 Deneme {denemeGrades.map((g) => `${g}.`).join(" ")}
                               </div>
                             )}
                           </th>
-                          {columns.map((col, i) => {
-                            if (col.kind === "club") {
-                              const entries =
-                                clubCellMap.get(
-                                  `${col.id}|${period.dayOfWeek}|${period.slot.startTime}|${period.slot.endTime}`
-                                ) ?? []
-                              const primary = entries[0]
-                              return (
-                                <td
-                                  key={`${col.key}|${period.key}`}
-                                  className={`border border-slate-800 p-0.5 align-top ${
-                                    i === 0 ? "" : "border-l-[2px] border-l-slate-900"
-                                  }`}
-                                >
-                                  {primary ? (
-                                    <button
-                                      type="button"
-                                      onClick={() => setRosterId(primary.id)}
-                                      className="w-full min-h-[2.75rem] rounded-md bg-amber-50 ring-1 ring-amber-200 hover:bg-amber-100 px-1 py-0.5 text-left transition text-amber-950"
-                                      title={`${primary.club.name}${
-                                        primary.clubGroup ? ` · ${primary.clubGroup.name}` : ""
-                                      }`}
-                                    >
-                                      <p className="text-[11px] font-semibold leading-snug">
-                                        {primary.clubGroup?.name || primary.club.name}
-                                      </p>
-                                      {primary.club.instructor && (
-                                        <p className="text-[10px] opacity-90 leading-snug mt-0.5">
-                                          {teacherName(primary.club.instructor)}
-                                        </p>
-                                      )}
-                                      {(() => {
-                                        const total = primary.clubGroup
-                                          ? primary.clubGroup._count.students
-                                          : primary.club._count.selections
-                                        const muaf = primary.exclusions?.length ?? 0
-                                        return (
-                                          <p className="text-[10px] text-amber-800/80 mt-0.5">
-                                            {Math.max(0, total - muaf)} öğr.
-                                          </p>
-                                        )
-                                      })()}
-                                      {primary.room && (
-                                        <p className="text-[10px] text-gray-600 mt-0.5">
-                                          {primary.room}
-                                        </p>
-                                      )}
-                                    </button>
-                                  ) : (
-                                    <div className="min-h-[2.75rem] rounded-md border border-dashed border-transparent" />
-                                  )}
-                                </td>
-                              )
-                            }
-
-                            const entries =
-                              studyCellMap.get(
-                                `${col.id}|${period.dayOfWeek}|${period.slot.startTime}|${period.slot.endTime}`
-                              ) ?? []
-                            const primary = entries[0]
+                          {teacherColumns.map((col, i) => {
+                            const items = cellMap.get(`${col.id}|${day}`) ?? []
                             return (
                               <td
-                                key={`${col.key}|${period.key}`}
+                                key={`${col.id}|${day}`}
                                 className={`border border-slate-800 p-0.5 align-top ${
                                   i === 0 ? "" : "border-l-[2px] border-l-slate-900"
                                 }`}
                               >
-                                {primary ? (
-                                  <div
-                                    className="w-full min-h-[2.75rem] rounded-md bg-violet-50 ring-1 ring-violet-200 px-1 py-0.5 text-left text-violet-950"
-                                    title={`${primary.groupName}${
-                                      primary.topic ? ` · ${primary.topic}` : ""
-                                    }`}
-                                  >
-                                    <p className="text-[11px] font-semibold leading-snug">
-                                      {primary.groupName}
-                                    </p>
-                                    {primary.teacherLabel && (
-                                      <p className="text-[10px] opacity-90 leading-snug mt-0.5">
-                                        {primary.teacherLabel}
-                                      </p>
-                                    )}
-                                    {primary.topic && (
-                                      <p className="text-[10px] text-violet-800/90 leading-snug mt-0.5">
-                                        {primary.topic}
-                                      </p>
-                                    )}
-                                    {primary.room && (
-                                      <p className="text-[10px] text-gray-600 mt-0.5">
-                                        {primary.room}
-                                      </p>
+                                {items.length > 0 ? (
+                                  <div className="flex flex-col gap-0.5 min-h-[2.75rem]">
+                                    {items.map((item) =>
+                                      item.kind === "club" ? (
+                                        <button
+                                          key={item.key}
+                                          type="button"
+                                          onClick={() => setRosterId(item.scheduleId)}
+                                          className="w-full rounded-md bg-amber-50 ring-1 ring-amber-200 hover:bg-amber-100 px-1 py-0.5 text-left transition text-amber-950"
+                                          title={item.label}
+                                        >
+                                          <p className="text-[11px] font-semibold leading-snug">
+                                            {item.label}
+                                          </p>
+                                          <p className="text-[10px] opacity-90 leading-snug mt-0.5">
+                                            {item.timeLabel}
+                                          </p>
+                                          <p className="text-[10px] text-amber-800/80 mt-0.5">
+                                            {item.countLabel}
+                                          </p>
+                                          {item.room ? (
+                                            <p className="text-[10px] text-gray-600 mt-0.5">
+                                              {item.room}
+                                            </p>
+                                          ) : null}
+                                        </button>
+                                      ) : (
+                                        <div
+                                          key={item.key}
+                                          className="w-full rounded-md bg-violet-50 ring-1 ring-violet-200 px-1 py-0.5 text-left text-violet-950"
+                                          title={`${item.label}${
+                                            item.topic ? ` · ${item.topic}` : ""
+                                          }`}
+                                        >
+                                          <p className="text-[11px] font-semibold leading-snug">
+                                            {item.label}
+                                          </p>
+                                          <p className="text-[10px] opacity-90 leading-snug mt-0.5">
+                                            {item.timeLabel}
+                                          </p>
+                                          {item.topic ? (
+                                            <p className="text-[10px] text-violet-800/90 leading-snug mt-0.5">
+                                              {item.topic}
+                                            </p>
+                                          ) : null}
+                                          {item.room ? (
+                                            <p className="text-[10px] text-gray-600 mt-0.5">
+                                              {item.room}
+                                            </p>
+                                          ) : null}
+                                        </div>
+                                      ),
                                     )}
                                   </div>
                                 ) : (
