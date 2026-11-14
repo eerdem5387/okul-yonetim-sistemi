@@ -61,8 +61,17 @@ export async function GET(request: NextRequest) {
             }),
           }
 
-    const [students, etutSlotsRaw, clubMemberships, studyMemberships, exclusions, clubGroups, studyGroups, gradeEtutExams] =
-      await Promise.all([
+    const [
+      students,
+      etutSlotsRaw,
+      clubMemberships,
+      clubSelections,
+      studyMemberships,
+      exclusions,
+      clubGroups,
+      studyGroups,
+      gradeEtutExams,
+    ] = await Promise.all([
         prisma.student.findMany({
           where: studentWhere,
           select: { id: true, firstName: true, lastName: true, grade: true },
@@ -83,6 +92,29 @@ export async function GET(request: NextRequest) {
                 club: { select: { id: true, name: true, gradeLevels: true } },
                 schedules: {
                   where: { isActive: true },
+                  select: {
+                    id: true,
+                    dayOfWeek: true,
+                    startTime: true,
+                    endTime: true,
+                  },
+                },
+              },
+            },
+          },
+        }),
+        // Veli/kulüp seçimi: grup atanmasa da kulüp seviyesi program görünsün
+        prisma.clubSelection.findMany({
+          where: { student: studentWhere },
+          select: {
+            studentId: true,
+            clubId: true,
+            club: {
+              select: {
+                id: true,
+                name: true,
+                schedules: {
+                  where: { isActive: true, clubGroupId: null },
                   select: {
                     id: true,
                     dayOfWeek: true,
@@ -212,7 +244,17 @@ export async function GET(request: NextRequest) {
       return list
     }
 
+    // Öğrencinin zaten grup üyesi olduğu kulüpler (seçim fallback’inde çift göstermemek için)
+    const memberClubIdsByStudent = new Map<string, Set<string>>()
     for (const m of clubMemberships) {
+      const clubId = m.clubGroup.club.id
+      let set = memberClubIdsByStudent.get(m.studentId)
+      if (!set) {
+        set = new Set()
+        memberClubIdsByStudent.set(m.studentId, set)
+      }
+      set.add(clubId)
+
       const g = m.clubGroup
       for (const sch of g.schedules) {
         if (exclusionSet.has(`${m.studentId}|${sch.id}`)) continue
@@ -223,6 +265,24 @@ export async function GET(request: NextRequest) {
           startTime: normalizeTime(sch.startTime),
           endTime: normalizeTime(sch.endTime),
           clubGroupId: g.id,
+          studyGroupId: null,
+          scheduleOrSessionId: sch.id,
+        })
+      }
+    }
+
+    // Kulüp seçimi yapılmış ama gruba atanmamış öğrenciler → kulüp seviyesi program
+    for (const sel of clubSelections) {
+      if (memberClubIdsByStudent.get(sel.studentId)?.has(sel.clubId)) continue
+      for (const sch of sel.club.schedules) {
+        if (exclusionSet.has(`${sel.studentId}|${sch.id}`)) continue
+        ensureDay(sel.studentId, sch.dayOfWeek).push({
+          key: `CLUB:${sch.id}`,
+          kind: "CLUB",
+          label: sel.club.name,
+          startTime: normalizeTime(sch.startTime),
+          endTime: normalizeTime(sch.endTime),
+          clubGroupId: null,
           studyGroupId: null,
           scheduleOrSessionId: sch.id,
         })
