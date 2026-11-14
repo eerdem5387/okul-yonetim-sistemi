@@ -10,6 +10,15 @@ export type ClubScheduleBlock = {
   instructorId: string | null
 }
 
+/** Öğretmenin ÖÇG (veya benzer) meşguliyeti — değiş tokuş gün çakışması için */
+export type InstructorBusyBlock = {
+  teacherId: string
+  dayOfWeek: number
+  startTime: string
+  endTime: string
+  label?: string
+}
+
 type Slot = { dayOfWeek: number; startTime: string; endTime: string }
 type DbClient = Prisma.TransactionClient | typeof prisma
 
@@ -80,7 +89,7 @@ export function simulateBlocksAfterClubSwap(
 }
 
 /**
- * A ↔ B slot takası bir öğretmene aynı gün/saatte iki farklı kulüp verir mi?
+ * A ↔ B slot takası bir öğretmene aynı günde iki kulüp veya kulüp+ÖÇG verir mi?
  */
 export function wouldInstructorConflictAfterClubSwap(options: {
   clubAId: string
@@ -89,8 +98,10 @@ export function wouldInstructorConflictAfterClubSwap(options: {
   bBlocks: ClubScheduleBlock[]
   /** Takas dışı diğer aktif kulüp programları (A/B dahil olabilir; filtrelenir) */
   otherBlocks: ClubScheduleBlock[]
+  /** Öğretmen ÖÇG oturumları */
+  ocgBlocks?: InstructorBusyBlock[]
 }): string | null {
-  const { clubAId, clubBId, aBlocks, bBlocks, otherBlocks } = options
+  const { clubAId, clubBId, aBlocks, bBlocks, otherBlocks, ocgBlocks = [] } = options
 
   const remaining = otherBlocks.filter((b) => b.clubId !== clubAId && b.clubId !== clubBId)
   const simulated = [
@@ -105,6 +116,18 @@ export function wouldInstructorConflictAfterClubSwap(options: {
       }
     }
   }
+
+  for (const club of simulated) {
+    if (!club.instructorId) continue
+    const hit = ocgBlocks.find(
+      (o) => o.teacherId === club.instructorId && o.dayOfWeek === club.dayOfWeek,
+    )
+    if (hit) {
+      const detail = hit.label ? ` (${hit.label})` : ""
+      return `Bu yer değişimi bir öğretmene aynı günde hem kulüp hem ÖÇG verir${detail}; uygulanamaz.`
+    }
+  }
+
   return null
 }
 
@@ -134,5 +157,28 @@ export async function loadActiveClubScheduleBlocks(
     startTime: r.startTime,
     endTime: r.endTime,
     instructorId: resolveScheduleInstructorId(r),
+  }))
+}
+
+export async function loadActiveInstructorOcgBlocks(
+  client: DbClient = prisma,
+): Promise<InstructorBusyBlock[]> {
+  const rows = await client.studyGroupSession.findMany({
+    where: { isActive: true },
+    select: {
+      teacherId: true,
+      dayOfWeek: true,
+      startTime: true,
+      endTime: true,
+      studyGroup: { select: { name: true } },
+    },
+  })
+
+  return rows.map((r) => ({
+    teacherId: r.teacherId,
+    dayOfWeek: r.dayOfWeek,
+    startTime: r.startTime,
+    endTime: r.endTime,
+    label: r.studyGroup.name,
   }))
 }

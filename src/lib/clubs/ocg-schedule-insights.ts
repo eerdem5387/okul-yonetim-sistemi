@@ -4,6 +4,7 @@ import {
   resolveScheduleInstructorId,
   wouldInstructorConflictAfterClubSwap,
   type ClubScheduleBlock,
+  type InstructorBusyBlock,
 } from "@/lib/clubs/club-instructor-conflicts"
 import { hasTimeConflict } from "@/lib/schedules/time-conflict"
 import { parseStudentGradeLevel } from "@/lib/student-grade-level"
@@ -86,12 +87,22 @@ export async function buildOcgScheduleInsights(): Promise<OcgScheduleInsights> {
       where: { isActive: true },
       select: {
         studyGroupId: true,
+        teacherId: true,
         dayOfWeek: true,
         startTime: true,
         endTime: true,
+        studyGroup: { select: { name: true } },
       },
     }),
   ])
+
+  const ocgBlocks: InstructorBusyBlock[] = studySessions.map((s) => ({
+    teacherId: s.teacherId,
+    dayOfWeek: s.dayOfWeek,
+    startTime: s.startTime,
+    endTime: s.endTime,
+    label: s.studyGroup.name,
+  }))
 
   const sessionsByGroup = new Map<string, Block[]>()
   for (const s of studySessions) {
@@ -207,6 +218,7 @@ export async function buildOcgScheduleInsights(): Promise<OcgScheduleInsights> {
         aBlocks: clubInstructorBlocks.get(aId) || [],
         bBlocks: clubInstructorBlocks.get(bId) || [],
         otherBlocks: allInstructorBlocks,
+        ocgBlocks,
       })
       if (instructorConflict) continue
 

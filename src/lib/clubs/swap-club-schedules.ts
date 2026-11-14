@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import {
   loadActiveClubScheduleBlocks,
+  loadActiveInstructorOcgBlocks,
   resolveScheduleInstructorId,
   wouldInstructorConflictAfterClubSwap,
   type ClubScheduleBlock,
@@ -161,13 +162,17 @@ export async function swapClubScheduleSlots(clubAId: string, clubBId: string) {
       throw new Error("Bu iki kulübün programları zaten aynı.")
     }
 
-    const otherBlocks = await loadActiveClubScheduleBlocks(tx)
+    const [otherBlocks, ocgBlocks] = await Promise.all([
+      loadActiveClubScheduleBlocks(tx),
+      loadActiveInstructorOcgBlocks(tx),
+    ])
     const conflictErr = wouldInstructorConflictAfterClubSwap({
       clubAId,
       clubBId,
       aBlocks: toBlocks(clubAId, aRows),
       bBlocks: toBlocks(clubBId, bRows),
       otherBlocks,
+      ocgBlocks,
     })
     if (conflictErr) throw new Error(conflictErr)
 
