@@ -54,13 +54,14 @@ export async function DELETE(request: NextRequest) {
   const body = (await request.json().catch(() => ({}))) as { token?: string }
   const token = body.token?.trim()
 
-  if (token) {
-    await prisma.staffPushDevice.deleteMany({
-      where: { staffId: actor.staffId, token },
-    })
-  } else {
-    await prisma.staffPushDevice.deleteMany({ where: { staffId: actor.staffId } })
+  // Token'sız istek, personelin diğer cihazlarının kaydını silmesin.
+  if (!token) {
+    return NextResponse.json({ error: "Silinecek token gerekli." }, { status: 400 })
   }
+
+  await prisma.staffPushDevice.deleteMany({
+    where: { staffId: actor.staffId, token },
+  })
 
   return NextResponse.json({ ok: true })
 }
