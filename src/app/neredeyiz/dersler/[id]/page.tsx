@@ -7,10 +7,7 @@ export default async function LegacySubjectPlanRedirect({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const subject = await prisma.subject.findUnique({
-    where: { id },
-    select: { classId: true },
-  })
-  if (!subject?.classId) redirect("/neredeyiz/sinif")
-  redirect(`/neredeyiz/sinif/${subject.classId}?subjectId=${id}`)
+  const subject = await prisma.subject.findUnique({ where: { id }, select: { id: true } })
+  if (!subject) redirect("/neredeyiz")
+  redirect(`/neredeyiz/ders/${id}`)
 }

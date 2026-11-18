@@ -4,7 +4,7 @@ import { forbidden, requireNeredeyiz, requireNeredeyizManager } from "@/lib/nere
 
 type Ctx = { params: Promise<{ id: string }> }
 
-// GET - Tek ders (üniteler, konular, ilerleme ve ilgili personel adları)
+// GET - Tek ders (üniteler, konular ve tamamlama kayıtları). Ayrıntılı geçmiş için /history.
 export async function GET(request: NextRequest, context: Ctx) {
   const guard = await requireNeredeyiz(request, "view")
   if (!guard.ok) return guard.response
@@ -19,48 +19,15 @@ export async function GET(request: NextRequest, context: Ctx) {
         assignments: { include: { staff: { select: { id: true, firstName: true, lastName: true, department: true } } } },
         units: {
           orderBy: { order: "asc" },
-          include: { topics: { orderBy: { order: "asc" }, include: { progress: true } } },
+          include: { topics: { orderBy: { order: "asc" }, include: { completion: true } } },
         },
       },
     })
     if (!subject) return NextResponse.json({ error: "Ders bulunamadı" }, { status: 404 })
-
     if (actor.isTeacher && !actor.superAdmin && !subject.assignments.some((a) => a.staffId === actor.staffId)) {
       return forbidden("Bu derse atanmamışsınız.")
     }
-
-    const staffIds = new Set<string>()
-    for (const u of subject.units)
-      for (const t of u.topics)
-        for (const p of t.progress) {
-          if (p.markedBy) staffIds.add(p.markedBy)
-          if (p.approvedBy) staffIds.add(p.approvedBy)
-          if (p.reportedBy) staffIds.add(p.reportedBy)
-        }
-    const staff = staffIds.size
-      ? await prisma.staff.findMany({
-          where: { id: { in: [...staffIds] } },
-          select: { id: true, firstName: true, lastName: true, department: true },
-        })
-      : []
-    const map = new Map(staff.map((s) => [s.id, s]))
-
-    const withStaff = {
-      ...subject,
-      units: subject.units.map((u) => ({
-        ...u,
-        topics: u.topics.map((t) => ({
-          ...t,
-          progress: t.progress.map((p) => ({
-            ...p,
-            markedByStaff: p.markedBy ? map.get(p.markedBy) ?? null : null,
-            approvedByStaff: p.approvedBy ? map.get(p.approvedBy) ?? null : null,
-            reportedByStaff: p.reportedBy ? map.get(p.reportedBy) ?? null : null,
-          })),
-        })),
-      })),
-    }
-    return NextResponse.json({ subject: withStaff, ...withStaff })
+    return NextResponse.json({ subject, ...subject })
   } catch (error) {
     console.error("Error fetching subject:", error)
     return NextResponse.json({ error: "Ders getirilirken hata oluştu" }, { status: 500 })
@@ -115,7 +82,7 @@ export async function PUT(request: NextRequest, context: Ctx) {
   }
 }
 
-// DELETE - Ders, üniteleri, konuları ve ilerlemesi silinir (veritabanı zinciri). Programa bağlı ders silinemez.
+// DELETE - Ders, üniteleri, konuları ve tamamlama kayıtları silinir (veritabanı zinciri). Programa bağlı ders silinemez.
 export async function DELETE(request: NextRequest, context: Ctx) {
   const guard = await requireNeredeyizManager(request, "delete")
   if (!guard.ok) return guard.response

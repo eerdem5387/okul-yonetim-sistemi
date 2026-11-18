@@ -156,9 +156,9 @@ export async function syncSubjectsFromClassUpdate(
 }
 
 /**
- * Kaynak sınıfın müfredatını (ünite/konu) hedef sınıfa kopyalar; öğretmen ataması ve ilerleme taşınmaz.
- * Hedef derste ilerleme kaydı varsa o ders ATLANIR (ilerleme asla silinmez); yoksa üniteleri değiştirilir.
- * Tarihler yalnız iki sınıf aynı akademik yıldaysa kopyalanır.
+ * Kaynak sınıfın yıllık planını (ünite/konu + planlanan haftalar) hedef sınıfa kopyalar.
+ * Öğretmen ataması ve tamamlama kayıtları taşınmaz. Hedef derste tamamlanmış konu varsa o ders ATLANIR
+ * (kayıt asla silinmez); yoksa üniteleri değiştirilir. Haftalar yıla göre göreli olduğundan yıllar arası da geçerlidir.
  */
 export async function copyClassCurriculum(params: {
   sourceClassId: string
@@ -179,7 +179,7 @@ export async function copyClassCurriculum(params: {
   ])
   if (!sourceClass) throw new Error("Kaynak sınıf bulunamadı")
   if (!targetClass) throw new Error("Hedef sınıf bulunamadı")
-  const copyDates = params.includeDates && sourceClass.academicYearId === targetClass.academicYearId
+  const copyWeeks = params.includeDates
 
   const sourceSubjects = await prisma.subject.findMany({
     where: {
@@ -201,9 +201,9 @@ export async function copyClassCurriculum(params: {
     async (tx) => {
       for (const src of sourceSubjects) {
         const target = await ensureSubjectForClass(targetClass, src.name, tx)
-        const progressCount = await tx.progress.count({ where: { topic: { unit: { subjectId: target.id } } } })
-        if (progressCount > 0) {
-          skipped.push({ name: src.name, reason: `hedefte ${progressCount} ilerleme kaydı var` })
+        const doneCount = await tx.topicCompletion.count({ where: { topic: { unit: { subjectId: target.id } } } })
+        if (doneCount > 0) {
+          skipped.push({ name: src.name, reason: `hedefte ${doneCount} tamamlanmış konu var` })
           continue
         }
         await tx.unit.deleteMany({ where: { subjectId: target.id } })
@@ -219,8 +219,8 @@ export async function copyClassCurriculum(params: {
                   name: topic.name,
                   order: topic.order,
                   description: topic.description,
-                  plannedStartDate: copyDates ? topic.plannedStartDate : null,
-                  plannedEndDate: copyDates ? topic.plannedEndDate : null,
+                  plannedStartWeek: copyWeeks ? topic.plannedStartWeek : null,
+                  plannedEndWeek: copyWeeks ? topic.plannedEndWeek : null,
                 })),
               },
             },

@@ -1,10 +1,4 @@
-import {
-  buildCalendar,
-  dayKey,
-  evaluateTopic,
-  teachingDaysAfter,
-  validateRangeInYear,
-} from "../calendar"
+import { buildCalendar, dayKey, teachingDaysAfter, validateRangeInYear } from "../calendar"
 
 function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(msg)
@@ -35,27 +29,6 @@ assert(teachingDaysAfter(cal, "2026-10-23", "2026-10-30", scope) === 4, "weekend
 // 2 Kasım işlenebilir tatil sayılır; 3 Kasım yalnız c1 için aksama
 assert(teachingDaysAfter(cal, "2026-10-30", "2026-11-03", scope) === 1, "disruption for c1")
 assert(teachingDaysAfter(cal, "2026-10-30", "2026-11-03", other) === 2, "disruption not for c2")
-
-// Gecikme: plan bitişi Cuma 23 Ekim, bugün Pzt 26 Ekim → 1 ders günü
-const late = evaluateTopic({ plannedStartDate: d("2026-10-19"), plannedEndDate: d("2026-10-23") }, null, cal, scope, "2026-10-26")
-assert(late.state === "GECIKMELI" && late.delayDays === 1, "1 day late")
-// Bitiş Cuma, bugün Pazar → gecikme yok (hafta sonu)
-const weekend = evaluateTopic({ plannedStartDate: null, plannedEndDate: d("2026-10-23") }, null, cal, scope, "2026-10-25")
-assert(weekend.state !== "GECIKMELI", "weekend is not delay")
-// Onay bekleyen: bildirim anında gecikme donar
-const pending = evaluateTopic(
-  { plannedStartDate: null, plannedEndDate: d("2026-10-23") },
-  { status: "PENDING_APPROVAL", actualEndDate: null, reportedAt: d("2026-10-23") },
-  cal, scope, "2026-11-20",
-)
-assert(pending.state === "ONAY_BEKLIYOR" && pending.delayDays === 0, "pending frozen")
-// Erken tamamlandı
-const early = evaluateTopic(
-  { plannedStartDate: null, plannedEndDate: d("2026-10-23") },
-  { status: "TAMAMLANDI", actualEndDate: d("2026-10-21") },
-  cal, scope, "2026-11-20",
-)
-assert(early.state === "ERKEN_TAMAMLANDI" && early.earlyDays === 2, "early")
 
 assert(validateRangeInYear(cal, d("2026-09-01"), d("2026-09-20"), "Konu") !== null, "outside year")
 assert(validateRangeInYear(cal, d("2026-10-05"), d("2026-10-01"), "Konu") !== null, "reversed")

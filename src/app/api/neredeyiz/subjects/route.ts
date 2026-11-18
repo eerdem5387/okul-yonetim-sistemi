@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
         assignments: { include: { staff: { select: { id: true, firstName: true, lastName: true } } } },
         units: {
           orderBy: { order: "asc" },
-          include: { topics: { orderBy: { order: "asc" }, include: { progress: true } } },
+          include: { topics: { orderBy: { order: "asc" }, include: { completion: true } } },
         },
         _count: { select: { schedules: true } },
       },

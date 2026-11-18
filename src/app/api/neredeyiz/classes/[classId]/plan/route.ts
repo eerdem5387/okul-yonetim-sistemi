@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireNeredeyiz } from "@/lib/neredeyiz/access"
-import { buildCalendar, disruptionAffects, evaluateTopic, topicScopeOf } from "@/lib/neredeyiz/calendar"
+import { buildCalendar, disruptionAffects, todayKey, topicScopeOf } from "@/lib/neredeyiz/calendar"
+import { buildAcademicWeeks, evaluateWeeklyTopic, teachingWeekCount } from "@/lib/neredeyiz/weeks"
 
 export async function GET(
   request: NextRequest,
@@ -51,7 +52,7 @@ export async function GET(
             include: {
               topics: {
                 orderBy: { order: "asc" },
-                include: { progress: true },
+                include: { completion: true },
               },
             },
           },
@@ -87,21 +88,30 @@ export async function GET(
       subjects.some((s) => disruptionAffects(cal.disruptions[i]!, topicScopeOf({ id: s.id, classId, assignments: s.assignments }))),
     )
 
-    // Her konuya ders günüyle hesaplanmış durum ekle (state, delayDays)
+    // Haftalar ve her konunun haftalık durumu
+    const weeks = buildAcademicWeeks(cal)
+    const today = todayKey()
     const subjectsWithState = subjects.map((s) => {
       const scope = topicScopeOf({ id: s.id, classId, assignments: s.assignments })
       return {
         ...s,
         units: s.units.map((u) => ({
           ...u,
-          topics: u.topics.map((t) => ({ ...t, evaluation: evaluateTopic(t, t.progress[0], cal, scope) })),
+          topics: u.topics.map((t) => ({ ...t, evaluation: evaluateWeeklyTopic(t, t.completion, weeks, cal, scope, today) })),
         })),
       }
     })
+    const weekList = weeks
+      .filter((w) => w.index != null)
+      .map((w) => ({ index: w.index!, label: w.label }))
+    const breakList = weeks.filter((w) => w.isBreak).map((w) => w.label)
 
     return NextResponse.json({
       class: classData,
       subjects: subjectsWithState,
+      weeks: weekList,
+      totalWeeks: teachingWeekCount(weeks),
+      breaks: breakList,
       holidays,
       disruptions: visibleDisruptions,
       siblingClasses,

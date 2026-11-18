@@ -3,7 +3,7 @@ import { DisruptionType, type Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { requireNeredeyiz, requireNeredeyizManager } from "@/lib/neredeyiz/access"
 import { parseDisruptionInput } from "@/lib/neredeyiz/calendar-input"
-import { notify } from "@/lib/neredeyiz/progress-service"
+import { notifyRole, notifyStaff } from "@/lib/neredeyiz/notify"
 import { resolveNeredeyizYearId } from "@/lib/neredeyiz/year-scope"
 
 // GET - Aksamalar (varsayılan: aktif akademik yıl)
@@ -61,11 +61,15 @@ export async function POST(request: NextRequest) {
     }
     const message = `${input.data.reason} (${input.data.startDate.toLocaleDateString("tr-TR")} – ${input.data.endDate.toLocaleDateString("tr-TR")}). Bu günler gecikme hesabına katılmaz.`
     if (input.data.scope === "SCHOOL") {
-      await notify({ type: "AKSAMA_OLUSTURULDU", title: "Okul geneli aksama", message, targetRole: "OGRETMEN" })
+      await notifyRole({ role: "OGRETMEN", type: "AKSAMA_OLUSTURULDU", title: "Okul geneli aksama", message })
     } else {
-      for (const id of staffIds) {
-        await notify({ type: "AKSAMA_OLUSTURULDU", title: "Derslerinizi etkileyen aksama", message, targetUserId: id })
-      }
+      await notifyStaff({
+        staffIds: [...staffIds],
+        type: "AKSAMA_OLUSTURULDU",
+        title: "Derslerinizi etkileyen aksama",
+        message,
+        push: { kind: "neredeyiz_disruption", href: "/ogretmen/neredeyiz" },
+      })
     }
 
     return NextResponse.json(disruption, { status: 201 })

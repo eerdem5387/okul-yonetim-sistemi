@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireNeredeyizManager } from "@/lib/neredeyiz/access"
-import { notify } from "@/lib/neredeyiz/progress-service"
+import { notifyStaff } from "@/lib/neredeyiz/notify"
 
 type Ctx = { params: Promise<{ id: string }> }
 
@@ -26,11 +26,11 @@ export async function POST(request: NextRequest, context: Ctx) {
       data: { subjectId: id, staffId },
       include: { staff: { select: { id: true, firstName: true, lastName: true } } },
     })
-    await notify({
+    await notifyStaff({
+      staffIds: [staffId],
       type: "OGRETMEN_ATANDI",
       title: "Derse atandınız",
       message: `${subject.grade}${subject.section ? `/${subject.section}` : ""} ${subject.name} dersine atandınız.`,
-      targetUserId: staffId,
       relatedSubjectId: id,
     })
     return NextResponse.json(assignment, { status: 201 })

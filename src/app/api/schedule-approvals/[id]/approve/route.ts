@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { syncScheduleToNeredeyiz } from "@/lib/neredeyiz/sync"
+import { recordScheduleChange, toSlot } from "@/lib/neredeyiz/schedule-changes"
+import type { Schedule } from "@prisma/client"
 
 /**
  * POST /api/schedule-approvals/[id]/approve
@@ -49,7 +51,7 @@ export async function POST(
     }
 
     // Değişiklik tipine göre işlem yap
-    let result: { id: string } | undefined
+    let result: Schedule | undefined
 
     if (approval.changeType === "CREATE") {
       const newScheduleData = JSON.parse(approval.newValue!)
@@ -72,6 +74,7 @@ export async function POST(
           isActive: true,
         },
       })
+      await recordScheduleChange(null, toSlot(result), approvedBy)
     } else if (approval.changeType === "UPDATE") {
       const updatedScheduleData = JSON.parse(approval.newValue!)
       const existing = await prisma.schedule.findUnique({
@@ -98,10 +101,13 @@ export async function POST(
           notes: updatedScheduleData.notes,
         },
       })
+      await recordScheduleChange(toSlot(existing), toSlot(result), approvedBy)
     } else if (approval.changeType === "DELETE") {
-      result = await prisma.schedule.delete({
+      const removed = await prisma.schedule.delete({
         where: { id: approval.scheduleId! },
       })
+      result = removed
+      await recordScheduleChange(toSlot(removed), null, approvedBy)
     }
 
     // Onay durumunu güncelle

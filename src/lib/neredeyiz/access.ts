@@ -134,8 +134,8 @@ export async function loadTopicContext(topicId: string) {
     select: {
       id: true,
       name: true,
-      plannedStartDate: true,
-      plannedEndDate: true,
+      plannedStartWeek: true,
+      plannedEndWeek: true,
       unit: {
         select: {
           id: true,

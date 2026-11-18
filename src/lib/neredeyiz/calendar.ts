@@ -1,4 +1,4 @@
-import type { DisruptionScope, ProgressStatus } from "@prisma/client"
+import type { DisruptionScope } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 
 /**
@@ -211,104 +211,6 @@ export function teachingDaysInclusive(
 }
 
 // ------------------------------------------------------------------
-// Konu durumu
-// ------------------------------------------------------------------
-
-export type TopicState =
-  | "PLANLANDI"
-  | "DEVAM_EDIYOR"
-  | "ONAY_BEKLIYOR"
-  | "TAMAMLANDI"
-  | "ERKEN_TAMAMLANDI"
-  | "GECIKMELI_TAMAMLANDI"
-  | "GECIKMELI"
-  | "ERTELENDI"
-
-export type TopicEvaluation = {
-  state: TopicState
-  /** Tamamlandı (onaylı) mı */
-  completed: boolean
-  /** Öğretmen bildirdi, onay bekliyor */
-  pendingApproval: boolean
-  /** Planlanan bitişi geçmiş ve hâlâ tamamlanmamış */
-  delayed: boolean
-  /** Ders günü cinsinden gecikme (tamamlanmamışsa bugüne, tamamlandıysa bitişe / bildirime kadar) */
-  delayDays: number
-  /** Erken tamamlandıysa kaç ders günü önce */
-  earlyDays: number
-  /** Planlanan bitişe kalan ders günü (bitiş bugün/gelecekteyse) */
-  teachingDaysUntilDue: number | null
-}
-
-export type EvaluableTopic = { plannedStartDate: Date | null; plannedEndDate: Date | null }
-export type EvaluableProgress = {
-  status: ProgressStatus
-  actualEndDate: Date | null
-  reportedAt?: Date | null
-} | null | undefined
-
-export function evaluateTopic(
-  topic: EvaluableTopic,
-  progress: EvaluableProgress,
-  cal: SchoolCalendar,
-  scope: TopicScope | null,
-  today: string = todayKey(),
-): TopicEvaluation {
-  const plannedEnd = topic.plannedEndDate ? dayKey(topic.plannedEndDate) : null
-  const plannedStart = topic.plannedStartDate ? dayKey(topic.plannedStartDate) : null
-  const base: TopicEvaluation = {
-    state: "PLANLANDI",
-    completed: false,
-    pendingApproval: false,
-    delayed: false,
-    delayDays: 0,
-    earlyDays: 0,
-    teachingDaysUntilDue: plannedEnd && plannedEnd >= today ? teachingDaysInclusive(cal, today, plannedEnd, scope) : null,
-  }
-
-  const status = progress?.status
-
-  if (status === "TAMAMLANDI") {
-    base.completed = true
-    base.teachingDaysUntilDue = null
-    const actual = progress?.actualEndDate ? dayKey(progress.actualEndDate) : null
-    if (plannedEnd && actual) {
-      const late = teachingDaysAfter(cal, plannedEnd, actual, scope)
-      const early = teachingDaysAfter(cal, actual, plannedEnd, scope)
-      if (late > 0) return { ...base, state: "GECIKMELI_TAMAMLANDI", delayDays: late }
-      if (early > 0) return { ...base, state: "ERKEN_TAMAMLANDI", earlyDays: early }
-    }
-    return { ...base, state: "TAMAMLANDI" }
-  }
-
-  if (status === "PENDING_APPROVAL") {
-    // Öğretmen bildirdiği anda gecikme donar; onay beklerken geçen süre öğretmene yazılmaz.
-    const reported = progress?.reportedAt
-      ? dayKey(progress.reportedAt)
-      : progress?.actualEndDate
-        ? dayKey(progress.actualEndDate)
-        : today
-    const late = plannedEnd ? teachingDaysAfter(cal, plannedEnd, reported, scope) : 0
-    return { ...base, state: "ONAY_BEKLIYOR", pendingApproval: true, delayDays: late, teachingDaysUntilDue: null }
-  }
-
-  if (status === "ERTELENDI") {
-    return { ...base, state: "ERTELENDI" }
-  }
-
-  // PLANLANDI / DEVAM_EDIYOR / kayıt yok
-  if (plannedEnd && today > plannedEnd) {
-    const late = teachingDaysAfter(cal, plannedEnd, today, scope)
-    if (late > 0) return { ...base, state: "GECIKMELI", delayed: true, delayDays: late }
-  }
-  if (status === "DEVAM_EDIYOR") return { ...base, state: "DEVAM_EDIYOR" }
-  if (plannedStart && plannedEnd && plannedStart <= today && today <= plannedEnd) {
-    return { ...base, state: "DEVAM_EDIYOR" }
-  }
-  return base
-}
-
-// ------------------------------------------------------------------
 // Doğrulama
 // ------------------------------------------------------------------
 
@@ -360,33 +262,4 @@ export function topicScopeOf(subject: {
     classId: subject.classId,
     staffIds: (subject.assignments ?? []).map((a) => a.staffId),
   }
-}
-
-// ------------------------------------------------------------------
-// Toplu değerlendirme
-// ------------------------------------------------------------------
-
-type SubjectForEval = {
-  id: string
-  classId: string | null
-  academicYearId: string
-  assignments?: Array<{ staffId: string }>
-}
-
-/**
- * Konuları kendi akademik yılının takvimiyle değerlendirir.
- * `getSubject` her konunun dersini, `getProgress` en güncel ilerleme kaydını döndürür.
- */
-export async function evaluateTopics<T extends EvaluableTopic>(
-  topics: T[],
-  getSubject: (t: T) => SubjectForEval,
-  getProgress: (t: T) => EvaluableProgress,
-  today: string = todayKey(),
-): Promise<Array<{ topic: T; ev: TopicEvaluation }>> {
-  const calendars = await loadSchoolCalendars(topics.map((t) => getSubject(t).academicYearId))
-  return topics.map((topic) => {
-    const subject = getSubject(topic)
-    const cal = calendars.get(subject.academicYearId) ?? DEFAULT_CALENDAR
-    return { topic, ev: evaluateTopic(topic, getProgress(topic), cal, topicScopeOf(subject), today) }
-  })
 }

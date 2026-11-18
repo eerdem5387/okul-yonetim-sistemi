@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireNeredeyiz } from "@/lib/neredeyiz/access"
-import { badRequest, guardSubjectPlan, resolveTopicDates } from "@/lib/neredeyiz/plan-helpers"
+import { badRequest, guardSubjectPlan, resolveTopicWeeks } from "@/lib/neredeyiz/plan-helpers"
 
 // GET - Bir ünitenin konuları
 export async function GET(request: NextRequest) {
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     if (!unitId) return badRequest("Ünite ID zorunludur")
     const topics = await prisma.topic.findMany({
       where: { unitId },
-      include: { progress: true },
+      include: { completion: true },
       orderBy: { order: "asc" },
     })
     return NextResponse.json(topics)
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Yeni konu. Planlanan tarihler akademik yıl içinde olmalı. Yanıtta `warning` olabilir.
+// POST - Yeni konu. Gövde: { unitId, name, plannedStartWeek?, plannedEndWeek?, order? }
 export async function POST(request: NextRequest) {
   const guard = await requireNeredeyiz(request, "create")
   if (!guard.ok) return guard.response
@@ -36,8 +36,8 @@ export async function POST(request: NextRequest) {
     const plan = await guardSubjectPlan(guard.actor, unit.subjectId)
     if (!plan.ok) return plan.response
 
-    const dates = await resolveTopicDates(plan.subject, body.plannedStartDate, body.plannedEndDate)
-    if (!dates.ok) return badRequest(dates.error)
+    const weeks = await resolveTopicWeeks(plan.subject.academicYearId, body.plannedStartWeek, body.plannedEndWeek)
+    if (!weeks.ok) return badRequest(weeks.error)
 
     const last = await prisma.topic.findFirst({ where: { unitId }, orderBy: { order: "desc" }, select: { order: true } })
     const order = Number.isFinite(Number(body.order)) ? Number(body.order) : (last?.order ?? 0) + 1
@@ -46,12 +46,12 @@ export async function POST(request: NextRequest) {
         unitId,
         name,
         order,
-        plannedStartDate: dates.plannedStartDate ?? null,
-        plannedEndDate: dates.plannedEndDate ?? null,
+        plannedStartWeek: weeks.plannedStartWeek ?? null,
+        plannedEndWeek: weeks.plannedEndWeek ?? null,
         description: typeof body.description === "string" && body.description.trim() ? body.description.trim() : null,
       },
     })
-    return NextResponse.json({ ...topic, warning: dates.warning }, { status: 201 })
+    return NextResponse.json(topic, { status: 201 })
   } catch (error) {
     console.error("Error creating topic:", error)
     return NextResponse.json({ error: "Konu oluşturulurken hata oluştu" }, { status: 500 })

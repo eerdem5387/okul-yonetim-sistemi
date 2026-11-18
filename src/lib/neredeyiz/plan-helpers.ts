@@ -1,14 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { canEditSubjectPlan, forbidden, type NeredeyizActor } from "@/lib/neredeyiz/access"
-import {
-  dayKey,
-  keyToDate,
-  loadSchoolCalendar,
-  noTeachingDaysWarning,
-  topicScopeOf,
-  validateRangeInYear,
-} from "@/lib/neredeyiz/calendar"
+import { loadYearContexts, teachingWeekCount } from "@/lib/neredeyiz/weeks"
 
 export function badRequest(error: string) {
   return NextResponse.json({ error }, { status: 400 })
@@ -27,43 +20,41 @@ export async function guardSubjectPlan(actor: NeredeyizActor, subjectId: string)
   return { ok: true as const, subject }
 }
 
-function parseOptionalDate(raw: unknown): { ok: true; value: Date | null | undefined } | { ok: false } {
+function parseWeek(raw: unknown): { ok: true; value: number | null | undefined } | { ok: false } {
   if (raw === undefined) return { ok: true, value: undefined }
   if (raw === null || raw === "") return { ok: true, value: null }
-  const d = new Date(String(raw))
-  if (Number.isNaN(d.getTime())) return { ok: false }
-  return { ok: true, value: keyToDate(dayKey(d)) }
+  const n = Number(raw)
+  if (!Number.isInteger(n) || n < 1) return { ok: false }
+  return { ok: true, value: n }
 }
 
 /**
- * Konunun planlanan tarihlerini çözer ve akademik yıl takvimine göre doğrular.
- * Dönen `warning` engelleyici değildir (ör. aralıkta hiç ders günü yok).
+ * Konunun planlanan ders haftalarını doğrular: 1 ≤ başlangıç ≤ bitiş ≤ yılın ders haftası sayısı.
+ * Tek hafta girilirse diğeri ona eşitlenir.
  */
-export async function resolveTopicDates(
-  subject: { id: string; classId: string | null; academicYearId: string; assignments: Array<{ staffId: string }> },
+export async function resolveTopicWeeks(
+  academicYearId: string,
   rawStart: unknown,
   rawEnd: unknown,
-  current?: { plannedStartDate: Date | null; plannedEndDate: Date | null },
+  current?: { plannedStartWeek: number | null; plannedEndWeek: number | null },
 ): Promise<
-  | { ok: true; plannedStartDate: Date | null | undefined; plannedEndDate: Date | null | undefined; warning: string | null }
+  | { ok: true; plannedStartWeek: number | null | undefined; plannedEndWeek: number | null | undefined }
   | { ok: false; error: string }
 > {
-  const s = parseOptionalDate(rawStart)
-  const e = parseOptionalDate(rawEnd)
-  if (!s.ok || !e.ok) return { ok: false, error: "Geçersiz tarih" }
-  const start = s.value === undefined ? current?.plannedStartDate ?? null : s.value
-  const end = e.value === undefined ? current?.plannedEndDate ?? null : e.value
-  if (start && !end) return { ok: false, error: "Planlanan bitiş tarihi de girilmeli" }
-  if (start || end) {
-    const cal = await loadSchoolCalendar(subject.academicYearId)
-    const err = validateRangeInYear(cal, start, end, "Konu planı")
-    if (err) return { ok: false, error: err }
-    return {
-      ok: true,
-      plannedStartDate: s.value,
-      plannedEndDate: e.value,
-      warning: noTeachingDaysWarning(cal, start, end, topicScopeOf(subject)),
-    }
+  const s = parseWeek(rawStart)
+  const e = parseWeek(rawEnd)
+  if (!s.ok || !e.ok) return { ok: false, error: "Hafta numarası 1 veya daha büyük bir tam sayı olmalı" }
+  if (s.value === undefined && e.value === undefined) return { ok: true, plannedStartWeek: undefined, plannedEndWeek: undefined }
+
+  let start = s.value === undefined ? current?.plannedStartWeek ?? null : s.value
+  let end = e.value === undefined ? current?.plannedEndWeek ?? null : e.value
+  if (start == null && end != null) start = end
+  if (end == null && start != null) end = start
+  if (start != null && end != null) {
+    if (end < start) return { ok: false, error: "Bitiş haftası başlangıç haftasından önce olamaz" }
+    const ctx = (await loadYearContexts([academicYearId])).get(academicYearId)!
+    const total = teachingWeekCount(ctx.weeks)
+    if (total > 0 && end > total) return { ok: false, error: `Bu akademik yılda ${total} ders haftası var` }
   }
-  return { ok: true, plannedStartDate: s.value, plannedEndDate: e.value, warning: null }
+  return { ok: true, plannedStartWeek: start, plannedEndWeek: end }
 }

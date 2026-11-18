@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { isStaffEligibleAsScheduleInstructor } from "@/lib/staff-counseling"
 import { syncScheduleToNeredeyiz } from "@/lib/neredeyiz/sync"
+import { recordScheduleChange, toSlot } from "@/lib/neredeyiz/schedule-changes"
+import { resolveStaffActor } from "@/lib/hr/actor"
 
 /**
  * İki zaman aralığının çakışıp çakışmadığını kontrol eder
@@ -308,6 +310,8 @@ export async function POST(request: NextRequest) {
         },
       },
     })
+
+    await recordScheduleChange(null, toSlot(newSchedule), (await resolveStaffActor(request))?.staffId)
 
     return NextResponse.json({
       success: true,

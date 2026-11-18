@@ -8,28 +8,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/toast"
 import { ArrowDown, ArrowUp, Check, Loader2, Pencil, Trash2, X } from "lucide-react"
+import { StateBadge, type WeeklyState } from "@/components/neredeyiz/weekly/shared"
 
-type Evaluation = {
-  state:
-    | "PLANLANDI"
-    | "DEVAM_EDIYOR"
-    | "ONAY_BEKLIYOR"
-    | "TAMAMLANDI"
-    | "ERKEN_TAMAMLANDI"
-    | "GECIKMELI_TAMAMLANDI"
-    | "GECIKMELI"
-    | "ERTELENDI"
-  delayDays: number
-  earlyDays: number
-  teachingDaysUntilDue: number | null
-}
 type Topic = {
   id: string
   name: string
   order: number
-  plannedStartDate: string | null
-  plannedEndDate: string | null
-  evaluation?: Evaluation
+  plannedStartWeek: number | null
+  plannedEndWeek: number | null
+  evaluation?: { state: WeeklyState; lateDays: number; rangeLabel: string }
 }
 type Unit = { id: string; name: string; order: number; topics: Topic[] }
 type Subject = {
@@ -40,36 +27,11 @@ type Subject = {
 }
 type Holiday = { id: string; name: string; startDate: string; endDate: string; blocksTeaching: boolean }
 type Disruption = { id: string; reason: string; startDate: string; endDate: string; scope: string }
-type Sibling = { id: string; name: string }
+type Sibling = { id: string; name: string; grade: number }
 type YearInfo = { name: string; startDate: string | null; endDate: string | null }
 
 function day(iso: string | null | undefined) {
   return iso ? iso.slice(0, 10) : ""
-}
-
-const STATE_LABEL: Record<Evaluation["state"], { label: string; cls: string }> = {
-  PLANLANDI: { label: "Planlandı", cls: "bg-blue-50 text-blue-700" },
-  DEVAM_EDIYOR: { label: "Devam ediyor", cls: "bg-yellow-50 text-yellow-800" },
-  ONAY_BEKLIYOR: { label: "Onay bekliyor", cls: "bg-orange-50 text-orange-700" },
-  TAMAMLANDI: { label: "Tamamlandı", cls: "bg-green-50 text-green-700" },
-  ERKEN_TAMAMLANDI: { label: "Erken tamamlandı", cls: "bg-green-50 text-green-700" },
-  GECIKMELI_TAMAMLANDI: { label: "Gecikmeli tamamlandı", cls: "bg-red-50 text-red-700" },
-  GECIKMELI: { label: "Gecikmeli", cls: "bg-red-100 text-red-800" },
-  ERTELENDI: { label: "Ertelendi", cls: "bg-gray-100 text-gray-700" },
-}
-
-function StateBadge({ ev }: { ev?: Evaluation }) {
-  if (!ev) return null
-  const meta = STATE_LABEL[ev.state]
-  const extra =
-    ev.delayDays > 0
-      ? ` · ${ev.delayDays} ders günü`
-      : ev.earlyDays > 0
-        ? ` · ${ev.earlyDays} ders günü erken`
-        : ev.teachingDaysUntilDue != null && ev.state !== "PLANLANDI"
-          ? ` · ${ev.teachingDaysUntilDue} ders günü kaldı`
-          : ""
-  return <span className={`rounded px-2 py-0.5 text-[11px] whitespace-nowrap ${meta.cls}`}>{meta.label + extra}</span>
 }
 
 export default function SinifPlanWorkspacePage() {
@@ -94,7 +56,9 @@ export default function SinifPlanWorkspacePage() {
   const [sourceClassId, setSourceClassId] = useState("")
   const [sourceSubjects, setSourceSubjects] = useState<Array<{ id: string; name: string }>>([])
   const [picked, setPicked] = useState<string[]>([])
-  const [includeDates, setIncludeDates] = useState(false)
+  const [includeDates, setIncludeDates] = useState(true)
+  const [weeks, setWeeks] = useState<Array<{ index: number; label: string }>>([])
+  const [grade, setGrade] = useState<number | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -108,6 +72,8 @@ export default function SinifPlanWorkspacePage() {
       setHolidays(data.holidays || [])
       setDisruptions(data.disruptions || [])
       setSiblings(data.siblingClasses || [])
+      setWeeks(data.weeks || [])
+      setGrade(data.class.grade ?? null)
       setSelectedId((cur) => (cur && data.subjects?.some((s: Subject) => s.id === cur) ? cur : data.subjects?.[0]?.id || null))
     } catch (e) {
       error(e instanceof Error ? e.message : "Plan yüklenemedi")
@@ -127,6 +93,8 @@ export default function SinifPlanWorkspacePage() {
   const selected = useMemo(() => subjects.find((s) => s.id === selectedId) || null, [subjects, selectedId])
   const minDay = day(year?.startDate)
   const maxDay = day(year?.endDate)
+  const weekNum = (v: string) => (v ? Number(v) : null)
+  const sameGrade = siblings.filter((s) => grade != null && s.grade === grade)
 
   /** API çağrısı + hata/uyarı bildirimi; başarılıysa planı yeniler. */
   async function call(url: string, method: string, body?: unknown, okMessage?: string): Promise<boolean> {
@@ -165,10 +133,12 @@ export default function SinifPlanWorkspacePage() {
     const ok = await call(
       "/api/neredeyiz/topics",
       "POST",
-      { unitId, name: draft.name.trim(), plannedStartDate: draft.start || null, plannedEndDate: draft.end || null },
+      { unitId, name: draft.name.trim(), plannedStartWeek: weekNum(draft.start), plannedEndWeek: weekNum(draft.end || draft.start) },
       "Konu eklendi",
     )
-    if (ok) setNewTopic((cur) => ({ ...cur, [unitId]: { name: "", start: draft.end, end: "" } }))
+    // Sonraki konu bir sonraki haftadan başlasın
+    const next = draft.end || draft.start ? String(Number(draft.end || draft.start) + 1) : ""
+    if (ok) setNewTopic((cur) => ({ ...cur, [unitId]: { name: "", start: next, end: "" } }))
   }
 
   async function saveTopic() {
@@ -178,8 +148,8 @@ export default function SinifPlanWorkspacePage() {
       "PUT",
       {
         name: editingTopic.name,
-        plannedStartDate: editingTopic.start || null,
-        plannedEndDate: editingTopic.end || null,
+        plannedStartWeek: weekNum(editingTopic.start),
+        plannedEndWeek: weekNum(editingTopic.end || editingTopic.start),
       },
       "Konu güncellendi",
     )
@@ -210,7 +180,7 @@ export default function SinifPlanWorkspacePage() {
     if (
       !window.confirm(
         "Seçilen derslerin bu sınıftaki üniteleri ve konuları kaynak sınıftakilerle değiştirilecek. " +
-          "İlerleme kaydı olan dersler korunur ve atlanır. Devam edilsin mi?",
+          "Tamamlanmış konusu olan dersler korunur ve atlanır. Devam edilsin mi?",
       )
     ) {
       return
@@ -237,6 +207,35 @@ export default function SinifPlanWorkspacePage() {
     }
   }
 
+  /** Bu sınıfın planını aynı düzeydeki diğer şubelere uygular (tamamlanmış konusu olan dersler atlanır). */
+  async function applyToGrade() {
+    if (!sameGrade.length) return
+    if (!window.confirm(`Bu sınıfın yıllık planı ${sameGrade.map((s) => s.name).join(", ")} şubelerine uygulanacak. Tamamlanmış konusu olan dersler atlanır. Devam edilsin mi?`)) return
+    setBusy(true)
+    let copied = 0
+    const skipped: string[] = []
+    try {
+      for (const target of sameGrade) {
+        const res = await fetch(`/api/neredeyiz/classes/${target.id}/copy-curriculum`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sourceClassId: classId, includeDates: true }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          skipped.push(`${target.name} (${(data as { error?: string }).error ?? "hata"})`)
+          continue
+        }
+        copied++
+        for (const s of (data as { skipped?: Array<{ name: string }> }).skipped ?? []) skipped.push(`${target.name} ${s.name}`)
+      }
+      success(`${copied} şubeye uygulandı`)
+      if (skipped.length) info(`Atlanan: ${skipped.join(", ")}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   if (loading && !className) {
     return (
       <div className="p-6 flex justify-center">
@@ -258,13 +257,20 @@ export default function SinifPlanWorkspacePage() {
           {year && (
             <p className="text-xs text-gray-500">
               {year.name}
-              {minDay && maxDay ? ` · ${minDay} – ${maxDay}` : " · takvim tarihleri tanımlı değil"}
+              {minDay && maxDay ? ` · ${weeks.length} ders haftası` : " · takvim tarihleri tanımlı değil"}
             </p>
           )}
         </div>
-        <Button size="sm" variant="outline" onClick={() => setCopyOpen((v) => !v)}>
-          Müfredat kopyala
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {sameGrade.length > 0 && (
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => void applyToGrade()}>
+              Planı diğer {grade}. sınıf şubelerine uygula
+            </Button>
+          )}
+          <Button size="sm" variant="outline" onClick={() => setCopyOpen((v) => !v)}>
+            Başka sınıftan kopyala
+          </Button>
+        </div>
       </div>
 
       {(blocked.length > 0 || disruptions.length > 0) && (
@@ -317,7 +323,7 @@ export default function SinifPlanWorkspacePage() {
             </div>
             <label className="text-sm flex items-center gap-2">
               <input type="checkbox" checked={includeDates} onChange={(e) => setIncludeDates(e.target.checked)} />
-              Planlanan tarihleri de kopyala (aynı akademik yıldaki sınıflar için)
+              Planlanan haftaları da kopyala
             </label>
             <Button size="sm" disabled={busy || !sourceClassId} onClick={() => void copyCurriculum()}>
               Kopyala
@@ -416,10 +422,20 @@ export default function SinifPlanWorkspacePage() {
                             <>
                               <Input className="h-8 flex-1 min-w-[160px]" value={editingTopic.name}
                                 onChange={(e) => setEditingTopic({ ...editingTopic, name: e.target.value })} />
-                              <Input type="date" className="h-8 w-[150px]" min={minDay} max={maxDay} value={editingTopic.start}
-                                onChange={(e) => setEditingTopic({ ...editingTopic, start: e.target.value })} />
-                              <Input type="date" className="h-8 w-[150px]" min={editingTopic.start || minDay} max={maxDay} value={editingTopic.end}
-                                onChange={(e) => setEditingTopic({ ...editingTopic, end: e.target.value })} />
+                              <select className="h-8 rounded-md border px-2 text-sm" title="Başlangıç haftası" aria-label="Başlangıç haftası" value={editingTopic.start}
+                                onChange={(e) => setEditingTopic({ ...editingTopic, start: e.target.value })}>
+                                <option value="">Başlangıç haftası</option>
+                                {weeks.map((w) => (
+                                  <option key={w.index} value={w.index}>{w.index}. hafta · {w.label}</option>
+                                ))}
+                              </select>
+                              <select className="h-8 rounded-md border px-2 text-sm" title="Bitiş haftası" aria-label="Bitiş haftası" value={editingTopic.end}
+                                onChange={(e) => setEditingTopic({ ...editingTopic, end: e.target.value })}>
+                                <option value="">Bitiş haftası</option>
+                                {weeks.map((w) => (
+                                  <option key={w.index} value={w.index}>{w.index}. hafta · {w.label}</option>
+                                ))}
+                              </select>
                               <Button size="sm" variant="ghost" disabled={busy} onClick={() => void saveTopic()} title="Kaydet">
                                 <Check className="h-4 w-4" />
                               </Button>
@@ -431,11 +447,14 @@ export default function SinifPlanWorkspacePage() {
                             <>
                               <span className="flex-1 min-w-[160px]">{t.name}</span>
                               <span className="text-xs text-gray-500 whitespace-nowrap">
-                                {t.plannedStartDate || t.plannedEndDate
-                                  ? `${day(t.plannedStartDate) || "?"} → ${day(t.plannedEndDate) || "?"}`
-                                  : "tarih yok"}
+                                {t.evaluation?.rangeLabel ?? "Hafta girilmedi"}
                               </span>
-                              <StateBadge ev={t.evaluation} />
+                              {t.evaluation && (
+                                <StateBadge
+                                  state={t.evaluation.state}
+                                  extra={t.evaluation.lateDays ? `${t.evaluation.lateDays} ders günü` : null}
+                                />
+                              )}
                               <Button size="sm" variant="ghost" disabled={busy || ti === 0} title="Yukarı"
                                 onClick={() => void call(`/api/neredeyiz/topics/${t.id}`, "PUT", { order: u.topics[ti - 1]!.order })}>
                                 <ArrowUp className="h-3.5 w-3.5" />
@@ -445,7 +464,7 @@ export default function SinifPlanWorkspacePage() {
                                 <ArrowDown className="h-3.5 w-3.5" />
                               </Button>
                               <Button size="sm" variant="ghost" title="Düzenle"
-                                onClick={() => setEditingTopic({ id: t.id, name: t.name, start: day(t.plannedStartDate), end: day(t.plannedEndDate) })}>
+                                onClick={() => setEditingTopic({ id: t.id, name: t.name, start: t.plannedStartWeek ? String(t.plannedStartWeek) : "", end: t.plannedEndWeek ? String(t.plannedEndWeek) : "" })}>
                                 <Pencil className="h-3.5 w-3.5" />
                               </Button>
                               <Button size="sm" variant="ghost" className="text-red-600" disabled={busy} title="Sil"
@@ -471,12 +490,20 @@ export default function SinifPlanWorkspacePage() {
                           patchDraft(u.id, { name: e.target.value })
                         }
                       />
-                      <Input type="date" className="h-8 w-[150px]" min={minDay} max={maxDay} title="Planlanan başlangıç"
-                        value={newTopic[u.id]?.start ?? ""}
-                        onChange={(e) => patchDraft(u.id, { start: e.target.value })} />
-                      <Input type="date" className="h-8 w-[150px]" min={newTopic[u.id]?.start || minDay} max={maxDay} title="Planlanan bitiş"
-                        value={newTopic[u.id]?.end ?? ""}
-                        onChange={(e) => patchDraft(u.id, { end: e.target.value })} />
+                      <select className="h-8 rounded-md border px-2 text-sm" title="Başlangıç haftası" aria-label="Başlangıç haftası" value={newTopic[u.id]?.start ?? ""}
+                                onChange={(e) => patchDraft(u.id, { start: e.target.value })}>
+                                <option value="">Başlangıç haftası</option>
+                                {weeks.map((w) => (
+                                  <option key={w.index} value={w.index}>{w.index}. hafta · {w.label}</option>
+                                ))}
+                              </select>
+                      <select className="h-8 rounded-md border px-2 text-sm" title="Bitiş haftası" aria-label="Bitiş haftası" value={newTopic[u.id]?.end ?? ""}
+                                onChange={(e) => patchDraft(u.id, { end: e.target.value })}>
+                                <option value="">Bitiş haftası</option>
+                                {weeks.map((w) => (
+                                  <option key={w.index} value={w.index}>{w.index}. hafta · {w.label}</option>
+                                ))}
+                              </select>
                       <Button size="sm" disabled={busy} onClick={() => void addTopic(u.id)}>
                         Konu ekle
                       </Button>

@@ -12,7 +12,7 @@ export async function GET(request: NextRequest, context: Ctx) {
     const { id } = await context.params
     const unit = await prisma.unit.findUnique({
       where: { id },
-      include: { subject: true, topics: { orderBy: { order: "asc" }, include: { progress: true } } },
+      include: { subject: true, topics: { orderBy: { order: "asc" }, include: { completion: true } } },
     })
     if (!unit) return NextResponse.json({ error: "Ünite bulunamadı" }, { status: 404 })
     return NextResponse.json(unit)
@@ -58,7 +58,7 @@ export async function PUT(request: NextRequest, context: Ctx) {
   }
 }
 
-// DELETE - Ünite ve konuları (ilerleme kayıtları dahil) silinir
+// DELETE - Ünite ve konuları (tamamlama kayıtları dahil) silinir
 export async function DELETE(request: NextRequest, context: Ctx) {
   const guard = await requireNeredeyiz(request, "edit")
   if (!guard.ok) return guard.response

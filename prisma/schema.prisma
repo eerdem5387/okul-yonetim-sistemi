@@ -940,13 +940,6 @@ enum DisruptionScope {
   TEACHER
 }
 
-enum ProgressStatus {
-  PLANLANDI // Planlandı (henüz başlanmadı)
-  DEVAM_EDIYOR // Devam Ediyor
-  TAMAMLANDI // Tamamlandı
-  ERTELENDI // Ertelendi
-  PENDING_APPROVAL // Onay Bekliyor (Öğretmen tarafından işaretlendi, onay bekliyor)
-}
 
 // Akademik Yıl
 model AcademicYear {
@@ -1021,6 +1014,9 @@ enum NotificationType {
   ERKEN_TAMAMLANDI // Konu erken tamamlandı
   HAFTALIK_OZET // Haftalık özet bildirimi
   KRITIK_GECIKME // 5+ gün gecikme
+  PROGRAM_DEGISTI // Öğretmenin ders programı değişti
+  HATIRLATMA // Rehberlikten geciken konu hatırlatması
+  REHBERLIK_NOTU // Rehberlik notu
 }
 
 enum NotificationPriority {
@@ -1050,6 +1046,7 @@ model Subject {
   branch       Branch?             @relation(fields: [branchId], references: [id], onDelete: SetNull)
   units        Unit[]
   assignments  SubjectAssignment[]
+  notes        NeredeyizNote[]
   schedules    Schedule[] // Ders programı satırları (subjectId)
 
   @@unique([academicYearId, name, grade, section]) // Aynı akademik yılda aynı ders-sınıf-şube kombinasyonu tekrar edemez
@@ -1106,22 +1103,22 @@ model Topic {
   unitId            String
   name              String // Örn: "Üçgenin İç Açıları"
   order             Int // Sıralama
-  /// Planlanan aralık; akademik yıl içinde olmalı. Gecikme ders günüyle hesaplanır (src/lib/neredeyiz/calendar.ts)
-  plannedStartDate  DateTime?
-  plannedEndDate    DateTime?
+  /// Planlanan aralık: akademik yılın DERS haftası numaraları (tamamen tatil olan haftalar sayılmaz).
+  /// Tarihler takvimden hesaplanır (src/lib/neredeyiz/weeks.ts); tatil eklenince plan kendiliğinden kayar.
+  plannedStartWeek  Int?
+  plannedEndWeek    Int?
   description       String?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
   // Relations
-  unit     Unit       @relation(fields: [unitId], references: [id], onDelete: Cascade)
-  /// Konu başına en fazla bir kayıt (topicId tekil)
-  progress Progress[]
+  unit       Unit             @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  completion TopicCompletion?
+  notes      NeredeyizNote[]
 
   @@index([unitId])
   @@index([unitId, order])
-  @@index([plannedStartDate])
-  @@index([plannedEndDate])
+  @@index([plannedEndWeek])
   @@map("topics")
 }
 
@@ -1173,31 +1170,71 @@ model Disruption {
   @@map("disruptions")
 }
 
-// İlerleme Takibi
-model Progress {
-  id              String         @id @default(cuid())
-  topicId         String         @unique
-  status          ProgressStatus @default(PLANLANDI)
-  actualStartDate DateTime? // Gerçek başlangıç tarihi
-  actualEndDate   DateTime? // Gerçek bitiş tarihi
-  notes           String? // Notlar
-  reportedBy      String? // Bildiren öğretmen (Staff ID) - "Tamamladım" butonuna basan
-  reportedAt      DateTime? // Öğretmenin işaretleme tarihi
-  markedBy        String? // İşaretleyen (Rehberlik Danışmanı veya Öğrenci İşleri)
-  markedAt        DateTime? // İşaretleme tarihi
-  approvedBy      String? // Onaylayan (Rehberlik Danışmanı veya Öğrenci İşleri Staff ID)
-  approvedAt      DateTime? // Onay tarihi
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+// Konu tamamlama (konu başına tek kayıt). Onay yok.
+// Planlanan aralıktan sonra tamamlandıysa lateReason zorunludur; zamanında tamamlanan konu için ek bilgi istenmez.
+enum NeredeyizLateReason {
+  IZIN
+  RAPOR
+  ETKINLIK
+  PROGRAM_DEGISIKLIGI
+  DIGER
+}
 
-  // Relations
+model TopicCompletion {
+  id          String               @id @default(cuid())
+  topicId     String               @unique
+  completedAt DateTime // Tamamlandığı gün
+  completedBy String? // Staff ID (işaretleyen)
+  lateReason  NeredeyizLateReason?
+  note        String?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
   topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
 
-  @@index([status])
-  @@index([actualEndDate])
-  @@index([reportedBy])
-  @@index([approvedBy])
-  @@map("progress")
+  @@index([completedAt])
+  @@index([completedBy])
+  @@map("topic_completions")
+}
+
+// Rehberlik / yönetim notu (ders ya da konu için; öğretmen görür)
+model NeredeyizNote {
+  id        String   @id @default(cuid())
+  subjectId String
+  topicId   String?
+  authorId  String
+  text      String
+  createdAt DateTime @default(now())
+
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  topic   Topic?  @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@index([subjectId, createdAt])
+  @@map("neredeyiz_notes")
+}
+
+// Öğretmenin ders programındaki değişiklik (bildirim ve "önce / sonra" ekranı için)
+enum ScheduleChangeKind {
+  ADDED // derse/saate eklendi
+  REMOVED // dersten/saatten çıkarıldı
+  MOVED // aynı ders, gün/saat değişti
+}
+
+model ScheduleChange {
+  id          String             @id @default(cuid())
+  teacherId   String
+  classId     String
+  className   String
+  subjectName String
+  kind        ScheduleChangeKind
+  before      Json? // { dayOfWeek, startTime, endTime }
+  after       Json?
+  changedBy   String?
+  readAt      DateTime?
+  createdAt   DateTime           @default(now())
+
+  @@index([teacherId, createdAt])
+  @@map("schedule_changes")
 }
 
 // Teklif Görüşmeleri

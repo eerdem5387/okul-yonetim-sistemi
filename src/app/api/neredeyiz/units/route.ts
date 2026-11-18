@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     if (!subjectId) return badRequest("Ders ID zorunludur")
     const units = await prisma.unit.findMany({
       where: { subjectId },
-      include: { topics: { orderBy: { order: "asc" }, include: { progress: true } } },
+      include: { topics: { orderBy: { order: "asc" }, include: { completion: true } } },
       orderBy: { order: "asc" },
     })
     return NextResponse.json(units)
