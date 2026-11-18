@@ -234,3 +234,76 @@ export async function copyClassCurriculum(params: {
 
   return { copiedSubjectIds, skipped }
 }
+
+/**
+ * Ders programı satırlarını Neredeyiz dersleriyle bağlar (Schedule otoritedir):
+ * her (sınıf, ders adı) için Subject bulunur/oluşturulur, öğretmen derse atanır, Schedule.subjectId yazılır.
+ * Toplu aktarım (Excel) ve geriye dönük bağlama için. `dryRun` ile yalnız ne yapılacağını sayar.
+ */
+export async function linkSchedulesToNeredeyiz(options: {
+  scheduleIds?: string[]
+  onlyUnlinked?: boolean
+  dryRun?: boolean
+} = {}): Promise<{
+  schedules: number
+  subjectsCreated: number
+  assignmentsCreated: number
+  schedulesLinked: number
+}> {
+  const schedules = await prisma.schedule.findMany({
+    where: {
+      isActive: true,
+      ...(options.scheduleIds ? { id: { in: options.scheduleIds } } : {}),
+      ...(options.onlyUnlinked !== false ? { subjectId: null } : {}),
+    },
+    select: {
+      id: true,
+      subjectName: true,
+      subjectId: true,
+      teacherId: true,
+      class: { select: { id: true, academicYearId: true, grade: true, section: true } },
+    },
+  })
+
+  const result = { schedules: schedules.length, subjectsCreated: 0, assignmentsCreated: 0, schedulesLinked: 0 }
+  const subjectCache = new Map<string, string>()
+  const assignmentSeen = new Set<string>()
+
+  for (const s of schedules) {
+    const name = s.subjectName.trim()
+    if (!name) continue
+    const key = `${s.class.id}::${normalizeSubjectName(name)}`
+    let subjectId = subjectCache.get(key)
+    if (!subjectId) {
+      const existing = (await prisma.subject.findMany({ where: { classId: s.class.id } })).find(
+        (x) => normalizeSubjectName(x.name) === normalizeSubjectName(name),
+      )
+      if (existing) subjectId = existing.id
+      else if (options.dryRun) subjectId = `new:${key}`
+      else subjectId = (await ensureSubjectForClass(s.class, name)).id
+      if (!existing) result.subjectsCreated++
+      subjectCache.set(key, subjectId)
+    }
+
+    const aKey = `${subjectId}::${s.teacherId}`
+    if (!assignmentSeen.has(aKey)) {
+      assignmentSeen.add(aKey)
+      const has = subjectId.startsWith("new:")
+        ? null
+        : await prisma.subjectAssignment.findUnique({
+            where: { subjectId_staffId: { subjectId, staffId: s.teacherId } },
+            select: { id: true },
+          })
+      if (!has) {
+        result.assignmentsCreated++
+        if (!options.dryRun) await ensureSubjectAssignment(subjectId, s.teacherId)
+      }
+    }
+
+    if (s.subjectId !== subjectId) {
+      result.schedulesLinked++
+      if (!options.dryRun) await prisma.schedule.update({ where: { id: s.id }, data: { subjectId } })
+    }
+  }
+  return result
+}

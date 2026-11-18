@@ -11,7 +11,7 @@ interface TimelineTopic {
   name: string
   plannedStartDate: string | null
   plannedEndDate: string | null
-  status: "PLANLANDI" | "DEVAM_EDIYOR" | "TAMAMLANDI" | "GECIKMELI" | "GECIKMELI_TAMAMLANDI"
+  status: "PLANLANDI" | "DEVAM_EDIYOR" | "ONAY_BEKLIYOR" | "TAMAMLANDI" | "GECIKMELI" | "GECIKMELI_TAMAMLANDI"
   delayDays?: number
   subject: {
     name: string
@@ -53,6 +53,8 @@ export default function TimelineView({ topics, onTopicClick }: TimelineViewProps
         return <CheckCircle2 className="h-4 w-4 text-green-600" />
       case "DEVAM_EDIYOR":
         return <Clock className="h-4 w-4 text-yellow-600" />
+      case "ONAY_BEKLIYOR":
+        return <Clock className="h-4 w-4 text-orange-500" />
       case "GECIKMELI":
       case "GECIKMELI_TAMAMLANDI":
         return <AlertTriangle className="h-4 w-4 text-red-600" />
@@ -67,6 +69,8 @@ export default function TimelineView({ topics, onTopicClick }: TimelineViewProps
         return "border-green-500 bg-green-50"
       case "DEVAM_EDIYOR":
         return "border-yellow-500 bg-yellow-50"
+      case "ONAY_BEKLIYOR":
+        return "border-orange-400 bg-orange-50"
       case "GECIKMELI":
       case "GECIKMELI_TAMAMLANDI":
         return "border-red-500 bg-red-50"
@@ -81,6 +85,8 @@ export default function TimelineView({ topics, onTopicClick }: TimelineViewProps
         return "Tamamlandı"
       case "DEVAM_EDIYOR":
         return "Devam Ediyor"
+      case "ONAY_BEKLIYOR":
+        return "Onay Bekliyor"
       case "GECIKMELI":
         return "Gecikmeli"
       case "GECIKMELI_TAMAMLANDI":

@@ -383,7 +383,6 @@ export default function IlerlemeDetayPage() {
           topicId,
           status: "TAMAMLANDI",
           actualEndDate: new Date().toISOString(),
-          markedBy: staffId || null, // Rehberlik danışmanı veya öğrenci işleri kullanıcısı ise markedBy gönder
         }),
       })
 
@@ -414,18 +413,21 @@ export default function IlerlemeDetayPage() {
         (t) => t.progress?.[0]?.status !== "TAMAMLANDI"
       )
 
-      // Tüm konuları tamamlandı olarak işaretle
+      // Tüm konuları tamamlandı olarak işaretle; hata olursa durup bildir
+      let done = 0
       for (const topic of incompleteTopics) {
-        await fetch("/api/neredeyiz/progress", {
+        const res = await fetch("/api/neredeyiz/progress", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            topicId: topic.id,
-            status: "TAMAMLANDI",
-            actualEndDate: new Date().toISOString(),
-            markedBy: staffId || null, // Rehberlik danışmanı veya öğrenci işleri kullanıcısı ise markedBy gönder
-          }),
+          body: JSON.stringify({ topicId: topic.id, status: "TAMAMLANDI" }),
         })
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          error(`${done} konu işaretlendi; "${topic.name}" işaretlenemedi: ${(data as { error?: string }).error || res.status}`)
+          await fetchSubject()
+          return
+        }
+        done++
       }
 
       success("Ünite içindeki tüm konular tamamlandı olarak işaretlendi!")
@@ -451,7 +453,6 @@ export default function IlerlemeDetayPage() {
           topicId: completionDateTopicId,
           status: "TAMAMLANDI",
           actualEndDate: new Date(completionDate).toISOString(),
-          markedBy: staffId || null, // Rehberlik danışmanı veya öğrenci işleri kullanıcısı ise markedBy gönder
         }),
       })
 
@@ -829,7 +830,7 @@ export default function IlerlemeDetayPage() {
                                     </span>
                                     {delayDays !== null && delayDays > 0 && topicStatus.status !== "GECIKMELI_TAMAMLANDI" && (
                                       <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">
-                                        {delayDays} gün gecikme
+                                        {delayDays} ders günü gecikme
                                       </span>
                                     )}
                                     {earlyDays !== null && earlyDays > 0 && topicStatus.status === "ERKEN_TAMAMLANDI" && (

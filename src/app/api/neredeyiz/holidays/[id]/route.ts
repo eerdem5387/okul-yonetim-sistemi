@@ -1,107 +1,51 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { HolidayType } from "@prisma/client"
+import { requireSettingsEdit, requireStaff } from "@/lib/neredeyiz/access"
+import { parseHolidayInput } from "@/lib/neredeyiz/calendar-input"
 
-// GET - Tek tatil getir
-export async function GET(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+type Ctx = { params: Promise<{ id: string }> }
+
+export async function GET(request: NextRequest, context: Ctx) {
+  const guard = await requireStaff(request)
+  if (!guard.ok) return guard.response
   try {
-    const params = await context.params
-    const holiday = await prisma.holiday.findUnique({
-      where: { id: params.id },
-      include: {
-        academicYear: true,
-      },
-    })
-
-    if (!holiday) {
-      return NextResponse.json(
-        { error: "Tatil bulunamadı" },
-        { status: 404 }
-      )
-    }
-
+    const { id } = await context.params
+    const holiday = await prisma.holiday.findUnique({ where: { id } })
+    if (!holiday) return NextResponse.json({ error: "Tatil bulunamadı" }, { status: 404 })
     return NextResponse.json(holiday)
   } catch (error) {
     console.error("Error fetching holiday:", error)
-    return NextResponse.json(
-      { error: "Tatil getirilirken hata oluştu" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Tatil getirilirken hata oluştu" }, { status: 500 })
   }
 }
 
-// PUT - Tatil güncelle
-export async function PUT(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+export async function PUT(request: NextRequest, context: Ctx) {
+  const guard = await requireSettingsEdit(request)
+  if (!guard.ok) return guard.response
   try {
-    const params = await context.params
-    const body = await request.json()
-    const { name, type, startDate, endDate, description, blocksTeaching } = body
-
-    if (!name || !type || !startDate || !endDate) {
-      return NextResponse.json(
-        { error: "Ad, tip, başlangıç ve bitiş tarihi zorunludur" },
-        { status: 400 }
-      )
-    }
-
-    const holiday = await prisma.holiday.update({
-      where: { id: params.id },
-      data: {
-        name,
-        type: type as HolidayType,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
-        description: description || null,
-        blocksTeaching: blocksTeaching !== false,
-      },
-    })
-
+    const { id } = await context.params
+    const existing = await prisma.holiday.findUnique({ where: { id }, select: { academicYearId: true } })
+    if (!existing) return NextResponse.json({ error: "Tatil bulunamadı" }, { status: 404 })
+    const input = await parseHolidayInput(existing.academicYearId, (await request.json()) as Record<string, unknown>)
+    if (!input.ok) return NextResponse.json({ error: input.error }, { status: 400 })
+    const holiday = await prisma.holiday.update({ where: { id }, data: input.data })
     return NextResponse.json(holiday)
   } catch (error) {
     console.error("Error updating holiday:", error)
-    if (error instanceof Error && error.message.includes("Record to update not found")) {
-      return NextResponse.json(
-        { error: "Tatil bulunamadı" },
-        { status: 404 }
-      )
-    }
-    return NextResponse.json(
-      { error: "Tatil güncellenirken hata oluştu" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Tatil güncellenirken hata oluştu" }, { status: 500 })
   }
 }
 
-// DELETE - Tatil sil
-export async function DELETE(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(request: NextRequest, context: Ctx) {
+  const guard = await requireSettingsEdit(request)
+  if (!guard.ok) return guard.response
   try {
-    const params = await context.params
-    await prisma.holiday.delete({
-      where: { id: params.id },
-    })
-
-    return NextResponse.json({ message: "Tatil başarıyla silindi" })
+    const { id } = await context.params
+    const res = await prisma.holiday.deleteMany({ where: { id } })
+    if (res.count === 0) return NextResponse.json({ error: "Tatil bulunamadı" }, { status: 404 })
+    return NextResponse.json({ message: "Tatil silindi" })
   } catch (error) {
     console.error("Error deleting holiday:", error)
-    if (error instanceof Error && error.message.includes("Record to delete does not exist")) {
-      return NextResponse.json(
-        { error: "Tatil bulunamadı" },
-        { status: 404 }
-      )
-    }
-    return NextResponse.json(
-      { error: "Tatil silinirken hata oluştu" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Tatil silinirken hata oluştu" }, { status: 500 })
   }
 }
-

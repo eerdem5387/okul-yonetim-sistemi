@@ -12,7 +12,7 @@ interface KanbanTopic {
   plannedStartDate: string | null
   plannedEndDate: string | null
   actualEndDate?: string | null
-  status: "PLANLANDI" | "DEVAM_EDIYOR" | "TAMAMLANDI" | "GECIKMELI" | "GECIKMELI_TAMAMLANDI"
+  status: "PLANLANDI" | "DEVAM_EDIYOR" | "ONAY_BEKLIYOR" | "TAMAMLANDI" | "GECIKMELI" | "GECIKMELI_TAMAMLANDI"
   delayDays?: number
   subject: {
     name: string
@@ -80,6 +80,7 @@ export default function KanbanView({ topics, onTopicClick }: KanbanViewProps) {
     const groups: Record<string, KanbanTopic[]> = {
       PLANLANDI: [],
       DEVAM_EDIYOR: [],
+      ONAY_BEKLIYOR: [],
       TAMAMLANDI: [],
       GECIKMELI: [],
     }
@@ -111,6 +112,14 @@ export default function KanbanView({ topics, onTopicClick }: KanbanViewProps) {
       color: "border-yellow-500 bg-yellow-50",
       headerColor: "bg-yellow-500",
       topics: groupedTopics.DEVAM_EDIYOR,
+    },
+    {
+      id: "ONAY_BEKLIYOR",
+      title: "Onay Bekliyor",
+      icon: Clock,
+      color: "border-orange-400 bg-orange-50",
+      headerColor: "bg-orange-400",
+      topics: groupedTopics.ONAY_BEKLIYOR,
     },
     {
       id: "TAMAMLANDI",
@@ -267,7 +276,7 @@ export default function KanbanView({ topics, onTopicClick }: KanbanViewProps) {
             <p className="text-gray-500 text-sm">Filtrelere uygun konu bulunamadı.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
           {columns.map((column) => {
             const Icon = column.icon
             return (
@@ -346,7 +355,7 @@ export default function KanbanView({ topics, onTopicClick }: KanbanViewProps) {
                           {/* Gecikme */}
                           {topic.delayDays && topic.delayDays > 0 && (
                             <div className="text-red-600 font-medium">
-                              ⚠ +{topic.delayDays} gün gecikme
+                              ⚠ +{topic.delayDays} ders günü gecikme
                             </div>
                           )}
                           

@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { requireStaff } from "@/lib/neredeyiz/access"
+import { getActiveAcademicYear } from "@/lib/activity-academic-year"
 
 /** Okul geneli akademik takvim: yıl iskeleti + tatiller + aksamalar */
 export async function GET(request: NextRequest) {
+  const guard = await requireStaff(request)
+  if (!guard.ok) return guard.response
   try {
-    const academicYearId = request.nextUrl.searchParams.get("academicYearId")
-    const year = academicYearId
-      ? await prisma.academicYear.findUnique({ where: { id: academicYearId } })
-      : await prisma.academicYear.findFirst({ where: { isActive: true } })
+    const academicYearId =
+      request.nextUrl.searchParams.get("academicYearId") || (await getActiveAcademicYear())?.id || null
+    const year = academicYearId ? await prisma.academicYear.findUnique({ where: { id: academicYearId } }) : null
 
     if (!year || year.parentActiveYearId) {
       const years = await prisma.academicYear.findMany({

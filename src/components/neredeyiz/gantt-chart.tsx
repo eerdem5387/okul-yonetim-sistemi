@@ -13,7 +13,7 @@ interface GanttTopic {
   plannedStartDate: string | null
   plannedEndDate: string | null
   actualEndDate?: string | null
-  status: "PLANLANDI" | "DEVAM_EDIYOR" | "TAMAMLANDI" | "GECIKMELI" | "GECIKMELI_TAMAMLANDI"
+  status: "PLANLANDI" | "DEVAM_EDIYOR" | "ONAY_BEKLIYOR" | "TAMAMLANDI" | "GECIKMELI" | "GECIKMELI_TAMAMLANDI"
   subject: {
     name: string
     grade: number
@@ -110,6 +110,8 @@ export default function GanttChart({ topics, onTopicClick }: GanttChartProps) {
         return "bg-green-500"
       case "DEVAM_EDIYOR":
         return "bg-yellow-500"
+      case "ONAY_BEKLIYOR":
+        return "bg-orange-400"
       case "GECIKMELI":
       case "GECIKMELI_TAMAMLANDI":
         return "bg-red-500"
@@ -316,7 +318,7 @@ export default function GanttChart({ topics, onTopicClick }: GanttChartProps) {
                           <span className="truncate">{topic.name}</span>
                           {topic.delayDays && topic.delayDays > 0 && (
                             <span className="ml-1 text-[10px] bg-red-600 px-1 rounded">
-                              +{topic.delayDays}g
+                              +{topic.delayDays} ders g.
                             </span>
                           )}
                         </div>

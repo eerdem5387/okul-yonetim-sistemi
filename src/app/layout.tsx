@@ -10,6 +10,7 @@ import { useEffect, useState, useRef, useCallback } from "react"
 import { ToastProvider } from "@/components/ui/toast"
 import { isStaffAuthRole, isStaffTokenExpired } from "@/lib/auth/token"
 import {
+  installStaffApiAuthHeader,
   invalidateExpiredStaffSession,
   installStaffSessionGuard,
 } from "@/lib/auth/session-guard"
@@ -17,6 +18,9 @@ import { canAccessPathByPermission } from "@/lib/permissions/access"
 import { clearStaffSession, redirectToStaffLogin } from "@/lib/permissions/client"
 
 const inter = Inter({ subsets: ["latin"] })
+
+// Personel API isteklerine oturum token'ı — sayfalar render edilmeden önce kurulur
+installStaffApiAuthHeader()
 
 function LayoutBody({
   className,

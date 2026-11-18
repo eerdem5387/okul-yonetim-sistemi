@@ -52,6 +52,9 @@ export default function AkademikTakvimPage() {
   const [year, setYear] = useState<Year | null>(null)
   const [years, setYears] = useState<Array<{ id: string; name: string; isActive: boolean }>>([])
   const [holidays, setHolidays] = useState<Holiday[]>([])
+  const [disruptions, setDisruptions] = useState<
+    Array<{ id: string; reason: string; type: string; scope: string; startDate: string; endDate: string }>
+  >([])
   const [form, setForm] = useState({
     name: "",
     type: "RESMI_TATIL",
@@ -71,6 +74,7 @@ export default function AkademikTakvimPage() {
       setYear(data.year)
       setYears(data.years || [])
       setHolidays(data.holidays || [])
+      setDisruptions(data.disruptions || [])
     } catch (e) {
       error(e instanceof Error ? e.message : "Takvim yüklenemedi")
     } finally {
@@ -151,7 +155,8 @@ export default function AkademikTakvimPage() {
     if (!year) return
     const res = await fetch(`/api/neredeyiz/holidays/${id}`, { method: "DELETE" })
     if (!res.ok) {
-      error("Silinemedi")
+      const data = await res.json().catch(() => ({}))
+      error((data as { error?: string }).error || "Silinemedi")
       return
     }
     success("Silindi")
@@ -326,6 +331,37 @@ export default function AkademikTakvimPage() {
                   </li>
                 ))}
               </ul>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Aksamalar</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <p className="text-gray-600">
+                Kar tatili, gezi, öğretmen izni gibi plan dışı kayıplar. Kapsamına giren derslerde bu günler gecikme
+                hesabına katılmaz.{" "}
+                <Link href="/neredeyiz/aksamalar" className="text-blue-700 underline">
+                  Aksama ekle / düzenle
+                </Link>
+              </p>
+              {disruptions.length === 0 ? (
+                <p className="text-gray-500">Bu yıl için aksama kaydı yok.</p>
+              ) : (
+                <ul className="divide-y">
+                  {disruptions.map((d) => (
+                    <li key={d.id} className="py-2">
+                      <span className="font-medium">{d.reason}</span>
+                      <span className="text-gray-500">
+                        {" "}
+                        · {day(d.startDate)} – {day(d.endDate)} ·{" "}
+                        {d.scope === "SCHOOL" ? "okul geneli" : d.scope === "CLASSES" ? "sınıflar" : d.scope === "SUBJECTS" ? "dersler" : "öğretmen"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </CardContent>
           </Card>
         </>

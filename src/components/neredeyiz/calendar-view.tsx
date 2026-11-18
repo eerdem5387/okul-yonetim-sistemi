@@ -13,7 +13,7 @@ interface CalendarTopic {
   plannedStartDate: string | null
   plannedEndDate: string | null
   actualEndDate?: string | null
-  status: "PLANLANDI" | "DEVAM_EDIYOR" | "TAMAMLANDI" | "GECIKMELI" | "GECIKMELI_TAMAMLANDI"
+  status: "PLANLANDI" | "DEVAM_EDIYOR" | "ONAY_BEKLIYOR" | "TAMAMLANDI" | "GECIKMELI" | "GECIKMELI_TAMAMLANDI"
   delayDays?: number
   subject: {
     name: string
@@ -86,6 +86,8 @@ export default function CalendarView({ topics, onTopicClick }: CalendarViewProps
         return "bg-green-500"
       case "DEVAM_EDIYOR":
         return "bg-yellow-500"
+      case "ONAY_BEKLIYOR":
+        return "bg-orange-400"
       case "GECIKMELI":
       case "GECIKMELI_TAMAMLANDI":
         return "bg-red-500"

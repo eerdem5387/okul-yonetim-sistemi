@@ -51,6 +51,8 @@ export default function OnayPage() {
   const [topic, setTopic] = useState<Topic | null>(null)
   const [loading, setLoading] = useState(true)
   const [approving, setApproving] = useState(false)
+  const [rejectReason, setRejectReason] = useState("")
+  const [showReject, setShowReject] = useState(false)
   const [staffId, setStaffId] = useState<string | null>(null)
   const { success, error } = useToast()
 
@@ -107,7 +109,7 @@ export default function OnayPage() {
       const response = await fetch(`/api/neredeyiz/progress/${progress.id}/approve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ approvedBy: staffId }),
+        body: JSON.stringify({}),
       })
 
       if (response.ok) {
@@ -122,6 +124,32 @@ export default function OnayPage() {
     } catch (err) {
       console.error("Error approving progress:", err)
       error("Onay işlemi sırasında bir hata oluştu!")
+    } finally {
+      setApproving(false)
+    }
+  }
+
+  const handleReject = async () => {
+    const progress = topic?.progress?.[0]
+    if (!progress || progress.status !== "PENDING_APPROVAL") return
+    if (!rejectReason.trim()) {
+      error("Geri çevirme gerekçesi yazın.")
+      return
+    }
+    setApproving(true)
+    try {
+      const response = await fetch(`/api/neredeyiz/progress/${progress.id}/reject`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: rejectReason.trim() }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        error((data as { error?: string }).error || "Geri çevrilemedi")
+        return
+      }
+      success("Konu öğretmene geri gönderildi.")
+      setTimeout(() => router.push("/rehberlik"), 1500)
     } finally {
       setApproving(false)
     }
@@ -271,6 +299,32 @@ export default function OnayPage() {
                         Tamamlama İşlemini Onayla
                       </>
                     )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    disabled={approving}
+                    className="text-red-700 border-red-300"
+                    onClick={() => setShowReject((v) => !v)}
+                  >
+                    Geri çevir
+                  </Button>
+                </div>
+              )}
+              {progress && progress.status === "PENDING_APPROVAL" && showReject && (
+                <div className="space-y-2 rounded-lg border border-red-200 bg-red-50 p-3">
+                  <label className="text-sm font-medium text-red-900" htmlFor="reject-reason">
+                    Gerekçe (öğretmene iletilir)
+                  </label>
+                  <textarea
+                    id="reject-reason"
+                    className="w-full rounded-md border border-red-200 p-2 text-sm"
+                    rows={3}
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                  />
+                  <Button size="sm" className="bg-red-600 hover:bg-red-700" disabled={approving} onClick={() => void handleReject()}>
+                    Geri çevir ve öğretmene bildir
                   </Button>
                 </div>
               )}

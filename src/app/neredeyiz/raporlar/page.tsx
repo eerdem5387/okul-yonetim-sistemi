@@ -997,7 +997,7 @@ export default function RaporlarPage() {
                 <div>
                   <span className="font-semibold text-red-800">Ortalama Gecikme:</span>{" "}
                   <span className="text-red-600">
-                    {delayedTopicsReport.summary.averageDelayDays} gün
+                    {delayedTopicsReport.summary.averageDelayDays} ders günü
                   </span>
                 </div>
               </div>
@@ -1437,7 +1437,7 @@ export default function RaporlarPage() {
                       {disruption.typeLabel}
                     </h3>
                     <div className="text-xs sm:text-sm text-gray-600">
-                      {disruption.count} aksama • {disruption.totalDays} gün kayıp
+                      {disruption.count} aksama • {disruption.totalDays} ders günü kayıp
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
@@ -1464,8 +1464,8 @@ export default function RaporlarPage() {
                     Toplam: {disruptionReport.summary.totalDisruptions} aksama
                   </span>
                   <span className="text-gray-600">
-                    {disruptionReport.summary.totalDays} gün kayıp • Ortalama{" "}
-                    {disruptionReport.summary.averageDaysPerDisruption} gün/aksama
+                    {disruptionReport.summary.totalDays} ders günü kayıp • Ortalama{" "}
+                    {disruptionReport.summary.averageDaysPerDisruption} ders günü/aksama
                   </span>
                 </div>
               </div>

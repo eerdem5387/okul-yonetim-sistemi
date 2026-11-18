@@ -303,7 +303,7 @@ export default function OgretmenPage() {
                     <p className="text-xs sm:text-sm font-medium text-gray-700">Ortalama Gecikme</p>
                   </div>
                   <p className="text-2xl sm:text-3xl font-bold text-yellow-600">
-                    {delayedData.summary.averageDelayDays} gün
+                    {delayedData.summary.averageDelayDays} ders günü
                   </p>
                 </div>
               </div>

@@ -324,7 +324,7 @@ export default function GecikmelerPage() {
                       <div className="text-center sm:text-right">
                         <p className="text-xs sm:text-sm text-gray-600">Toplam Gecikme</p>
                         <p className="text-lg sm:text-xl font-bold text-red-600">
-                          {group.totalDelayDays} gün
+                          {group.totalDelayDays} ders günü
                         </p>
                       </div>
                       <Link href={`/ogretmen/dersler/${group.subject.id}`}>
@@ -373,7 +373,7 @@ export default function GecikmelerPage() {
                               <div className="flex items-center gap-1">
                                 <Clock className="h-4 w-4 text-red-600" />
                                 <p className="text-lg sm:text-xl font-bold text-red-600">
-                                  {topic.delayDays} gün
+                                  {topic.delayDays} ders günü
                                 </p>
                               </div>
                             </div>

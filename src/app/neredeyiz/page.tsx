@@ -602,7 +602,7 @@ export default function NeredeyizPage() {
                       {disruption.typeLabel}
                     </h3>
                     <div className="text-xs sm:text-sm text-gray-600 mt-1">
-                      {disruption.count} aksama • {disruption.totalDays} gün
+                      {disruption.count} aksama • {disruption.totalDays} ders günü
                     </div>
                   </div>
                   <div className="flex items-center gap-2 sm:gap-3">
@@ -623,8 +623,8 @@ export default function NeredeyizPage() {
                     Toplam: {disruptionReport.summary.totalDisruptions} aksama
                   </span>
                   <span className="text-gray-600">
-                    {disruptionReport.summary.totalDays} gün kayıp • Ortalama{" "}
-                    {disruptionReport.summary.averageDaysPerDisruption} gün/aksama
+                    {disruptionReport.summary.totalDays} ders günü kayıp • Ortalama{" "}
+                    {disruptionReport.summary.averageDaysPerDisruption} ders günü/aksama
                   </span>
                 </div>
               </div>

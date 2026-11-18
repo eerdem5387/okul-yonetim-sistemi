@@ -12,6 +12,7 @@ import {
   syncStaffBranches,
   upsertBranchByName,
 } from "../src/lib/branches"
+import { linkSchedulesToNeredeyiz } from "../src/lib/neredeyiz/sync"
 
 const prisma = new PrismaClient()
 const EXCEL_PATH = "/Users/emreerdem/Downloads/ders programı.xlsx"
@@ -582,6 +583,12 @@ async function main() {
     const res = await prisma.schedule.createMany({ data: chunk })
     created += res.count
   }
+
+  // Yeni satırları Neredeyiz derslerine bağla (ders kabuğu + öğretmen ataması + subjectId)
+  const linkResult = await linkSchedulesToNeredeyiz()
+  console.log(
+    `Neredeyiz: ${linkResult.schedulesLinked} satır bağlandı, ${linkResult.subjectsCreated} ders, ${linkResult.assignmentsCreated} atama oluştu`,
+  )
 
   for (const [staffId, subjectNames] of teacherBranchAdds) {
     const branchIds: string[] = []

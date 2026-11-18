@@ -47,6 +47,7 @@ interface Subject {
         actualEndDate: string | null
         reportedBy: string | null
         reportedAt: string | null
+        notes?: string | null
       }>
     }>
   }>
@@ -580,6 +581,9 @@ export default function OgretmenNeredeyizPage() {
                                                 {new Date(topic.plannedStartDate).toLocaleDateString("tr-TR")} -{" "}
                                                 {new Date(topic.plannedEndDate).toLocaleDateString("tr-TR")}
                                               </p>
+                                            )}
+                                            {topic.progress?.[0]?.notes?.startsWith("Reddedildi") && (
+                                              <p className="text-xs text-red-700 mt-1">{topic.progress[0].notes}</p>
                                             )}
                                           </div>
                                         </div>
