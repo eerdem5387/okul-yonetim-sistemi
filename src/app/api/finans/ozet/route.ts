@@ -2,7 +2,8 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { resolveStaffActor } from "@/lib/hr/actor"
-import { canApproveFinance, canViewFinance } from "@/lib/finance/access"
+import { canViewFinance } from "@/lib/finance/access"
+import { approvalSlotFor, canAccessExpenseRequests } from "@/lib/finance/expense-approval"
 import { fetchMuhasebeFinanceSummary } from "@/lib/finance/muhasebe-sync"
 
 function monthKey(d: Date) {
@@ -137,15 +138,18 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // Harcama talepleri yalnızca kurucu ve müdüre gösterilir.
+  const showRequests = canAccessExpenseRequests(actor.department)
+
   return NextResponse.json({
     currentMonth,
     current,
     series: seriesFinal,
-    pendingRequests,
-    awaitingAccounting,
-    recentRequests,
+    pendingRequests: showRequests ? pendingRequests : [],
+    awaitingAccounting: showRequests ? awaitingAccounting : [],
+    recentRequests: showRequests ? recentRequests : [],
     recentMovements,
-    requestCounts,
+    requestCounts: showRequests ? requestCounts : null,
     breakdowns: {
       expenseByChannel: expenseByChannelFinal,
       incomeByCategory: incomeByCategoryFinal,
@@ -157,9 +161,9 @@ export async function GET(request: NextRequest) {
           exportedAt: live.exportedAt,
           schedule: live.schedule,
           students: live.students,
-          requests: live.requests,
+          requests: showRequests ? live.requests : null,
         }
       : { available: false },
-    canApprove: await canApproveFinance(actor.staffId, actor.department),
+    canApprove: approvalSlotFor(actor.department) !== null,
   })
 }

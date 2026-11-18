@@ -33,6 +33,7 @@ type ExpenseRequest = {
   founderApprovedByName: string | null
   createdAt?: string | null
   sourceCreatedAt?: string | null
+  approval?: { summary: string; approverNames: string; canApprove: boolean; canReject: boolean }
 }
 
 type IncomeDetail = {
@@ -724,7 +725,7 @@ function RequestPanel({
           </h2>
           <p className="mt-1 text-sm text-slate-500">
             {mode === "pending"
-              ? "Talep eden, tutar, ürün veya hizmet, kanal ve açıklama. Onay size ait."
+              ? "5.000 ₺ üzeri talepler kurucu ve müdür onayı ister; altındakilerde biri yeterlidir."
               : "Onayı verilmiş talepler ve onaylayan kişi."}
           </p>
         </div>
@@ -759,7 +760,7 @@ function RequestPanel({
                         ? "Tamamlandı"
                         : row.status === "APPROVED"
                           ? "Onaylandı — tutar muhasebede girilecek"
-                          : "Kurucu onayı bekliyor"}
+                          : row.approval?.summary ?? "Onay bekliyor"}
                     </p>
                   </div>
                   <p className="text-lg font-semibold tabular-nums text-slate-900">{amount}</p>
@@ -785,8 +786,7 @@ function RequestPanel({
                     <div className="sm:col-span-2">
                       <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">Onaylayan</dt>
                       <dd className="mt-0.5 text-slate-800">
-                        {row.founderApprovedByName || "Ad kaydı yok"}
-                        {row.founderApprovedAt ? ` · ${dayLabel(row.founderApprovedAt)}` : ""}
+                        {row.approval?.approverNames || row.founderApprovedByName || "Ad kaydı yok"}
                       </dd>
                     </div>
                   ) : null}
@@ -797,7 +797,7 @@ function RequestPanel({
                     </dd>
                   </div>
                 </dl>
-                {mode === "pending" ? (
+                {mode === "pending" && (row.approval?.canApprove || row.approval?.canReject) ? (
                   <div className="mt-4 space-y-2">
                     <input
                       value={reasons[row.id] ?? ""}
@@ -808,14 +808,16 @@ function RequestPanel({
                       className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400"
                     />
                     <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        disabled={busyId === row.id}
-                        onClick={() => onDecide(row.id, "approve")}
-                        className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
-                      >
-                        {busyId === row.id ? "İşleniyor…" : "Onayla"}
-                      </button>
+                      {row.approval?.canApprove ? (
+                        <button
+                          type="button"
+                          disabled={busyId === row.id}
+                          onClick={() => onDecide(row.id, "approve")}
+                          className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+                        >
+                          {busyId === row.id ? "İşleniyor…" : "Onayla"}
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         disabled={busyId === row.id}

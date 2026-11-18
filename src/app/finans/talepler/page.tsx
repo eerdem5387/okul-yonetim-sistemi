@@ -35,13 +35,20 @@ type RequestRow = {
   completedAt: string | null
   rejectedByName: string | null
   rejectReason: string | null
+  approval?: {
+    rule: "dual" | "single"
+    summary: string
+    partialLabel: string | null
+    canApprove: boolean
+    canReject: boolean
+  }
 }
 
 const money = (n: number) =>
   new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(n)
 
 const STATUS_TR: Record<RequestRow["status"], string> = {
-  PENDING: "Kurucu onayı bekliyor",
+  PENDING: "Onay bekliyor",
   APPROVED: "Onaylandı — tutar bekleniyor",
   COMPLETED: "Tamamlandı",
   REJECTED: "Reddedildi",
@@ -98,7 +105,8 @@ export default function FinansTaleplerPage() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Harcama talepleri</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Talepler tutarsız gelir. Kurucu burada onaylar; tutarı muhasebe yazılımında muhasebeci girer.
+          5.000 ₺ üzeri talepler kurucu ve müdür onayı ister; altındakilerde biri yeterlidir. Tutarı
+          muhasebe yazılımında muhasebeci girer.
         </p>
       </div>
       <FinanceTabs />
@@ -125,17 +133,15 @@ export default function FinansTaleplerPage() {
                       {r.total != null && r.total !== "" ? money(Number(r.total)) : "Tutar yok"}
                     </p>
                     <Badge variant="outline">{STATUS_TR[r.status] ?? r.status}</Badge>
+                    {r.approval?.partialLabel ? (
+                      <Badge className="ml-1 border-violet-200 bg-violet-50 text-violet-800" variant="outline">
+                        {r.approval.partialLabel}
+                      </Badge>
+                    ) : null}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-4 text-xs text-slate-500">
-                  <span>
-                    Kurucu:{" "}
-                    {r.founderApprovedAt
-                      ? r.founderApprovedByName
-                        ? `${r.founderApprovedByName} onayladı`
-                        : "onayladı"
-                      : "bekliyor"}
-                  </span>
+                  <span>{r.approval?.summary ?? "—"}</span>
                   <span>
                     Muhasebe:{" "}
                     {r.completedAt
@@ -151,15 +157,17 @@ export default function FinansTaleplerPage() {
                     </span>
                   ) : null}
                 </div>
-                {r.status === "PENDING" && !r.founderApprovedAt ? (
+                {r.approval?.canApprove || r.approval?.canReject ? (
                   <div className="flex flex-wrap gap-2">
-                    <Button
-                      size="sm"
-                      disabled={busyId === r.id}
-                      onClick={() => void decide(r.id, "approve")}
-                    >
-                      Kurucu onayı
-                    </Button>
+                    {r.approval.canApprove ? (
+                      <Button
+                        size="sm"
+                        disabled={busyId === r.id}
+                        onClick={() => void decide(r.id, "approve")}
+                      >
+                        Onayla
+                      </Button>
+                    ) : null}
                     <Button
                       size="sm"
                       variant="destructive"

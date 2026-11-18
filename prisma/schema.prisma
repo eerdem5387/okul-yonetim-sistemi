@@ -2421,6 +2421,8 @@ model FinanceExpenseRequest {
   createdById          String?
   principalApprovedAt  DateTime?
   principalApprovedBy  String?
+  /// Onaylayan müdürün ad soyadı (çift onay kuralı)
+  principalApprovedByName String?
   founderApprovedAt    DateTime?
   founderApprovedBy    String?
   /// Onaylayan kurucu / yetkilinin ad soyadı (geçmiş denetim)

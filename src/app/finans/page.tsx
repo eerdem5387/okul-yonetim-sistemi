@@ -7,12 +7,14 @@ import { FinanceTabs } from "./finance-tabs"
 import { staffAuthHeaders } from "@/lib/permissions/client"
 import { Loader2, RefreshCw } from "lucide-react"
 import Link from "next/link"
+import { canAccessExpenseRequests } from "@/lib/finance/expense-approval"
 
 export default function FinansPage() {
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(0)
+  const [showRequests, setShowRequests] = useState(false)
   const [incomeTotal, setIncomeTotal] = useState(0)
   const [expenseTotal, setExpenseTotal] = useState(0)
 
@@ -21,15 +23,20 @@ export default function FinansPage() {
     setError(null)
     try {
       const month = new Date().toISOString().slice(0, 7)
+      // Harcama talepleri yalnızca kurucu ve müdüre açık.
+      const allowRequests = canAccessExpenseRequests(localStorage.getItem("staff_department"))
+      setShowRequests(allowRequests)
       const [reqRes, cashRes] = await Promise.all([
-        fetch("/api/finans/talepler?status=PENDING", { headers: staffAuthHeaders() }),
+        allowRequests
+          ? fetch("/api/finans/talepler?status=PENDING", { headers: staffAuthHeaders() })
+          : Promise.resolve(null),
         fetch(`/api/finans/gelir-gider?month=${month}`, { headers: staffAuthHeaders() }),
       ])
-      if (!reqRes.ok || !cashRes.ok) {
-        const err = await (reqRes.ok ? cashRes : reqRes).json().catch(() => ({}))
+      if ((reqRes && !reqRes.ok) || !cashRes.ok) {
+        const err = await (reqRes && !reqRes.ok ? reqRes : cashRes).json().catch(() => ({}))
         throw new Error((err as { error?: string }).error || "Veriler yüklenemedi")
       }
-      const reqJson = await reqRes.json()
+      const reqJson = reqRes ? await reqRes.json() : { requests: [] }
       const cashJson = await cashRes.json()
       setPending((reqJson.requests ?? []).length)
       setIncomeTotal(Number(cashJson.incomeTotal ?? 0))
@@ -89,6 +96,7 @@ export default function FinansPage() {
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-3">
+          {showRequests ? (
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Bekleyen talepler</CardTitle>
@@ -100,6 +108,7 @@ export default function FinansPage() {
               </Link>
             </CardContent>
           </Card>
+          ) : null}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Bu ay gelir</CardTitle>

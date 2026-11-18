@@ -29,7 +29,7 @@ export async function upsertFinanceExpenseRequest(
 
   const existing = await prisma.financeExpenseRequest.findUnique({
     where: { id },
-    select: { status: true },
+    select: { status: true, founderApprovedAt: true, principalApprovedAt: true },
   })
 
   const totalRaw = data.total
@@ -48,6 +48,8 @@ export async function upsertFinanceExpenseRequest(
     founderApprovedBy: data.founderApprovedBy == null ? null : String(data.founderApprovedBy),
     founderApprovedByName:
       data.founderApprovedByName == null ? null : String(data.founderApprovedByName),
+    principalApprovedByName:
+      data.principalApprovedByName == null ? null : String(data.principalApprovedByName),
     completedAt: asDate(data.completedAt),
     completedById: data.completedById == null ? null : String(data.completedById),
     rejectedAt: asDate(data.rejectedAt),
@@ -65,18 +67,24 @@ export async function upsertFinanceExpenseRequest(
     update: payload,
   })
 
-  const shouldNotify =
-    options?.notify !== false &&
-    row.status === "PENDING" &&
-    existing?.status !== "PENDING"
+  const notifyAllowed = options?.notify !== false
+  const isNewPending = row.status === "PENDING" && existing?.status !== "PENDING"
+  // Çift onaylı talepte ilk onay geldi: diğer rolü bilgilendir.
+  const firstApprovalSlot =
+    !isNewPending && row.status === "PENDING" && existing?.status === "PENDING"
+      ? row.founderApprovedAt && !existing.founderApprovedAt && !row.principalApprovedAt
+        ? ("founder" as const)
+        : row.principalApprovedAt && !existing.principalApprovedAt && !row.founderApprovedAt
+          ? ("principal" as const)
+          : null
+      : null
 
-  if (shouldNotify) {
+  if (notifyAllowed && (isNewPending || firstApprovalSlot)) {
     // Serverless'ta fire-and-forget çoğu zaman kesilir; push'u await et.
     try {
-      const { notifyFoundersPendingExpenseRequest } = await import(
-        "@/lib/notifications/finance-push"
-      )
-      await notifyFoundersPendingExpenseRequest(row)
+      const push = await import("@/lib/notifications/finance-push")
+      if (isNewPending) await push.notifyApproversPendingExpenseRequest(row)
+      else if (firstApprovalSlot) await push.notifyAwaitingSecondApproval(row, firstApprovalSlot)
     } catch (err) {
       console.error("[finance-push]", err)
     }

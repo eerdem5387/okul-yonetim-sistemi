@@ -2,7 +2,11 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { resolveStaffActor } from "@/lib/hr/actor"
-import { canApproveFinance, canViewFinance } from "@/lib/finance/access"
+import {
+  approvalSlotFor,
+  canAccessExpenseRequests,
+  describeApproval,
+} from "@/lib/finance/expense-approval"
 import {
   callMuhasebeExpenseDecision,
   pullMuhasebeFinanceSnapshot,
@@ -12,9 +16,13 @@ import {
 export async function GET(request: NextRequest) {
   const actor = await resolveStaffActor(request)
   if (!actor) return NextResponse.json({ error: "Yetkisiz." }, { status: 401 })
-  if (!(await canViewFinance(actor.staffId, actor.department))) {
-    return NextResponse.json({ error: "Finans görüntüleme yetkiniz yok." }, { status: 403 })
+  if (!canAccessExpenseRequests(actor.department)) {
+    return NextResponse.json(
+      { error: "Harcama taleplerini yalnızca kurucu ve müdür görebilir." },
+      { status: 403 },
+    )
   }
+  const viewerSlot = approvalSlotFor(actor.department)
 
   const status = request.nextUrl.searchParams.get("status")
   const rows = await prisma.financeExpenseRequest.findMany({
@@ -28,7 +36,10 @@ export async function GET(request: NextRequest) {
     orderBy: { sourceCreatedAt: "desc" },
     take: 200,
   })
-  return NextResponse.json({ requests: rows })
+  return NextResponse.json({
+    viewer: { slot: viewerSlot },
+    requests: rows.map((row) => ({ ...row, approval: describeApproval(row, viewerSlot) })),
+  })
 }
 
 export async function POST(request: NextRequest) {
@@ -42,7 +53,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (body.action === "sync") {
-    if (!(await canViewFinance(actor.staffId, actor.department))) {
+    if (!canAccessExpenseRequests(actor.department)) {
       return NextResponse.json({ error: "Yetkisiz." }, { status: 403 })
     }
     try {
@@ -60,8 +71,12 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  if (!(await canApproveFinance(actor.staffId, actor.department))) {
-    return NextResponse.json({ error: "Onay yetkiniz yok." }, { status: 403 })
+  const slot = approvalSlotFor(actor.department)
+  if (!slot) {
+    return NextResponse.json(
+      { error: "Harcama taleplerini yalnızca kurucu ve müdür onaylayabilir." },
+      { status: 403 },
+    )
   }
 
   const id = body.id?.trim()
@@ -74,6 +89,20 @@ export async function POST(request: NextRequest) {
   if (local.status !== "PENDING") {
     return NextResponse.json({ error: "Talep zaten sonuçlanmış." }, { status: 409 })
   }
+  if (body.action === "approve") {
+    const alreadyBySlot = slot === "founder" ? local.founderApprovedAt : local.principalApprovedAt
+    if (alreadyBySlot) {
+      return NextResponse.json(
+        {
+          error:
+            slot === "founder"
+              ? "Kurucu onayı bu talep için zaten verilmiş; müdür onayı bekleniyor."
+              : "Müdür onayı bu talep için zaten verilmiş; kurucu onayı bekleniyor.",
+        },
+        { status: 409 },
+      )
+    }
+  }
 
   const actorId = `oys:${actor.staffId}`
   const actorName = [actor.firstName, actor.lastName].filter(Boolean).join(" ").trim() || null
@@ -81,7 +110,7 @@ export async function POST(request: NextRequest) {
     const result = (await callMuhasebeExpenseDecision({
       requestId: id,
       action: body.action,
-      as: "founder",
+      as: slot,
       actorId,
       actorName,
       reason: body.reason,
@@ -90,27 +119,9 @@ export async function POST(request: NextRequest) {
 
     if (result.request) {
       await upsertFinanceExpenseRequest(local.muhasebeTenantId, result.request)
-    } else if (body.action === "approve") {
-      await prisma.financeExpenseRequest.update({
-        where: { id },
-        data: {
-          founderApprovedAt: new Date(),
-          founderApprovedBy: actorId,
-          founderApprovedByName: actorName,
-          status: "APPROVED",
-        },
-      })
     } else {
-      await prisma.financeExpenseRequest.update({
-        where: { id },
-        data: {
-          status: "REJECTED",
-          rejectedAt: new Date(),
-          rejectedById: actorId,
-          rejectedByName: actorName,
-          rejectReason: body.reason?.trim() || null,
-        },
-      })
+      // Muhasebe kaydı döndürmediyse onay durumunu tahmin etme; kaynaktan yeniden çek.
+      await pullMuhasebeFinanceSnapshot(local.muhasebeTenantId)
     }
   } catch (err) {
     return NextResponse.json(
@@ -120,5 +131,8 @@ export async function POST(request: NextRequest) {
   }
 
   const updated = await prisma.financeExpenseRequest.findUnique({ where: { id } })
-  return NextResponse.json({ ok: true, request: updated })
+  return NextResponse.json({
+    ok: true,
+    request: updated ? { ...updated, approval: describeApproval(updated, slot) } : null,
+  })
 }

@@ -2,7 +2,9 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
+import { canAccessExpenseRequests } from "@/lib/finance/expense-approval"
 
 const TABS = [
   { href: "/finans", label: "Özet", exact: true },
@@ -13,9 +15,14 @@ const TABS = [
 
 export function FinanceTabs() {
   const pathname = usePathname()
+  const [showRequests, setShowRequests] = useState(false)
+  useEffect(() => {
+    setShowRequests(canAccessExpenseRequests(localStorage.getItem("staff_department")))
+  }, [])
+  const tabs = TABS.filter((tab) => tab.href !== "/finans/talepler" || showRequests)
   return (
     <div className="mb-6 flex flex-wrap gap-2 border-b border-slate-200 pb-3">
-      {TABS.map((tab) => {
+      {tabs.map((tab) => {
         const active = tab.exact ? pathname === tab.href : pathname.startsWith(tab.href)
         return (
           <Link
