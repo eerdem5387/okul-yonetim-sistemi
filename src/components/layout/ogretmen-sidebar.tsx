@@ -21,6 +21,7 @@ import {
   Plus,
   CalendarOff,
   Users,
+  Settings,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -28,6 +29,8 @@ import { UnreadBadge } from "@/components/comms/UnreadBadge"
 import { checkNavPermission, useStaffPermissions } from "@/hooks/use-staff-permissions"
 import { MobileMenuButton } from "@/components/layout/mobile-menu-button"
 import { extraGrantedNavItems } from "@/lib/permissions/nav-catalog"
+import { applyNavOrder } from "@/lib/nav-order"
+import { useNavOrder } from "@/lib/nav-order-client"
 
 interface OgretmenSidebarProps {
   className?: string
@@ -57,7 +60,34 @@ const ALL_NAV: NavItem[] = [
   { name: "Faaliyet Yönetimi", href: "/ogretmen/faaliyet-yonetimi", icon: Award, module: "activity_events", action: "view" },
   { name: "Faaliyet Ekle", href: "/faaliyet-ekle", icon: Plus, module: "activity_events", action: "create" },
   { name: "Kulüplerim", href: "/ogretmen/kulupler", icon: Users, module: "clubs", action: "view" },
+  { name: "Ayarlar", href: "/ogretmen/ayarlar", icon: Settings, module: "dashboard", action: "view" },
 ]
+
+/**
+ * Öğretmen kenar menüsünde görünen öğeler (varsayılan sırayla).
+ * Ayarlar → Menü düzeni ekranı da aynı listeyi kullanır.
+ */
+export function useTeacherNavigation() {
+  const permState = useStaffPermissions()
+  return useMemo(() => {
+    const visible = ALL_NAV.filter((item) => {
+      // Atanmış kulüpler öğretmen menüsünde her zaman görünür (yoksa boş durum gösterilir).
+      if (item.href === "/ogretmen/kulupler") return true
+      if (item.href === "/ogretmen/ders-programim") return true
+      // İç haberleşme: yetki matrisinden bağımsız
+      if (item.href === "/mesajlar") return true
+      // Kişisel ayarlar herkese açık
+      if (item.href === "/ogretmen/ayarlar") return true
+      return checkNavPermission(permState, item.module, item.action, true)
+    })
+    const extras = extraGrantedNavItems({
+      permissionKeys: permState.permissionKeys,
+      existingHrefs: ALL_NAV.map((item) => item.href),
+      existingModules: ALL_NAV.map((item) => item.module),
+    }).map((item) => ({ ...item, action: "view" }))
+    return [...visible, ...extras]
+  }, [permState])
+}
 
 export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
   const pathname = usePathname()
@@ -88,22 +118,9 @@ export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
     }
   }, [isMobileOpen])
 
-  const navigation = useMemo(() => {
-    const visible = ALL_NAV.filter((item) => {
-      // Atanmış kulüpler öğretmen menüsünde her zaman görünür (yoksa boş durum gösterilir).
-      if (item.href === "/ogretmen/kulupler") return true
-      if (item.href === "/ogretmen/ders-programim") return true
-      // İç haberleşme: yetki matrisinden bağımsız
-      if (item.href === "/mesajlar") return true
-      return checkNavPermission(permState, item.module, item.action, true)
-    })
-    const extras = extraGrantedNavItems({
-      permissionKeys: permState.permissionKeys,
-      existingHrefs: ALL_NAV.map((item) => item.href),
-      existingModules: ALL_NAV.map((item) => item.module),
-    }).map((item) => ({ ...item, action: "view" }))
-    return [...visible, ...extras]
-  }, [permState])
+  const defaultNavigation = useTeacherNavigation()
+  const navOrder = useNavOrder()
+  const navigation = applyNavOrder(defaultNavigation, navOrder, (item) => item.href)
 
   const handleLogout = () => {
     if (confirm("Çıkış yapmak istediğinizden emin misiniz?")) {

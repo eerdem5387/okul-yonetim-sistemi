@@ -304,6 +304,15 @@ export default function RootLayout({
       return
     }
 
+    // Kişisel ayarlar (menü düzeni): tüm ana menü personeli
+    if (pathname === "/ayarlar") {
+      if (isMainSidebarStaff(normalizedRole)) {
+        return
+      }
+      hardRedirect("/login")
+      return
+    }
+
     if (pathname === "/yonetim/ayarlar") {
       if (isMainSidebarStaff(normalizedRole)) {
         return

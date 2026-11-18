@@ -39,6 +39,8 @@ import {
 } from "@/hooks/use-staff-permissions"
 import { MobileMenuButton } from "@/components/layout/mobile-menu-button"
 import { extraGrantedNavItems } from "@/lib/permissions/nav-catalog"
+import { applyNavOrder } from "@/lib/nav-order"
+import { useNavOrder } from "@/lib/nav-order-client"
 const allNavigation = [
   // 1. Dashboard
   { name: "Dashboard", href: "/", icon: LayoutDashboard, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
@@ -63,7 +65,7 @@ const allNavigation = [
   { name: "Yetkilendirme", href: "/yonetim/yetkilendirme", icon: Shield, roles: ["admin"], superAdminOnly: true },
   {
     name: "Ayarlar",
-    href: "/yonetim/ayarlar",
+    href: "/ayarlar",
     icon: Settings,
     roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"],
   },
@@ -100,9 +102,11 @@ const allNavigation = [
   { name: "Öğrenci Dashboard", href: "/ogretmen/ogrenci-dashboard", icon: LayoutDashboard, roles: ["teacher"] },
 ]
 
-export function Sidebar() {
-  const pathname = usePathname()
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+/**
+ * Ana kenar menüde kullanıcının görebildiği öğeler (varsayılan sırayla).
+ * Ayarlar → Menü düzeni ekranı da aynı listeyi kullanır.
+ */
+export function useMainNavigation() {
   const [currentRole, setCurrentRole] = useState<string | null>(null)
   const [staffName, setStaffName] = useState<string>("")
   const [staffDepartment, setStaffDepartment] = useState<string | null>(null)
@@ -191,6 +195,16 @@ export function Sidebar() {
       existingModules: Object.values(hrefToPermission).map((perm) => perm.split(".")[0]),
     }),
   ]
+
+  return { navigation, currentRole, staffName, staffDepartment }
+}
+
+export function Sidebar() {
+  const pathname = usePathname()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { navigation: defaultNavigation, currentRole, staffName, staffDepartment } = useMainNavigation()
+  const navOrder = useNavOrder()
+  const navigation = applyNavOrder(defaultNavigation, navOrder, (item) => item.href)
 
   const handleLogout = () => {
     if (confirm("Çıkış yapmak istediğinizden emin misiniz?")) {

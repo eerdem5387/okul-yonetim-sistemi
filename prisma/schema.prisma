@@ -727,12 +727,25 @@ model Staff {
   conductedHrApplicationMeetings HrJobApplicationMeeting[] @relation("ConductedHrApplicationMeetings")
 
   pushDevices StaffPushDevice[]
+  navPreference StaffNavPreference?
 
   @@index([tcNumber])
   @@index([department])
   @@index([isActive])
   @@index([firstName, lastName])
   @@map("staff")
+}
+
+/// Kullanıcının kenar menü (sidebar) sırası. Web ve mobil ortak kullanır.
+/// `order`: menü öğelerinin web href listesi (ör. ["/finans", "/", "/students"]).
+model StaffNavPreference {
+  staffId   String   @id
+  order     Json
+  updatedAt DateTime @updatedAt
+
+  staff Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@map("staff_nav_preferences")
 }
 
 /// Mobil uygulama Expo push token kaydı (cihaz başına)
