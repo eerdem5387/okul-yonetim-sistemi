@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { requireStudentReader } from "@/lib/auth/api-guard"
 import { prisma } from "@/lib/prisma"
 
 /**
@@ -14,6 +15,8 @@ export async function GET(
 ) {
   try {
     const { id } = await params
+    const auth = await requireStudentReader(request, id)
+    if (!auth.ok) return auth.response
     const { searchParams } = new URL(request.url)
     const period = searchParams.get("period") || "30days"
 

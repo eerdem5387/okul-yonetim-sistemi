@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
+import { requireStaffAccess } from "@/lib/auth/api-guard"
 import { getRenewalTargetYear, validateRenewalAcademicYear } from "@/lib/academic-year-contract-server"
 import { academicYearLabelsEquivalent } from "@/lib/student-registration-meta"
-import { updateRenewalContract } from "@/lib/contract-registration-update"
 import { renewalTargetClassLabel } from "@/lib/student-grade-level"
 
 export async function GET(request: NextRequest) {
+    const auth = await requireStaffAccess(request, { module: "registrations", action: "view" })
+    if (!auth.ok) return auth.response
     try {
         const { searchParams } = new URL(request.url)
         const studentId = searchParams.get('studentId')
@@ -55,6 +57,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+    const auth = await requireStaffAccess(request, { module: "registrations", action: "create" })
+    if (!auth.ok) return auth.response
     try {
         const body = await request.json()
         const { studentId, contractData, selectedClubs } = body
@@ -134,40 +138,7 @@ export async function POST(request: NextRequest) {
                 return NextResponse.json({ 
                     error: "Bu öğrenci için seçilen akademik yılda zaten kayıt yenileme yapılmış!",
                     code: "DUPLICATE_RENEWAL"
-                }, { status: 400 })
-            }
-        }
-
-        // Çift kayıt önleme: Son 5 dakika içinde aynı öğrenci için kayıt yenileme var mı kontrol et
-        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
-        const recentRenewals = await prisma.renewal.findMany({
-            where: {
-                studentId,
-                createdAt: {
-                    gte: fiveMinutesAgo
-                }
-            },
-            orderBy: {
-                createdAt: "desc"
-            }
-        })
-
-        // Eğer son 5 dakika içinde kayıt varsa ve aynı akademik yıl ise, en son kaydı döndür
-        if (recentRenewals.length > 0 && academicYear) {
-            const matchingRenewal = recentRenewals.find((renewal) => {
-                const renewalContractData = renewal.contractData as Record<string, unknown>
-                return academicYearLabelsEquivalent(
-                    renewalContractData.academicYear,
-                    academicYear
-                )
-            })
-            
-            if (matchingRenewal) {
-                console.log(`[Renewal] Duplicate prevention: Found recent renewal for student ${studentId} and academic year ${academicYear}, returning existing renewal`)
-                return NextResponse.json({
-                    ...matchingRenewal,
-                    duplicatePrevented: true
-                })
+                }, { status: 409 })
             }
         }
 
@@ -209,48 +180,31 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(renewal)
     } catch (error) {
         console.error("Error creating renewal:", error)
-        const errorMessage = error instanceof Error ? error.message : "Unknown error"
-        return NextResponse.json({ 
-            error: "Failed to create renewal",
-            details: errorMessage
-        }, { status: 500 })
-    }
-}
-
-export async function PUT(request: NextRequest) {
-    try {
-        const body = await request.json()
-        const { id, contractData } = body
-        if (!id || typeof id !== "string") {
-            return NextResponse.json({ error: "id is required" }, { status: 400 })
-        }
-
-        const result = await updateRenewalContract(id, (contractData || {}) as Record<string, unknown>)
-        if (!result.ok) {
-            return NextResponse.json(
-                { error: result.error, ...(result.code ? { code: result.code } : {}) },
-                { status: result.status }
-            )
-        }
-        return NextResponse.json(result.renewal)
-    } catch (error) {
-        console.error("Error updating renewal:", error)
-        return NextResponse.json({ error: "Failed to update renewal" }, { status: 500 })
+        return NextResponse.json({ error: "Failed to create renewal" }, { status: 500 })
     }
 }
 
 export async function DELETE(request: NextRequest) {
+    const auth = await requireStaffAccess(request, { module: "registrations", action: "delete" })
+    if (!auth.ok) return auth.response
     try {
-        const body = await request.json()
-        const { contractIds } = body
+        const body = await request.json().catch(() => ({}))
+        const { contractIds } = body as { contractIds?: unknown }
+        const validIds =
+            typeof contractIds === "string"
+                ? contractIds.trim() !== ""
+                : Array.isArray(contractIds) && contractIds.length > 0 && contractIds.every((x) => typeof x === "string" && x.trim() !== "")
+        if (!validIds) {
+            return NextResponse.json({ error: "Silinecek sözleşme seçilmedi." }, { status: 400 })
+        }
 
         if (Array.isArray(contractIds)) {
             await prisma.renewal.deleteMany({
-                where: { id: { in: contractIds } }
+                where: { id: { in: contractIds as string[] } }
             })
         } else {
             await prisma.renewal.delete({
-                where: { id: contractIds }
+                where: { id: contractIds as string }
             })
         }
 

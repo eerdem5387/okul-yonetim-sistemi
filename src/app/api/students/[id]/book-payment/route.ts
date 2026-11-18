@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from "next/server"
+import { requireStaffAccess } from "@/lib/auth/api-guard"
 import { prisma } from "@/lib/prisma"
 
 /** PATCH /api/students/[id]/book-payment — öğrenciyi kitap aldı olarak işaretle */
 export async function PATCH(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireStaffAccess(
+    request,
+    { module: "students", action: "edit" },
+    { module: "registrations", action: "edit" }
+  )
+  if (!auth.ok) return auth.response
   try {
     const { id } = await context.params
 

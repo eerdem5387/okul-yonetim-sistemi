@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { requireStaff } from "@/lib/auth/api-guard"
 import { prisma } from "@/lib/prisma"
 import { getRenewalTargetContext } from "@/lib/student-registration-meta"
 import {
@@ -36,6 +37,8 @@ async function resolveAcademicYear(academicYearId: string | null) {
  * Query: grade (zorunlu), academicYearId?, search?
  */
 export async function GET(request: NextRequest) {
+  const auth = await requireStaff(request)
+  if (!auth.ok) return auth.response
   try {
     const gradeParam = request.nextUrl.searchParams.get("grade")
     const grade = parseInt(gradeParam || "", 10)

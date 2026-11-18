@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { requireStaffAccess } from "@/lib/auth/api-guard"
 import { updateRenewalContract } from "@/lib/contract-registration-update"
 
 export async function GET(
     request: NextRequest,
     context: { params: Promise<{ id: string }> }
 ) {
+    const auth = await requireStaffAccess(request, { module: "registrations", action: "view" })
+    if (!auth.ok) return auth.response
     try {
         const params = await context.params
         const renewal = await prisma.renewal.findUnique({
@@ -44,6 +47,8 @@ export async function PUT(
     request: NextRequest,
     context: { params: Promise<{ id: string }> }
 ) {
+    const auth = await requireStaffAccess(request, { module: "registrations", action: "edit" })
+    if (!auth.ok) return auth.response
     try {
         const params = await context.params
         const body = await request.json()
@@ -60,42 +65,5 @@ export async function PUT(
     } catch (error) {
         console.error("Error updating renewal:", error)
         return NextResponse.json({ error: "Failed to update renewal" }, { status: 500 })
-    }
-}
-
-export async function DELETE(
-    request: NextRequest,
-    context: { params: Promise<{ id: string }> }
-) {
-    try {
-        const params = await context.params
-
-        // Önce sözleşmeyi bul ve studentId'yi al
-        const renewal = await prisma.renewal.findUnique({
-            where: { id: params.id },
-            select: { studentId: true }
-        })
-
-        if (!renewal) {
-            return NextResponse.json({ error: "Renewal not found" }, { status: 404 })
-        }
-
-        // Öğrencinin tüm yan sözleşmelerini sil (cascade delete)
-        await Promise.all([
-            prisma.uniformContract.deleteMany({ where: { studentId: renewal.studentId } }),
-            prisma.mealContract.deleteMany({ where: { studentId: renewal.studentId } }),
-            prisma.serviceContract.deleteMany({ where: { studentId: renewal.studentId } }),
-            prisma.bookContract.deleteMany({ where: { studentId: renewal.studentId } })
-        ])
-
-        // Ana sözleşmeyi sil
-        await prisma.renewal.delete({
-            where: { id: params.id }
-        })
-
-        return NextResponse.json({ success: true })
-    } catch (error) {
-        console.error("Error deleting renewal:", error)
-        return NextResponse.json({ error: "Failed to delete renewal" }, { status: 500 })
     }
 }

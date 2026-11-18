@@ -52,6 +52,18 @@ function escapeHTML(text: string | null | undefined): string {
     .replace(/'/g, '&#39;')
 }
 
+/** Nesne/dizi içindeki tüm metin değerlerini HTML'e güvenli hale getirir (sayı, boolean vb. olduğu gibi kalır). */
+function escapeDeep<T>(value: T): T {
+  if (typeof value === 'string') return escapeHTML(value) as unknown as T
+  if (Array.isArray(value)) return value.map((v) => escapeDeep(v)) as unknown as T
+  if (value && typeof value === 'object' && !(value instanceof Date)) {
+    const out: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) out[k] = escapeDeep(v)
+    return out as T
+  }
+  return value
+}
+
 /** Sözleşme PDF'lerinde öğrenci adresi — contractData veya öğrenci kaydından */
 export function resolveStudentAddress(
   contractData: Record<string, unknown>,
@@ -298,212 +310,17 @@ function renderInstallmentsTable(installments: unknown): string {
   `
 }
 
-export function generateContractHTML(contractData: Record<string, unknown>, contractType: string) {
-  const currentDate = new Date().toLocaleDateString('tr-TR')
-
-  const baseHTML = `
-    <!DOCTYPE html>
-    <html lang="tr">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${contractType}</title>
-        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-        <style>
-            body {
-                font-family: Arial, sans-serif;
-                line-height: 1.6;
-                margin: 0;
-                padding: 20px;
-                color: #333;
-            }
-            .header {
-                text-align: center;
-                margin-bottom: 30px;
-                border-bottom: 2px solid #333;
-                padding-bottom: 20px;
-            }
-            .contract-title {
-                font-size: 24px;
-                font-weight: bold;
-                margin-bottom: 10px;
-            }
-            .contract-date {
-                font-size: 14px;
-                color: #666;
-            }
-            .section {
-                margin-bottom: 25px;
-            }
-            .section-title {
-                font-size: 18px;
-                font-weight: bold;
-                margin-bottom: 15px;
-                color: #2c3e50;
-            }
-            .field {
-                margin-bottom: 10px;
-                display: flex;
-            }
-            .field-label {
-                font-weight: bold;
-                width: 200px;
-                min-width: 200px;
-            }
-            .field-value {
-                flex: 1;
-                border-bottom: 1px solid #ccc;
-                padding-bottom: 2px;
-            }
-            .signature-section {
-                margin-top: 50px;
-                display: flex;
-                justify-content: space-between;
-            }
-            .signature-box {
-                width: 200px;
-                text-align: center;
-            }
-            .signature-line {
-                border-bottom: 1px solid #333;
-                height: 50px;
-                margin-bottom: 10px;
-            }
-            .footer {
-                margin-top: 50px;
-                text-align: center;
-                font-size: 12px;
-                color: #666;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="header">
-            <div class="contract-title">${contractType}</div>
-            <div class="contract-date">Tarih: ${currentDate}</div>
-        </div>
-        
-        <div class="section">
-            <div class="section-title">Öğrenci Bilgileri</div>
-            <div class="field">
-                <div class="field-label">Ad Soyad:</div>
-                <div class="field-value">${contractData.studentName || ''}</div>
-            </div>
-            <div class="field">
-                <div class="field-label">TC Kimlik No:</div>
-                <div class="field-value">${contractData.tcNumber || ''}</div>
-            </div>
-            ${(() => {
-              const addr = resolveStudentAddress(contractData)
-              return addr
-                ? `<div class="field">
-                <div class="field-label">Adres:</div>
-                <div class="field-value">${addr}</div>
-            </div>`
-                : ''
-            })()}
-        </div>
-        
-        <div class="section">
-            <div class="section-title">Sözleşme Detayları</div>
-            ${generateContractSpecificFields(contractData, contractType)}
-        </div>
-        
-        <div class="signature-section">
-            <div class="signature-box">
-                <div class="signature-line"></div>
-                <div>Veli İmzası</div>
-            </div>
-            <div class="signature-box">
-                <div class="signature-line"></div>
-                <div>Okul Müdürü İmzası</div>
-            </div>
-        </div>
-        
-        <div class="footer">
-            <p>Bu sözleşme elektronik ortamda oluşturulmuş olup, yasal geçerliliği vardır.</p>
-        </div>
-    </body>
-    </html>
-  `
-
-  return baseHTML
-}
-
-function generateContractSpecificFields(contractData: Record<string, unknown>, contractType: string) {
-  switch (contractType) {
-    case 'Yeni Kayıt':
-      return `
-        <div class="field">
-            <div class="field-label">Eğitim Öğretim Yılı:</div>
-            <div class="field-value">${pdfAcademicYearLabel(contractData)}</div>
-        </div>
-        <div class="field">
-            <div class="field-label">Sınıf:</div>
-            <div class="field-value">${contractData.grade || ''}</div>
-        </div>
-        <div class="field">
-            <div class="field-label">Öğrenim Ücreti:</div>
-            <div class="field-value">${contractData.tuitionFee || '0'} TL</div>
-        </div>
-      `
-    case 'Kayıt Yenileme':
-      return `
-        <div class="field">
-            <div class="field-label">Eğitim Öğretim Yılı:</div>
-            <div class="field-value">${pdfAcademicYearLabel(contractData)}</div>
-        </div>
-        <div class="field">
-            <div class="field-label">Sınıf:</div>
-            <div class="field-value">${contractData.grade || ''}</div>
-        </div>
-        <div class="field">
-            <div class="field-label">Öğrenim Ücreti:</div>
-            <div class="field-value">${contractData.tuitionFee || '0'} TL</div>
-        </div>
-      `
-    case 'Forma Sözleşmesi':
-      return `
-        <div class="field">
-            <div class="field-label">Forma Bedeni:</div>
-            <div class="field-value">${contractData.uniformSize || ''}</div>
-        </div>
-        <div class="field">
-            <div class="field-label">Forma Ücreti:</div>
-            <div class="field-value">${contractData.uniformPrice || '0'} TL</div>
-        </div>
-        <div class="field">
-            <div class="field-label">Teslim Tarihi:</div>
-            <div class="field-value">${contractData.deliveryDate || ''}</div>
-        </div>
-      `
-    case 'Yemek Sözleşmesi':
-      return `
-        <div class="field">
-            <div class="field-label">Yemek Türü:</div>
-            <div class="field-value">${contractData.mealType || ''}</div>
-        </div>
-        <div class="field">
-            <div class="field-label">Yemek Ücreti:</div>
-            <div class="field-value">${contractData.mealPrice || '0'} TL</div>
-        </div>
-        <div class="field">
-            <div class="field-label">Başlangıç Tarihi:</div>
-            <div class="field-value">${contractData.startDate || ''}</div>
-        </div>
-      `
-    default:
-      return ''
-  }
-}
-
 export function generateCombinedContractHTML(data: {
   student: { firstName: string; lastName: string; tcNumber: string; grade: string; address: string; birthDate: string; motherName: string; motherTc: string; motherPhone: string; motherAddress: string; motherOccupation: string; fatherName: string; fatherTc: string; fatherPhone: string; fatherAddress: string; fatherOccupation: string }
   contractTypes: string[]
   mainContractData: Record<string, unknown>
   otherContractData: Record<string, unknown>
 }) {
-  const { student, contractTypes, mainContractData, otherContractData } = data
+  // Sözleşme verisi kullanıcı girdisidir; şablona HTML olarak değil düz metin olarak basılsın
+  const student = escapeDeep(data.student)
+  const mainContractData = escapeDeep(data.mainContractData)
+  const otherContractData = escapeDeep(data.otherContractData)
+  const contractTypes = data.contractTypes
 
   // Ana sözleşme HTML'i (Eğitim Öğretim Hizmet Sözleşmesi)
   const mainContractHTML = generateMainContractHTML(student, mainContractData)

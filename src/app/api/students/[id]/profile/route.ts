@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { requireStaff } from "@/lib/auth/api-guard"
 import { prisma } from "@/lib/prisma"
 import {
   getRenewalTargetContext,
@@ -10,9 +11,11 @@ import {
  * Öğrenci profili + sınıf, kayıt, sözleşme, kulüp ve veli görüşmesi özeti
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireStaff(request)
+  if (!auth.ok) return auth.response
   try {
     const { id } = await params
 

@@ -1,27 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { requireStaffAccess } from "@/lib/auth/api-guard"
 import { generatePDF, generateCombinedContractHTML, resolveStudentAddress } from "@/lib/pdf-generator"
 
 // GET handler for testing route availability
-export async function GET(
-    request: NextRequest,
-    context: { params: Promise<{ id: string }> }
-) {
-    try {
-        const params = await context.params
-        return NextResponse.json({ 
-            message: "PDF Combined route is available",
-            id: params.id 
-        })
-    } catch {
-        return NextResponse.json({ error: "Route error" }, { status: 500 })
-    }
-}
-
 export async function POST(
     request: NextRequest,
     context: { params: Promise<{ id: string }> }
 ) {
+    const auth = await requireStaffAccess(request, { module: "registrations", action: "view" })
+    if (!auth.ok) return auth.response
     try {
         const params = await context.params
         
@@ -194,8 +182,7 @@ export async function POST(
         } catch (htmlError) {
             console.error("Error generating HTML:", htmlError)
             return NextResponse.json({
-                error: "Failed to generate PDF HTML",
-                details: htmlError instanceof Error ? htmlError.message : "Unknown error"
+                error: "Failed to generate PDF HTML"
             }, { status: 500 })
         }
 
@@ -208,8 +195,7 @@ export async function POST(
         } catch (pdfError) {
             console.error("Error generating PDF:", pdfError)
             return NextResponse.json({
-                error: "Failed to generate PDF",
-                details: pdfError instanceof Error ? pdfError.message : "Unknown error"
+                error: "Failed to generate PDF"
             }, { status: 500 })
         }
 
@@ -244,16 +230,11 @@ export async function POST(
     } catch (error) {
         console.error("Error generating combined PDF:", error)
         console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace")
-        console.error("Error details:", JSON.stringify(error, Object.getOwnPropertyNames(error)))
-        
-        const errorMessage = error instanceof Error ? error.message : "Unknown error"
-        const errorStack = error instanceof Error ? error.stack : undefined
         
         // Prisma hataları
         if (error instanceof Error && error.message.includes("Record to find does not exist")) {
             return NextResponse.json({
-                error: "Contract or student not found",
-                details: errorMessage
+                error: "Contract or student not found"
             }, { status: 404 })
         }
         
@@ -264,15 +245,12 @@ export async function POST(
             error.message.includes("browser")
         )) {
             return NextResponse.json({
-                error: "PDF generation service error",
-                details: errorMessage
+                error: "PDF generation service error"
             }, { status: 500 })
         }
         
         return NextResponse.json({
-            error: "Failed to generate combined PDF",
-            details: errorMessage,
-            ...(process.env.NODE_ENV === "development" && errorStack ? { stack: errorStack } : {})
+            error: "Failed to generate combined PDF"
         }, { status: 500 })
     }
 }

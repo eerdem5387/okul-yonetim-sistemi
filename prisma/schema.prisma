@@ -44,7 +44,7 @@ model Student {
   /// Kitap ödemesi alındı mı? (null = belirtilmemiş)
   bookPaymentPaid                 Boolean?
   createdAt           DateTime @default(now())
-  updatedAt           DateTime @default(now())
+  updatedAt           DateTime @default(now()) @updatedAt
 
   // Relations
   clubSelections         ClubSelection[]
@@ -211,7 +211,7 @@ model NewRegistration {
   contractData Json
   pdfPath      String?
   createdAt    DateTime @default(now())
-  updatedAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
 
   // Relations
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
@@ -226,7 +226,7 @@ model Renewal {
   contractData Json
   pdfPath      String?
   createdAt    DateTime @default(now())
-  updatedAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
 
   // Relations
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
@@ -241,7 +241,7 @@ model UniformContract {
   contractData Json
   pdfPath      String?
   createdAt    DateTime @default(now())
-  updatedAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
 
   // Relations
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
@@ -256,7 +256,7 @@ model MealContract {
   contractData Json
   pdfPath      String?
   createdAt    DateTime @default(now())
-  updatedAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
 
   // Relations
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
@@ -271,7 +271,7 @@ model ServiceContract {
   contractData Json
   pdfPath      String?
   createdAt    DateTime @default(now())
-  updatedAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
 
   // Relations
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
@@ -286,7 +286,7 @@ model BookContract {
   contractData Json
   pdfPath      String?
   createdAt    DateTime @default(now())
-  updatedAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
 
   // Relations
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)

@@ -1,8 +1,11 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
+import { requireStaffAccess } from "@/lib/auth/api-guard"
 import { prisma } from "@/lib/prisma"
 import { getRenewalGrades } from "@/lib/renewal-grade-display"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = await requireStaffAccess(request, { module: "registrations", action: "export" })
+  if (!auth.ok) return auth.response
   try {
     const renewals = await prisma.renewal.findMany({
       include: {

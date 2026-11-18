@@ -22,6 +22,18 @@ export function gradeLevelWhereClause(n: number): Record<string, unknown> {
   }
 }
 
+/** Kademe filtresi: ortaokul (5–8) veya lise (9–12); tanınmayan değer → null. */
+export function gradeBandWhereClause(band: string | null | undefined): Record<string, unknown> | null {
+  if (band !== "ortaokul" && band !== "lise") return null
+  const nums = band === "ortaokul" ? [5, 6, 7, 8] : [9, 10, 11, 12]
+  const orParts: Record<string, unknown>[] = []
+  for (const n of nums) {
+    orParts.push({ grade: { equals: `${n}. Sınıf`, mode: "insensitive" as const } })
+    orParts.push({ grade: { equals: String(n), mode: "insensitive" as const } })
+  }
+  return { OR: orParts }
+}
+
 /** Prisma `where`: yalnızca 5–12. sınıf etiketleri (liste ve özet sayımları için). */
 export function k12GradeWhereClause(): Record<string, unknown> {
   const orParts: Record<string, unknown>[] = []

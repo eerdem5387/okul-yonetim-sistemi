@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { requireStaff, requireStaffAccess } from "@/lib/auth/api-guard"
 import { prisma } from "@/lib/prisma"
 import { clubMatchesStudentGrade } from "@/lib/club-grade-levels"
 import { parseStudentGradeLevel } from "@/lib/student-grade-level"
@@ -18,9 +19,11 @@ export const dynamic = "force-dynamic"
  * Öğrencinin haftalık ders + kulüp etüt + ÖÇG programı ve atama seçenekleri.
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireStaff(request)
+  if (!auth.ok) return auth.response
   try {
     const { id: studentId } = await context.params
 
@@ -415,6 +418,13 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireStaffAccess(
+    request,
+    { module: "students", action: "edit" },
+    { module: "schedules", action: "edit" },
+    { module: "clubs", action: "edit" }
+  )
+  if (!auth.ok) return auth.response
   try {
     const { id: studentId } = await context.params
     const body = await request.json().catch(() => ({}))

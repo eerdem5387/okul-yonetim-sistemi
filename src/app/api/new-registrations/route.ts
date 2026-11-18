@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
+import { requireStaffAccess } from "@/lib/auth/api-guard"
 import {
   contractYearLabelFromAcademicYear,
   resolveActiveAndNextAcademicYear,
 } from "@/lib/academic-year-ui"
 import { listAcademicYearsForContract, validateNewRegistrationAcademicYear } from "@/lib/academic-year-contract-server"
-import { updateNewRegistrationContract } from "@/lib/contract-registration-update"
 import { academicYearLabelsEquivalent } from "@/lib/student-registration-meta"
 
 export async function GET(request: NextRequest) {
+    const auth = await requireStaffAccess(request, { module: "registrations", action: "view" })
+    if (!auth.ok) return auth.response
     try {
         const { searchParams } = new URL(request.url)
         const studentId = searchParams.get('studentId')
@@ -42,6 +44,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+    const auth = await requireStaffAccess(request, { module: "registrations", action: "create" })
+    if (!auth.ok) return auth.response
     try {
         const body = await request.json()
         const { studentId, contractData, selectedClubs } = body
@@ -105,119 +109,71 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // Otomatik çift kayıt önleme: Son 5 dakika içinde aynı öğrenci ve akademik yıl için kayıt var mı?
-        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
-        const recentRegistrations = await prisma.newRegistration.findMany({
-            where: {
-                studentId,
-                createdAt: {
-                    gte: fiveMinutesAgo
-                }
-            },
-            orderBy: {
-                createdAt: "desc"
-            }
-        })
-
-        // Eğer son 5 dakika içinde kayıt varsa ve aynı akademik yıl ise, en son kaydı döndür
-        if (recentRegistrations.length > 0 && academicYear) {
-            const matchingRegistration = recentRegistrations.find((reg) => {
-                const regContractData = reg.contractData as Record<string, unknown>
-                return academicYearLabelsEquivalent(
-                    regContractData.academicYear,
-                    academicYear
-                )
-            })
-            
-            if (matchingRegistration) {
-                console.log(`[New Registration] Duplicate prevention: Found recent registration for student ${studentId} and academic year ${academicYear}, returning existing registration`)
-                return NextResponse.json({
-                    ...matchingRegistration,
-                    duplicatePrevented: true
-                })
-            }
-        }
-
-        // Sözleşmeyi oluştur
-        const registration = await prisma.newRegistration.create({
-            data: {
-                studentId,
-                contractData: mergedContractData as Prisma.InputJsonValue,
-            },
-            include: {
-                student: {
-                    select: {
-                        firstName: true,
-                        lastName: true,
-                        tcNumber: true
+        // Sözleşme + kulüp seçimleri tek işlemde (biri başarısız olursa ikisi de yazılmaz)
+        const registration = await prisma.$transaction(async (tx) => {
+            const created = await tx.newRegistration.create({
+                data: {
+                    studentId,
+                    contractData: mergedContractData as Prisma.InputJsonValue,
+                },
+                include: {
+                    student: {
+                        select: {
+                            firstName: true,
+                            lastName: true,
+                            tcNumber: true
+                        }
                     }
                 }
+            })
+
+            if (selectedClubs && Array.isArray(selectedClubs) && selectedClubs.length > 0) {
+                const clubSelections = selectedClubs
+                    .filter((clubId: string) => clubId && typeof clubId === 'string')
+                    .map((clubId: string) => ({
+                        clubId,
+                        studentId
+                    }))
+
+                if (clubSelections.length > 0) {
+                    await tx.clubSelection.createMany({
+                        data: clubSelections,
+                        skipDuplicates: true
+                    })
+                }
             }
+            return created
         })
-
-        // Kulüp seçimlerini ekle
-        if (selectedClubs && Array.isArray(selectedClubs) && selectedClubs.length > 0) {
-            const clubSelections = selectedClubs
-                .filter((clubId: string) => clubId && typeof clubId === 'string')
-                .map((clubId: string) => ({
-                    clubId,
-                    studentId
-                }))
-
-            if (clubSelections.length > 0) {
-                await prisma.clubSelection.createMany({
-                    data: clubSelections,
-                    skipDuplicates: true
-                })
-            }
-        }
 
         return NextResponse.json(registration)
     } catch (error) {
         console.error("Error creating new registration:", error)
-        const errorMessage = error instanceof Error ? error.message : "Unknown error"
-        return NextResponse.json({ 
-            error: "Failed to create new registration",
-            details: errorMessage
-        }, { status: 500 })
-    }
-}
-
-export async function PUT(request: NextRequest) {
-    try {
-        const body = await request.json()
-        const { id, contractData } = body
-        if (!id || typeof id !== "string") {
-            return NextResponse.json({ error: "id is required" }, { status: 400 })
-        }
-
-        const result = await updateNewRegistrationContract(id, (contractData || {}) as Record<string, unknown>)
-        if (!result.ok) {
-            return NextResponse.json(
-                { error: result.error, ...(result.code ? { code: result.code } : {}) },
-                { status: result.status }
-            )
-        }
-        return NextResponse.json(result.registration)
-    } catch (error) {
-        console.error("Error updating new registration:", error)
-        return NextResponse.json({ error: "Failed to update new registration" }, { status: 500 })
+        return NextResponse.json({ error: "Failed to create new registration" }, { status: 500 })
     }
 }
 
 export async function DELETE(request: NextRequest) {
+    const auth = await requireStaffAccess(request, { module: "registrations", action: "delete" })
+    if (!auth.ok) return auth.response
     try {
-        const body = await request.json()
-        const { contractIds } = body
+        const body = await request.json().catch(() => ({}))
+        const { contractIds } = body as { contractIds?: unknown }
+        const validIds =
+            typeof contractIds === "string"
+                ? contractIds.trim() !== ""
+                : Array.isArray(contractIds) && contractIds.length > 0 && contractIds.every((x) => typeof x === "string" && x.trim() !== "")
+        if (!validIds) {
+            return NextResponse.json({ error: "Silinecek sözleşme seçilmedi." }, { status: 400 })
+        }
 
         // Kayıtları sil (öğrenci kaydı silinmez; sözleşme kaldırılır)
         if (Array.isArray(contractIds)) {
             await prisma.newRegistration.deleteMany({
-                where: { id: { in: contractIds } }
+                where: { id: { in: contractIds as string[] } }
             })
         } else {
             await prisma.newRegistration.delete({
-                where: { id: contractIds }
+                where: { id: contractIds as string }
             })
         }
 

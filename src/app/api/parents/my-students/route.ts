@@ -1,38 +1,26 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { readBearerToken, verifySessionToken } from "@/lib/auth/session-token"
+import { forbiddenResponse, unauthorizedResponse } from "@/lib/auth/api-guard"
 
 /**
  * GET /api/parents/my-students
- * Velinin öğrencilerini döndürür
- * 
- * Query:
- * - parentId: string (Veli ID)
+ * Giriş yapmış velinin öğrencilerini döndürür.
+ *
+ * Veli kimliği imzalı oturum token'ından alınır. `?parentId=` eski istemciler için hâlâ kabul edilir
+ * ama yalnızca token'daki veliyle aynıysa (başka velinin verisi istenemez).
  */
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const parentId = searchParams.get("parentId")
+    const verified = verifySessionToken(readBearerToken(request), "parent")
+    if (!verified) return unauthorizedResponse()
+    const parentId = verified.subjectId
 
-    if (!parentId) {
-      return NextResponse.json(
-        { error: "Veli ID gereklidir" },
-        { status: 400 }
-      )
+    const requestedParentId = new URL(request.url).searchParams.get("parentId")
+    if (requestedParentId && requestedParentId !== parentId) {
+      return forbiddenResponse("Bu veli hesabının bilgilerine erişiminiz yok.")
     }
 
-    // Veli kontrolü
-    const parent = await prisma.parent.findUnique({
-      where: { id: parentId },
-    })
-
-    if (!parent || !parent.isActive) {
-      return NextResponse.json(
-        { error: "Veli bulunamadı veya hesap aktif değil" },
-        { status: 404 }
-      )
-    }
-
-    // Öğrenciyi getir (detaylı bilgilerle)
     const parentAccount = await prisma.parent.findUnique({
       where: { id: parentId },
       include: {
@@ -41,6 +29,7 @@ export async function GET(request: NextRequest) {
             student: {
               include: {
                 classAssignments: {
+                  orderBy: { createdAt: "desc" },
                   include: {
                     class: {
                       select: {
@@ -48,6 +37,7 @@ export async function GET(request: NextRequest) {
                         name: true,
                         grade: true,
                         section: true,
+                        academicYear: { select: { isActive: true } },
                         counselor: {
                           select: {
                             id: true,
@@ -68,18 +58,28 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    if (!parentAccount) {
+    if (!parentAccount || !parentAccount.isActive) {
       return NextResponse.json(
-        { error: "Hesap bulunamadı" },
+        { error: "Veli bulunamadı veya hesap aktif değil" },
         { status: 404 }
       )
     }
 
-    // Response formatla (tüm öğrenciler)
+    // Aynı öğrenci anne ve baba için iki satırla bağlı olabilir → öğrenci başına tek kayıt
+    const seen = new Set<string>()
     const studentsList = parentAccount.students
-      .filter((ps) => ps.student) // Öğrenci bilgisi olanları filtrele
+      .filter((ps) => {
+        if (!ps.student || seen.has(ps.studentId)) return false
+        seen.add(ps.studentId)
+        return true
+      })
       .map((ps) => {
         const student = ps.student
+        // Aktif akademik yıldaki sınıf; yoksa en son atama
+        const assignment =
+          student.classAssignments.find((a) => a.class.academicYear?.isActive) ??
+          student.classAssignments[0]
+        const cls = assignment?.class
         return {
           id: student.id,
           firstName: student.firstName,
@@ -90,7 +90,15 @@ export async function GET(request: NextRequest) {
           phone: student.phone,
           email: student.email,
           address: student.address,
-          class: student.classAssignments[0]?.class || null,
+          class: cls
+            ? {
+                id: cls.id,
+                name: cls.name,
+                grade: cls.grade,
+                section: cls.section,
+                counselor: cls.counselor,
+              }
+            : null,
           parents: parentAccount.students
             .filter((p) => p.studentId === student.id)
             .map((p) => ({
@@ -112,4 +120,3 @@ export async function GET(request: NextRequest) {
     )
   }
 }
-

@@ -1,8 +1,11 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
+import { requireStaffAccess } from "@/lib/auth/api-guard"
 import { prisma } from "@/lib/prisma"
 import type { Student } from "@prisma/client"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+    const auth = await requireStaffAccess(request, { module: "students", action: "export" })
+    if (!auth.ok) return auth.response
     try {
         const students: Student[] = await prisma.student.findMany({ orderBy: { createdAt: "desc" } })
 

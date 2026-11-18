@@ -339,12 +339,11 @@ export default function StudentDetailDashboardPage() {
   const handleSaveProfile = async () => {
     setSaving(true)
     try {
-      const role = typeof window !== "undefined" ? localStorage.getItem("auth_role") : null
+      // Öğrenim ücreti yetkisi sunucuda oturumdan doğrulanır
       const res = await fetch(`/api/students/${studentId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          ...(role ? { "x-user-role": role } : {}),
         },
         body: JSON.stringify({
           ...editForm,

@@ -455,7 +455,6 @@ export default function StudentsPage() {
         method,
         headers: {
           "Content-Type": "application/json",
-          "x-user-role": userRole || "",
         },
         body: JSON.stringify({
           ...formData,
@@ -540,7 +539,8 @@ export default function StudentsPage() {
           fetchOverview()
           alert("Öğrenci başarıyla silindi!")
         } else {
-          alert("Öğrenci silinirken hata oluştu!")
+          const errorData = await response.json().catch(() => ({}))
+          alert(errorData.error || "Öğrenci silinirken hata oluştu!")
         }
       } catch (error) {
         console.error("Error deleting student:", error)

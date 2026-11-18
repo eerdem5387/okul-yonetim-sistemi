@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { requireStudentReader } from "@/lib/auth/api-guard"
 import { prisma } from "@/lib/prisma"
 
 const WEAK_THRESHOLD = 0.5
@@ -13,6 +14,8 @@ export async function GET(
 ) {
   try {
     const { id: studentId } = await context.params
+    const auth = await requireStudentReader(request, studentId)
+    if (!auth.ok) return auth.response
 
     const results = await prisma.examResult.findMany({
       where: {

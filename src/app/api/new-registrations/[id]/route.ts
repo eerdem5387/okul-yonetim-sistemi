@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { requireStaffAccess } from "@/lib/auth/api-guard"
 import { updateNewRegistrationContract } from "@/lib/contract-registration-update"
 
 export async function GET(
     request: NextRequest,
     context: { params: Promise<{ id: string }> }
 ) {
+    const auth = await requireStaffAccess(request, { module: "registrations", action: "view" })
+    if (!auth.ok) return auth.response
     try {
         const params = await context.params
         const registration = await prisma.newRegistration.findUnique({
@@ -44,6 +47,8 @@ export async function PUT(
     request: NextRequest,
     context: { params: Promise<{ id: string }> }
 ) {
+    const auth = await requireStaffAccess(request, { module: "registrations", action: "edit" })
+    if (!auth.ok) return auth.response
     try {
         const params = await context.params
         const body = await request.json()
@@ -60,42 +65,5 @@ export async function PUT(
     } catch (error) {
         console.error("Error updating new registration:", error)
         return NextResponse.json({ error: "Failed to update new registration" }, { status: 500 })
-    }
-}
-
-export async function DELETE(
-    request: NextRequest,
-    context: { params: Promise<{ id: string }> }
-) {
-    try {
-        const params = await context.params
-
-        // Önce sözleşmeyi bul ve studentId'yi al
-        const registration = await prisma.newRegistration.findUnique({
-            where: { id: params.id },
-            select: { studentId: true }
-        })
-
-        if (!registration) {
-            return NextResponse.json({ error: "Registration not found" }, { status: 404 })
-        }
-
-        // Öğrencinin tüm yan sözleşmelerini sil (cascade delete)
-        await Promise.all([
-            prisma.uniformContract.deleteMany({ where: { studentId: registration.studentId } }),
-            prisma.mealContract.deleteMany({ where: { studentId: registration.studentId } }),
-            prisma.serviceContract.deleteMany({ where: { studentId: registration.studentId } }),
-            prisma.bookContract.deleteMany({ where: { studentId: registration.studentId } })
-        ])
-
-        // Ana sözleşmeyi sil
-        await prisma.newRegistration.delete({
-            where: { id: params.id }
-        })
-
-        return NextResponse.json({ success: true })
-    } catch (error) {
-        console.error("Error deleting new registration:", error)
-        return NextResponse.json({ error: "Failed to delete new registration" }, { status: 500 })
     }
 }

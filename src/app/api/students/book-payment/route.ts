@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
+import { requireStaff } from "@/lib/auth/api-guard"
 import { prisma } from "@/lib/prisma"
 import { getRenewalTargetContext } from "@/lib/student-registration-meta"
-import { k12GradeWhereClause } from "@/lib/student-grade-level"
+import { gradeBandWhereClause, gradeLevelWhereClause, k12GradeWhereClause } from "@/lib/student-grade-level"
 import { studentBookNotReceivedWhere } from "@/lib/student-book-payment"
 import { buildStudentSearchWhere } from "@/lib/turkish-search"
 
@@ -9,10 +10,12 @@ export const dynamic = "force-dynamic"
 
 /** Kitap almadı olarak işaretlenmemiş öğrenciler (bookPaymentPaid !== true). */
 export async function GET(request: NextRequest) {
+  const auth = await requireStaff(request)
+  if (!auth.ok) return auth.response
   try {
     const { searchParams } = new URL(request.url)
-    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10))
-    const limit = Math.min(Math.max(1, parseInt(searchParams.get("limit") || "12", 10)), 50)
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1)
+    const limit = Math.min(Math.max(1, parseInt(searchParams.get("limit") || "12", 10) || 12), 50)
     const search = searchParams.get("search") || ""
     const grade = searchParams.get("grade") || ""
     const gradeBand = searchParams.get("gradeBand") || ""
@@ -30,15 +33,16 @@ export async function GET(request: NextRequest) {
     }
 
     if (grade) {
-      whereConditions.push({ grade: { equals: grade, mode: "insensitive" as const } })
-    } else if (gradeBand === "ortaokul" || gradeBand === "lise") {
-      const nums = gradeBand === "ortaokul" ? [5, 6, 7, 8] : [9, 10, 11, 12]
-      const orParts: Record<string, unknown>[] = []
-      for (const n of nums) {
-        orParts.push({ grade: { equals: `${n}. Sınıf`, mode: "insensitive" as const } })
-        orParts.push({ grade: { equals: String(n), mode: "insensitive" as const } })
+      // Öğrenci listesiyle aynı davranış: "5" ve "5. Sınıf" birlikte eşleşir
+      const level = parseInt(grade, 10)
+      if (!Number.isNaN(level) && level >= 5 && level <= 12) {
+        whereConditions.push(gradeLevelWhereClause(level))
+      } else {
+        whereConditions.push({ grade: { equals: grade, mode: "insensitive" as const } })
       }
-      whereConditions.push({ OR: orParts })
+    } else {
+      const band = gradeBandWhereClause(gradeBand)
+      if (band) whereConditions.push(band)
     }
 
     const searchWhere = buildStudentSearchWhere(search)

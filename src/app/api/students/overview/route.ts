@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
+import { requireStaff } from "@/lib/auth/api-guard"
 import { prisma } from "@/lib/prisma"
 import { getRenewalTargetContext } from "@/lib/student-registration-meta"
 import { contractYearLabelFromAcademicYear, resolveActiveAndNextAcademicYear } from "@/lib/academic-year-ui"
@@ -17,7 +18,9 @@ export const dynamic = "force-dynamic"
 /**
  * Öğrenci yönetimi sayfası: özet istatistikler, sınıf düzeyi / şube dağılımı (aktif akademik yıl).
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = await requireStaff(request)
+  if (!auth.ok) return auth.response
   try {
     const yearRows = await prisma.academicYear.findMany({
       orderBy: [{ startDate: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],

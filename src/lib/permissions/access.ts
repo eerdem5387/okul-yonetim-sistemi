@@ -51,22 +51,14 @@ const PATH_MODULE_PREFIXES: Array<{ prefix: string; module: string }> = [
   { prefix: "/onay-paneli", module: "approval_panel" },
   { prefix: "/finans", module: "finance" },
   { prefix: "/edit-renewal", module: "registrations" },
-  { prefix: "/edit-uniform", module: "registrations" },
-  { prefix: "/edit-service", module: "registrations" },
-  { prefix: "/edit-book", module: "registrations" },
-  { prefix: "/edit-meal", module: "registrations" },
   { prefix: "/students", module: "students" },
   { prefix: "/personel", module: "staff" },
   { prefix: "/renewal", module: "registrations" },
   { prefix: "/history", module: "registrations" },
-  { prefix: "/uniform", module: "registrations" },
-  { prefix: "/service", module: "registrations" },
   { prefix: "/neredeyiz", module: "neredeyiz" },
   { prefix: "/basvurular", module: "applications" },
   { prefix: "/clubs", module: "clubs" },
   { prefix: "/gezi", module: "gezi" },
-  { prefix: "/meal", module: "registrations" },
-  { prefix: "/book", module: "registrations" },
 ]
 
 export function modulesForPath(pathname: string | null | undefined): string[] {

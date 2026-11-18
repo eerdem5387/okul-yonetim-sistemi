@@ -2,8 +2,6 @@ import type { LucideIcon } from "lucide-react"
 import {
   Award,
   Briefcase,
-  Bus,
-  BookOpen,
   Calendar,
   ClipboardList,
   Contact,
@@ -13,12 +11,10 @@ import {
   MessageSquare,
   School,
   Settings,
-  Shirt,
   Target,
   UserPlus,
   UserSearch,
   Users,
-  Utensils,
   Wallet,
 } from "lucide-react"
 import { hasAnyModulePermission } from "./access"
@@ -43,10 +39,6 @@ export const PERMISSION_NAV_CATALOG: PermissionNavItem[] = [
   { module: "attendance", name: "Devamsızlık", href: "/devamsizlik", icon: ClipboardList },
   { module: "registrations", name: "Yeni Kayıt", href: "/new-registration", icon: FileText },
   { module: "registrations", name: "Kayıt Yenileme", href: "/renewal", icon: FileText },
-  { module: "registrations", name: "Forma Sözleşmesi", href: "/uniform", icon: Shirt },
-  { module: "registrations", name: "Yemek Sözleşmesi", href: "/meal", icon: Utensils },
-  { module: "registrations", name: "Servis Sözleşmesi", href: "/service", icon: Bus },
-  { module: "registrations", name: "Kitap Sözleşmesi", href: "/book", icon: BookOpen },
   { module: "applications", name: "Bursluluk Başvuruları", href: "/basvurular", icon: ClipboardList },
   { module: "applications", name: "Teklif Görüşmeleri", href: "/teklif-gorusmeleri", icon: Handshake },
   { module: "aday_tespit", name: "Aday Öğrenci Tespiti", href: "/aday-ogrenci-tespiti", icon: Contact },

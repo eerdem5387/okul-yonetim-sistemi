@@ -9,9 +9,6 @@ import {
   LayoutDashboard, 
   Users, 
   FileText, 
-  Shirt, 
-  Utensils, 
-  Bus, 
   BookOpen, 
   UserPlus, 
   LogOut,
@@ -89,10 +86,6 @@ const allNavigation = [
   { name: "Faaliyet Yönetimi", href: "/faaliyet-yonetimi", icon: Award, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
   { name: "Sınav Yönetimi", href: "/rehberlik/sinavlar", icon: FileText, roles: ["admin", "counselor", "head_counselor"] },
   { name: "Öğrenci Görüşleri", href: "/rehberlik/gorusler", icon: MessageSquare, roles: ["admin", "counselor", "head_counselor"] },
-  { name: "Forma Sözleşmesi", href: "/uniform", icon: Shirt, roles: ["admin", "principal", "student_affairs"] },
-  { name: "Yemek Sözleşmesi", href: "/meal", icon: Utensils, roles: ["admin", "principal", "student_affairs"] },
-  { name: "Servis Sözleşmesi", href: "/service", icon: Bus, roles: ["admin", "principal", "student_affairs"] },
-  { name: "Kitap Sözleşmesi", href: "/book", icon: BookOpen, roles: ["admin", "principal", "student_affairs"] },
   // Öğretmen menüsü
   { name: "Neredeyiz?", href: "/ogretmen/neredeyiz", icon: Target, roles: ["teacher"] },
   { name: "Ders Programım", href: "/ogretmen/ders-programim", icon: LayoutDashboard, roles: ["teacher"] },
@@ -151,10 +144,6 @@ export function useMainNavigation() {
     "/faaliyet-yonetimi": "activity_events.view",
     "/rehberlik/sinavlar": "exams.view",
     "/rehberlik/gorusler": "student_comments.view",
-    "/uniform": "registrations.view",
-    "/meal": "registrations.view",
-    "/service": "registrations.view",
-    "/book": "registrations.view",
   }
 
   const visibleNavigation = allNavigation.filter((item) => {

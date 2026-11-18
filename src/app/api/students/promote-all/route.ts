@@ -1,26 +1,39 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { computeNextGradeAfterRollover } from "@/lib/academic-year-rollover"
+import { requireStaffAccess } from "@/lib/auth/api-guard"
 
-export async function POST() {
+/**
+ * Tüm öğrencileri bir üst sınıfa geçirir (8 ve 12 → Mezun).
+ * Güncellemeler tek bir veritabanı işleminde yapılır: bir hata olursa hiçbir öğrenci değişmez
+ * (eskiden öğrenci öğrenci güncelleniyordu; yarıda kalırsa bir kısmı yükselmiş kalıyordu).
+ */
+export async function POST(request: NextRequest) {
+  const auth = await requireStaffAccess(request, { module: "students", action: "edit" })
+  if (!auth.ok) return auth.response
   try {
-    const students = await prisma.student.findMany()
+    const students = await prisma.student.findMany({ select: { id: true, grade: true } })
 
-    let updatedCount = 0
+    // Hedef sınıfa göre grupla; her grup kendi id listesiyle güncellenir (zincirleme yükselme olmaz)
+    const idsByNextGrade = new Map<string, string[]>()
     let skippedCount = 0
-
     for (const student of students) {
       const newGrade = computeNextGradeAfterRollover(student.grade)
       if (newGrade && newGrade !== student.grade) {
-        await prisma.student.update({
-          where: { id: student.id },
-          data: { grade: newGrade },
-        })
-        updatedCount++
+        const list = idsByNextGrade.get(newGrade) ?? []
+        list.push(student.id)
+        idsByNextGrade.set(newGrade, list)
       } else {
         skippedCount++
       }
     }
+
+    const results = await prisma.$transaction(
+      [...idsByNextGrade.entries()].map(([grade, ids]) =>
+        prisma.student.updateMany({ where: { id: { in: ids } }, data: { grade } })
+      )
+    )
+    const updatedCount = results.reduce((sum, r) => sum + r.count, 0)
 
     return NextResponse.json({
       success: true,

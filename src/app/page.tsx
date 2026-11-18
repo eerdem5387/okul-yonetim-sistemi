@@ -155,15 +155,11 @@ export default function HomePage() {
       const clubsRes = await fetch("/api/clubs")
       const clubs = clubsRes.ok ? await clubsRes.json() : []
       
-      const [newRegRes, renewalRes, teklifRes, staffRes, uniformRes, mealRes, serviceRes, bookRes] = await Promise.all([
+      const [newRegRes, renewalRes, teklifRes, staffRes] = await Promise.all([
         fetch("/api/new-registrations"),
         fetch("/api/renewals"),
         fetch("/api/teklif-gorusmeleri?limit=5&page=1"),
         fetch("/api/staff?limit=1&page=1", { headers: getAuthHeaders() }),
-        fetch("/api/uniform-contracts"),
-        fetch("/api/meal-contracts"),
-        fetch("/api/service-contracts"),
-        fetch("/api/book-contracts")
       ])
       
       // Yeni Kayıt / Kayıt Yenileme büyük kartları için son 5 kayıt ve toplam sayılar
@@ -212,18 +208,11 @@ export default function HomePage() {
       // Her sözleşme türüne type bilgisini ekle (Son İşlemler için)
       const newRegistrations = newRegList.map((c: { id: string; studentId: string; createdAt: string }) => ({ ...c, type: "new-registration" }))
       const renewals = renewalList.map((c: { id: string; studentId: string; createdAt: string }) => ({ ...c, type: "renewal" }))
-      const uniforms = uniformRes.ok ? (await uniformRes.json()).map((c: { id: string; studentId: string; createdAt: string }) => ({ ...c, type: "uniform" })) : []
-      const meals = mealRes.ok ? (await mealRes.json()).map((c: { id: string; studentId: string; createdAt: string }) => ({ ...c, type: "meal" })) : []
-      const services = serviceRes.ok ? (await serviceRes.json()).map((c: { id: string; studentId: string; createdAt: string }) => ({ ...c, type: "service" })) : []
-      const books = bookRes.ok ? (await bookRes.json()).map((c: { id: string; studentId: string; createdAt: string }) => ({ ...c, type: "book" })) : []
-      
+      // Forma / yemek / servis / kitap sözleşmeleri ayrı modül olarak kaldırıldı; son işlemler yalnızca
+      // yeni kayıt ve kayıt yenilemeden oluşur.
       const allContracts = [
         ...newRegistrations,
         ...renewals,
-        ...uniforms,
-        ...meals,
-        ...services,
-        ...books
       ]
       
       const clubCapacityAverage = clubs.length > 0

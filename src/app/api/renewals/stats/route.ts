@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { requireStaffAccess } from "@/lib/auth/api-guard"
 import { prisma } from "@/lib/prisma"
 import {
   getRenewalTargetContext,
@@ -11,6 +12,8 @@ import {
 import { buildEnrollmentRegistrationGradeBreakdown } from "@/lib/enrolled-grade-counts"
 
 export async function GET(request: NextRequest) {
+  const auth = await requireStaffAccess(request, { module: "registrations", action: "view" })
+  if (!auth.ok) return auth.response
   try {
     const { searchParams } = new URL(request.url)
     const startDate = searchParams.get('startDate') || ''
