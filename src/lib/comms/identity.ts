@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server"
 import type { StaffDepartment } from "@prisma/client"
-import { getStaffTokenMaxAgeMs } from "@/lib/auth/token"
+import { readBearerToken, verifySessionToken } from "@/lib/auth/session-token"
 import { prisma } from "@/lib/prisma"
 
 /**
@@ -25,28 +25,12 @@ export type CommsActor =
 /** Geriye dönük alias — eski chat API’leri kaldırılınca kullanılmaz */
 export type ChatActor = CommsActor
 
-const PARENT_TOKEN_MAX_AGE_MS = 24 * 60 * 60 * 1000
-const STAFF_TOKEN_MAX_AGE_MS = getStaffTokenMaxAgeMs()
-
-function readBearerToken(request: NextRequest): string | null {
-  const header = request.headers.get("authorization") || request.headers.get("Authorization")
-  if (!header) return null
-  if (header.toLowerCase().startsWith("bearer ")) return header.slice(7).trim()
-  return header.trim()
-}
-
 export async function resolveCommsActor(request: NextRequest): Promise<CommsActor | null> {
-  const token = readBearerToken(request)
-  if (!token) return null
+  const verified = verifySessionToken(readBearerToken(request))
+  if (!verified || verified.kind === "ib_viewer") return null
 
-  const parts = token.split("_")
-  if (parts.length < 3) return null
-
-  if (parts[0] === "parent") {
-    const parentId = parts[1]
-    const ts = Number(parts[2])
-    if (!parentId || !Number.isFinite(ts)) return null
-    if (Date.now() - ts > PARENT_TOKEN_MAX_AGE_MS) return null
+  if (verified.kind === "parent") {
+    const parentId = verified.subjectId
 
     const parent = await prisma.parent.findUnique({
       where: { id: parentId },
@@ -69,11 +53,7 @@ export async function resolveCommsActor(request: NextRequest): Promise<CommsActo
     }
   }
 
-  const ts = Number(parts[parts.length - 1])
-  const staffId = parts[parts.length - 2]
-  if (!staffId || !Number.isFinite(ts)) return null
-  if (Date.now() - ts > STAFF_TOKEN_MAX_AGE_MS) return null
-
+  const staffId = verified.subjectId
   const staff = await prisma.staff.findUnique({ where: { id: staffId } })
   if (!staff || !staff.isActive) return null
 

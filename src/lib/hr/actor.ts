@@ -1,11 +1,8 @@
 import type { NextRequest } from "next/server"
 import type { StaffDepartment } from "@prisma/client"
-import { getStaffTokenMaxAgeMs } from "@/lib/auth/token"
+import { readBearerToken, verifySessionToken } from "@/lib/auth/session-token"
 import { prisma } from "@/lib/prisma"
 import { isHrAdmin } from "./constants"
-
-/** Okul oturumları için varsayılan 15 gün; `.env` ile `STAFF_TOKEN_MAX_AGE_MS` (milisaniye) verilebilir. */
-const TOKEN_MAX_AGE_MS = getStaffTokenMaxAgeMs()
 
 export interface StaffActor {
   staffId: string
@@ -16,18 +13,9 @@ export interface StaffActor {
   isTeacher: boolean
 }
 
-function readBearerToken(request: NextRequest): string | null {
-  const header = request.headers.get("authorization") || request.headers.get("Authorization")
-  if (!header) return null
-  if (header.toLowerCase().startsWith("bearer ")) return header.slice(7).trim()
-  return header.trim()
-}
-
-/** Token formatı: `${role}_${staffId}_${timestamp}` → girişte atanan rol öneki */
+/** Doğrulanmış personel token'ından girişte atanan rol öneki; geçersiz token → null */
 export function parseLoginRoleFromToken(token: string): string | null {
-  const parts = token.split("_")
-  if (parts.length < 3) return null
-  return parts.slice(0, parts.length - 2).join("_")
+  return verifySessionToken(token, "staff")?.role ?? null
 }
 
 export function readLoginRoleFromRequest(request: NextRequest): string | null {
@@ -38,21 +26,12 @@ export function readLoginRoleFromRequest(request: NextRequest): string | null {
 
 /**
  * Bearer token'dan aktif Staff'ı çözer.
- * Token formatı: `${role}_${staffId}_${timestamp}` (rol "student_affairs" gibi alt çizgili olabilir → son iki parça baz alınır).
- * Geçersiz/süresi dolmuş token için null döner.
+ * İmza ve süre `verifySessionToken` ile kontrol edilir; geçersiz/süresi dolmuş token için null döner.
  */
 export async function resolveStaffActor(request: NextRequest): Promise<StaffActor | null> {
-  const token = readBearerToken(request)
-  if (!token) return null
-
-  const parts = token.split("_")
-  if (parts.length < 3) return null
-  if (parts[0] === "parent") return null
-
-  const ts = Number(parts[parts.length - 1])
-  const staffId = parts[parts.length - 2]
-  if (!staffId || !Number.isFinite(ts)) return null
-  if (Date.now() - ts > TOKEN_MAX_AGE_MS) return null
+  const verified = verifySessionToken(readBearerToken(request), "staff")
+  if (!verified) return null
+  const staffId = verified.subjectId
 
   const staff = await prisma.staff.findUnique({ where: { id: staffId } })
   if (!staff || !staff.isActive) return null

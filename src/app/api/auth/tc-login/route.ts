@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { createStaffSessionToken } from "@/lib/auth/session-token"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcrypt"
 
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Token oluştur
-      const token = `${role}_${staff.id}_${Date.now()}`
+      const token = createStaffSessionToken(role, staff.id)
       
       // İlk giriş başarılı - kullanıcıyı şifre değiştirme ekranına yönlendir
       return NextResponse.json({
@@ -143,7 +144,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Token oluştur (gerçek JWT token kullanılabilir)
-    const token = `${role}_${staff.id}_${Date.now()}`
+    const token = createStaffSessionToken(role, staff.id)
 
     return NextResponse.json({
       success: true,

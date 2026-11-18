@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { createIbViewerSessionToken } from "@/lib/auth/session-token"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcrypt"
 
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Güvenli token oluştur (basit bir yaklaşım - production'da JWT kullanılmalı)
-    const token = `ib_viewer_${viewer.id}_${Date.now()}`
+    const token = createIbViewerSessionToken(viewer.id)
 
     // Şifreyi döndürme
     // eslint-disable-next-line @typescript-eslint/no-unused-vars

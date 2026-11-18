@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcrypt"
 import crypto from "crypto"
 import { prisma } from "@/lib/prisma"
-import { isStaffTokenExpired, parseStaffToken } from "@/lib/auth/token"
+import { verifySessionToken } from "@/lib/auth/session-token"
 
 /**
  * Giriş yapmış kullanıcının kendi hesabını kapatır.
@@ -24,12 +24,13 @@ export async function POST(request: NextRequest) {
 
     const lockedPassword = await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 10)
 
-    if (token.startsWith("parent_")) {
-      const parts = token.split("_")
-      const parentId = parts[1]
-      if (!parentId) {
-        return NextResponse.json({ error: "Oturum doğrulanamadı. Tekrar giriş yapın." }, { status: 401 })
-      }
+    const verified = verifySessionToken(token)
+    if (!verified || verified.kind === "ib_viewer") {
+      return NextResponse.json({ error: "Oturumunuz sona erdi. Tekrar giriş yapın." }, { status: 401 })
+    }
+
+    if (verified.kind === "parent") {
+      const parentId = verified.subjectId
       const parent = await prisma.parent.findUnique({ where: { id: parentId } })
       if (!parent || !parent.isActive) {
         return NextResponse.json({ error: "Hesap bulunamadı veya zaten kapalı." }, { status: 404 })
@@ -50,14 +51,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    if (isStaffTokenExpired(token)) {
-      return NextResponse.json({ error: "Oturumunuz sona erdi. Tekrar giriş yapın." }, { status: 401 })
-    }
-    const parsed = parseStaffToken(token)
-    if (!parsed) {
-      return NextResponse.json({ error: "Oturum doğrulanamadı. Tekrar giriş yapın." }, { status: 401 })
-    }
-    const staff = await prisma.staff.findUnique({ where: { id: parsed.staffId } })
+    const staff = await prisma.staff.findUnique({ where: { id: verified.subjectId } })
     if (!staff || !staff.isActive) {
       return NextResponse.json({ error: "Hesap bulunamadı veya zaten kapalı." }, { status: 404 })
     }
