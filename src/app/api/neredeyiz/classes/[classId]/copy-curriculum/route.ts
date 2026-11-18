@@ -1,35 +1,24 @@
 import { NextRequest, NextResponse } from "next/server"
 import { copyClassCurriculum } from "@/lib/neredeyiz/sync"
+import { requireNeredeyizManager } from "@/lib/neredeyiz/access"
 
-export async function POST(
-  request: NextRequest,
-  context: { params: Promise<{ classId: string }> }
-) {
+// POST - Kaynak sınıfın müfredatını bu sınıfa kopyala. İlerlemesi olan dersler atlanır (ilerleme silinmez).
+export async function POST(request: NextRequest, context: { params: Promise<{ classId: string }> }) {
+  const guard = await requireNeredeyizManager(request, "edit")
+  if (!guard.ok) return guard.response
   try {
     const { classId } = await context.params
-    const body = await request.json()
-    const sourceClassId = String(body.sourceClassId || "").trim()
-    const subjectIds = Array.isArray(body.subjectIds)
-      ? body.subjectIds.map(String).filter(Boolean)
-      : undefined
-    const includeDates = body.includeDates === true
-
-    if (!sourceClassId) {
-      return NextResponse.json({ error: "Kaynak sınıf zorunludur" }, { status: 400 })
-    }
-
+    const body = (await request.json()) as { sourceClassId?: string; subjectIds?: string[]; includeDates?: boolean }
+    if (!body.sourceClassId) return NextResponse.json({ error: "Kaynak sınıf zorunludur" }, { status: 400 })
     const result = await copyClassCurriculum({
-      sourceClassId,
+      sourceClassId: body.sourceClassId,
       targetClassId: classId,
-      subjectIds,
-      includeDates,
+      subjectIds: Array.isArray(body.subjectIds) ? body.subjectIds.map(String) : undefined,
+      includeDates: Boolean(body.includeDates),
     })
-
-    return NextResponse.json({ success: true, ...result })
+    return NextResponse.json(result)
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Kopyalama başarısız"
-    const status = message.includes("bulunamadı") || message.includes("aynı") ? 400 : 500
     console.error("copy-curriculum", error)
-    return NextResponse.json({ error: message }, { status })
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Kopyalanamadı" }, { status: 400 })
   }
 }

@@ -1,212 +1,121 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { requireNeredeyiz } from "@/lib/neredeyiz/access"
+import { evaluateTopics, type TopicState } from "@/lib/neredeyiz/calendar"
+import { buildSubjectFilter } from "@/lib/neredeyiz/report-filters"
+import { resolveNeredeyizYearId } from "@/lib/neredeyiz/year-scope"
 
-// GET - Gantt takvimi için tüm konuları getir
+type GanttStatus = "PLANLANDI" | "DEVAM_EDIYOR" | "ONAY_BEKLIYOR" | "TAMAMLANDI" | "GECIKMELI" | "GECIKMELI_TAMAMLANDI"
+
+function toGanttStatus(state: TopicState): GanttStatus {
+  if (state === "ERKEN_TAMAMLANDI") return "TAMAMLANDI"
+  if (state === "ERTELENDI") return "PLANLANDI"
+  return state
+}
+
+// GET - Gantt / takvim / kanban görünümleri için tarihli konular
 export async function GET(request: NextRequest) {
+  const guard = await requireNeredeyiz(request, "view")
+  if (!guard.ok) return guard.response
   try {
     const searchParams = request.nextUrl.searchParams
-    const academicYearId = searchParams.get("academicYearId")
-    const grade = searchParams.get("grade")
-    const section = searchParams.get("section")
-    const subjectId = searchParams.get("subjectId")
-
+    const academicYearId = await resolveNeredeyizYearId(searchParams)
     if (!academicYearId) {
-      return NextResponse.json(
-        { error: "Akademik yıl ID zorunludur" },
-        { status: 400 }
-      )
-    }
-
-    // Tüm konuları getir
-    const subjectWhere: Record<string, unknown> = {
-      academicYearId,
-    }
-
-    if (grade) {
-      subjectWhere.grade = parseInt(grade, 10)
-    }
-    if (section) {
-      subjectWhere.section = section
-    }
-
-    const where: Record<string, unknown> = {
-      unit: {
-        subject: subjectWhere,
-      },
-      // Sadece tarih aralığı olan konuları getir
-      plannedStartDate: { not: null },
-      plannedEndDate: { not: null },
-    }
-
-    if (subjectId) {
-      where.unit = {
-        subjectId,
-      }
+      return NextResponse.json({ error: "Akademik yıl bulunamadı" }, { status: 400 })
     }
 
     const topics = await prisma.topic.findMany({
-      where,
+      where: {
+        plannedStartDate: { not: null },
+        plannedEndDate: { not: null },
+        unit: { subject: buildSubjectFilter(searchParams, academicYearId, guard.actor) },
+      },
       include: {
         unit: {
-          include: {
+          select: {
+            name: true,
             subject: {
-              include: {
+              select: {
+                id: true,
+                name: true,
+                grade: true,
+                section: true,
+                classId: true,
+                academicYearId: true,
                 assignments: {
-                  include: {
-                    staff: true,
-                  },
+                  select: { staffId: true, staff: { select: { id: true, firstName: true, lastName: true } } },
                 },
               },
             },
           },
         },
-        progress: {
-          orderBy: {
-            createdAt: "desc",
-          },
-          take: 1,
-        },
+        progress: { orderBy: { updatedAt: "desc" }, take: 1 },
       },
-      orderBy: {
-        plannedStartDate: "asc",
-      },
+      orderBy: { plannedStartDate: "asc" },
     })
 
-    const now = new Date()
-    now.setHours(0, 0, 0, 0)
-
-    // Progress kayıtlarındaki Staff ID'lerini topla
     const staffIds = new Set<string>()
-    topics.forEach((topic) => {
-      topic.progress.forEach((p) => {
-        if (p.markedBy) staffIds.add(p.markedBy)
-        if (p.approvedBy) staffIds.add(p.approvedBy)
-      })
-    })
+    for (const t of topics) {
+      const p = t.progress[0]
+      if (p?.markedBy) staffIds.add(p.markedBy)
+      if (p?.approvedBy) staffIds.add(p.approvedBy)
+      if (p?.reportedBy) staffIds.add(p.reportedBy)
+    }
+    const staffRows = staffIds.size
+      ? await prisma.staff.findMany({
+          where: { id: { in: [...staffIds] } },
+          select: { id: true, firstName: true, lastName: true },
+        })
+      : []
+    const staffMap = new Map(staffRows.map((s) => [s.id, { firstName: s.firstName, lastName: s.lastName }]))
 
-    // Staff bilgilerini çek
-    const staffMembers = await prisma.staff.findMany({
-      where: {
-        id: { in: Array.from(staffIds) },
-      },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        department: true,
-      },
-    })
+    const evaluated = await evaluateTopics(
+      topics,
+      (t) => t.unit.subject,
+      (t) => t.progress[0],
+    )
 
-    // Staff bilgilerini map'e çevir
-    const staffMap = new Map(staffMembers.map((s) => [s.id, s]))
-
-    // Konuları Gantt formatına dönüştür
-    const ganttTopics = topics.map((topic) => {
-      const progress = topic.progress?.[0]
-      let status: "PLANLANDI" | "DEVAM_EDIYOR" | "TAMAMLANDI" | "GECIKMELI" | "GECIKMELI_TAMAMLANDI" = "PLANLANDI"
-      let delayDays = 0
-
-      if (progress) {
-        if (progress.status === "TAMAMLANDI") {
-          // Gecikmeli tamamlanma kontrolü
-          if (topic.plannedEndDate && progress.actualEndDate) {
-            const plannedEnd = new Date(topic.plannedEndDate)
-            plannedEnd.setHours(0, 0, 0, 0)
-            const actualEnd = new Date(progress.actualEndDate)
-            actualEnd.setHours(0, 0, 0, 0)
-
-            if (actualEnd > plannedEnd) {
-              status = "GECIKMELI_TAMAMLANDI"
-              delayDays = Math.floor(
-                (actualEnd.getTime() - plannedEnd.getTime()) / (1000 * 60 * 60 * 24)
-              )
-            } else {
-              status = "TAMAMLANDI"
-            }
-          } else {
-            status = "TAMAMLANDI"
-          }
-        } else if (progress.status === "DEVAM_EDIYOR") {
-          status = "DEVAM_EDIYOR"
-        }
-      } else {
-        // Progress kaydı yoksa, tarihlere göre otomatik belirle
-        if (topic.plannedStartDate && topic.plannedEndDate) {
-          const startDate = new Date(topic.plannedStartDate)
-          startDate.setHours(0, 0, 0, 0)
-          const endDate = new Date(topic.plannedEndDate)
-          endDate.setHours(0, 0, 0, 0)
-
-          if (startDate <= now && endDate >= now) {
-            status = "DEVAM_EDIYOR"
-          } else if (endDate < now) {
-            status = "GECIKMELI"
-            delayDays = Math.floor(
-              (now.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24)
-            )
-          } else {
-            status = "PLANLANDI"
-          }
-        }
-      }
-
-      // Öğretmen bilgisi
-      const teachers = topic.unit.subject.assignments.map((a) => ({
-        id: a.staff.id,
-        firstName: a.staff.firstName,
-        lastName: a.staff.lastName,
-      }))
-
-      // Onaylayan ve bildiren rehber bilgisi
-      const markedByStaff = progress?.markedBy ? staffMap.get(progress.markedBy) : null
-      const approvedByStaff = progress?.approvedBy ? staffMap.get(progress.approvedBy) : null
-
+    const ganttTopics = evaluated.map(({ topic, ev }) => {
+      const progress = topic.progress[0]
       return {
         id: topic.id,
         name: topic.name,
         plannedStartDate: topic.plannedStartDate?.toISOString() || null,
         plannedEndDate: topic.plannedEndDate?.toISOString() || null,
         actualEndDate: progress?.actualEndDate?.toISOString() || null,
-        status,
-        delayDays,
+        status: toGanttStatus(ev.state),
+        delayDays: ev.delayDays,
         subject: {
           name: topic.unit.subject.name,
           grade: topic.unit.subject.grade,
           section: topic.unit.subject.section,
         },
-        unit: {
-          name: topic.unit.name,
-        },
-        teachers,
-        markedByStaff: markedByStaff ? {
-          firstName: markedByStaff.firstName,
-          lastName: markedByStaff.lastName,
-        } : null,
-        approvedByStaff: approvedByStaff ? {
-          firstName: approvedByStaff.firstName,
-          lastName: approvedByStaff.lastName,
-        } : null,
+        unit: { name: topic.unit.name },
+        teachers: topic.unit.subject.assignments.map((a) => ({
+          id: a.staff.id,
+          firstName: a.staff.firstName,
+          lastName: a.staff.lastName,
+        })),
+        reportedByStaff: progress?.reportedBy ? staffMap.get(progress.reportedBy) ?? null : null,
+        markedByStaff: progress?.markedBy ? staffMap.get(progress.markedBy) ?? null : null,
+        approvedByStaff: progress?.approvedBy ? staffMap.get(progress.approvedBy) ?? null : null,
       }
     })
 
     return NextResponse.json({
+      academicYearId,
       topics: ganttTopics,
       summary: {
         total: ganttTopics.length,
         planned: ganttTopics.filter((t) => t.status === "PLANLANDI").length,
         inProgress: ganttTopics.filter((t) => t.status === "DEVAM_EDIYOR").length,
+        pendingApproval: ganttTopics.filter((t) => t.status === "ONAY_BEKLIYOR").length,
         completed: ganttTopics.filter((t) => t.status === "TAMAMLANDI").length,
-        delayed: ganttTopics.filter(
-          (t) => t.status === "GECIKMELI" || t.status === "GECIKMELI_TAMAMLANDI"
-        ).length,
+        delayed: ganttTopics.filter((t) => t.status === "GECIKMELI" || t.status === "GECIKMELI_TAMAMLANDI").length,
       },
     })
   } catch (error) {
     console.error("Error fetching Gantt topics:", error)
-    return NextResponse.json(
-      { error: "Gantt verileri getirilirken hata oluştu" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Gantt verileri getirilirken hata oluştu" }, { status: 500 })
   }
 }
-

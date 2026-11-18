@@ -1,213 +1,109 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { requireNeredeyiz } from "@/lib/neredeyiz/access"
+import { evaluateTopics } from "@/lib/neredeyiz/calendar"
+import { buildSubjectFilter, LATEST_PROGRESS, SUBJECT_EVAL_SELECT } from "@/lib/neredeyiz/report-filters"
+import { resolveNeredeyizYearId } from "@/lib/neredeyiz/year-scope"
 
-// GET - Genel ilerleme durumu raporu
+// GET - Genel ilerleme durumu raporu (gecikmeler ders günüyle hesaplanır)
 export async function GET(request: NextRequest) {
+  const guard = await requireNeredeyiz(request, "view")
+  if (!guard.ok) return guard.response
   try {
     const searchParams = request.nextUrl.searchParams
-    const academicYearId = searchParams.get("academicYearId")
-    const subjectId = searchParams.get("subjectId")
-    const grade = searchParams.get("grade")
-    const section = searchParams.get("section")
-
+    const academicYearId = await resolveNeredeyizYearId(searchParams)
     if (!academicYearId) {
-      return NextResponse.json(
-        { error: "Akademik yıl ID zorunludur" },
-        { status: 400 }
-      )
-    }
-
-    // Tüm konuları getir
-    const subjectWhere: Record<string, unknown> = {
-      academicYearId,
-    }
-
-    if (grade) {
-      subjectWhere.grade = parseInt(grade, 10)
-    }
-    if (section) {
-      subjectWhere.section = section
-    }
-
-    const where: Record<string, unknown> = {
-      unit: {
-        subject: subjectWhere,
-      },
-    }
-
-    if (subjectId) {
-      where.unit = {
-        subjectId,
-      }
+      return NextResponse.json({ error: "Akademik yıl bulunamadı" }, { status: 400 })
     }
 
     const topics = await prisma.topic.findMany({
-      where,
+      where: { unit: { subject: buildSubjectFilter(searchParams, academicYearId, guard.actor) } },
       include: {
-        unit: {
-          include: {
-            subject: true,
-          },
-        },
-        progress: {
-          orderBy: {
-            createdAt: "desc",
-          },
-        },
+        unit: { select: { subject: { select: SUBJECT_EVAL_SELECT } } },
+        progress: LATEST_PROGRESS,
       },
     })
 
-    // İlerleme hesaplamaları
-    const subjectStats: Record<
-      string,
-      {
-        subjectName: string
-        totalTopics: number
-        completedTopics: number
-        earlyTopics: number
-        lateCompletedTopics: number
-        inProgressTopics: number
-        plannedTopics: number
-        delayedTopics: number
-        completionPercentage: number
-      }
-    > = {}
+    const evaluated = await evaluateTopics(
+      topics,
+      (t) => t.unit.subject,
+      (t) => t.progress[0],
+    )
 
-    topics.forEach((topic) => {
-      const subjectId = topic.unit.subject.id
-      const subjectName = topic.unit.subject.name
+    type Stats = {
+      subjectId: string
+      subjectName: string
+      grade: number
+      section: string | null
+      totalTopics: number
+      completedTopics: number
+      earlyTopics: number
+      lateCompletedTopics: number
+      inProgressTopics: number
+      pendingApprovalTopics: number
+      plannedTopics: number
+      delayedTopics: number
+      completionPercentage: number
+    }
+    const subjectStats = new Map<string, Stats>()
 
-      if (!subjectStats[subjectId]) {
-        subjectStats[subjectId] = {
-          subjectName,
+    for (const { topic, ev } of evaluated) {
+      const s = topic.unit.subject
+      let row = subjectStats.get(s.id)
+      if (!row) {
+        row = {
+          subjectId: s.id,
+          subjectName: s.name,
+          grade: s.grade,
+          section: s.section,
           totalTopics: 0,
           completedTopics: 0,
           earlyTopics: 0,
           lateCompletedTopics: 0,
           inProgressTopics: 0,
+          pendingApprovalTopics: 0,
           plannedTopics: 0,
           delayedTopics: 0,
           completionPercentage: 0,
         }
+        subjectStats.set(s.id, row)
       }
+      row.totalTopics++
+      if (ev.completed) {
+        row.completedTopics++
+        if (ev.state === "ERKEN_TAMAMLANDI") row.earlyTopics++
+        if (ev.state === "GECIKMELI_TAMAMLANDI") row.lateCompletedTopics++
+      } else if (ev.pendingApproval) row.pendingApprovalTopics++
+      else if (ev.delayed) row.delayedTopics++
+      else if (ev.state === "DEVAM_EDIYOR") row.inProgressTopics++
+      else row.plannedTopics++
+    }
 
-      subjectStats[subjectId].totalTopics++
-
-      const progress = topic.progress?.[0]
-      const now = new Date()
-      now.setHours(0, 0, 0, 0)
-
-      if (progress) {
-        if (progress.status === "TAMAMLANDI") {
-          subjectStats[subjectId].completedTopics++
-          
-          // Gecikme veya erken tamamlanma kontrolü
-          if (topic.plannedEndDate && progress.actualEndDate) {
-            const plannedDate = new Date(topic.plannedEndDate)
-            plannedDate.setHours(0, 0, 0, 0)
-            const actualDate = new Date(progress.actualEndDate)
-            actualDate.setHours(0, 0, 0, 0)
-            
-            if (actualDate > plannedDate) {
-              // Gecikmeli tamamlanan
-              subjectStats[subjectId].lateCompletedTopics++
-            } else if (actualDate < plannedDate) {
-              // Erken tamamlanan
-              subjectStats[subjectId].earlyTopics++
-            }
-          }
-        } else if (progress.status === "DEVAM_EDIYOR") {
-          subjectStats[subjectId].inProgressTopics++
-        } else if (progress.status === "ERTELENDI") {
-          subjectStats[subjectId].plannedTopics++
-        } else {
-          // PLANLANDI durumunda tarih kontrolü yap
-          const startDate = topic.plannedStartDate ? new Date(topic.plannedStartDate) : null
-          const endDate = topic.plannedEndDate ? new Date(topic.plannedEndDate) : null
-          
-          if (startDate) startDate.setHours(0, 0, 0, 0)
-          if (endDate) endDate.setHours(0, 0, 0, 0)
-
-          // Başlangıç tarihi geçmişte veya bugünse ve bitiş tarihi gelecekteyse → Devam Ediyor
-          if (startDate && endDate && startDate <= now && endDate >= now) {
-            subjectStats[subjectId].inProgressTopics++
-          } else if (!startDate && endDate && endDate >= now) {
-            // Sadece bitiş tarihi varsa ve bugün ile gelecek arasındaysa → Devam Ediyor
-            subjectStats[subjectId].inProgressTopics++
-          } else if (endDate && endDate < now) {
-            // Bitiş tarihi geçmişteyse → Gecikmeli (tamamlanmamış)
-            subjectStats[subjectId].delayedTopics++
-            subjectStats[subjectId].plannedTopics++
-          } else {
-            subjectStats[subjectId].plannedTopics++
-          }
-        }
-      } else {
-        // Progress kaydı yoksa, tarihlere göre otomatik belirle
-        const startDate = topic.plannedStartDate ? new Date(topic.plannedStartDate) : null
-        const endDate = topic.plannedEndDate ? new Date(topic.plannedEndDate) : null
-        
-        if (startDate) startDate.setHours(0, 0, 0, 0)
-        if (endDate) endDate.setHours(0, 0, 0, 0)
-
-        // Başlangıç tarihi geçmişte veya bugünse ve bitiş tarihi gelecekteyse → Devam Ediyor
-        if (startDate && endDate && startDate <= now && endDate >= now) {
-          subjectStats[subjectId].inProgressTopics++
-        } else if (!startDate && endDate && endDate >= now) {
-          // Sadece bitiş tarihi varsa ve bugün ile gelecek arasındaysa → Devam Ediyor
-          subjectStats[subjectId].inProgressTopics++
-        } else if (endDate && endDate < now) {
-          // Bitiş tarihi geçmişteyse → Gecikmeli (tamamlanmamış)
-          subjectStats[subjectId].delayedTopics++
-          subjectStats[subjectId].plannedTopics++
-        } else {
-          subjectStats[subjectId].plannedTopics++
-        }
-      }
-    })
-
-    // Yüzde hesaplama
-    Object.keys(subjectStats).forEach((id) => {
-      const stats = subjectStats[id]
-      stats.completionPercentage =
-        stats.totalTopics > 0
-          ? Math.round((stats.completedTopics / stats.totalTopics) * 100)
-          : 0
-    })
+    const subjects = [...subjectStats.values()].map((s) => ({
+      ...s,
+      completionPercentage: s.totalTopics > 0 ? Math.round((s.completedTopics / s.totalTopics) * 100) : 0,
+    }))
+    const sum = (k: keyof Stats) => subjects.reduce((acc, s) => acc + (s[k] as number), 0)
 
     return NextResponse.json({
-      subjects: Object.values(subjectStats),
+      academicYearId,
+      subjects,
       summary: {
-        totalSubjects: Object.keys(subjectStats).length,
+        totalSubjects: subjects.length,
         totalTopics: topics.length,
-        completedTopics: Object.values(subjectStats).reduce(
-          (sum, s) => sum + s.completedTopics,
-          0
-        ),
-        earlyTopics: Object.values(subjectStats).reduce(
-          (sum, s) => sum + s.earlyTopics,
-          0
-        ),
-        lateCompletedTopics: Object.values(subjectStats).reduce(
-          (sum, s) => sum + s.lateCompletedTopics,
-          0
-        ),
-        averageCompletion: Object.values(subjectStats).length > 0
-          ? Math.round(
-              Object.values(subjectStats).reduce(
-                (sum, s) => sum + s.completionPercentage,
-                0
-              ) / Object.values(subjectStats).length
-            )
-          : 0,
+        completedTopics: sum("completedTopics"),
+        earlyTopics: sum("earlyTopics"),
+        lateCompletedTopics: sum("lateCompletedTopics"),
+        delayedTopics: sum("delayedTopics"),
+        pendingApprovalTopics: sum("pendingApprovalTopics"),
+        averageCompletion:
+          subjects.length > 0
+            ? Math.round(subjects.reduce((acc, s) => acc + s.completionPercentage, 0) / subjects.length)
+            : 0,
       },
     })
   } catch (error) {
     console.error("Error generating progress report:", error)
-    return NextResponse.json(
-      { error: "Rapor oluşturulurken hata oluştu" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Rapor oluşturulurken hata oluştu" }, { status: 500 })
   }
 }
-

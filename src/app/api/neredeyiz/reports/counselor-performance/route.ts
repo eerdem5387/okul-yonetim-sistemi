@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { canQueryStaff, forbidden, requireNeredeyiz } from "@/lib/neredeyiz/access"
+import { resolveNeredeyizYearId } from "@/lib/neredeyiz/year-scope"
 
 export async function GET(request: NextRequest) {
+    const guard = await requireNeredeyiz(request, "view")
+    if (!guard.ok) return guard.response
     try {
         const searchParams = request.nextUrl.searchParams
-        const staffId = searchParams.get("staffId")
-        const academicYearId = searchParams.get("academicYearId")
-
-        if (!staffId) {
-            return NextResponse.json({ error: "Staff ID is required" }, { status: 400 })
-        }
+        const staffId = searchParams.get("staffId") || guard.actor.staffId
+        if (!canQueryStaff(guard.actor, staffId)) return forbidden()
+        const academicYearId = await resolveNeredeyizYearId(searchParams)
 
         // Rehberlik danışmanını getir
         const counselor = await prisma.staff.findUnique({
@@ -18,13 +19,12 @@ export async function GET(request: NextRequest) {
                 id: true,
                 firstName: true,
                 lastName: true,
-                tcNumber: true,
                 department: true,
             },
         })
 
         if (!counselor) {
-            return NextResponse.json({ error: "Counselor not found" }, { status: 404 })
+            return NextResponse.json({ error: "Personel bulunamadı" }, { status: 404 })
         }
 
         // Rehberlik danışmanının işaretlediği progress kayıtları
@@ -207,6 +207,7 @@ export async function GET(request: NextRequest) {
         ].sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()).slice(0, 10)
 
         return NextResponse.json({
+            academicYearId,
             counselor,
             subjects,
             recentActivities,
@@ -221,7 +222,7 @@ export async function GET(request: NextRequest) {
     } catch (error) {
         console.error("Error fetching counselor performance:", error)
         return NextResponse.json(
-            { error: "Failed to fetch counselor performance" },
+            { error: "Rehberlik performansı alınamadı" },
             { status: 500 }
         )
     }

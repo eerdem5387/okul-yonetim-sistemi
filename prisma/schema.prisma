@@ -1106,43 +1106,23 @@ model Topic {
   unitId            String
   name              String // Örn: "Üçgenin İç Açıları"
   order             Int // Sıralama
-  plannedStartWeek  Int? // Planlanan başlangıç haftası
-  plannedEndWeek    Int? // Planlanan bitiş haftası
-  plannedStartDate  DateTime? // Planlanan başlangıç tarihi
-  plannedEndDate    DateTime? // Planlanan bitiş tarihi
-  estimatedDuration Int? // Tahmini süre (gün)
+  /// Planlanan aralık; akademik yıl içinde olmalı. Gecikme ders günüyle hesaplanır (src/lib/neredeyiz/calendar.ts)
+  plannedStartDate  DateTime?
+  plannedEndDate    DateTime?
   description       String?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
   // Relations
-  unit      Unit       @relation(fields: [unitId], references: [id], onDelete: Cascade)
-  subTopics SubTopic[]
-  progress  Progress[]
+  unit     Unit       @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  /// Konu başına en fazla bir kayıt (topicId tekil)
+  progress Progress[]
 
   @@index([unitId])
   @@index([unitId, order])
   @@index([plannedStartDate])
   @@index([plannedEndDate])
   @@map("topics")
-}
-
-// Alt Konu (Opsiyonel)
-model SubTopic {
-  id          String   @id @default(cuid())
-  topicId     String
-  name        String
-  order       Int
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
-
-  @@index([topicId])
-  @@index([topicId, order])
-  @@map("sub_topics")
 }
 
 // Tatil
@@ -1196,9 +1176,8 @@ model Disruption {
 // İlerleme Takibi
 model Progress {
   id              String         @id @default(cuid())
-  topicId         String
+  topicId         String         @unique
   status          ProgressStatus @default(PLANLANDI)
-  plannedDate     DateTime? // Planlanan tarih
   actualStartDate DateTime? // Gerçek başlangıç tarihi
   actualEndDate   DateTime? // Gerçek bitiş tarihi
   notes           String? // Notlar
@@ -1214,7 +1193,6 @@ model Progress {
   // Relations
   topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
 
-  @@index([topicId])
   @@index([status])
   @@index([actualEndDate])
   @@index([reportedBy])
