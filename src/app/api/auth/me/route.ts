@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { readBearerToken, verifySessionToken } from "@/lib/auth/session-token"
 
 /**
  * GET /api/auth/me
@@ -9,7 +10,7 @@ import { prisma } from "@/lib/prisma"
  * - staffId?: string (opsiyonel - token'dan da alınabilir)
  * 
  * Headers:
- * - Authorization?: string (Bearer token - format: {role}_{staffId}_{timestamp})
+ * - Authorization?: string (Bearer imzalı oturum token'ı)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -18,14 +19,8 @@ export async function GET(request: NextRequest) {
 
     // Token'dan staffId'yi çıkarmaya çalış (test botu için)
     if (!staffId) {
-      const authHeader = request.headers.get("Authorization")
-      if (authHeader && authHeader.startsWith("Bearer ")) {
-        const token = authHeader.substring(7)
-        const tokenParts = token.split("_")
-        if (tokenParts.length >= 2) {
-          staffId = tokenParts[1] // İkinci kısım staffId
-        }
-      }
+      const verified = verifySessionToken(readBearerToken(request), "staff")
+      if (verified) staffId = verified.subjectId
     }
 
     if (!staffId) {

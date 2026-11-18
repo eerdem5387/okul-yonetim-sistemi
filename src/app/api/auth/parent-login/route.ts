@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { createParentSessionToken } from "@/lib/auth/session-token"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcrypt"
 
@@ -170,7 +171,7 @@ export async function POST(request: NextRequest) {
         })
         
         // Token oluştur
-        const token = `parent_${updatedParent.id}_${Date.now()}`
+        const token = createParentSessionToken(updatedParent.id)
         
         // Response
         const parentsInfo = updatedParent.students.map((ps) => ({
@@ -249,7 +250,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Token oluştur (basit token sistemi - mevcut pattern)
-    const token = `parent_${parent.id}_${Date.now()}`
+    const token = createParentSessionToken(parent.id)
 
     // Response (Velilerin bilgileri)
     const parentsInfo = parent.students.map((ps) => ({

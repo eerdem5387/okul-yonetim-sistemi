@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { createStaffSessionToken } from "@/lib/auth/session-token"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcrypt"
 
@@ -120,7 +121,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Token oluştur
-      const token = `${userRole}_${staff.id}_${Date.now()}`
+      const token = createStaffSessionToken(userRole, staff.id)
       
       // İlk giriş başarılı
       return NextResponse.json({
@@ -178,7 +179,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Token oluştur
-    const token = `${userRole}_${staff.id}_${Date.now()}`
+    const token = createStaffSessionToken(userRole, staff.id)
 
     return NextResponse.json({
       success: true,

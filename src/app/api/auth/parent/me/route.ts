@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { readBearerToken, verifySessionToken } from "@/lib/auth/session-token"
 
 /**
  * GET /api/auth/parent/me
  * Veli bilgilerini döndürür
  * 
  * Headers:
- * - Authorization: Bearer parent_{parentId}_{timestamp}
+ * - Authorization: Bearer <imzalı veli token'ı>
  */
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get("authorization")
-    const token = authHeader?.replace("Bearer ", "")
+    const token = readBearerToken(request)
 
     if (!token) {
       return NextResponse.json(
@@ -20,26 +20,15 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Token parse et (format: parent_{parentId}_{timestamp})
-    const [prefix, parentId, timestamp] = token.split("_")
-
-    if (prefix !== "parent" || !parentId) {
+    // İmza + süre (24 saat) kontrolü
+    const verified = verifySessionToken(token, "parent")
+    if (!verified) {
       return NextResponse.json(
-        { error: "Geçersiz token" },
+        { error: "Geçersiz veya süresi dolmuş oturum. Lütfen tekrar giriş yapın." },
         { status: 401 }
       )
     }
-
-    // Token yaşı kontrolü (24 saat)
-    const tokenAge = Date.now() - parseInt(timestamp)
-    const twentyFourHours = 24 * 60 * 60 * 1000
-
-    if (tokenAge > twentyFourHours) {
-      return NextResponse.json(
-        { error: "Token süresi dolmuş. Lütfen tekrar giriş yapın." },
-        { status: 401 }
-      )
-    }
+    const parentId = verified.subjectId
 
     // Veli hesabını getir
     const parent = await prisma.parent.findUnique({

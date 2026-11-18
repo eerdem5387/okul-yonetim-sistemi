@@ -1,17 +1,14 @@
 import { NextRequest } from "next/server"
 import { resolveStaffActor } from "@/lib/hr/actor"
+import { readBearerToken, verifySessionToken } from "@/lib/auth/session-token"
 import { hasPermission } from "@/lib/permissions"
 
 async function resolveStaffIdFromRequest(request: NextRequest): Promise<string | null> {
   const actor = await resolveStaffActor(request)
   if (actor) return actor.staffId
 
-  const authHeader = request.headers.get("Authorization")
-  if (authHeader?.startsWith("Bearer ")) {
-    const token = authHeader.substring(7)
-    const parts = token.split("_")
-    if (parts.length >= 2) return parts[parts.length - 2]
-  }
+  const verified = verifySessionToken(readBearerToken(request), "staff")
+  if (verified) return verified.subjectId
 
   const { searchParams } = new URL(request.url)
   return searchParams.get("staffId")

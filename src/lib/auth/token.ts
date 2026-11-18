@@ -27,10 +27,17 @@ export function isStaffAuthRole(role: string | null | undefined): role is string
   return Boolean(role && STAFF_ROLES.has(role))
 }
 
+/**
+ * Token içeriğini okur — İMZA DOĞRULAMAZ. Yalnızca istemci tarafı (süre kontrolü, UI) içindir;
+ * sunucuda `@/lib/auth/session-token` içindeki `verifySessionToken` kullanılmalı.
+ * Biçim: `${role}_${staffId}_${timestamp}.${imza}` (geçiş döneminde imzasız eski biçim de okunur).
+ */
 export function parseStaffToken(
   token: string
 ): { role: string; staffId: string; timestamp: number } | null {
-  const parts = token.split("_")
+  const dot = token.lastIndexOf(".")
+  const payload = dot === -1 ? token : token.slice(0, dot)
+  const parts = payload.split("_")
   if (parts.length < 3) return null
   if (parts[0] === "parent") return null
 
