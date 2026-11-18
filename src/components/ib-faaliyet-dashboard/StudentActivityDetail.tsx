@@ -103,6 +103,10 @@ export interface StudentActivityDetailProps {
   totalInSystem: number
   backHref: string
   backLabel: string
+  /** Başlığın sağında gösterilir (ör. akademik yıl seçici) */
+  headerExtra?: React.ReactNode
+  /** "Toplam N faaliyete oranla" alt metni için kapsam etiketi (ör. akademik yıl adı) */
+  scopeLabel?: string
 }
 
 export function StudentActivityDetail({
@@ -111,6 +115,8 @@ export function StudentActivityDetail({
   totalInSystem,
   backHref,
   backLabel,
+  headerExtra,
+  scopeLabel,
 }: StudentActivityDetailProps) {
   const router = useRouter()
 
@@ -158,6 +164,7 @@ export function StudentActivityDetail({
           </h1>
           {student.grade && <p className="text-gray-500 mt-1">{student.grade}. Sınıf</p>}
         </div>
+        {headerExtra}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -165,7 +172,9 @@ export function StudentActivityDetail({
           <CardContent className="p-5">
             <p className="text-sm text-gray-500">Katıldığı faaliyet</p>
             <p className="text-2xl font-bold text-gray-900 mt-1">{participationCount}</p>
-            <p className="text-xs text-gray-500 mt-1">Toplam {totalInSystem} faaliyete oranla</p>
+            <p className="text-xs text-gray-500 mt-1">
+              {scopeLabel ? `${scopeLabel} · ` : ""}Toplam {totalInSystem} faaliyete oranla
+            </p>
           </CardContent>
         </Card>
         <Card className="border-0 shadow">

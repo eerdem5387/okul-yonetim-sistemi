@@ -6,6 +6,13 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
 import { StudentActivityDetail } from "@/components/ib-faaliyet-dashboard/StudentActivityDetail"
 import type { StudentActivityDetailActivity } from "@/components/ib-faaliyet-dashboard/StudentActivityDetail"
+import {
+  readActivityYearFromUrl,
+  withActivityYear,
+  ACTIVITY_YEAR_QUERY_KEY,
+  type IBDashboardAcademicYear,
+  type IBDashboardAcademicYearOption,
+} from "@/components/ib-faaliyet-dashboard/IBFaaliyetDashboard"
 
 function getAuthHeaders(): HeadersInit {
   const token =
@@ -36,17 +43,42 @@ export function FaaliyetOgrenciDetayPage({
   const [activities, setActivities] = useState<StudentActivityDetailActivity[]>([])
   const [totalInSystem, setTotalInSystem] = useState(0)
   const [loading, setLoading] = useState(true)
+  /** "" = aktif akademik yıl; <id> = geçmiş yıl; "all" = tüm yıllar (null: URL henüz okunmadı) */
+  const [academicYearId, setAcademicYearId] = useState<string | null>(null)
+  const [yearOptions, setYearOptions] = useState<IBDashboardAcademicYearOption[]>([])
+  const [activeYear, setActiveYear] = useState<IBDashboardAcademicYear | null>(null)
+
+  useEffect(() => {
+    setAcademicYearId(readActivityYearFromUrl())
+    fetch("/api/activity-events/academic-years", { headers: getAuthHeaders() })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data) return
+        setYearOptions(data.years ?? [])
+        setActiveYear(data.active ?? null)
+      })
+      .catch(() => setYearOptions([]))
+  }, [])
+
+  const selectYear = (yearId: string) => {
+    setAcademicYearId(yearId)
+    const url = new URL(window.location.href)
+    if (yearId) url.searchParams.set(ACTIVITY_YEAR_QUERY_KEY, yearId)
+    else url.searchParams.delete(ACTIVITY_YEAR_QUERY_KEY)
+    window.history.replaceState(window.history.state, "", url.toString())
+  }
 
   const fetchData = useCallback(async () => {
-    if (!studentId) return
+    if (!studentId || academicYearId === null) return
     setLoading(true)
+    const yearParam = academicYearId ? `&academicYearId=${encodeURIComponent(academicYearId)}` : ""
     try {
       const [studentRes, eventRes, statsRes] = await Promise.all([
         fetch(`/api/students/${studentId}`, { headers: getAuthHeaders() }),
-        fetch(`/api/activity-events?studentId=${studentId}&limit=200`, {
+        fetch(`/api/activity-events?studentId=${studentId}&limit=100${yearParam}`, {
           headers: getAuthHeaders(),
         }),
-        fetch("/api/activity-events/stats", { headers: getAuthHeaders() }),
+        fetch(`/api/activity-events/stats?${yearParam.slice(1)}`, { headers: getAuthHeaders() }),
       ])
       if (studentRes.ok) {
         const data = await studentRes.json()
@@ -127,11 +159,42 @@ export function FaaliyetOgrenciDetayPage({
     } finally {
       setLoading(false)
     }
-  }, [studentId])
+  }, [studentId, academicYearId])
 
   useEffect(() => {
     if (studentId) fetchData()
   }, [studentId, fetchData])
+
+  const scopeLabel =
+    academicYearId === "all"
+      ? "Tüm yıllar"
+      : academicYearId
+        ? yearOptions.find((y) => y.id === academicYearId)?.name ?? "Arşiv"
+        : activeYear?.name ?? ""
+
+  const yearSelector = (
+    <div className="flex flex-col gap-1 sm:items-end">
+      <label htmlFor="ogrenci-faaliyet-yil" className="text-xs font-medium text-gray-500">
+        Akademik yıl
+      </label>
+      <select
+        id="ogrenci-faaliyet-yil"
+        value={academicYearId ?? ""}
+        onChange={(e) => selectYear(e.target.value)}
+        className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
+      >
+        <option value="">{activeYear ? `${activeYear.name} (aktif)` : "Aktif yıl"}</option>
+        {yearOptions
+          .filter((y) => !y.isActive && (y.eventCount > 0 || y.id === academicYearId))
+          .map((y) => (
+            <option key={y.id} value={y.id}>
+              {y.name} — arşiv
+            </option>
+          ))}
+        <option value="all">Tüm yıllar</option>
+      </select>
+    </div>
+  )
 
   if (loading) {
     return (
@@ -151,8 +214,10 @@ export function FaaliyetOgrenciDetayPage({
       student={student}
       activities={activities}
       totalInSystem={totalInSystem}
-      backHref={backHref}
+      backHref={withActivityYear(backHref, academicYearId ?? "")}
       backLabel={backLabel}
+      headerExtra={yearSelector}
+      scopeLabel={scopeLabel}
     />
   )
 }

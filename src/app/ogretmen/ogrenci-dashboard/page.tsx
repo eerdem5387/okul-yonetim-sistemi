@@ -59,6 +59,8 @@ interface DashboardData {
     negativeComments: number
     totalActivities: number
     verifiedActivities: number
+    /** Faaliyet sayıları bu akademik yıla göredir (geçmiş yıllar arşivde) */
+    activityAcademicYear?: { id: string; name: string } | null
   }
   recentData: {
     homeworks: Array<{
@@ -648,6 +650,7 @@ export default function OgretmenOgrenciDashboardPage() {
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
                       {dashboardData.statistics.verifiedActivities} doğrulanmış
+                      {dashboardData.statistics.activityAcademicYear ? ` · ${dashboardData.statistics.activityAcademicYear.name}` : ""}
                     </p>
                   </CardContent>
                 </Card>
@@ -885,7 +888,7 @@ export default function OgretmenOgrenciDashboardPage() {
                     {dashboardData.recentData.activities.length === 0 ? (
                       <div className="text-center py-8">
                         <Award className="h-12 w-12 text-gray-300 mx-auto mb-2" />
-                        <p className="text-gray-500">Henüz IB faaliyet kaydı yok</p>
+                        <p className="text-gray-500">{dashboardData.statistics.activityAcademicYear ? "Bu akademik yılda henüz faaliyet kaydı yok" : "Henüz IB faaliyet kaydı yok"}</p>
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

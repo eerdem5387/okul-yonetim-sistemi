@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { syncRenewalPlaceholderForPrimaryYear } from "@/lib/academic-year-renewal-placeholder"
+import { reassignActivityEventAcademicYearsSafe } from "@/lib/activity-academic-year"
 import { resolveCalendarFromBody } from "@/lib/academic-year-mutation"
 import { runAcademicYearActivationRollover } from "@/lib/academic-year-rollover"
 import { formatAcademicYearName, parseAcademicYearSpan } from "@/lib/academic-year-ui"
@@ -152,6 +153,8 @@ export async function PUT(
     })
 
     await syncRenewalPlaceholderForPrimaryYear(academicYear.id)
+    // Yıl tarihleri değişmiş olabilir → faaliyetlerin akademik yılını yeniden hesapla
+    await reassignActivityEventAcademicYearsSafe()
 
     return NextResponse.json({
       ...academicYear,
@@ -243,6 +246,8 @@ export async function PATCH(
     })
 
     await syncRenewalPlaceholderForPrimaryYear(academicYear.id)
+    // Yıl tarihleri değişmiş olabilir → faaliyetlerin akademik yılını yeniden hesapla
+    await reassignActivityEventAcademicYearsSafe()
 
     return NextResponse.json({
       ...academicYear,
@@ -282,6 +287,7 @@ export async function DELETE(
     await prisma.academicYear.delete({
       where: { id: params.id },
     })
+    await reassignActivityEventAcademicYearsSafe()
 
     return NextResponse.json({ message: "Akademik yıl başarıyla silindi" })
   } catch (error) {

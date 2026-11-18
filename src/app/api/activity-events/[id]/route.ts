@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { checkActivityAccess } from "@/lib/access-control"
 import { Prisma } from "@prisma/client"
+import { resolveAcademicYearIdForDate } from "@/lib/activity-academic-year"
 import {
   parseOptionalInt,
   parseParticipantLanguageLevel,
@@ -26,6 +27,7 @@ export async function GET(
       where: { id },
       include: {
         teacher: { select: { id: true, firstName: true, lastName: true, department: true } },
+        academicYear: { select: { id: true, name: true, isActive: true } },
         participants: {
           include: {
             student: {
@@ -174,9 +176,13 @@ export async function PUT(
         await tx.activityParticipant.deleteMany({ where: { activityId: id } })
       }
 
+      // Başlangıç tarihi değişirse faaliyet ilgili akademik yıla (gerekirse arşive) taşınır
+      const academicYearId = start ? await resolveAcademicYearIdForDate(start, tx) : undefined
+
       const row = await tx.activityEvent.update({
         where: { id },
         data: {
+          ...(academicYearId !== undefined && { academicYearId }),
           ...(title !== undefined && { title: String(title).trim() }),
           ...(description !== undefined && { description: description ? String(description).trim() : null }),
           ...(outcome !== undefined && { outcome: outcome ? String(outcome).trim() : null }),
