@@ -144,16 +144,6 @@ export function installStaffSessionGuard(): () => void {
 
 const AUTH_HEADER_FLAG = "__staffApiAuthHeaderInstalled"
 
-function isSameOriginApi(url: string): boolean {
-  if (url.startsWith("/api/")) return true
-  try {
-    const u = new URL(url, window.location.href)
-    return u.origin === window.location.origin && u.pathname.startsWith("/api/")
-  } catch {
-    return false
-  }
-}
-
 /**
  * Aynı kökenli /api/ isteklerine, açıkça Authorization verilmemişse personel oturum token'ını ekler.
  * Sunucu tarafı yetki kontrolleri token'a dayandığı için sayfaların tek tek başlık eklemesi gerekmez.
