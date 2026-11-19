@@ -1,4 +1,5 @@
 "use client"
+import { isoDateTR } from "@/lib/dates"
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
@@ -150,7 +151,7 @@ export default function TeacherHomeworkPage() {
         setFormData({
           title: homework.title,
           description: homework.description,
-          dueDate: new Date(homework.dueDate).toISOString().split('T')[0],
+          dueDate: isoDateTR(new Date(homework.dueDate)),
           subject: homework.subject || "",
           classId: homework.classId || "",
         })

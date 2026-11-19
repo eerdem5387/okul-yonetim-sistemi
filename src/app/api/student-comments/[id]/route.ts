@@ -1,3 +1,4 @@
+import { requireStaff } from "@/lib/auth/api-guard"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
@@ -9,6 +10,8 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const { id } = await params
     const comment = await prisma.studentComment.findUnique({
@@ -61,6 +64,8 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const { id } = await params
     const body = await request.json()
@@ -122,6 +127,8 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const { id } = await params
     await prisma.studentComment.delete({

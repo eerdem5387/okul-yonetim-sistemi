@@ -1,4 +1,5 @@
 "use client"
+import { isoDateTR } from "@/lib/dates"
 
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
@@ -299,7 +300,7 @@ export default function StudentDetailDashboardPage() {
           firstName: s.firstName,
           lastName: s.lastName,
           tcNumber: s.tcNumber,
-          birthDate: s.birthDate ? new Date(s.birthDate).toISOString().split("T")[0] : "",
+          birthDate: s.birthDate ? isoDateTR(new Date(s.birthDate)) : "",
           grade: s.grade,
           phone: s.phone || "",
           email: s.email || "",

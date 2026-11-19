@@ -1,8 +1,12 @@
+import { requireStaff } from "@/lib/auth/api-guard"
+import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
 // Debug endpoint - Veritabanında başvuru var mı kontrol etmek için
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const count = await prisma.basvuru.count()
     const basvurular = await prisma.basvuru.findMany({
@@ -34,7 +38,9 @@ export async function GET() {
 }
 
 // Test başvurularını silmek için
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     // Test başvurularını bul
     const testBasvurular = await prisma.basvuru.findMany({

@@ -1,3 +1,4 @@
+import { requireStaff } from "@/lib/auth/api-guard"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
@@ -12,6 +13,8 @@ export const dynamic = "force-dynamic"
  *   source'taki Salı kayıtları target'a taşınır, diğer günler silinir.
  */
 export async function POST(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const body = await request.json().catch(() => ({}))
     const sourceGroupId = String(body.sourceGroupId ?? "").trim()

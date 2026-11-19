@@ -1,4 +1,5 @@
 "use client"
+import { isoDateTR } from "@/lib/dates"
 
 import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -139,7 +140,7 @@ export default function NewRegistrationPage() {
     schoolLicenseNo: "",
     contractNo: "",
     registrationResponsible: "",
-    registrationDate: new Date().toISOString().split("T")[0],
+    registrationDate: isoDateTR(),
     
     // Sözleşme Metni
     contractStudentName: "",
@@ -290,7 +291,7 @@ export default function NewRegistrationPage() {
       }
       const parsed = new Date(date)
       if (!isNaN(parsed.getTime())) {
-        return parsed.toISOString().split("T")[0]
+        return isoDateTR(parsed)
       }
       const stringDate = typeof date === "string" ? date : ""
       return stringDate.includes("T") ? stringDate.split("T")[0] : stringDate
@@ -336,7 +337,7 @@ export default function NewRegistrationPage() {
       dueDate.setDate(dueDate.getDate() + 15)
       setMainContractData(prev => ({
         ...prev,
-        paymentDueDate: dueDate.toISOString().split("T")[0]
+        paymentDueDate: isoDateTR(dueDate)
       }))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -418,7 +419,7 @@ export default function NewRegistrationPage() {
   // Kullanıcı adını, tarihi ve sözleşme numarasını otomatik doldur (sadece bir kez)
   useEffect(() => {
     const staffName = localStorage.getItem("staff_name")
-    const today = new Date().toISOString().split("T")[0]
+    const today = isoDateTR()
     
     const updateData = async () => {
       if (staffName) {
@@ -1172,7 +1173,7 @@ export default function NewRegistrationPage() {
                           setMainContractData({ 
                             ...mainContractData, 
                             registrationDate: regDate,
-                            paymentDueDate: dueDateObj.toISOString().split("T")[0]
+                            paymentDueDate: isoDateTR(dueDateObj)
                           })
                         }}
                       />
@@ -1353,7 +1354,7 @@ export default function NewRegistrationPage() {
                               const regDate = new Date(mainContractData.registrationDate)
                               const dueDate = new Date(regDate)
                               dueDate.setDate(dueDate.getDate() + 15)
-                              return dueDate.toISOString().split("T")[0]
+                              return isoDateTR(dueDate)
                             }
                             return ""
                           })()}

@@ -1,4 +1,5 @@
 "use client"
+import { isoDateTR } from "@/lib/dates"
 
 import { useState, useEffect, useCallback } from "react"
 import { usePathname } from "next/navigation"
@@ -235,7 +236,7 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
       }
       const parsed = new Date(date)
       if (!isNaN(parsed.getTime())) {
-        return parsed.toISOString().split("T")[0]
+        return isoDateTR(parsed)
       }
       const stringDate = typeof date === "string" ? date : ""
       return stringDate.includes("T") ? stringDate.split("T")[0] : stringDate
@@ -336,7 +337,7 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
         schoolLicenseNo: contractData.schoolLicenseNo || "",
         contractNo: contractData.contractNo || "",
         registrationResponsible: contractData.registrationResponsible || "",
-        registrationDate: contractData.registrationDate || new Date().toISOString().split("T")[0],
+        registrationDate: contractData.registrationDate || isoDateTR(),
         contractStudentName: contractData.contractStudentName || `${studentData.firstName || ""} ${studentData.lastName || ""}`.trim(),
         contractParentName: contractData.contractParentName || "",
         announcedTuitionFee: contractData.announcedTuitionFee || "",
@@ -354,7 +355,7 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
         paymentPlan: contractData.paymentPlan || "",
         paymentDueDate: contractData.paymentDueDate || "",
         parentSignature: contractData.parentSignature || "",
-        contractDate: contractData.contractDate || new Date().toISOString().split("T")[0],
+        contractDate: contractData.contractDate || isoDateTR(),
         registrarName: contractData.registrarName || "",
         registrarSignature: contractData.registrarSignature || "",
       }
@@ -885,7 +886,7 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
                           const regDate = new Date(contract.registrationDate)
                           const dueDate = new Date(regDate)
                           dueDate.setDate(dueDate.getDate() + 15)
-                          return dueDate.toISOString().split("T")[0]
+                          return isoDateTR(dueDate)
                         }
                         return contract.paymentDueDate || ""
                       })()}

@@ -41,3 +41,10 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# Yerel test / analiz dosyaları (depoya girmesin)
+/delete-test-basvuru.js
+/test-webhook.js
+/test-report*.json
+/ib-faaliyet-analiz.html
+/exports/

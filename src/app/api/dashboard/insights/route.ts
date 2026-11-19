@@ -1,3 +1,5 @@
+import { requireStaff } from "@/lib/auth/api-guard"
+import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import {
@@ -14,7 +16,9 @@ export const dynamic = "force-dynamic"
 /**
  * Yönetim dashboard: eksik işler, kısa özetler (sunucu tarafı tek istek).
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const yearRows = await prisma.academicYear.findMany({
       orderBy: [{ startDate: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],

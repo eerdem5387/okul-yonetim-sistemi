@@ -1,3 +1,4 @@
+import { requireStaff } from "@/lib/auth/api-guard"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
@@ -29,7 +30,9 @@ const backupInclude = {
   clubs: { select: { _count: { select: { members: true } } } },
 } as const
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const backups = await prisma.clubBackup.findMany({
       include: backupInclude,
@@ -43,6 +46,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const body = await request.json().catch(() => ({}))
     const academicYearId = String(body.academicYearId ?? "").trim()

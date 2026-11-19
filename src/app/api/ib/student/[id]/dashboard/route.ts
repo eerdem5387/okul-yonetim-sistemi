@@ -1,3 +1,4 @@
+import { requireStaffOrIbViewer } from "@/lib/auth/api-guard"
 import { NextRequest, NextResponse } from "next/server"
 import { getIbViewerStudentDashboard } from "@/lib/ib-viewer-data"
 
@@ -6,6 +7,8 @@ export async function GET(
   _request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const authGuard = await requireStaffOrIbViewer(_request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const { id: studentId } = await context.params
     const data = await getIbViewerStudentDashboard(studentId)

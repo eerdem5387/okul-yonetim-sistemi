@@ -129,6 +129,7 @@ export async function PUT(
     const shouldRollover =
       activeFlag &&
       !existing.isActive &&
+      !existing.rolloverAppliedAt &&
       prevOthersActive.some((p) => isLaterYear({ name: normalizedName, startDate: cal.data.start }, p))
     if (shouldRollover && body.confirmRollover !== true) {
       return NextResponse.json({ error: ROLLOVER_CONFIRM_ERROR, requiresRolloverConfirm: true }, { status: 409 })
@@ -161,6 +162,7 @@ export async function PUT(
           term1End: cal.data.term1End,
           term2Start: cal.data.term2Start,
           term2End: cal.data.term2End,
+          ...(shouldRollover ? { rolloverAppliedAt: new Date() } : {}),
         },
       })
     })

@@ -1,3 +1,4 @@
+import { requireStaff } from "@/lib/auth/api-guard"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
@@ -53,7 +54,9 @@ function parseStudentIds(raw: unknown): string[] {
 }
 
 /** GET /api/club-groups — kulüp grupları + kulüp listesi (başvuranlar için) */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const [groups, clubs] = await Promise.all([
       prisma.clubGroup.findMany({
@@ -99,6 +102,8 @@ export async function GET() {
 
 /** POST /api/club-groups — { clubId, name, notes?, studentIds? } */
 export async function POST(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const body = await request.json().catch(() => ({}))
     const clubId = String(body.clubId ?? "").trim()

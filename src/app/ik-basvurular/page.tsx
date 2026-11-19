@@ -1,4 +1,5 @@
 "use client"
+import { isoDateTR } from "@/lib/dates"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
@@ -321,7 +322,7 @@ export default function IkBasvurularPage() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `ik_basvurular_${new Date().toISOString().split("T")[0]}.xlsx`
+      a.download = `ik_basvurular_${isoDateTR()}.xlsx`
       a.click()
       URL.revokeObjectURL(url)
     } catch {

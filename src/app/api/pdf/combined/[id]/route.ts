@@ -1,3 +1,4 @@
+import { isoDateTR } from "@/lib/dates"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireStaffAccess } from "@/lib/auth/api-guard"
@@ -82,7 +83,7 @@ export async function POST(
             tcNumber: student.tcNumber || "",
             grade: student.grade || "",
             address: student.address || "",
-            birthDate: student.birthDate ? student.birthDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            birthDate: student.birthDate ? isoDateTR(student.birthDate) : isoDateTR(),
             motherName: student.motherName || "",
             motherTc: student.motherTc || "",
             motherPhone: student.motherPhone || "",

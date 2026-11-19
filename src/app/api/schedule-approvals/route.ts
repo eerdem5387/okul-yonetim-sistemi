@@ -1,3 +1,4 @@
+import { requireStaff } from "@/lib/auth/api-guard"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
@@ -12,6 +13,8 @@ import { Prisma } from "@prisma/client"
  * - requestedBy?: string - Belirli bir rehberlik uzmanının talepleri
  */
 export async function GET(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const { searchParams } = new URL(request.url)
     const status = searchParams.get("status") || "PENDING"

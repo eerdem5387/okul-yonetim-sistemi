@@ -1,3 +1,4 @@
+import { requireStaff } from "@/lib/auth/api-guard"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { assignStudentToClubGroup } from "@/lib/schedules/student-activity-conflicts"
@@ -17,6 +18,8 @@ export async function GET(
   _request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const authGuard = await requireStaff(_request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const { id } = await context.params
     const { roster, error } = await loadClubScheduleRoster(id)
@@ -39,6 +42,8 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const { id: clubScheduleId } = await context.params
     const body = await request.json().catch(() => ({}))

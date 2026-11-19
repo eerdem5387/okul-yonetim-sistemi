@@ -1,3 +1,4 @@
+import { requireStaff } from "@/lib/auth/api-guard"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
@@ -13,6 +14,8 @@ import { isStaffEligibleAsClassCounselor } from "@/lib/staff-counseling"
  * - grade?: number - Belirli bir sınıf seviyesi (5-12)
  */
 export async function GET(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const { searchParams } = new URL(request.url)
     const academicYearId = searchParams.get("academicYearId")
@@ -104,6 +107,8 @@ export async function GET(request: NextRequest) {
  * Yetki: Yönetici, Müdür, Öğrenci İşleri
  */
 export async function POST(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const body = await request.json()
     const { name, grade, section, academicYearId, counselorId, description } = body

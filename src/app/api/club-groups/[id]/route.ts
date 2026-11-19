@@ -1,3 +1,4 @@
+import { requireStaff } from "@/lib/auth/api-guard"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
@@ -57,6 +58,8 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authGuard = await requireStaff(_request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const { id } = await params
     const group = await prisma.clubGroup.findUnique({
@@ -78,6 +81,8 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const { id } = await params
     const existing = await prisma.clubGroup.findUnique({
@@ -252,6 +257,8 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authGuard = await requireStaff(_request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const { id } = await params
     const existing = await prisma.clubGroup.findUnique({ where: { id } })

@@ -56,7 +56,7 @@ export default function IBViewerPage() {
   const fetchDashboard = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await fetch("/api/ib/dashboard")
+      const res = await fetch("/api/ib/dashboard", { headers: { Authorization: `Bearer ${localStorage.getItem("ib_viewer_token") ?? ""}` } })
       if (!res.ok) throw new Error("Failed")
       const body = await res.json()
       setData(body)

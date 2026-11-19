@@ -1,3 +1,4 @@
+import { requireStaff } from "@/lib/auth/api-guard"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import {
@@ -72,7 +73,9 @@ const scheduleInclude = {
 } as const
 
 /** GET /api/schedules/clubs — kulüp programları + etüt slotları + kulüp/grup listesi */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const [schedules, clubs, groups, etutSlots, gradeEtutExams] = await Promise.all([
       prisma.clubSchedule.findMany({
@@ -136,6 +139,8 @@ export async function GET() {
 
 /** POST /api/schedules/clubs — { clubGroupId? | clubId, dayOfWeek, startTime, endTime, room?, notes?, instructorId? } */
 export async function POST(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const body = await request.json().catch(() => ({}))
     let clubId = String(body.clubId ?? "").trim()

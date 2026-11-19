@@ -1,4 +1,5 @@
 "use client"
+import { isoDateTR } from "@/lib/dates"
 
 import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -163,7 +164,7 @@ export default function AdayOgrenciTespitiPage() {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `aday_ogrenci_tespiti_${new Date().toISOString().split('T')[0]}.xlsx`
+      a.download = `aday_ogrenci_tespiti_${isoDateTR()}.xlsx`
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)

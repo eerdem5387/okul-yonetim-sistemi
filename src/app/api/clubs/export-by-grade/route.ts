@@ -1,3 +1,6 @@
+import { isoDateTR } from "@/lib/dates"
+import { requireStaff } from "@/lib/auth/api-guard"
+import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { k12GradeWhereClause, parseStudentGradeLevel } from "@/lib/student-grade-level"
@@ -11,7 +14,9 @@ function sortGrades(a: string, b: string): number {
   return a.localeCompare(b, "tr")
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const [students, selectedRows] = await Promise.all([
       prisma.student.findMany({
@@ -91,7 +96,7 @@ export async function GET() {
     XLSX.utils.book_append_sheet(wb, summaryWs, "Sınıf Özeti")
 
     const wbout = XLSX.write(wb, { type: "array", bookType: "xlsx" }) as Uint8Array
-    const dateStr = new Date().toISOString().split("T")[0]
+    const dateStr = isoDateTR()
     const filename = `secim-yapmayan-ogrenciler_${dateStr}.xlsx`
 
     return new NextResponse(Buffer.from(wbout), {

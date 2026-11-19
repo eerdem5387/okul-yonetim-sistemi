@@ -1,3 +1,4 @@
+import { isoDateTR } from "@/lib/dates"
 import { NextRequest, NextResponse } from "next/server"
 import { requireStaffAccess } from "@/lib/auth/api-guard"
 import { prisma } from "@/lib/prisma"
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
             "Ad": s.firstName,
             "Soyad": s.lastName,
             "TC": s.tcNumber,
-            "Doğum Tarihi": s.birthDate.toISOString().split("T")[0],
+            "Doğum Tarihi": isoDateTR(s.birthDate),
             "Sınıf": s.grade,
             "Öğrenci Adres": s.address,
             "Anne Ad Soyad": s.motherName || "",

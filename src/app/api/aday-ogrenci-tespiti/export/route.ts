@@ -1,7 +1,11 @@
+import { isoDateTR } from "@/lib/dates"
+import { requireStaff } from "@/lib/auth/api-guard"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
 export async function GET(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const { searchParams } = new URL(request.url)
     const search = searchParams.get("search") || ""
@@ -136,7 +140,7 @@ export async function GET(request: NextRequest) {
 
     const wbout = XLSX.write(wb, { type: "array", bookType: "xlsx" })
     const buffer = Buffer.from(wbout)
-    const dateStr = new Date().toISOString().split("T")[0]
+    const dateStr = isoDateTR()
     const filename = `aday_ogrenci_tespiti_${dateStr}.xlsx`
 
     return new NextResponse(buffer, {

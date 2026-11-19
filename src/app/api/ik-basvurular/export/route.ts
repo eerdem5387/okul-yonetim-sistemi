@@ -1,3 +1,4 @@
+import { isoDateTR } from "@/lib/dates"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireHrRecruitmentAccess } from "@/lib/hr-recruitment/access"
@@ -86,7 +87,7 @@ export async function GET(request: NextRequest) {
     const ws = XLSX.utils.json_to_sheet(rows)
     XLSX.utils.book_append_sheet(wb, ws, "IK Basvurulari")
     const buffer = Buffer.from(XLSX.write(wb, { type: "array", bookType: "xlsx" }))
-    const dateStr = new Date().toISOString().split("T")[0]
+    const dateStr = isoDateTR()
 
     return new NextResponse(buffer, {
       headers: {

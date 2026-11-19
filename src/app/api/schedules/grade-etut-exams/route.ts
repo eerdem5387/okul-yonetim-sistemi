@@ -1,3 +1,4 @@
+import { requireStaff } from "@/lib/auth/api-guard"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import {
@@ -10,7 +11,9 @@ import { loadEtutSlots } from "@/lib/schedules/club-schedule"
 export const dynamic = "force-dynamic"
 
 /** GET /api/schedules/grade-etut-exams */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const [exams, etutSlots] = await Promise.all([
       listGradeEtutExams(),
@@ -31,6 +34,8 @@ type SlotBody = { startTime: string; endTime: string }
  * allEtutSlots=true → o günün tüm etüt saatlerine deneme yazar.
  */
 export async function POST(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const body = await request.json()
     const grade = Number(body.grade)

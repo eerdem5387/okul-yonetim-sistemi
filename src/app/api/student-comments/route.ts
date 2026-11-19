@@ -1,3 +1,4 @@
+import { requireStaff, requireStaffOrParent } from "@/lib/auth/api-guard"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
@@ -13,6 +14,8 @@ import { Prisma } from "@prisma/client"
  * - isPositive?: boolean (Olumlu/Olumsuz)
  */
 export async function GET(request: NextRequest) {
+  const authGuard = await requireStaffOrParent(request, new URL(request.url).searchParams.get("studentId"))
+  if (!authGuard.ok) return authGuard.response
   try {
     const { searchParams } = new URL(request.url)
     const studentId = searchParams.get("studentId")
@@ -89,6 +92,8 @@ export async function GET(request: NextRequest) {
  * - isPositive: boolean
  */
 export async function POST(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const body = await request.json()
     const {

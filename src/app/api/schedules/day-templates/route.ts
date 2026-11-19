@@ -1,3 +1,4 @@
+import { requireStaff } from "@/lib/auth/api-guard"
 import { NextRequest, NextResponse } from "next/server"
 import type { DayTemplateScope } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
@@ -86,6 +87,8 @@ function serializeTemplate(template: Awaited<ReturnType<typeof ensureTemplate>>)
 
 /** GET /api/schedules/day-templates?band=ortaokul|lise|all&scope=weekday|saturday|all */
 export async function GET(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const bandParam = (request.nextUrl.searchParams.get("band") || "all").toLowerCase()
     const scopeParam = (request.nextUrl.searchParams.get("scope") || "weekday").toLowerCase()
@@ -147,6 +150,8 @@ export async function GET(request: NextRequest) {
 
 /** PUT /api/schedules/day-templates — body: { band, scope?, slots } */
 export async function PUT(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const body = await request.json().catch(() => ({}))
     const band = bandToEnum(String(body.band ?? ""))

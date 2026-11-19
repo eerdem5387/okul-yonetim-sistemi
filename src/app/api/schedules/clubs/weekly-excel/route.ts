@@ -1,3 +1,4 @@
+import { isoDateTR } from "@/lib/dates"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { resolveStaffActor } from "@/lib/hr/actor"
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const buffer = await generateWeeklyClubScheduleExcel()
-    const filename = `haftalik-kulup-programi-${new Date().toISOString().slice(0, 10)}.xlsx`
+    const filename = `haftalik-kulup-programi-${isoDateTR()}.xlsx`
     return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {

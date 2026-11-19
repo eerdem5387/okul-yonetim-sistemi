@@ -1,4 +1,5 @@
 "use client"
+import { isoDateTR } from "@/lib/dates"
 
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -73,7 +74,7 @@ export default function VeliGorusmeleriPage() {
 
   const [formData, setFormData] = useState({
     studentId: "",
-    meetingDate: new Date().toISOString().split("T")[0],
+    meetingDate: isoDateTR(),
     notes: "",
     counselorName: "",
   })
@@ -232,7 +233,7 @@ export default function VeliGorusmeleriPage() {
         setEditingMeeting(null)
         setFormData({
           studentId: "",
-          meetingDate: new Date().toISOString().split("T")[0],
+          meetingDate: isoDateTR(),
           notes: "",
           counselorName: "", // State'te tutuluyor ama artık kullanılmıyor
         })
@@ -343,7 +344,7 @@ export default function VeliGorusmeleriPage() {
               setEditingMeeting(null)
               setFormData({
                 studentId: "",
-                meetingDate: new Date().toISOString().split("T")[0],
+                meetingDate: isoDateTR(),
                 notes: "",
                 counselorName: "", // State'te tutuluyor ama artık kullanılmıyor
               })
@@ -516,7 +517,7 @@ export default function VeliGorusmeleriPage() {
                     setEditingMeeting(null)
                     setFormData({
                       studentId: "",
-                      meetingDate: new Date().toISOString().split("T")[0],
+                      meetingDate: isoDateTR(),
                       notes: "",
                       counselorName: "",
                     })
@@ -641,7 +642,7 @@ export default function VeliGorusmeleriPage() {
                       setEditingMeeting(null)
                       setFormData({
                         studentId: "",
-                        meetingDate: new Date().toISOString().split("T")[0],
+                        meetingDate: isoDateTR(),
                         notes: "",
                         counselorName: "",
                       })

@@ -1,8 +1,11 @@
+import { requireStaff } from "@/lib/auth/api-guard"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
 // GET - Tüm görüşmeleri listele (filtreleme ile)
 export async function GET(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const searchParams = request.nextUrl.searchParams
     const studentId = searchParams.get("studentId")
@@ -81,6 +84,8 @@ export async function GET(request: NextRequest) {
 
 // POST - Yeni görüşme ekle
 export async function POST(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const body = await request.json()
     const { studentId, meetingDate, notes, counselorName, staffId } = body

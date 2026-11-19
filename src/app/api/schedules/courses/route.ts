@@ -1,3 +1,4 @@
+import { requireStaff } from "@/lib/auth/api-guard"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { ensureCourseLinkedToBranch, upsertBranchByName } from "@/lib/branches"
@@ -34,6 +35,8 @@ async function ensureDefaults() {
 
 /** GET /api/schedules/courses?all=1 */
 export async function GET(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     await ensureDefaults()
     const all = request.nextUrl.searchParams.get("all") === "1"
@@ -51,6 +54,8 @@ export async function GET(request: NextRequest) {
 
 /** POST /api/schedules/courses — { name } */
 export async function POST(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const body = await request.json().catch(() => ({}))
     const name = String(body.name ?? "").trim()
@@ -94,6 +99,8 @@ export async function POST(request: NextRequest) {
 
 /** PUT /api/schedules/courses — { id, name?, isActive?, sortOrder? } */
 export async function PUT(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const body = await request.json().catch(() => ({}))
     const id = String(body.id ?? "").trim()
@@ -126,6 +133,8 @@ export async function PUT(request: NextRequest) {
 
 /** DELETE /api/schedules/courses?id= */
 export async function DELETE(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const id = request.nextUrl.searchParams.get("id")?.trim()
     if (!id) {

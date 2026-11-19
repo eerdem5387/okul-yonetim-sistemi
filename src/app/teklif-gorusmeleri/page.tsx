@@ -1,4 +1,5 @@
 "use client"
+import { isoDateTR } from "@/lib/dates"
 
 import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -161,7 +162,7 @@ export default function TeklifGorusmeleriPage() {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `teklif_gorusmeleri_${new Date().toISOString().split('T')[0]}.xlsx`
+      a.download = `teklif_gorusmeleri_${isoDateTR()}.xlsx`
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
@@ -921,7 +922,7 @@ function TeklifFormModal({
     teklifEdilenFiyat: teklif?.teklifEdilenFiyat.toString() || "",
     okulFiyati: teklif?.okulFiyati.toString() || "",
     sonGecerlilikTarihi: teklif?.sonGecerlilikTarihi 
-      ? new Date(teklif.sonGecerlilikTarihi).toISOString().split("T")[0] 
+      ? isoDateTR(new Date(teklif.sonGecerlilikTarihi)) 
       : "",
     // Yeni görüşme kaydı için
     gorusmeTarihi: "",

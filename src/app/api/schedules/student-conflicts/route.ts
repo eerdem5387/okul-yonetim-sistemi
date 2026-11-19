@@ -1,3 +1,4 @@
+import { requireStaff } from "@/lib/auth/api-guard"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import {
@@ -14,6 +15,8 @@ export const dynamic = "force-dynamic"
  * Öğrenci merkezli çakışmalar: başvurular, çakışan atamalar, güvenli alternatifler.
  */
 export async function GET(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const gradeParam = request.nextUrl.searchParams.get("grade")
     const gradeFilter = gradeParam ? parseInt(gradeParam, 10) : null
@@ -67,6 +70,8 @@ export async function GET(request: NextRequest) {
  * Not: exclude_day çakışma çözümünde kapalı (üyelik örtbasını önlemek için).
  */
 export async function POST(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const body = await request.json().catch(() => ({}))
     const action = String(body.action ?? "").trim()

@@ -1,3 +1,4 @@
+import { isoDateTR } from "@/lib/dates"
 import { NextRequest, NextResponse } from "next/server"
 import { requireStaffAccess } from "@/lib/auth/api-guard"
 import { prisma } from "@/lib/prisma"
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest) {
 
       const renewalDate =
         (contractData?.registrationDate as string | undefined) ||
-        renewal.createdAt.toISOString().split("T")[0]
+        isoDateTR(renewal.createdAt)
 
       const motherPhone = student?.motherPhone || ""
       const fatherPhone = student?.fatherPhone || ""

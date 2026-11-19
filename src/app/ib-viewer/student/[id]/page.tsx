@@ -46,7 +46,7 @@ export default function IBViewerStudentDashboardPage() {
     if (!id) return
     let cancelled = false
     setLoading(true)
-    fetch(`/api/ib/student/${id}/dashboard`)
+    fetch(`/api/ib/student/${id}/dashboard`, { headers: { Authorization: `Bearer ${localStorage.getItem("ib_viewer_token") ?? ""}` } })
       .then((res) => res.json())
       .then((body) => {
         if (!cancelled && body.student) setData(body)

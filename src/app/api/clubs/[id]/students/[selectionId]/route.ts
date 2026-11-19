@@ -1,3 +1,5 @@
+import { requireStaff } from "@/lib/auth/api-guard"
+import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
@@ -9,6 +11,8 @@ export async function GET(
     request: Request,
     context: { params: Promise<{ id: string; selectionId: string }> }
 ) {
+  const authGuard = await requireStaff((request as unknown as NextRequest))
+  if (!authGuard.ok) return authGuard.response
     try {
         const params = await context.params
         const selection = await prisma.clubSelection.findUnique({
@@ -34,6 +38,8 @@ export async function DELETE(
     request: Request,
     context: { params: Promise<{ id: string; selectionId: string }> }
 ) {
+  const authGuard = await requireStaff((request as unknown as NextRequest))
+  if (!authGuard.ok) return authGuard.response
     try {
         const params = await context.params
 

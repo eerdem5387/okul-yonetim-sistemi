@@ -1,4 +1,5 @@
 "use client"
+import { isoDateTR } from "@/lib/dates"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -345,7 +346,7 @@ export default function BasvurularPage() {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      const dateStr = new Date().toISOString().split('T')[0]
+      const dateStr = isoDateTR()
       a.download = `basvurular_${dateStr}.xlsx`
       document.body.appendChild(a)
       a.click()

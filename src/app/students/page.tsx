@@ -1,4 +1,5 @@
 "use client"
+import { isoDateTR } from "@/lib/dates"
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -496,7 +497,7 @@ export default function StudentsPage() {
       try {
         const date = new Date(student.birthDate)
         if (!isNaN(date.getTime())) {
-          birthDateFormatted = date.toISOString().split('T')[0]
+          birthDateFormatted = isoDateTR(date)
         }
       } catch (e) {
         console.error("Date parse error:", e)

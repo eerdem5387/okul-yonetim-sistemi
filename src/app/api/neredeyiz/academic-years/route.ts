@@ -128,6 +128,7 @@ export async function POST(request: NextRequest) {
             term1End: cal.data.term1End,
             term2Start: cal.data.term2Start,
             term2End: cal.data.term2End,
+            ...(shouldRollover ? { rolloverAppliedAt: new Date() } : {}),
           },
         })
       })

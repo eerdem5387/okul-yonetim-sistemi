@@ -1,12 +1,18 @@
+import { isSystemAdmin, requireStaff } from "@/lib/auth/api-guard"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
 // GET - Bildirimleri getir
 export async function GET(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const { searchParams } = new URL(request.url)
     const targetRole = searchParams.get("targetRole") as "OGRETMEN" | "REHBERLIK" | "OGRENCI_ISLERI" | null
-    const targetUserId = searchParams.get("targetUserId")
+    // Başkasının kişisel bildirimleri okunamaz: kullanıcı filtresi her zaman oturumdaki kişi
+    const requestedUserId = searchParams.get("targetUserId")
+    const targetUserId =
+      requestedUserId && !isSystemAdmin(authGuard.value) ? authGuard.value.staffId : requestedUserId
     const isRead = searchParams.get("isRead")
     const type = searchParams.get("type")
     const limit = searchParams.get("limit") ? parseInt(searchParams.get("limit")!) : 50
@@ -74,6 +80,8 @@ export async function GET(request: NextRequest) {
 
 // POST - Yeni bildirim oluştur
 export async function POST(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const body = await request.json()
     const {

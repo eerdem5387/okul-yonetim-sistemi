@@ -1,4 +1,5 @@
 "use client"
+import { isoDateTR } from "@/lib/dates"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Download, Loader2 } from "lucide-react"
@@ -99,7 +100,7 @@ export function ClubSchedulesPanel({ refreshKey = 0, onRosterChanged }: Props) {
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `haftalik-kulup-programi-${new Date().toISOString().slice(0, 10)}.xlsx`
+      a.download = `haftalik-kulup-programi-${isoDateTR()}.xlsx`
       document.body.appendChild(a)
       a.click()
       a.remove()

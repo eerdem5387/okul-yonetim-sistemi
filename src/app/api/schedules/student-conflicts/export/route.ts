@@ -1,3 +1,6 @@
+import { isoDateTR } from "@/lib/dates"
+import { requireStaff } from "@/lib/auth/api-guard"
+import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 import { findStudentConflictDetails } from "@/lib/schedules/student-activity-conflicts"
 import { gradeLevelLabel } from "@/lib/student-grade-level"
@@ -11,7 +14,9 @@ function sheetNameForGrade(level: number): string {
   return `${level}. Sınıf`
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const students = await findStudentConflictDetails()
     const XLSX = await import("xlsx")
@@ -180,7 +185,7 @@ export async function GET() {
     }
 
     const wbout = XLSX.write(wb, { type: "array", bookType: "xlsx" }) as Uint8Array
-    const dateStr = new Date().toISOString().split("T")[0]
+    const dateStr = isoDateTR()
     const filename = `cakisan-ogrenciler_${dateStr}.xlsx`
 
     return new NextResponse(Buffer.from(wbout), {

@@ -950,6 +950,8 @@ model AcademicYear {
   isActive            Boolean        @default(false) // Aktif akademik yıl (öğretim)
   /// Kayıt yenileme kampanya dönemi; aktif öğretim yılından bağımsız. Aynı anda en fazla bir yıl true.
   isRenewalPeriod     Boolean        @default(false)
+  /// Bu yıla geçişte yıl devri (sınıf yükseltme) yapıldıysa zamanı; devir her yıl için en fazla bir kez çalışır.
+  rolloverAppliedAt   DateTime?
   weekendDays         String[]       @default([]) // Hafta tatili günleri: ["SATURDAY", "SUNDAY"]
   term1Start          DateTime? // 1. dönem başlangıcı
   term1End            DateTime? // 1. dönem bitişi

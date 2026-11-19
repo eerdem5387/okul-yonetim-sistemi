@@ -117,3 +117,31 @@ export async function requireStudentReader(
   }
   return { ok: true, value: { kind: "parent", parent } }
 }
+
+/**
+ * Personel ya da veli oturumu ister. `studentId` verilirse veli yalnızca kendi öğrencisi için geçer.
+ * (Veli ekranlarının da kullandığı ödev / görüş listeleri için.)
+ */
+export async function requireStaffOrParent(
+  request: NextRequest,
+  studentId?: string | null
+): Promise<GuardResult<{ kind: "staff"; actor: StaffActor } | { kind: "parent"; parent: ParentSession }>> {
+  const actor = await resolveStaffActor(request)
+  if (actor) return { ok: true, value: { kind: "staff", actor } }
+  const parent = await resolveParentSession(request)
+  if (!parent) return { ok: false, response: unauthorizedResponse() }
+  if (!studentId || !parent.studentIds.has(studentId)) {
+    return { ok: false, response: forbiddenResponse("Bu öğrencinin bilgilerine erişiminiz yok.") }
+  }
+  return { ok: true, value: { kind: "parent", parent } }
+}
+
+/** Personel ya da IB izleyici oturumu ister (IB izleyici paneli). */
+export async function requireStaffOrIbViewer(request: NextRequest): Promise<GuardResult<true>> {
+  const actor = await resolveStaffActor(request)
+  if (actor) return { ok: true, value: true }
+  const { requireIbViewerFromRequest } = await import("@/lib/ib-viewer-auth")
+  const viewer = await requireIbViewerFromRequest(request)
+  if (viewer) return { ok: true, value: true }
+  return { ok: false, response: unauthorizedResponse() }
+}

@@ -1,8 +1,13 @@
+import { isoDateTR } from "@/lib/dates"
+import { requireStaff } from "@/lib/auth/api-guard"
+import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { formatClubGradeLevels } from "@/lib/club-grade-levels"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
     try {
         // Tüm kulüpleri öğrenci seçimleriyle birlikte çek
         const clubs = await prisma.club.findMany({
@@ -188,7 +193,7 @@ export async function GET() {
 
         // Tarih formatıyla dosya adı oluştur
         const date = new Date()
-        const dateStr = date.toISOString().split('T')[0] // YYYY-MM-DD formatı
+        const dateStr = isoDateTR(date) // YYYY-MM-DD formatı
         const filename = `kulup-listesi_${dateStr}.xlsx`
 
         return new NextResponse(Buffer.from(wbout), {

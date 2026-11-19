@@ -1,3 +1,4 @@
+import { requireStaff } from "@/lib/auth/api-guard"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { k12GradeWhereClause, parseStudentGradeLevel } from "@/lib/student-grade-level"
@@ -21,6 +22,8 @@ function sortGrades(a: string, b: string): number {
 }
 
 export async function GET(request: NextRequest) {
+  const authGuard = await requireStaff(request)
+  if (!authGuard.ok) return authGuard.response
   try {
     const gradeFilter = request.nextUrl.searchParams.get("grade")?.trim() || ""
 

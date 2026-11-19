@@ -1,4 +1,5 @@
 "use client"
+import { isoDateTR } from "@/lib/dates"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Download, Loader2, UserX, X } from "lucide-react"
@@ -388,7 +389,7 @@ export function StudentEtutMatrixBoard({
       const order = ["Tüm sınıflar", ...exportGrades.map((g) => `${g}. Sınıf`)]
       wb.SheetNames = order.filter((n) => wb.Sheets[n])
 
-      const stamp = new Date().toISOString().slice(0, 10)
+      const stamp = isoDateTR()
       const filename = `ogrenci-etut-matrisi-tum-siniflar-${stamp}.xlsx`
       const wbout = XLSX.write(wb, { type: "array", bookType: "xlsx" })
       const blob = new Blob([wbout as BlobPart], {
