@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma"
 import type { Prisma, Subject } from "@prisma/client"
 import { upsertBranchByName } from "@/lib/branches"
 
+import { normalizeSubjectName } from "@/lib/neredeyiz/names"
+
 export { normalizeSubjectName, subjectNamesMatch } from "@/lib/neredeyiz/names"
 
 export type ClassLike = {
@@ -32,12 +34,10 @@ export async function ensureSubjectForClass(
     throw new Error("Ders adı zorunludur")
   }
 
-  const existing = await tx.subject.findFirst({
-    where: {
-      classId: classData.id,
-      name: { equals: name, mode: "insensitive" },
-    },
-  })
+  // Türkçe karakterler (İ/ı) için veritabanının "insensitive" karşılaştırması güvenilir değil → JS'te normalize et
+  const wanted = normalizeSubjectName(name)
+  const classSubjects = await tx.subject.findMany({ where: { classId: classData.id } })
+  const existing = classSubjects.find((s) => normalizeSubjectName(s.name) === wanted) ?? null
   if (existing) {
     // grade/section drift düzelt
     if (
@@ -57,29 +57,6 @@ export async function ensureSubjectForClass(
     return existing
   }
 
-  // Eski grade/section kayıtlarını classId ile bağla
-  const legacy = await tx.subject.findFirst({
-    where: {
-      academicYearId: classData.academicYearId,
-      grade: classData.grade,
-      OR: [
-        { section: classData.section },
-        { section: null },
-      ],
-      name: { equals: name, mode: "insensitive" },
-    },
-  })
-  if (legacy) {
-    return tx.subject.update({
-      where: { id: legacy.id },
-      data: {
-        classId: classData.id,
-        grade: classData.grade,
-        section: classData.section,
-      },
-    })
-  }
-
   const branchId = await resolveBranchId(name)
 
   try {
@@ -95,12 +72,9 @@ export async function ensureSubjectForClass(
     })
   } catch (err) {
     // unique yarışı
-    const again = await tx.subject.findFirst({
-      where: {
-        classId: classData.id,
-        name: { equals: name, mode: "insensitive" },
-      },
-    })
+    const again = (await tx.subject.findMany({ where: { classId: classData.id } })).find(
+      (s) => normalizeSubjectName(s.name) === wanted,
+    )
     if (again) return again
     throw err
   }
@@ -162,27 +136,6 @@ export async function syncScheduleToNeredeyiz(params: {
   return { subjectId: subject.id, subject }
 }
 
-/**
- * Yeni sınıf oluşturulunca aktif ScheduleCourse katalogundan şablon Subject'ler.
- * Birimler/konular eklenmez — yalnızca ders kabuğu.
- */
-export async function seedSubjectsForNewClass(
-  classData: ClassLike,
-  tx: Tx = prisma
-): Promise<Subject[]> {
-  const courses = await tx.scheduleCourse.findMany({
-    where: { isActive: true },
-    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-  })
-
-  const created: Subject[] = []
-  for (const course of courses) {
-    const subject = await ensureSubjectForClass(classData, course.name, tx)
-    created.push(subject)
-  }
-  return created
-}
-
 /** Class grade/section değişince bağlı Subject alanlarını güncelle */
 export async function syncSubjectsFromClassUpdate(
   classId: string,
@@ -203,75 +156,30 @@ export async function syncSubjectsFromClassUpdate(
 }
 
 /**
- * Öğretmenin konu için SubjectAssignment'ı var mı?
- * Admin/müdür akışları reportedBy olmadan işaretleyebilir — o durumda true.
- */
-export async function assertTeacherAssignedToTopic(
-  topicId: string,
-  staffId: string | null | undefined
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (!staffId) {
-    return { ok: true }
-  }
-
-  const topic = await prisma.topic.findUnique({
-    where: { id: topicId },
-    select: {
-      unit: {
-        select: {
-          subject: {
-            select: {
-              id: true,
-              classId: true,
-              assignments: {
-                where: { staffId },
-                select: { id: true },
-              },
-            },
-          },
-        },
-      },
-    },
-  })
-
-  if (!topic) {
-    return { ok: false, error: "Konu bulunamadı" }
-  }
-
-  const subject = topic.unit.subject
-  if (!subject.classId) {
-    return { ok: false, error: "Ders bir sınıfa bağlı değil" }
-  }
-
-  if (subject.assignments.length === 0) {
-    return {
-      ok: false,
-      error: "Bu derse atanmamışsınız; ilerleme kaydı oluşturamazsınız",
-    }
-  }
-
-  return { ok: true }
-}
-
-/**
- * Kaynak sınıfın müfredatını (ünite/konu/alt konu) hedef sınıfa kopyalar.
- * Progress ve öğretmen ataması taşınmaz. Hedefte aynı adlı dersin üniteleri silinip yazılır.
+ * Kaynak sınıfın yıllık planını (ünite/konu + planlanan haftalar) hedef sınıfa kopyalar.
+ * Öğretmen ataması ve tamamlama kayıtları taşınmaz. Hedef derste tamamlanmış konu varsa o ders ATLANIR
+ * (kayıt asla silinmez); yoksa üniteleri değiştirilir. Haftalar yıla göre göreli olduğundan yıllar arası da geçerlidir.
  */
 export async function copyClassCurriculum(params: {
   sourceClassId: string
   targetClassId: string
   subjectIds?: string[]
   includeDates: boolean
-}): Promise<{ copiedSubjectIds: string[] }> {
+}): Promise<{ copiedSubjectIds: string[]; skipped: Array<{ name: string; reason: string }> }> {
   if (params.sourceClassId === params.targetClassId) {
     throw new Error("Kaynak ve hedef sınıf aynı olamaz")
   }
 
-  const targetClass = await prisma.class.findUnique({
-    where: { id: params.targetClassId },
-    select: { id: true, academicYearId: true, grade: true, section: true },
-  })
+  const [sourceClass, targetClass] = await Promise.all([
+    prisma.class.findUnique({ where: { id: params.sourceClassId }, select: { academicYearId: true } }),
+    prisma.class.findUnique({
+      where: { id: params.targetClassId },
+      select: { id: true, academicYearId: true, grade: true, section: true },
+    }),
+  ])
+  if (!sourceClass) throw new Error("Kaynak sınıf bulunamadı")
   if (!targetClass) throw new Error("Hedef sınıf bulunamadı")
+  const copyWeeks = params.includeDates
 
   const sourceSubjects = await prisma.subject.findMany({
     where: {
@@ -279,66 +187,123 @@ export async function copyClassCurriculum(params: {
       ...(params.subjectIds?.length ? { id: { in: params.subjectIds } } : {}),
     },
     include: {
-      units: {
-        orderBy: { order: "asc" },
-        include: {
-          topics: {
-            orderBy: { order: "asc" },
-            include: { subTopics: { orderBy: { order: "asc" } } },
-          },
-        },
-      },
+      units: { orderBy: { order: "asc" }, include: { topics: { orderBy: { order: "asc" } } } },
     },
   })
-
   if (sourceSubjects.length === 0) {
     throw new Error("Kopyalanacak ders bulunamadı")
   }
 
   const copiedSubjectIds: string[] = []
+  const skipped: Array<{ name: string; reason: string }> = []
 
-  await prisma.$transaction(async (tx) => {
-    for (const src of sourceSubjects) {
-      const target = await ensureSubjectForClass(targetClass, src.name, tx)
-      await tx.unit.deleteMany({ where: { subjectId: target.id } })
-
-      for (const unit of src.units) {
-        const createdUnit = await tx.unit.create({
-          data: {
-            subjectId: target.id,
-            name: unit.name,
-            order: unit.order,
-            description: unit.description,
-          },
-        })
-        for (const topic of unit.topics) {
-          const createdTopic = await tx.topic.create({
+  await prisma.$transaction(
+    async (tx) => {
+      for (const src of sourceSubjects) {
+        const target = await ensureSubjectForClass(targetClass, src.name, tx)
+        const doneCount = await tx.topicCompletion.count({ where: { topic: { unit: { subjectId: target.id } } } })
+        if (doneCount > 0) {
+          skipped.push({ name: src.name, reason: `hedefte ${doneCount} tamamlanmış konu var` })
+          continue
+        }
+        await tx.unit.deleteMany({ where: { subjectId: target.id } })
+        for (const unit of src.units) {
+          await tx.unit.create({
             data: {
-              unitId: createdUnit.id,
-              name: topic.name,
-              order: topic.order,
-              description: topic.description,
-              estimatedDuration: topic.estimatedDuration,
-              plannedStartWeek: params.includeDates ? topic.plannedStartWeek : null,
-              plannedEndWeek: params.includeDates ? topic.plannedEndWeek : null,
-              plannedStartDate: params.includeDates ? topic.plannedStartDate : null,
-              plannedEndDate: params.includeDates ? topic.plannedEndDate : null,
+              subjectId: target.id,
+              name: unit.name,
+              order: unit.order,
+              description: unit.description,
+              topics: {
+                create: unit.topics.map((topic) => ({
+                  name: topic.name,
+                  order: topic.order,
+                  description: topic.description,
+                  plannedStartWeek: copyWeeks ? topic.plannedStartWeek : null,
+                  plannedEndWeek: copyWeeks ? topic.plannedEndWeek : null,
+                })),
+              },
             },
           })
-          if (topic.subTopics.length > 0) {
-            await tx.subTopic.createMany({
-              data: topic.subTopics.map((st) => ({
-                topicId: createdTopic.id,
-                name: st.name,
-                order: st.order,
-              })),
-            })
-          }
         }
+        copiedSubjectIds.push(target.id)
       }
-      copiedSubjectIds.push(target.id)
-    }
+    },
+    { timeout: 30_000 },
+  )
+
+  return { copiedSubjectIds, skipped }
+}
+
+/**
+ * Ders programı satırlarını Neredeyiz dersleriyle bağlar (Schedule otoritedir):
+ * her (sınıf, ders adı) için Subject bulunur/oluşturulur, öğretmen derse atanır, Schedule.subjectId yazılır.
+ * Toplu aktarım (Excel) ve geriye dönük bağlama için. `dryRun` ile yalnız ne yapılacağını sayar.
+ */
+export async function linkSchedulesToNeredeyiz(options: {
+  scheduleIds?: string[]
+  onlyUnlinked?: boolean
+  dryRun?: boolean
+} = {}): Promise<{
+  schedules: number
+  subjectsCreated: number
+  assignmentsCreated: number
+  schedulesLinked: number
+}> {
+  const schedules = await prisma.schedule.findMany({
+    where: {
+      isActive: true,
+      ...(options.scheduleIds ? { id: { in: options.scheduleIds } } : {}),
+      ...(options.onlyUnlinked !== false ? { subjectId: null } : {}),
+    },
+    select: {
+      id: true,
+      subjectName: true,
+      subjectId: true,
+      teacherId: true,
+      class: { select: { id: true, academicYearId: true, grade: true, section: true } },
+    },
   })
 
-  return { copiedSubjectIds }
+  const result = { schedules: schedules.length, subjectsCreated: 0, assignmentsCreated: 0, schedulesLinked: 0 }
+  const subjectCache = new Map<string, string>()
+  const assignmentSeen = new Set<string>()
+
+  for (const s of schedules) {
+    const name = s.subjectName.trim()
+    if (!name) continue
+    const key = `${s.class.id}::${normalizeSubjectName(name)}`
+    let subjectId = subjectCache.get(key)
+    if (!subjectId) {
+      const existing = (await prisma.subject.findMany({ where: { classId: s.class.id } })).find(
+        (x) => normalizeSubjectName(x.name) === normalizeSubjectName(name),
+      )
+      if (existing) subjectId = existing.id
+      else if (options.dryRun) subjectId = `new:${key}`
+      else subjectId = (await ensureSubjectForClass(s.class, name)).id
+      if (!existing) result.subjectsCreated++
+      subjectCache.set(key, subjectId)
+    }
+
+    const aKey = `${subjectId}::${s.teacherId}`
+    if (!assignmentSeen.has(aKey)) {
+      assignmentSeen.add(aKey)
+      const has = subjectId.startsWith("new:")
+        ? null
+        : await prisma.subjectAssignment.findUnique({
+            where: { subjectId_staffId: { subjectId, staffId: s.teacherId } },
+            select: { id: true },
+          })
+      if (!has) {
+        result.assignmentsCreated++
+        if (!options.dryRun) await ensureSubjectAssignment(subjectId, s.teacherId)
+      }
+    }
+
+    if (s.subjectId !== subjectId) {
+      result.schedulesLinked++
+      if (!options.dryRun) await prisma.schedule.update({ where: { id: s.id }, data: { subjectId } })
+    }
+  }
+  return result
 }

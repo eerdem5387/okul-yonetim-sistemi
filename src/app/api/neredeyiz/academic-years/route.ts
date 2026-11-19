@@ -5,6 +5,8 @@ import { reassignActivityEventAcademicYearsSafe } from "@/lib/activity-academic-
 import { runAcademicYearActivationRollover } from "@/lib/academic-year-rollover"
 import { resolveCalendarFromBody } from "@/lib/academic-year-mutation"
 import { formatAcademicYearName, parseAcademicYearSpan } from "@/lib/academic-year-ui"
+import { requireSettingsEdit, requireStaff } from "@/lib/neredeyiz/access"
+import { isLaterYear, ROLLOVER_CONFIRM_ERROR } from "@/lib/neredeyiz/year-guards"
 
 function normalizeAcademicYearName(raw: string): string {
   const span = parseAcademicYearSpan({ name: raw })
@@ -44,6 +46,8 @@ function mapYearJson(r: {
 
 // GET — varsayılan: yalnızca ana kayıtlar (otomatik «sonraki yıl» satırları gizli). forContracts=1: tüm satırlar (kayıt sözleşmeleri).
 export async function GET(request: NextRequest) {
+  const guard = await requireStaff(request)
+  if (!guard.ok) return guard.response
   try {
     const forContracts = new URL(request.url).searchParams.get("forContracts") === "1"
     const academicYears = await prisma.academicYear.findMany({
@@ -63,6 +67,8 @@ export async function GET(request: NextRequest) {
 
 // POST — Yeni akademik yıl (yalnızca ana kayıt; parentActiveYearId istemciden kabul edilmez)
 export async function POST(request: NextRequest) {
+  const guard = await requireSettingsEdit(request)
+  if (!guard.ok) return guard.response
   try {
     const body = (await request.json()) as Record<string, unknown>
     const name = body.name as string | undefined
@@ -91,8 +97,15 @@ export async function POST(request: NextRequest) {
     if (activeFlag) {
       const prevActives = await prisma.academicYear.findMany({
         where: { isActive: true },
-        select: { id: true },
+        select: { id: true, name: true, startDate: true },
       })
+      const startDateForCompare = cal.data.start
+      const shouldRollover = prevActives.some((p) =>
+        isLaterYear({ name: normalizedName, startDate: startDateForCompare }, p),
+      )
+      if (shouldRollover && body.confirmRollover !== true) {
+        return NextResponse.json({ error: ROLLOVER_CONFIRM_ERROR, requiresRolloverConfirm: true }, { status: 409 })
+      }
 
       const created = await prisma.$transaction(async (tx) => {
         await tx.academicYear.updateMany({ where: { isActive: true }, data: { isActive: false } })
@@ -101,7 +114,7 @@ export async function POST(request: NextRequest) {
             where: { parentActiveYearId: { in: prevActives.map((p) => p.id) } },
           })
         }
-        if (prevActives.length > 0) {
+        if (shouldRollover) {
           await runAcademicYearActivationRollover(tx)
         }
         return tx.academicYear.create({

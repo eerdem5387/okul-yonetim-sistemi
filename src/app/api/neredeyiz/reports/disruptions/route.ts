@@ -1,92 +1,58 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { requireNeredeyiz } from "@/lib/neredeyiz/access"
+import { dayKey, loadSchoolCalendar, teachingDaysInclusive } from "@/lib/neredeyiz/calendar"
+import { resolveNeredeyizYearId } from "@/lib/neredeyiz/year-scope"
 
-// GET - Aksama sebep analizi raporu
+const TYPE_LABELS: Record<string, string> = {
+  PLANLI_OKUL: "Planlı/Okul Kaynaklı",
+  PLANDISI_DOGAL: "Plan Dışı/Doğal",
+  OGRETMEN_KAYNAKLI: "Öğretmen Kaynaklı",
+}
+
+// GET - Aksama sebep analizi. totalDays = kaybedilen DERS günü (hafta sonu ve işlenemez tatiller hariç).
 export async function GET(request: NextRequest) {
+  const guard = await requireNeredeyiz(request, "view")
+  if (!guard.ok) return guard.response
   try {
-    const searchParams = request.nextUrl.searchParams
-    const academicYearId = searchParams.get("academicYearId")
-
+    const academicYearId = await resolveNeredeyizYearId(request.nextUrl.searchParams)
     if (!academicYearId) {
-      return NextResponse.json(
-        { error: "Akademik yıl ID zorunludur" },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: "Akademik yıl bulunamadı" }, { status: 400 })
     }
 
-    const disruptions = await prisma.disruption.findMany({
-      where: { academicYearId },
-    })
+    const [disruptions, fullCal] = await Promise.all([
+      prisma.disruption.findMany({ where: { academicYearId } }),
+      loadSchoolCalendar(academicYearId),
+    ])
+    // Aksamanın kendisini düşmemek için aksamasız takvim
+    const cal = { ...fullCal, disruptions: [] }
 
-    // Aksama tipine göre grupla ve süre hesapla
-    const disruptionStats: Record<
-      string,
-      {
-        type: string
-        typeLabel: string
-        count: number
-        totalDays: number
-        percentage: number
-      }
-    > = {}
-
+    const stats = new Map<string, { type: string; typeLabel: string; count: number; totalDays: number; percentage: number }>()
     let totalDays = 0
-
-    disruptions.forEach((disruption) => {
-      const startDate = new Date(disruption.startDate)
-      const endDate = new Date(disruption.endDate)
-      const days = Math.ceil(
-        (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
-      ) + 1
-
+    for (const d of disruptions) {
+      const days = teachingDaysInclusive(cal, dayKey(d.startDate), dayKey(d.endDate))
       totalDays += days
-
-      const typeLabel =
-        disruption.type === "PLANLI_OKUL"
-          ? "Planlı/Okul Kaynaklı"
-          : disruption.type === "PLANDISI_DOGAL"
-          ? "Plan Dışı/Doğal"
-          : "Öğretmen Kaynaklı"
-
-      if (!disruptionStats[disruption.type]) {
-        disruptionStats[disruption.type] = {
-          type: disruption.type,
-          typeLabel,
-          count: 0,
-          totalDays: 0,
-          percentage: 0,
-        }
-      }
-
-      disruptionStats[disruption.type].count++
-      disruptionStats[disruption.type].totalDays += days
-    })
-
-    // Yüzde hesaplama
-    Object.keys(disruptionStats).forEach((type) => {
-      disruptionStats[type].percentage =
-        totalDays > 0
-          ? Math.round((disruptionStats[type].totalDays / totalDays) * 100)
-          : 0
-    })
+      const row = stats.get(d.type) ?? { type: d.type, typeLabel: TYPE_LABELS[d.type] ?? d.type, count: 0, totalDays: 0, percentage: 0 }
+      row.count++
+      row.totalDays += days
+      stats.set(d.type, row)
+    }
+    for (const row of stats.values()) {
+      row.percentage = totalDays > 0 ? Math.round((row.totalDays / totalDays) * 100) : 0
+    }
 
     return NextResponse.json({
-      disruptions: Object.values(disruptionStats),
+      academicYearId,
+      disruptions: [...stats.values()],
       summary: {
         totalDisruptions: disruptions.length,
         totalDays,
-        averageDaysPerDisruption:
-          disruptions.length > 0
-            ? Math.round(totalDays / disruptions.length)
-            : 0,
+        averageDaysPerDisruption: disruptions.length > 0 ? Math.round(totalDays / disruptions.length) : 0,
+        unit: "ders_gunu",
       },
     })
   } catch (error) {
     console.error("Error generating disruption report:", error)
-    return NextResponse.json(
-      { error: "Rapor oluşturulurken hata oluştu" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Rapor oluşturulurken hata oluştu" }, { status: 500 })
   }
 }
-

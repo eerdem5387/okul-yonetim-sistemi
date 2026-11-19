@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { isStaffEligibleAsClassCounselor } from "@/lib/staff-counseling"
-import { seedSubjectsForNewClass } from "@/lib/neredeyiz/sync"
 
 /**
  * GET /api/classes
@@ -175,15 +174,6 @@ export async function POST(request: NextRequest) {
           },
         },
       })
-      await seedSubjectsForNewClass(
-        {
-          id: created.id,
-          academicYearId: created.academicYearId,
-          grade: created.grade,
-          section: created.section,
-        },
-        tx
-      )
       return created
     })
 

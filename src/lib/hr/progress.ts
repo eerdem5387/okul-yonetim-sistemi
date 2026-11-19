@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { getActiveAcademicYear } from "@/lib/activity-academic-year"
 
 export interface SubjectProgressSummary {
   subjectId: string
@@ -16,27 +17,20 @@ export interface SubjectProgressSummary {
  *
  * Hesaplama:
  *   - Subject -> Unit[] -> Topic[] zinciri ile toplam konu sayısı
- *   - Her Topic için en güncel Progress kaydı TAMAMLANDI ise tamamlanmış sayılır
- *   (Topic-Progress arası 1-N olduğundan en son `updatedAt` baz alınır.)
+ *   - Tamamlama kaydı (TopicCompletion) olan konu tamamlanmış sayılır
+ *   - Yalnız aktif akademik yılın dersleri
  */
 export async function getProgressSummaryForStaff(staffId: string): Promise<SubjectProgressSummary[]> {
+  const active = await getActiveAcademicYear()
   const assignments = await prisma.subjectAssignment.findMany({
-    where: { staffId },
+    where: { staffId, ...(active ? { subject: { academicYearId: active.id } } : {}) },
     include: {
       subject: {
         include: {
           class: { select: { name: true } },
           units: {
             include: {
-              topics: {
-                include: {
-                  progress: {
-                    orderBy: { updatedAt: "desc" },
-                    take: 1,
-                    select: { status: true },
-                  },
-                },
-              },
+              topics: { select: { completion: { select: { id: true } } } },
             },
           },
         },
@@ -47,7 +41,7 @@ export async function getProgressSummaryForStaff(staffId: string): Promise<Subje
   return assignments.map((a) => {
     const topics = a.subject.units.flatMap((u) => u.topics)
     const total = topics.length
-    const completed = topics.filter((t) => t.progress[0]?.status === "TAMAMLANDI").length
+    const completed = topics.filter((t) => t.completion).length
     return {
       subjectId: a.subject.id,
       subjectName: a.subject.name,

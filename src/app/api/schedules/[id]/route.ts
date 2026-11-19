@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { isStaffEligibleAsScheduleInstructor } from "@/lib/staff-counseling"
 import { syncScheduleToNeredeyiz } from "@/lib/neredeyiz/sync"
+import { recordScheduleChange, toSlot } from "@/lib/neredeyiz/schedule-changes"
+import { resolveStaffActor } from "@/lib/hr/actor"
 
 /**
  * İki zaman aralığının çakışıp çakışmadığını kontrol eder
@@ -309,6 +311,12 @@ export async function PUT(
       },
     })
 
+    await recordScheduleChange(
+      toSlot(existingSchedule),
+      toSlot({ ...updatedSchedule, classId: existingSchedule.classId }),
+      (await resolveStaffActor(request))?.staffId,
+    )
+
     return NextResponse.json({
       success: true,
       message: "Ders başarıyla güncellendi",
@@ -379,6 +387,7 @@ export async function DELETE(
     await prisma.schedule.delete({
       where: { id: scheduleId },
     })
+    await recordScheduleChange(toSlot(existingSchedule), null, (await resolveStaffActor(request))?.staffId)
 
     return NextResponse.json({
       success: true,

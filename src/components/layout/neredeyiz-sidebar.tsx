@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
   LayoutDashboard,
-  TrendingUp,
   AlertTriangle,
   BarChart3,
   ArrowLeft,
@@ -19,40 +18,34 @@ import { MobileMenuButton } from "@/components/layout/mobile-menu-button"
 
 const navigation = [
   {
-    name: "Dashboard",
+    name: "Haftalık Pano",
     href: "/neredeyiz",
     icon: LayoutDashboard,
-    description: "Genel bakış ve istatistikler",
+    description: "Bu hafta geciken konular",
+  },
+  {
+    name: "Yıllık Planlar",
+    href: "/neredeyiz/sinif",
+    icon: BookOpen,
+    description: "Sınıf ve ders bazında konu haftaları",
   },
   {
     name: "Akademik Takvim",
     href: "/yonetim/akademik-takvim",
     icon: Calendar,
-    description: "Okul geneli takvim",
-  },
-  {
-    name: "Sınıf Planları",
-    href: "/neredeyiz/sinif",
-    icon: BookOpen,
-    description: "Yıllık ders planı",
-  },
-  {
-    name: "İlerleme Takibi",
-    href: "/neredeyiz/ilerleme",
-    icon: TrendingUp,
-    description: "Konu tamamlanma durumu",
+    description: "Tatiller ve ders haftaları",
   },
   {
     name: "Aksamalar",
     href: "/neredeyiz/aksamalar",
     icon: AlertTriangle,
-    description: "Plan dışı gelişmeler",
+    description: "Gecikmeye sayılmayan günler",
   },
   {
-    name: "Raporlar",
+    name: "Yıllık Özet",
     href: "/neredeyiz/raporlar",
     icon: BarChart3,
-    description: "Detaylı analiz ve raporlar",
+    description: "Sınıf, ders ve öğretmen bazında",
   },
 ]
 

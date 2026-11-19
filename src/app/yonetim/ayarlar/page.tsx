@@ -384,6 +384,8 @@ export default function YonetimPage() {
       const payload = {
         name: year.name.trim(),
         isActive: true,
+        // Kullanıcı yukarıda yıl devrini onayladı
+        confirmRollover: true,
         startDate: year.startDate,
         endDate: year.endDate,
         term1Start: year.term1Start,
@@ -513,6 +515,7 @@ export default function YonetimPage() {
       const payload = {
         name: derivedName,
         isActive: yearFormData.isActive,
+        confirmRollover: yearFormData.isActive,
         startDate: yearFormData.startDate || null,
         endDate: yearFormData.endDate || null,
         term1Start: yearFormData.term1Start || null,
@@ -695,6 +698,7 @@ export default function YonetimPage() {
           body: JSON.stringify({
             name: holidayYearName,
             isActive: yearFormData.isActive,
+            confirmRollover: yearFormData.isActive,
             startDate: yearFormData.startDate || null,
             endDate: yearFormData.endDate || null,
             term1Start: yearFormData.term1Start || null,

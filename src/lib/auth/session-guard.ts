@@ -141,3 +141,41 @@ export function installStaffSessionGuard(): () => void {
     window.fetch = originalFetch
   }
 }
+
+const AUTH_HEADER_FLAG = "__staffApiAuthHeaderInstalled"
+
+function isSameOriginApi(url: string): boolean {
+  if (url.startsWith("/api/")) return true
+  try {
+    const u = new URL(url, window.location.href)
+    return u.origin === window.location.origin && u.pathname.startsWith("/api/")
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Aynı kökenli /api/ isteklerine, açıkça Authorization verilmemişse personel oturum token'ını ekler.
+ * Sunucu tarafı yetki kontrolleri token'a dayandığı için sayfaların tek tek başlık eklemesi gerekmez.
+ * Modül yüklenirken (ilk render'dan önce) bir kez kurulur; birden çok çağrı güvenlidir.
+ */
+export function installStaffApiAuthHeader(): void {
+  if (typeof window === "undefined") return
+  const w = window as unknown as Record<string, unknown>
+  if (w[AUTH_HEADER_FLAG]) return
+  w[AUTH_HEADER_FLAG] = true
+
+  const baseFetch = window.fetch.bind(window)
+  window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+    if (!shouldGuardStaffSession()) return baseFetch(input, init)
+    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url
+    if (!isSameOriginApi(url)) return baseFetch(input, init)
+
+    const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined))
+    if (headers.has("Authorization")) return baseFetch(input, init)
+    const token = localStorage.getItem("auth_token")
+    if (!token) return baseFetch(input, init)
+    headers.set("Authorization", `Bearer ${token}`)
+    return baseFetch(input, { ...init, headers })
+  }
+}

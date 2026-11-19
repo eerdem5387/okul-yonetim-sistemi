@@ -1,188 +1,95 @@
 import { NextRequest, NextResponse } from "next/server"
+import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
+import { forbidden, requireNeredeyiz, requireNeredeyizManager } from "@/lib/neredeyiz/access"
+import { ensureSubjectForClass } from "@/lib/neredeyiz/sync"
+import { resolveNeredeyizYearId } from "@/lib/neredeyiz/year-scope"
 
-// GET - Tüm dersleri listele
+/**
+ * GET - Dersler.
+ * classId verilmezse akademik yıl uygulanır (varsayılan aktif yıl).
+ * Öğretmen yalnız kendi derslerini, rehber yalnız kendi sınıflarını (counselorId=kendisi) sorgular.
+ */
 export async function GET(request: NextRequest) {
+  const guard = await requireNeredeyiz(request, "view")
+  if (!guard.ok) return guard.response
+  const actor = guard.actor
   try {
-    const searchParams = request.nextUrl.searchParams
-    const academicYearId = searchParams.get("academicYearId")
-    const grade = searchParams.get("grade")
-    const section = searchParams.get("section")
-    const classId = searchParams.get("classId")
-    const staffId = searchParams.get("staffId")
-    const counselorId = searchParams.get("counselorId")
+    const sp = request.nextUrl.searchParams
+    const classId = sp.get("classId")
+    const grade = sp.get("grade")
+    const section = sp.get("section")
+    let staffId = sp.get("staffId")
+    const counselorId = sp.get("counselorId")
 
-    const where: Record<string, unknown> = {}
-
-    if (academicYearId) {
-      where.academicYearId = academicYearId
+    if (actor.isTeacher && !actor.superAdmin) {
+      if (staffId && staffId !== actor.staffId) return forbidden()
+      staffId = actor.staffId
     }
+    if (counselorId && counselorId !== actor.staffId && actor.department === "REHBERLIK") return forbidden()
 
-    // classId tercih edilir (öğretmen/rehberlik tek anahtar)
-    if (classId) {
-      where.classId = classId
-    } else {
-      if (grade) {
-        where.grade = parseInt(grade, 10)
-      }
-      if (section) {
-        where.section = section
-      }
+    const where: Prisma.SubjectWhereInput = {}
+    if (classId) where.classId = classId
+    else {
+      const yearId = await resolveNeredeyizYearId(sp)
+      if (yearId) where.academicYearId = yearId
+      if (grade && Number.isFinite(Number.parseInt(grade, 10))) where.grade = Number.parseInt(grade, 10)
+      if (section) where.section = section
     }
-
-    if (counselorId) {
-      const assignedClasses = await prisma.class.findMany({
-        where: { counselorId },
-        select: { id: true },
-      })
-      const assignedClassIds = assignedClasses.map((c) => c.id)
-
-      if (assignedClassIds.length === 0) {
-        return NextResponse.json([])
-      }
-
-      if (classId) {
-        if (!assignedClassIds.includes(classId)) {
-          return NextResponse.json([])
-        }
-        where.classId = classId
-      } else {
-        where.classId = { in: assignedClassIds }
-      }
-    }
-
-    if (staffId) {
-      where.assignments = {
-        some: {
-          staffId: staffId,
-        },
-      }
-    }
+    if (counselorId) where.class = { counselorId }
+    if (staffId) where.assignments = { some: { staffId } }
 
     const subjects = await prisma.subject.findMany({
-      where: where as never,
+      where,
       include: {
-        academicYear: {
-          select: {
-            id: true,
-            name: true,
-            isActive: true,
-          },
-        },
-        class: {
-          select: {
-            id: true,
-            name: true,
-            grade: true,
-            section: true,
-          },
-        },
-        assignments: {
-          include: {
-            staff: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-              },
-            },
-          },
-        },
+        academicYear: { select: { id: true, name: true, isActive: true } },
+        class: { select: { id: true, name: true, grade: true, section: true } },
+        assignments: { include: { staff: { select: { id: true, firstName: true, lastName: true } } } },
         units: {
-          orderBy: {
-            order: "asc",
-          },
-          include: {
-            topics: {
-              orderBy: {
-                order: "asc",
-              },
-              include: {
-                progress: {
-                  orderBy: {
-                    createdAt: "desc",
-                  },
-                },
-              },
-            },
-          },
+          orderBy: { order: "asc" },
+          include: { topics: { orderBy: { order: "asc" }, include: { completion: true } } },
         },
+        _count: { select: { schedules: true } },
       },
-      orderBy: {
-        grade: "asc",
-      },
+      orderBy: [{ grade: "asc" }, { section: "asc" }, { name: "asc" }],
     })
-
     return NextResponse.json(subjects)
   } catch (error) {
     console.error("Error fetching subjects:", error)
-    return NextResponse.json(
-      { error: "Dersler getirilirken hata oluştu" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Dersler getirilirken hata oluştu" }, { status: 500 })
   }
 }
 
-// POST - Yeni ders oluştur (classId zorunlu; grade/section Class'tan)
+/**
+ * POST - Sınıfa ders kabuğu ekle (normalde ders programından otomatik oluşur).
+ * Aynı adlı ders varsa onu döndürür (ders programıyla aynı eşleştirme kuralı).
+ */
 export async function POST(request: NextRequest) {
+  const guard = await requireNeredeyizManager(request, "create")
+  if (!guard.ok) return guard.response
   try {
-    const body = await request.json()
-    const { academicYearId, name, code, description, classId, branchId } = body
-
-    if (!name || !classId || String(classId).trim() === "") {
-      return NextResponse.json(
-        { error: "Ders adı ve sınıf (classId) zorunludur" },
-        { status: 400 }
-      )
-    }
+    const body = (await request.json()) as { name?: string; classId?: string; code?: string; description?: string }
+    const name = body.name?.trim()
+    const classId = body.classId?.trim()
+    if (!name || !classId) return NextResponse.json({ error: "Ders adı ve sınıf zorunludur" }, { status: 400 })
 
     const classData = await prisma.class.findUnique({
-      where: { id: String(classId).trim() },
+      where: { id: classId },
+      select: { id: true, academicYearId: true, grade: true, section: true },
     })
+    if (!classData) return NextResponse.json({ error: "Sınıf bulunamadı" }, { status: 404 })
 
-    if (!classData) {
-      return NextResponse.json({ error: "Sınıf bulunamadı" }, { status: 404 })
-    }
-
-    const yearId =
-      academicYearId && String(academicYearId).trim() !== ""
-        ? String(academicYearId).trim()
-        : classData.academicYearId
-
-    if (yearId !== classData.academicYearId) {
-      return NextResponse.json(
-        { error: "Akademik yıl, seçilen sınıfla uyuşmuyor" },
-        { status: 400 }
-      )
-    }
-
-    let resolvedBranchId: string | null =
-      typeof branchId === "string" && branchId.trim() ? branchId.trim() : null
-    if (!resolvedBranchId && name.trim()) {
-      const { upsertBranchByName } = await import("@/lib/branches")
-      const branch = await upsertBranchByName(name.trim())
-      resolvedBranchId = branch?.id ?? null
-    }
-
-    const subject = await prisma.subject.create({
+    const subject = await ensureSubjectForClass(classData, name)
+    const updated = await prisma.subject.update({
+      where: { id: subject.id },
       data: {
-        academicYearId: yearId,
-        name: name.trim(),
-        code: code && code.trim() !== "" ? code.trim() : null,
-        grade: classData.grade,
-        section: classData.section,
-        classId: classData.id,
-        branchId: resolvedBranchId,
-        description: description && description.trim() !== "" ? description.trim() : null,
+        ...(body.code !== undefined && { code: body.code?.trim() || null }),
+        ...(body.description !== undefined && { description: body.description?.trim() || null }),
       },
     })
-
-    return NextResponse.json(subject, { status: 201 })
+    return NextResponse.json(updated, { status: 201 })
   } catch (error) {
     console.error("Error creating subject:", error)
-    return NextResponse.json(
-      { error: "Ders oluşturulurken hata oluştu" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Ders oluşturulurken hata oluştu" }, { status: 500 })
   }
 }

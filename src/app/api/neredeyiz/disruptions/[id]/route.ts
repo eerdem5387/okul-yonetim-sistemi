@@ -1,120 +1,54 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { DisruptionType } from "@prisma/client"
-import { parseDisruptionScope } from "@/lib/neredeyiz/disruption-scope"
+import { requireNeredeyiz, requireNeredeyizManager } from "@/lib/neredeyiz/access"
+import { parseDisruptionInput } from "@/lib/neredeyiz/calendar-input"
 
-// GET - Tek aksama getir
-export async function GET(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+type Ctx = { params: Promise<{ id: string }> }
+
+export async function GET(request: NextRequest, context: Ctx) {
+  const guard = await requireNeredeyiz(request, "view")
+  if (!guard.ok) return guard.response
   try {
-    const params = await context.params
+    const { id } = await context.params
     const disruption = await prisma.disruption.findUnique({
-      where: { id: params.id },
-      include: {
-        academicYear: true,
-      },
+      where: { id },
+      include: { academicYear: { select: { id: true, name: true } } },
     })
-
-    if (!disruption) {
-      return NextResponse.json(
-        { error: "Aksama bulunamadı" },
-        { status: 404 }
-      )
-    }
-
+    if (!disruption) return NextResponse.json({ error: "Aksama bulunamadı" }, { status: 404 })
     return NextResponse.json(disruption)
   } catch (error) {
     console.error("Error fetching disruption:", error)
-    return NextResponse.json(
-      { error: "Aksama getirilirken hata oluştu" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Aksama getirilirken hata oluştu" }, { status: 500 })
   }
 }
 
-// PUT - Aksama güncelle
-export async function PUT(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+export async function PUT(request: NextRequest, context: Ctx) {
+  const guard = await requireNeredeyizManager(request, "edit")
+  if (!guard.ok) return guard.response
   try {
-    const params = await context.params
-    const body = await request.json()
-    const { type, reason, startDate, endDate, affectedSubjects, affectedClassIds, affectedStaffIds, scope } = body
-
-    if (!type || !reason || !startDate || !endDate) {
-      return NextResponse.json(
-        { error: "Tip, sebep, başlangıç ve bitiş tarihi zorunludur" },
-        { status: 400 }
-      )
-    }
-
-    const parsed = parseDisruptionScope({
-      scope,
-      affectedSubjects,
-      affectedClassIds,
-      affectedStaffIds,
-    })
-    if (!parsed.ok) {
-      return NextResponse.json({ error: parsed.error }, { status: 400 })
-    }
-
-    const disruption = await prisma.disruption.update({
-      where: { id: params.id },
-      data: {
-        type: type as DisruptionType,
-        scope: parsed.scope,
-        reason,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
-        affectedSubjects: parsed.affectedSubjects,
-        affectedClassIds: parsed.affectedClassIds,
-        affectedStaffIds: parsed.affectedStaffIds,
-      },
-    })
-
+    const { id } = await context.params
+    const existing = await prisma.disruption.findUnique({ where: { id }, select: { academicYearId: true } })
+    if (!existing) return NextResponse.json({ error: "Aksama bulunamadı" }, { status: 404 })
+    const input = await parseDisruptionInput(existing.academicYearId, (await request.json()) as Record<string, unknown>)
+    if (!input.ok) return NextResponse.json({ error: input.error }, { status: 400 })
+    const disruption = await prisma.disruption.update({ where: { id }, data: input.data })
     return NextResponse.json(disruption)
   } catch (error) {
     console.error("Error updating disruption:", error)
-    if (error instanceof Error && error.message.includes("Record to update not found")) {
-      return NextResponse.json(
-        { error: "Aksama bulunamadı" },
-        { status: 404 }
-      )
-    }
-    return NextResponse.json(
-      { error: "Aksama güncellenirken hata oluştu" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Aksama güncellenirken hata oluştu" }, { status: 500 })
   }
 }
 
-// DELETE - Aksama sil
-export async function DELETE(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(request: NextRequest, context: Ctx) {
+  const guard = await requireNeredeyizManager(request, "delete")
+  if (!guard.ok) return guard.response
   try {
-    const params = await context.params
-    await prisma.disruption.delete({
-      where: { id: params.id },
-    })
-
-    return NextResponse.json({ message: "Aksama başarıyla silindi" })
+    const { id } = await context.params
+    const res = await prisma.disruption.deleteMany({ where: { id } })
+    if (res.count === 0) return NextResponse.json({ error: "Aksama bulunamadı" }, { status: 404 })
+    return NextResponse.json({ message: "Aksama silindi" })
   } catch (error) {
     console.error("Error deleting disruption:", error)
-    if (error instanceof Error && error.message.includes("Record to delete does not exist")) {
-      return NextResponse.json(
-        { error: "Aksama bulunamadı" },
-        { status: 404 }
-      )
-    }
-    return NextResponse.json(
-      { error: "Aksama silinirken hata oluştu" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Aksama silinirken hata oluştu" }, { status: 500 })
   }
 }
-

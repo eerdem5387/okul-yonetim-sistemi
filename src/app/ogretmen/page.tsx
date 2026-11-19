@@ -15,7 +15,7 @@ import {
   Clock,
   BookOpen,
   GraduationCap,
-  Bell,
+
 } from "lucide-react"
 import Link from "next/link"
 
@@ -34,12 +34,7 @@ interface Subject {
     topics?: Array<{
       id: string
       name: string
-      plannedEndDate: string | null
-      progress?: Array<{
-        id: string
-        status: string
-        actualEndDate: string | null
-      }>
+      completion?: { id: string } | null
     }>
   }>
 }
@@ -47,7 +42,6 @@ interface Subject {
 interface DelayedTopic {
   id: string
   name: string
-  plannedEndDate: string | null
   delayDays: number
   unit: {
     id: string
@@ -159,10 +153,38 @@ export default function OgretmenPage() {
 
   const fetchDelayedTopics = async (staffId: string) => {
     try {
-      const response = await fetch(`/api/neredeyiz/teachers/delayed-topics?staffId=${staffId}`)
+      void staffId
+      // Haftalık Neredeyiz: geciken konular (planlanan haftada tamamlanmamış)
+      const response = await fetch("/api/neredeyiz/me/week")
       if (response.ok) {
-        const data = await response.json()
-        setDelayedData(data)
+        const data = (await response.json()) as {
+          cards: Array<{
+            subjectId: string
+            className: string
+            subjectName: string
+            topics: Array<{ id: string; name: string; unitName: string; state: string; lateDays: number }>
+          }>
+        }
+        const grouped = data.cards
+          .map((c) => {
+            const [g, sec] = c.className.split("/")
+            const subject = { id: c.subjectId, name: c.subjectName, grade: Number.parseInt(g ?? "0", 10) || 0, section: sec ?? null }
+            const delayedTopics = c.topics
+              .filter((t) => t.state === "GECIKTI")
+              .map((t) => ({ id: t.id, name: t.name, delayDays: t.lateDays, unit: { id: t.unitName, name: t.unitName }, subject }))
+            return { subject, delayedTopics, totalDelayDays: delayedTopics.reduce((n, t) => n + t.delayDays, 0) }
+          })
+          .filter((g) => g.delayedTopics.length > 0)
+        const all = grouped.flatMap((g) => g.delayedTopics)
+        setDelayedData({
+          delayedTopics: all,
+          groupedBySubject: grouped,
+          summary: {
+            totalDelayedTopics: all.length,
+            totalSubjects: grouped.length,
+            averageDelayDays: all.length ? Math.round(all.reduce((n, t) => n + t.delayDays, 0) / all.length) : 0,
+          },
+        })
       }
     } catch (err) {
       console.error("Error fetching delayed topics:", err)
@@ -303,7 +325,7 @@ export default function OgretmenPage() {
                     <p className="text-xs sm:text-sm font-medium text-gray-700">Ortalama Gecikme</p>
                   </div>
                   <p className="text-2xl sm:text-3xl font-bold text-yellow-600">
-                    {delayedData.summary.averageDelayDays} gün
+                    {delayedData.summary.averageDelayDays} ders günü
                   </p>
                 </div>
               </div>
@@ -339,9 +361,7 @@ export default function OgretmenPage() {
                 // Bu sınıf için toplam istatistikler
                 const allTopics = classSubjects.flatMap(s => (s.units || []).flatMap(u => u.topics || []))
                 const totalTopics = allTopics.length
-                const completedTopics = allTopics.filter(t => t.progress?.[0]?.status === "TAMAMLANDI").length
-                const inProgressTopics = allTopics.filter(t => t.progress?.[0]?.status === "DEVAM_EDIYOR").length
-                const pendingApprovalTopics = allTopics.filter(t => t.progress?.[0]?.status === "PENDING_APPROVAL").length
+                const completedTopics = allTopics.filter(t => t.completion).length
                 const classDelayedCount = delayedData?.groupedBySubject
                   .filter(g => classSubjects.some(s => s.id === g.subject.id))
                   .reduce((sum, g) => sum + g.delayedTopics.length, 0) || 0
@@ -386,12 +406,6 @@ export default function OgretmenPage() {
                         <div className="flex items-center justify-between text-xs text-gray-600 mt-2">
                           <span>{completedTopics}/{totalTopics} tamamlandı</span>
                           <div className="flex gap-3">
-                            {inProgressTopics > 0 && (
-                              <span className="text-yellow-600">• {inProgressTopics} devam ediyor</span>
-                            )}
-                            {pendingApprovalTopics > 0 && (
-                              <span className="text-orange-600">• {pendingApprovalTopics} onay bekliyor</span>
-                            )}
                             {classDelayedCount > 0 && (
                               <span className="text-red-600">• {classDelayedCount} gecikme</span>
                             )}
@@ -410,12 +424,11 @@ export default function OgretmenPage() {
               // Ders istatistiklerini hesapla
               const allTopics = (subject.units || []).flatMap((u) => u.topics || [])
               const totalTopics = allTopics.length
-              const completedTopics = allTopics.filter((t) => t.progress?.[0]?.status === "TAMAMLANDI").length
-              const pendingApprovalTopics = allTopics.filter((t) => t.progress?.[0]?.status === "PENDING_APPROVAL").length
+              const completedTopics = allTopics.filter((t) => t.completion).length
               const completionRate = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0
 
               return (
-                <Link key={subject.id} href={`/ogretmen/dersler/${subject.id}`}>
+                <Link key={subject.id} href={`/ogretmen/neredeyiz?tab=plan&subjectId=${subject.id}`}>
                   <Card className="cursor-pointer transition-all duration-200 hover:shadow-lg h-full relative border-2 hover:border-blue-400">
                     {subjectDelayedCount > 0 && (
                       <div className="absolute top-2 right-2 z-10">
@@ -425,30 +438,12 @@ export default function OgretmenPage() {
                         </span>
                       </div>
                     )}
-                    {subjectDelayedCount > 0 && pendingApprovalTopics > 0 && (
-                      <div className="absolute top-2 left-2 z-10">
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-800 border border-orange-300 shadow-sm">
-                          <Bell className="h-3 w-3" />
-                          {pendingApprovalTopics} onay
-                        </span>
-                      </div>
-                    )}
-                    {subjectDelayedCount === 0 && pendingApprovalTopics > 0 && (
-                      <div className="absolute top-2 right-2 z-10">
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-800 border border-orange-300 shadow-sm">
-                          <Bell className="h-3 w-3" />
-                          {pendingApprovalTopics} onay bekliyor
-                        </span>
-                      </div>
-                    )}
                     <CardHeader className="px-4 py-4">
                       <div className="flex items-center gap-3">
                         <div
                           className={`h-12 w-12 rounded-lg flex items-center justify-center flex-shrink-0 ${
                             subjectDelayedCount > 0
                               ? "bg-gradient-to-br from-red-600 to-orange-600"
-                              : pendingApprovalTopics > 0
-                              ? "bg-gradient-to-br from-orange-600 to-yellow-600"
                               : "bg-gradient-to-br from-blue-600 to-indigo-600"
                           }`}
                         >
@@ -491,11 +486,6 @@ export default function OgretmenPage() {
                           </div>
                           <div className="flex items-center justify-between text-xs text-gray-600 mt-1">
                             <span>{completedTopics}/{totalTopics} tamamlandı</span>
-                            {pendingApprovalTopics > 0 && (
-                              <span className="text-orange-600 font-medium">
-                                {pendingApprovalTopics} onay bekliyor
-                              </span>
-                            )}
                           </div>
                         </div>
                       )}

@@ -20,32 +20,21 @@ import {
 } from "lucide-react"
 import { RehberlikSidebar } from "@/components/layout/rehberlik-sidebar"
 
-interface PendingApproval {
-  id: string
+interface LateTopic {
+  subjectId: string
   topicId: string
-  topic: {
-    id: string
-    name: string
-    unit: {
-      id: string
-      name: string
-      subject: {
-        id: string
-        name: string
-        grade: number
-        section: string | null
-      }
-    }
-  }
-  reportedBy: string | null
-  reportedAt: string | null
-  actualEndDate: string | null
+  className: string
+  subjectName: string
+  topicName: string
+  rangeLabel: string
+  lateDays: number
+  teachers: string[]
 }
 
 export default function RehberlikPage() {
   const router = useRouter()
   const [staffName, setStaffName] = useState<string>("")
-  const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([])
+  const [lateTopics, setLateTopics] = useState<LateTopic[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -59,24 +48,21 @@ export default function RehberlikPage() {
       }
 
       setStaffName(name || "")
-      fetchPendingApprovals()
+      fetchLateTopics()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const fetchPendingApprovals = async () => {
+  /** Rehberi olduğum sınıflarda planlanan aralıkta tamamlanmamış konular (haftalık Neredeyiz). */
+  const fetchLateTopics = async () => {
     try {
-      const staffId = typeof window !== "undefined" ? localStorage.getItem("staff_id") : null
-      if (!staffId) return
-      
-      // ✅ Rehberlik kullanıcısı için: Sadece kendisine atanmış sınıfların konularını göster
-      const response = await fetch(`/api/neredeyiz/progress?status=PENDING_APPROVAL&counselorId=${staffId}`)
+      const response = await fetch("/api/neredeyiz/board?mine=1")
       if (response.ok) {
         const data = await response.json()
-        setPendingApprovals(data)
+        setLateTopics(data.lateTopics ?? [])
       }
     } catch (err) {
-      console.error("Error fetching pending approvals:", err)
+      console.error("Error fetching late topics:", err)
     } finally {
       setLoading(false)
     }
@@ -94,7 +80,7 @@ export default function RehberlikPage() {
 
   const quickLinks = [
     { name: "İç Haberleşme", href: "/mesajlar", icon: MessageSquare, color: "from-sky-600 to-blue-600" },
-    { name: "Neredeyiz?", href: "/rehberlik/neredeyiz", icon: Target, color: "from-blue-600 to-indigo-600" },
+    { name: "Neredeyiz? · Haftalık pano", href: "/neredeyiz", icon: Target, color: "from-blue-600 to-indigo-600" },
     { name: "Sınıf Yönetimi", href: "/sinif-yonetimi", icon: School, color: "from-indigo-600 to-purple-600" },
     { name: "Gezi Yönetimi", href: "/rehberlik/gezi", icon: MapPin, color: "from-green-600 to-emerald-600" },
     { name: "Kulüp Yönetimi", href: "/rehberlik/clubs", icon: Users, color: "from-purple-600 to-pink-600" },
@@ -133,12 +119,12 @@ export default function RehberlikPage() {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Onay Bekleyen Konular</h2>
-                <p className="text-gray-600">Öğretmenler tarafından tamamlandı olarak işaretlenen konular</p>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Sınıflarımda geciken konular</h2>
+                <p className="text-gray-600">Planlanan haftalarda tamamlanmayan konular. Zamanında gidenler için işlem gerekmez.</p>
               </div>
-              {pendingApprovals.length > 0 && (
-                <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
-                  {pendingApprovals.length} bekleyen
+              {lateTopics.length > 0 && (
+                <span className="px-3 py-1 bg-red-100 text-red-900 rounded-full text-sm font-semibold">
+                  {lateTopics.length} konu
                 </span>
               )}
             </div>
@@ -150,60 +136,45 @@ export default function RehberlikPage() {
                   <p className="text-gray-500">Yükleniyor...</p>
                 </CardContent>
               </Card>
-            ) : pendingApprovals.length === 0 ? (
+            ) : lateTopics.length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center">
-                  <CheckCircle2 className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500 font-medium mb-1">Onay bekleyen konu bulunmuyor</p>
-                  <p className="text-gray-400 text-sm">Tüm konular onaylanmış durumda.</p>
+                  <CheckCircle2 className="h-12 w-12 text-green-300 mx-auto mb-3" />
+                  <p className="text-gray-700 font-medium mb-1">Geciken konu yok</p>
+                  <p className="text-gray-500 text-sm">Sınıflarınızdaki dersler planlandığı gibi ilerliyor.</p>
                 </CardContent>
               </Card>
             ) : (
               <div className="space-y-3">
-                {pendingApprovals.map((approval) => (
-                  <Card key={approval.id} className="border-l-4 border-l-yellow-500">
+                {lateTopics.slice(0, 8).map((t) => (
+                  <Card key={t.topicId} className="border-red-200">
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h3 className="font-semibold text-gray-900">
-                              {approval.topic.unit.subject.name} - {approval.topic.unit.name}
-                            </h3>
-                            <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              Onay Bekliyor
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-700 mb-1">
-                            <strong>Konu:</strong> {approval.topic.name}
+                          <h3 className="font-semibold text-gray-900">
+                            {t.className} · {t.subjectName}
+                          </h3>
+                          <p className="text-sm text-gray-800 mt-1">{t.topicName}</p>
+                          <p className="text-xs text-red-800 mt-1 flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            Plan: {t.rangeLabel} · {t.lateDays} ders günü gecikti
+                            {t.teachers.length ? ` · ${t.teachers.join(", ")}` : ""}
                           </p>
-                          <div className="flex flex-wrap gap-4 text-xs text-gray-500 mt-2">
-                            <span>
-                              {approval.topic.unit.subject.grade}. Sınıf
-                              {approval.topic.unit.subject.section && ` - ${approval.topic.unit.subject.section} Şubesi`}
-                            </span>
-                            {approval.actualEndDate && (
-                              <span>
-                                Tamamlanma: {new Date(approval.actualEndDate).toLocaleDateString("tr-TR")}
-                              </span>
-                            )}
-                            {approval.reportedAt && (
-                              <span>
-                                İşaretleme: {new Date(approval.reportedAt).toLocaleDateString("tr-TR")}
-                              </span>
-                            )}
-                          </div>
                         </div>
-                        <Link href={`/rehberlik/neredeyiz/onay/${approval.topicId}`}>
-                          <Button size="sm" className="bg-green-600 hover:bg-green-700">
-                            <CheckCircle2 className="h-4 w-4 mr-2" />
-                            İncele & Onayla
+                        <Link href={`/neredeyiz/ders/${t.subjectId}`}>
+                          <Button size="sm" variant="outline">
+                            Ayrıntı
                           </Button>
                         </Link>
                       </div>
                     </CardContent>
                   </Card>
                 ))}
+                {lateTopics.length > 8 && (
+                  <Link href="/neredeyiz" className="block text-sm font-semibold text-indigo-700">
+                    Tümünü haftalık panoda gör ({lateTopics.length})
+                  </Link>
+                )}
               </div>
             )}
           </div>

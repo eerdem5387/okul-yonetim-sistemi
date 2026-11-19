@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { requireNeredeyiz } from "@/lib/neredeyiz/access"
+import { buildCalendar, disruptionAffects, todayKey, topicScopeOf } from "@/lib/neredeyiz/calendar"
+import { buildAcademicWeeks, evaluateWeeklyTopic, teachingWeekCount } from "@/lib/neredeyiz/weeks"
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ classId: string }> }
 ) {
+  const guard = await requireNeredeyiz(request, "view")
+  if (!guard.ok) return guard.response
+  const actor = guard.actor
   try {
     const { classId } = await context.params
     const classData = await prisma.class.findUnique({
@@ -31,7 +37,11 @@ export async function GET(
 
     const [subjects, holidays, disruptions, siblingClasses] = await Promise.all([
       prisma.subject.findMany({
-        where: { classId },
+        // Öğretmen yalnız kendi derslerini görür
+        where: {
+          classId,
+          ...(actor.isTeacher && !actor.superAdmin ? { assignments: { some: { staffId: actor.staffId } } } : {}),
+        },
         orderBy: { name: "asc" },
         include: {
           assignments: {
@@ -42,9 +52,7 @@ export async function GET(
             include: {
               topics: {
                 orderBy: { order: "asc" },
-                include: {
-                  progress: { orderBy: { createdAt: "desc" }, take: 1 },
-                },
+                include: { completion: true },
               },
             },
           },
@@ -68,25 +76,42 @@ export async function GET(
       }),
     ])
 
-    const visibleDisruptions = disruptions.filter((d) => {
-      if (d.scope === "SCHOOL") return true
-      if (d.scope === "CLASSES") return d.affectedClassIds.includes(classId)
-      if (d.scope === "SUBJECTS") {
-        const ids = new Set(subjects.map((s) => s.id))
-        return d.affectedSubjects.some((id) => ids.has(id))
-      }
-      if (d.scope === "TEACHER") {
-        const staff = new Set(
-          subjects.flatMap((s) => s.assignments.map((a) => a.staff.id))
-        )
-        return d.affectedStaffIds.some((id) => staff.has(id))
-      }
-      return false
+    const cal = buildCalendar({
+      academicYearId: classData.academicYearId,
+      startDate: classData.academicYear.startDate,
+      endDate: classData.academicYear.endDate,
+      weekendDays: classData.academicYear.weekendDays,
+      holidays,
+      disruptions,
     })
+    const visibleDisruptions = disruptions.filter((d, i) =>
+      subjects.some((s) => disruptionAffects(cal.disruptions[i]!, topicScopeOf({ id: s.id, classId, assignments: s.assignments }))),
+    )
+
+    // Haftalar ve her konunun haftalık durumu
+    const weeks = buildAcademicWeeks(cal)
+    const today = todayKey()
+    const subjectsWithState = subjects.map((s) => {
+      const scope = topicScopeOf({ id: s.id, classId, assignments: s.assignments })
+      return {
+        ...s,
+        units: s.units.map((u) => ({
+          ...u,
+          topics: u.topics.map((t) => ({ ...t, evaluation: evaluateWeeklyTopic(t, t.completion, weeks, cal, scope, today) })),
+        })),
+      }
+    })
+    const weekList = weeks
+      .filter((w) => w.index != null)
+      .map((w) => ({ index: w.index!, label: w.label }))
+    const breakList = weeks.filter((w) => w.isBreak).map((w) => w.label)
 
     return NextResponse.json({
       class: classData,
-      subjects,
+      subjects: subjectsWithState,
+      weeks: weekList,
+      totalWeeks: teachingWeekCount(weeks),
+      breaks: breakList,
       holidays,
       disruptions: visibleDisruptions,
       siblingClasses,

@@ -5,6 +5,8 @@ import { reassignActivityEventAcademicYearsSafe } from "@/lib/activity-academic-
 import { resolveCalendarFromBody } from "@/lib/academic-year-mutation"
 import { runAcademicYearActivationRollover } from "@/lib/academic-year-rollover"
 import { formatAcademicYearName, parseAcademicYearSpan } from "@/lib/academic-year-ui"
+import { requireSettingsEdit, requireStaff } from "@/lib/neredeyiz/access"
+import { academicYearDependencies, isLaterYear, ROLLOVER_CONFIRM_ERROR } from "@/lib/neredeyiz/year-guards"
 
 function normalizeAcademicYearName(raw: string): string {
   const span = parseAcademicYearSpan({ name: raw })
@@ -17,6 +19,8 @@ export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const guard = await requireStaff(request)
+  if (!guard.ok) return guard.response
   try {
     const params = await context.params
     const academicYear = await prisma.academicYear.findUnique({
@@ -77,6 +81,8 @@ export async function PUT(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const guard = await requireSettingsEdit(request)
+    if (!guard.ok) return guard.response
     const params = await context.params
     const existing = await prisma.academicYear.findUnique({ where: { id: params.id } })
     if (!existing) {
@@ -116,10 +122,17 @@ export async function PUT(
 
     const prevOthersActive = await prisma.academicYear.findMany({
       where: { isActive: true, id: { not: params.id } },
-      select: { id: true },
+      select: { id: true, name: true, startDate: true },
     })
 
-    const shouldRollover = activeFlag && !existing.isActive && prevOthersActive.length > 0
+    // Devir yalnız daha sonraki bir yıla geçişte; geçmiş yıla dönüş (hata düzeltme) öğrencileri tekrar yükseltmez
+    const shouldRollover =
+      activeFlag &&
+      !existing.isActive &&
+      prevOthersActive.some((p) => isLaterYear({ name: normalizedName, startDate: cal.data.start }, p))
+    if (shouldRollover && body.confirmRollover !== true) {
+      return NextResponse.json({ error: ROLLOVER_CONFIRM_ERROR, requiresRolloverConfirm: true }, { status: 409 })
+    }
 
     const academicYear = await prisma.$transaction(async (tx) => {
       if (activeFlag) {
@@ -185,6 +198,8 @@ export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const guard = await requireSettingsEdit(request)
+  if (!guard.ok) return guard.response
   try {
     const params = await context.params
     const body = (await request.json()) as {
@@ -272,6 +287,8 @@ export async function DELETE(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const guard = await requireSettingsEdit(request)
+  if (!guard.ok) return guard.response
   try {
     const params = await context.params
     const row = await prisma.academicYear.findUnique({ where: { id: params.id } })
@@ -282,6 +299,26 @@ export async function DELETE(
             "Bu kayıt aktif yıl için otomatik oluşturulmuş «sonraki yıl» satırıdır; doğrudan silinemez. Ana akademik yılı silin veya güncelleyin.",
         },
         { status: 400 }
+      )
+    }
+    if (!row) {
+      return NextResponse.json({ error: "Akademik yıl bulunamadı" }, { status: 404 })
+    }
+    if (row.isActive) {
+      return NextResponse.json({ error: "Aktif akademik yıl silinemez." }, { status: 400 })
+    }
+    // Silme sınıfları, ders programını, yoklama/ödev/sınav kayıtlarını zincirleme siler → bağlı veri varsa engelle
+    const deps = await academicYearDependencies(params.id)
+    const blocking = [
+      deps.classes && `${deps.classes} sınıf`,
+      deps.subjects && `${deps.subjects} ders`,
+      deps.activityEvents && `${deps.activityEvents} faaliyet`,
+      deps.clubBackups && `${deps.clubBackups} kulüp yedeği`,
+    ].filter(Boolean)
+    if (blocking.length) {
+      return NextResponse.json(
+        { error: `Bu yıla bağlı veriler var (${blocking.join(", ")}); yıl silinemez.`, dependencies: deps },
+        { status: 409 },
       )
     }
     await prisma.academicYear.delete({
