@@ -44,6 +44,8 @@ export interface ActivityEventDetail {
   evidenceUrls: string[]
   metadata?: unknown | null
   teacher: { id: string; firstName: string; lastName: string }
+  /** Başlangıç tarihinden türetilen akademik yıl; aktif değilse faaliyet arşivdedir */
+  academicYear?: { id: string; name: string; isActive: boolean } | null
   createdAt: string
   participants: ParticipantRow[]
 }

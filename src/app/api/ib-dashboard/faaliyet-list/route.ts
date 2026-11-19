@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { checkActivityAccess } from "@/lib/access-control"
 import { ActivityMainType, ActivityVerificationStatus, Prisma } from "@prisma/client"
 import { MAIN_TYPE_LABELS } from "@/lib/activity-types-config"
+import { resolveActivityYearScope } from "@/lib/activity-academic-year"
 
 export interface UnifiedFaaliyetListItem {
   source: "event"
@@ -46,6 +47,10 @@ export async function GET(request: NextRequest) {
     const mainType = searchParams.get("mainType") || ""
 
     const andE: Prisma.ActivityEventWhereInput[] = []
+
+    // Akademik yıl: varsayılan aktif yıl; ?academicYearId=<id> arşiv, =all tüm yıllar
+    const yearScope = await resolveActivityYearScope(searchParams)
+    if (Object.keys(yearScope.eventWhere).length > 0) andE.push(yearScope.eventWhere)
 
     if (mainType && mainType !== "ALL") {
       andE.push({ mainType: mainType as ActivityMainType })
@@ -115,6 +120,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       items: slice,
+      academicYear: yearScope.academicYear,
+      academicYearScope: yearScope.mode,
       pagination: { page, limit, total, totalPages },
     })
   } catch (error) {

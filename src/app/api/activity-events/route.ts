@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { checkActivityAccess } from "@/lib/access-control"
 import { ActivityMainType, ActivityVerificationStatus, LanguageLevel, Prisma } from "@prisma/client"
+import { resolveAcademicYearIdForDate, resolveActivityYearScope } from "@/lib/activity-academic-year"
 
 /** Prisma enum ile aynı; runtime'da Object.values tutarsızlığına karşı sabit liste */
 const LANGUAGE_LEVEL_VALUES = new Set<string>(["A1", "A2", "B1", "B2", "C1", "C2"])
@@ -52,6 +53,10 @@ export async function GET(request: NextRequest) {
 
     const where: Record<string, unknown> = {}
     const andConds: Record<string, unknown>[] = []
+
+    // Akademik yıl: varsayılan aktif yıl; ?academicYearId=<id> arşiv, =all tüm yıllar
+    const yearScope = await resolveActivityYearScope(searchParams)
+    if (Object.keys(yearScope.eventWhere).length > 0) andConds.push(yearScope.eventWhere)
 
     if (mainType && mainType !== "ALL") {
       andConds.push({ mainType: mainType as ActivityMainType })
@@ -112,6 +117,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       events,
+      academicYear: yearScope.academicYear,
+      academicYearScope: yearScope.mode,
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     })
   } catch (error) {
@@ -251,8 +258,11 @@ export async function POST(request: NextRequest) {
             return s === undefined ? Prisma.DbNull : s
           })()
 
+    const academicYearId = await resolveAcademicYearIdForDate(start)
+
     const event = await prisma.activityEvent.create({
       data: {
+        academicYearId,
         mainType: mainTypeStr as ActivityMainType,
         subtype: subtype ? String(subtype).trim() || null : null,
         certificateType: String(certificateType).trim(),

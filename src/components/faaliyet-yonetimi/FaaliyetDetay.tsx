@@ -394,6 +394,13 @@ export function FaaliyetDetay({ id }: { id: string }) {
             {event.description && (
               <p className="mt-2 text-indigo-200 text-sm max-w-xl">{event.description}</p>
             )}
+            {event.academicYear && (
+              <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-medium">
+                <Calendar className="h-3 w-3" />
+                {event.academicYear.name}
+                {!event.academicYear.isActive && " · Arşiv"}
+              </p>
+            )}
           </div>
         </div>
 

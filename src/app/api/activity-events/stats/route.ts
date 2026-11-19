@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { checkActivityAccess } from "@/lib/access-control"
+import { getActiveAcademicYear, resolveActivityYearScope } from "@/lib/activity-academic-year"
 
 export async function GET(request: NextRequest) {
   const { hasAccess } = await checkActivityAccess(request)
@@ -9,39 +10,47 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const now = new Date()
-    const yearStart = new Date(now.getFullYear(), 0, 1)
-    const yearEnd = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999)
+    // Akademik yıl kapsamı: varsayılan aktif yıl; ?academicYearId=<id> arşiv, =all tüm yıllar
+    const { searchParams } = new URL(request.url)
+    const scope = await resolveActivityYearScope(searchParams)
+    const eventWhere = scope.eventWhere
+    const participantWhere = { activity: eventWhere }
+    const active = scope.mode === "active" ? scope.academicYear : await getActiveAcademicYear()
 
     const [
       totalEvents,
       thisYearEvents,
+      allYearsTotal,
       totalParticipants,
       byMainType,
       byVerificationStatus,
       topByStudent,
       recentEvents,
     ] = await Promise.all([
+      prisma.activityEvent.count({ where: eventWhere }),
+      // "Bu yıl" = aktif akademik yıl (takvim yılı değil)
+      active ? prisma.activityEvent.count({ where: { academicYearId: active.id } }) : Promise.resolve(0),
       prisma.activityEvent.count(),
-      prisma.activityEvent.count({
-        where: { startDate: { gte: yearStart, lte: yearEnd } },
-      }),
-      prisma.activityParticipant.count(),
+      prisma.activityParticipant.count({ where: participantWhere }),
       prisma.activityEvent.groupBy({
         by: ["mainType"],
+        where: eventWhere,
         _count: { id: true },
       }),
       prisma.activityParticipant.groupBy({
         by: ["verificationStatus"],
+        where: participantWhere,
         _count: { id: true },
       }),
       prisma.activityParticipant.groupBy({
         by: ["studentId"],
+        where: participantWhere,
         _count: { studentId: true },
         orderBy: { _count: { studentId: "desc" } },
         take: 50,
       }),
       prisma.activityEvent.findMany({
+        where: eventWhere,
         take: 5,
         orderBy: { createdAt: "desc" },
         include: {
@@ -96,6 +105,10 @@ export async function GET(request: NextRequest) {
       // Dashboard uyumluluğu (legacy alan adları)
       total: totalEvents,
       thisYear: thisYearEvents,
+      allYearsTotal,
+      academicYear: scope.academicYear,
+      academicYearScope: scope.mode,
+      activeAcademicYear: active,
       verified: verificationMap.ONAYLANDI,
       unverified: verificationMap.IMZA_SURECINDE + verificationMap.ONAY_BEKLIYOR,
       imzaSurecinde: verificationMap.IMZA_SURECINDE,

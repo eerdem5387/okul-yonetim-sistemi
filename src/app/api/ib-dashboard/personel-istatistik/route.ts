@@ -3,7 +3,12 @@ import { prisma } from "@/lib/prisma"
 import { checkActivityStaffStatsAccess } from "@/lib/access-control"
 import { STAFF_DEPARTMENT_LABELS } from "@/lib/hr/constants"
 import { MAIN_TYPE_LABELS } from "@/lib/activity-types-config"
-import type { ActivityMainType, ActivityVerificationStatus, StaffDepartment } from "@prisma/client"
+import type { ActivityMainType, ActivityVerificationStatus, Prisma, StaffDepartment } from "@prisma/client"
+import {
+  getActiveAcademicYear,
+  listActivityAcademicYears,
+  resolveActivityYearScope,
+} from "@/lib/activity-academic-year"
 
 function aggregateStatuses(statuses: ActivityVerificationStatus[]): ActivityVerificationStatus {
   if (statuses.length === 0) return "IMZA_SURECINDE"
@@ -44,9 +49,17 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(50, parseInt(searchParams.get("limit") || "20", 10))
     const topLimit = Math.min(20, parseInt(searchParams.get("top") || "0", 10))
 
-    const yearBoundsFilter = yearBounds(yearParam)
-    const now = new Date()
-    const thisYearStart = new Date(now.getFullYear(), 0, 1)
+    // Akademik yıl: ?academicYearId=<id|all>; yoksa eski ?year= (takvim yılı, oluşturulma tarihi) desteklenir;
+    // ikisi de yoksa aktif akademik yıl.
+    const useLegacyYear = !searchParams.get("academicYearId") && !!yearParam
+    const yearBoundsFilter = useLegacyYear ? yearBounds(yearParam) : null
+    const scope = useLegacyYear
+      ? null
+      : await resolveActivityYearScope(searchParams)
+    const scopeWhere: Prisma.ActivityEventWhereInput = scope?.eventWhere ?? {}
+    const active = scope?.mode === "active" ? scope.academicYear : await getActiveAcademicYear()
+    /** "Bu yıl" = aktif akademik yıl */
+    const inActiveYear = (e: { academicYearId: string | null }) => !!active && e.academicYearId === active.id
 
     if (staffIdParam) {
       const staff = await prisma.staff.findUnique({
@@ -63,8 +76,9 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "Personel bulunamadı" }, { status: 404 })
       }
 
-      const eventWhere = {
+      const eventWhere: Prisma.ActivityEventWhereInput = {
         teacherId: staffIdParam,
+        ...scopeWhere,
         ...(yearBoundsFilter
           ? { createdAt: { gte: yearBoundsFilter.start, lte: yearBoundsFilter.end } }
           : {}),
@@ -119,10 +133,11 @@ export async function GET(request: NextRequest) {
       })
 
       const allForStaff = await prisma.activityEvent.findMany({
-        where: { teacherId: staffIdParam },
+        where: { teacherId: staffIdParam, ...scopeWhere },
         select: {
           mainType: true,
           createdAt: true,
+          academicYearId: true,
           _count: { select: { participants: true } },
         },
       })
@@ -136,7 +151,7 @@ export async function GET(request: NextRequest) {
       for (const e of allForStaff) {
         activityCount++
         participantCount += e._count.participants
-        if (e.createdAt >= thisYearStart) thisYearCount++
+        if (inActiveYear(e)) thisYearCount++
         byMainType[e.mainType] = (byMainType[e.mainType] ?? 0) + 1
         if (!lastCreatedAt || e.createdAt > new Date(lastCreatedAt)) {
           lastCreatedAt = e.createdAt.toISOString()
@@ -165,7 +180,8 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    const listWhere = {
+    const listWhere: Prisma.ActivityEventWhereInput = {
+      ...scopeWhere,
       ...(yearBoundsFilter
         ? { createdAt: { gte: yearBoundsFilter.start, lte: yearBoundsFilter.end } }
         : {}),
@@ -178,6 +194,7 @@ export async function GET(request: NextRequest) {
         mainType: true,
         createdAt: true,
         createdBy: true,
+        academicYearId: true,
         _count: { select: { participants: true } },
       },
     })
@@ -210,7 +227,7 @@ export async function GET(request: NextRequest) {
       }
       row.activityCount++
       row.participantCount += e._count.participants
-      if (e.createdAt >= thisYearStart) row.thisYearCount++
+      if (inActiveYear(e)) row.thisYearCount++
       row.byMainType[e.mainType] = (row.byMainType[e.mainType] ?? 0) + 1
       if (!row.lastCreatedAt || e.createdAt > row.lastCreatedAt) row.lastCreatedAt = e.createdAt
       if (e.createdBy && e.createdBy !== "unknown") row.createdByIds.add(e.createdBy)
@@ -267,7 +284,7 @@ export async function GET(request: NextRequest) {
       totalActivities: events.length,
       staffWithEntries: staffList.length,
       totalParticipants: staffList.reduce((sum, s) => sum + s.participantCount, 0),
-      thisYearActivities: events.filter((e) => e.createdAt >= thisYearStart).length,
+      thisYearActivities: events.filter(inActiveYear).length,
     }
 
     const sliced = topLimit > 0 ? staffList.slice(0, topLimit) : staffList
@@ -276,6 +293,9 @@ export async function GET(request: NextRequest) {
       summary,
       staff: sliced,
       availableYears: buildAvailableYears(),
+      academicYear: scope?.academicYear ?? null,
+      academicYearScope: scope?.mode ?? "legacy-year",
+      academicYears: (await listActivityAcademicYears()).years,
     })
   } catch (error) {
     console.error("GET /api/ib-dashboard/personel-istatistik error:", error)

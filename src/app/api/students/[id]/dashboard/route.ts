@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireStudentReader } from "@/lib/auth/api-guard"
 import { prisma } from "@/lib/prisma"
+import { ActivityVerificationStatus } from "@prisma/client"
+import { getActiveAcademicYear } from "@/lib/activity-academic-year"
+import { MAIN_TYPE_LABELS } from "@/lib/activity-types-config"
 
 /**
  * GET /api/students/[id]/dashboard
@@ -209,21 +212,52 @@ export async function GET(
       take: 10,
     })
 
-    // IB Faaliyetleri (son 30 gün veya seçilen period)
-    const activities = await prisma.activity.findMany({
-      where: {
-        studentId: id,
-        ...(startDate && {
-          activityDate: {
-            gte: startDate,
+    // Faaliyetler (Faaliyet Yönetimi kayıtları): period yerine aktif akademik yıl esas alınır;
+    // geçmiş yılların faaliyetleri arşivde kalır. Aktif yıl tanımlı değilse tüm kayıtlar.
+    const activeAcademicYear = await getActiveAcademicYear()
+    const participationWhere = {
+      studentId: id,
+      ...(activeAcademicYear && { activity: { academicYearId: activeAcademicYear.id } }),
+    }
+    const [participations, totalActivities, verifiedActivities] = await Promise.all([
+      prisma.activityParticipant.findMany({
+        where: participationWhere,
+        include: {
+          activity: {
+            select: {
+              id: true,
+              mainType: true,
+              subtype: true,
+              title: true,
+              description: true,
+              startDate: true,
+              location: true,
+              organizerName: true,
+            },
           },
-        }),
-      },
-      orderBy: {
-        activityDate: "desc",
-      },
-      take: 10,
-    })
+        },
+        orderBy: { activity: { startDate: "desc" } },
+        take: 10,
+      }),
+      prisma.activityParticipant.count({ where: participationWhere }),
+      prisma.activityParticipant.count({
+        where: { ...participationWhere, verificationStatus: ActivityVerificationStatus.ONAYLANDI },
+      }),
+    ])
+    // Eski (legacy activities) şekliyle uyumlu satırlar — web panelleri bu alanları okur
+    const activities = participations.map((p) => ({
+      id: p.id,
+      activityEventId: p.activity.id,
+      type: MAIN_TYPE_LABELS[p.activity.mainType] ?? p.activity.mainType,
+      title: p.activity.title,
+      description: p.activity.description,
+      activityDate: p.activity.startDate,
+      location: p.activity.location,
+      organizer: p.activity.organizerName,
+      isVerified: p.verificationStatus === ActivityVerificationStatus.ONAYLANDI,
+      verifiedAt: p.verifiedAt,
+      verificationStatus: p.verificationStatus,
+    }))
 
     // İstatistikler
     const totalHomeworks = homeworks.length
@@ -285,9 +319,6 @@ export async function GET(
     const positiveComments = comments.filter((c) => c.isPositive).length
     const negativeComments = comments.filter((c) => !c.isPositive).length
 
-    // IB Faaliyet istatistikleri
-    const totalActivities = activities.length
-    const verifiedActivities = activities.filter((a) => a.isVerified).length
 
     return NextResponse.json({
       student,
@@ -314,6 +345,7 @@ export async function GET(
         negativeComments,
         totalActivities,
         verifiedActivities,
+        activityAcademicYear: activeAcademicYear ? { id: activeAcademicYear.id, name: activeAcademicYear.name } : null,
       },
       recentData: {
         homeworks,

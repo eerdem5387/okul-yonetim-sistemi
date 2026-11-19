@@ -483,15 +483,20 @@ model ActivityEvent {
   durationYears   Int?
   evidenceUrls    String[]         @default([])
   metadata        Json? // Kategori'ye özgü ek alanlar (örn: gezi türü, gezi programı)
+  /// Faaliyetin ait olduğu akademik yıl; startDate'ten türetilir (bkz. src/lib/activity-academic-year.ts).
+  /// Yaz tatili / açılış öncesi tarihler yaklaşan yıla sayılır. Aktif yıl dışındakiler arşivde görünür.
+  academicYearId  String?
   teacherId       String
   createdBy       String
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
   teacher      Staff                 @relation("TeacherActivityEvents", fields: [teacherId], references: [id])
+  academicYear AcademicYear?         @relation(fields: [academicYearId], references: [id], onDelete: SetNull)
   participants ActivityParticipant[]
 
   @@index([mainType])
+  @@index([academicYearId])
   @@index([teacherId])
   @@index([startDate])
   @@index([createdAt])
@@ -969,7 +974,8 @@ model AcademicYear {
   holidays    Holiday[]
   disruptions Disruption[]
   classes     Class[] // Akademik yıla ait sınıflar (FAZ 2)
-  clubBackups ClubBackup[]
+  clubBackups    ClubBackup[]
+  activityEvents ActivityEvent[]
 
   @@index([isActive])
   @@index([isRenewalPeriod])

@@ -57,6 +57,8 @@ interface DashboardData {
     negativeComments: number
     totalActivities: number
     verifiedActivities: number
+    /** Faaliyet sayıları bu akademik yıla göredir (geçmiş yıllar arşivde) */
+    activityAcademicYear?: { id: string; name: string } | null
   }
   recentData: {
     homeworks: Array<{
@@ -345,6 +347,7 @@ export default function VeliPanelPage() {
               </div>
               <div className="mt-2 text-xs sm:text-sm text-gray-600">
                 {dashboardData.statistics.verifiedActivities} doğrulanmış
+                {dashboardData.statistics.activityAcademicYear ? ` · ${dashboardData.statistics.activityAcademicYear.name}` : ""}
               </div>
             </CardContent>
           </Card>
@@ -558,7 +561,7 @@ export default function VeliPanelPage() {
           </CardHeader>
           <CardContent>
             {dashboardData.recentData.activities.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">Henüz IB faaliyet kaydı bulunmuyor</p>
+              <p className="text-gray-500 text-center py-4">{dashboardData.statistics.activityAcademicYear ? "Bu akademik yılda henüz faaliyet kaydı yok" : "Henüz IB faaliyet kaydı bulunmuyor"}</p>
             ) : (
               <div className="space-y-2">
                 {dashboardData.recentData.activities.map((activity) => {

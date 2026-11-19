@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { syncRenewalPlaceholderForPrimaryYear } from "@/lib/academic-year-renewal-placeholder"
+import { reassignActivityEventAcademicYearsSafe } from "@/lib/activity-academic-year"
 import { runAcademicYearActivationRollover } from "@/lib/academic-year-rollover"
 import { resolveCalendarFromBody } from "@/lib/academic-year-mutation"
 import { formatAcademicYearName, parseAcademicYearSpan } from "@/lib/academic-year-ui"
@@ -119,6 +120,7 @@ export async function POST(request: NextRequest) {
       })
 
       await syncRenewalPlaceholderForPrimaryYear(created.id)
+      await reassignActivityEventAcademicYearsSafe()
       return NextResponse.json(mapYearJson(created), { status: 201 })
     }
 
@@ -137,6 +139,7 @@ export async function POST(request: NextRequest) {
     })
 
     await syncRenewalPlaceholderForPrimaryYear(academicYear.id)
+    await reassignActivityEventAcademicYearsSafe()
 
     return NextResponse.json(mapYearJson(academicYear), { status: 201 })
   } catch (error) {

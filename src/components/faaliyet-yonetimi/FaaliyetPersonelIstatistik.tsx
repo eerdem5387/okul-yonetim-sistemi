@@ -120,8 +120,11 @@ export function FaaliyetPersonelIstatistik({
 
   const [search, setSearch] = useState("")
   const [department, setDepartment] = useState("")
-  const [year, setYear] = useState("")
-  const [availableYears, setAvailableYears] = useState<number[]>([])
+  /** Akademik yıl: "" = aktif yıl, <id> = geçmiş yıl (arşiv), "all" = tüm yıllar */
+  const [year, setYear] = useState(() => searchParams.get("yil") ?? "")
+  const [availableYears, setAvailableYears] = useState<
+    Array<{ id: string; name: string; isActive: boolean; eventCount: number }>
+  >([])
 
   const departmentOptions = useMemo(
     () =>
@@ -152,7 +155,7 @@ export function FaaliyetPersonelIstatistik({
       const params = new URLSearchParams()
       if (search.trim()) params.set("search", search.trim())
       if (department) params.set("department", department)
-      if (year) params.set("year", year)
+      if (year) params.set("academicYearId", year)
       const res = await fetch(`/api/ib-dashboard/personel-istatistik?${params}`, {
         headers: getAuthHeaders(),
         cache: "no-store",
@@ -164,7 +167,7 @@ export function FaaliyetPersonelIstatistik({
       const data = await res.json()
       setSummary(data.summary ?? null)
       setStaffList(data.staff ?? [])
-      if (Array.isArray(data.availableYears)) setAvailableYears(data.availableYears)
+      if (Array.isArray(data.academicYears)) setAvailableYears(data.academicYears)
       if (initialStaffId && data.staff?.some((s: StaffSummaryRow) => s.staffId === initialStaffId)) {
         setSelectedStaffId(initialStaffId)
       }
@@ -187,7 +190,7 @@ export function FaaliyetPersonelIstatistik({
           page: String(page),
           limit: "15",
         })
-        if (year) params.set("year", year)
+        if (year) params.set("academicYearId", year)
         const res = await fetch(`/api/ib-dashboard/personel-istatistik?${params}`, {
           headers: getAuthHeaders(),
           cache: "no-store",
@@ -307,7 +310,7 @@ export function FaaliyetPersonelIstatistik({
           </Card>
           <Card className="border-0 shadow-sm">
             <CardContent className="p-5">
-              <p className="text-xs font-medium text-gray-500 uppercase">Bu yıl (tümü)</p>
+              <p className="text-xs font-medium text-gray-500 uppercase">Bu akademik yıl (tümü)</p>
               <p className="mt-1 text-2xl font-bold">{summary.thisYearActivities}</p>
             </CardContent>
           </Card>
@@ -347,7 +350,7 @@ export function FaaliyetPersonelIstatistik({
               </select>
             </div>
             <div>
-              <Label className="text-xs">Oluşturulma yılı</Label>
+              <Label className="text-xs">Akademik yıl</Label>
               <select
                 value={year}
                 onChange={(e) => {
@@ -356,12 +359,15 @@ export function FaaliyetPersonelIstatistik({
                 }}
                 className="mt-1.5 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
               >
-                <option value="">Tüm yıllar</option>
-                {availableYears.map((y) => (
-                  <option key={y} value={String(y)}>
-                    {y}
-                  </option>
-                ))}
+                <option value="">Aktif akademik yıl</option>
+                {availableYears
+                  .filter((y) => !y.isActive && (y.eventCount > 0 || y.id === year))
+                  .map((y) => (
+                    <option key={y.id} value={y.id}>
+                      {y.name} — arşiv
+                    </option>
+                  ))}
+                <option value="all">Tüm yıllar</option>
               </select>
             </div>
           </CardContent>
@@ -407,7 +413,7 @@ export function FaaliyetPersonelIstatistik({
                         </span>
                       </div>
                       <p className="text-xs text-gray-500 mt-1">
-                        {s.participantCount} katılımcı · Bu yıl: {s.thisYearCount}
+                        {s.participantCount} katılımcı · Bu akademik yıl: {s.thisYearCount}
                       </p>
                     </button>
                   </li>

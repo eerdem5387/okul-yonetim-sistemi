@@ -27,14 +27,55 @@ import {
   Pencil,
   FileDown,
   Layers,
+  Archive,
+  ArrowLeft,
 } from "lucide-react"
 import { ACTIVITY_MAIN_TYPES, MAIN_TYPE_LABELS } from "@/lib/activity-types-config"
 
 export type ActivityVerificationStatus = "IMZA_SURECINDE" | "ONAY_BEKLIYOR" | "ONAYLANDI"
 
+export interface IBDashboardAcademicYear {
+  id: string
+  name: string
+  isActive: boolean
+}
+
+export interface IBDashboardAcademicYearOption extends IBDashboardAcademicYear {
+  eventCount: number
+}
+
+/** URL'de arşiv yılı: /faaliyet-yonetimi?yil=<academicYearId|all> */
+export const ACTIVITY_YEAR_QUERY_KEY = "yil"
+
+export function readActivityYearFromUrl(): string {
+  if (typeof window === "undefined") return ""
+  return new URLSearchParams(window.location.search).get(ACTIVITY_YEAR_QUERY_KEY) ?? ""
+}
+
+function writeActivityYearToUrl(yearId: string) {
+  if (typeof window === "undefined") return
+  const url = new URL(window.location.href)
+  if (yearId) url.searchParams.set(ACTIVITY_YEAR_QUERY_KEY, yearId)
+  else url.searchParams.delete(ACTIVITY_YEAR_QUERY_KEY)
+  window.history.replaceState(window.history.state, "", url.toString())
+}
+
+export function withActivityYear(href: string, yearId: string): string {
+  if (!yearId) return href
+  const sep = href.includes("?") ? "&" : "?"
+  return `${href}${sep}${ACTIVITY_YEAR_QUERY_KEY}=${encodeURIComponent(yearId)}`
+}
+
 export interface IBDashboardStats {
   total: number
+  /** Aktif akademik yıldaki faaliyet sayısı */
   thisYear: number
+  /** Tüm yıllardaki faaliyet sayısı */
+  allYearsTotal?: number
+  /** Gösterilen kapsamın akademik yılı (aktif ya da arşiv) */
+  academicYear?: IBDashboardAcademicYear | null
+  academicYearScope?: "active" | "year" | "all"
+  activeAcademicYear?: IBDashboardAcademicYear | null
   verified: number
   unverified: number
   imzaSurecinde: number
@@ -120,6 +161,7 @@ export function IBFaaliyetDashboard({
   const [staffStatsSummary, setStaffStatsSummary] = useState<{
     staffWithEntries: number
     thisYearActivities: number
+    totalActivities: number
   } | null>(null)
   const [listItems, setListItems] = useState<IBDashboardUnifiedItem[]>([])
   const [students, setStudents] = useState<Array<{ id: string; firstName: string; lastName: string; grade: string }>>([])
@@ -141,10 +183,59 @@ export function IBFaaliyetDashboard({
   const [totalCount, setTotalCount] = useState(0)
   const [listError, setListError] = useState<string | null>(null)
   const [statsError, setStatsError] = useState<string | null>(null)
+  /** "" = aktif akademik yıl; <id> = arşivdeki yıl; "all" = tüm yıllar */
+  const [academicYearId, setAcademicYearId] = useState<string | null>(null)
+  const [yearOptions, setYearOptions] = useState<IBDashboardAcademicYearOption[]>([])
+  const [activeYear, setActiveYear] = useState<IBDashboardAcademicYear | null>(null)
+  const isArchive = !!academicYearId
+  const yearReady = academicYearId !== null
+  const yearQuery = academicYearId ? `academicYearId=${encodeURIComponent(academicYearId)}` : ""
+
+  useEffect(() => {
+    setAcademicYearId(readActivityYearFromUrl())
+  }, [])
+
+  const fetchYearOptions = useCallback(async () => {
+    try {
+      const res = await fetch("/api/activity-events/academic-years", { headers: getAuthHeaders(), cache: "no-store" })
+      if (res.ok) {
+        const data = await res.json()
+        setYearOptions(data.years ?? [])
+        setActiveYear(data.active ?? null)
+      }
+    } catch {
+      setYearOptions([])
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchYearOptions()
+  }, [fetchYearOptions])
+
+  const selectYear = (yearId: string) => {
+    setAcademicYearId(yearId)
+    writeActivityYearToUrl(yearId)
+    setPage(1)
+  }
+
+  /** Arşivde seçilebilen yıllar: aktif olmayan ve faaliyeti olan yıllar (seçili olan her zaman listede) */
+  const archiveYears = yearOptions.filter(
+    (y) => !y.isActive && (y.eventCount > 0 || y.id === academicYearId)
+  )
+
+  const openArchive = () => {
+    selectYear(archiveYears[0]?.id ?? "all")
+  }
+
+  const selectedYearName =
+    academicYearId === "all"
+      ? "Tüm yıllar"
+      : yearOptions.find((y) => y.id === academicYearId)?.name ?? stats?.academicYear?.name ?? ""
 
   const fetchStaffSummary = useCallback(async () => {
     try {
-      const res = await fetch("/api/ib-dashboard/personel-istatistik?top=6", {
+      if (!yearReady) return
+      const res = await fetch(`/api/ib-dashboard/personel-istatistik?top=6${yearQuery ? `&${yearQuery}` : ""}`, {
         headers: getAuthHeaders(),
         cache: "no-store",
       })
@@ -173,6 +264,7 @@ export function IBFaaliyetDashboard({
           setStaffStatsSummary({
             staffWithEntries: data.summary.staffWithEntries,
             thisYearActivities: data.summary.thisYearActivities,
+            totalActivities: data.summary.totalActivities,
           })
         }
       }
@@ -180,11 +272,15 @@ export function IBFaaliyetDashboard({
       setTopStaff([])
       setStaffStatsSummary(null)
     }
-  }, [])
+  }, [yearReady, yearQuery])
 
   const fetchStats = useCallback(async () => {
     try {
-      const res = await fetch("/api/activity-events/stats", { headers: getAuthHeaders() })
+      if (!yearReady) return
+      const res = await fetch(`/api/activity-events/stats${yearQuery ? `?${yearQuery}` : ""}`, {
+        headers: getAuthHeaders(),
+        cache: "no-store",
+      })
       if (res.ok) {
         setStats(await res.json())
         setStatsError(null)
@@ -202,14 +298,16 @@ export function IBFaaliyetDashboard({
       setStats(null)
       setStatsError("İstatistikler yüklenemedi (ağ hatası).")
     } finally {
-      setLoading(false)
+      if (yearReady) setLoading(false)
     }
-  }, [])
+  }, [yearReady, yearQuery])
 
   const fetchActivities = useCallback(async () => {
+    if (!yearReady) return
     setLoadingList(true)
     try {
       const params = new URLSearchParams({ page: String(page), limit: "20" })
+      if (academicYearId) params.set("academicYearId", academicYearId)
       if (studentFilter) params.set("studentId", studentFilter)
       if (typeFilter) params.set("type", typeFilter)
       if (mainTypeFilter) params.set("mainType", mainTypeFilter)
@@ -255,6 +353,8 @@ export function IBFaaliyetDashboard({
     startDate,
     endDate,
     verificationStatusFilter,
+    yearReady,
+    academicYearId,
   ])
 
   const fetchStudents = useCallback(async () => {
@@ -323,6 +423,7 @@ export function IBFaaliyetDashboard({
       fetchStats()
       if (canViewStaffStats) fetchStaffSummary()
       fetchActivities()
+      fetchYearOptions()
     } catch (e) {
       alert(e instanceof Error ? e.message : "Silme işlemi başarısız.")
     }
@@ -382,10 +483,43 @@ export function IBFaaliyetDashboard({
       <div className="rounded-2xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-indigo-900 px-6 py-8 text-white shadow-xl">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{title}</h1>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+              {title}
+              {isArchive && <span className="ml-2 font-semibold text-amber-200">· Arşiv</span>}
+            </h1>
             <p className="mt-1 text-indigo-100">{subtitle}</p>
+            <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white">
+              <Calendar className="h-3.5 w-3.5" />
+              {isArchive
+                ? selectedYearName || "Arşiv"
+                : activeYear?.name
+                  ? `${activeYear.name} (aktif yıl)`
+                  : "Aktif akademik yıl tanımlı değil — tüm faaliyetler gösteriliyor"}
+            </p>
           </div>
           <div className="flex flex-wrap gap-3">
+            {isArchive ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => selectYear("")}
+                className="bg-white/20 hover:bg-white/30 text-white border-0"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Aktif yıla dön
+              </Button>
+            ) : (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={openArchive}
+                className="bg-white/20 hover:bg-white/30 text-white border-0"
+                title="Geçmiş akademik yılların faaliyetleri"
+              >
+                <Archive className="h-4 w-4 mr-2" />
+                Arşiv
+              </Button>
+            )}
             {showViewerButton && onViewerClick && (
               <Button variant="secondary" size="sm" onClick={onViewerClick} className="bg-white/20 hover:bg-white/30 text-white border-0">
                 <Settings className="h-4 w-4 mr-2" />
@@ -401,6 +535,36 @@ export function IBFaaliyetDashboard({
           </div>
         </div>
       </div>
+
+      {isArchive && (
+        <div className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-2">
+            <Archive className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+            <p>
+              <span className="font-semibold">Arşiv görünümü.</span> Geçmiş akademik yılların faaliyetlerini
+              görüyorsunuz. Faaliyetler başlangıç tarihine göre ilgili akademik yıla kaydedilir.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Label htmlFor="faaliyet-arsiv-yil" className="text-xs text-amber-900 whitespace-nowrap">
+              Akademik yıl
+            </Label>
+            <select
+              id="faaliyet-arsiv-yil"
+              value={academicYearId ?? ""}
+              onChange={(e) => selectYear(e.target.value)}
+              className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-sm"
+            >
+              {archiveYears.map((y) => (
+                <option key={y.id} value={y.id}>
+                  {y.name} ({y.eventCount})
+                </option>
+              ))}
+              <option value="all">Tüm yıllar</option>
+            </select>
+          </div>
+        </div>
+      )}
 
       {(listError || statsError) && (
         <div
@@ -430,7 +594,9 @@ export function IBFaaliyetDashboard({
               <div>
                 <p className="text-sm font-medium text-gray-500">Toplam Faaliyet</p>
                 <p className="mt-1 text-3xl font-bold text-gray-900">{stats?.total ?? 0}</p>
-                <p className="mt-0.5 text-xs text-gray-500">Bu yıl: {stats?.thisYear ?? 0}</p>
+                <p className="mt-0.5 text-xs text-gray-500">
+                  {isArchive ? selectedYearName : "Aktif yıl"} · Tüm yıllar: {stats?.allYearsTotal ?? stats?.total ?? 0}
+                </p>
               </div>
               <div className="rounded-xl bg-indigo-100 p-3">
                 <BarChart3 className="h-6 w-6 text-indigo-600" />
@@ -484,9 +650,9 @@ export function IBFaaliyetDashboard({
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-500">Bu Yıl</p>
+                <p className="text-sm font-medium text-gray-500">Bu Akademik Yıl</p>
                 <p className="mt-1 text-3xl font-bold text-gray-900">{stats?.thisYear ?? 0}</p>
-                <p className="mt-0.5 text-xs text-gray-500">{new Date().getFullYear()} faaliyetleri</p>
+                <p className="mt-0.5 text-xs text-gray-500">{activeYear?.name ?? "Aktif yıl tanımlı değil"}</p>
               </div>
               <div className="rounded-xl bg-gray-100 p-3">
                 <Award className="h-6 w-6 text-gray-600" />
@@ -508,11 +674,13 @@ export function IBFaaliyetDashboard({
               <CardDescription>
                 Sorumlu öğretmene göre faaliyet giriş sayıları
                 {staffStatsSummary
-                  ? ` · ${staffStatsSummary.staffWithEntries} personel · Bu yıl ${staffStatsSummary.thisYearActivities} kayıt`
+                  ? isArchive
+                    ? ` · ${staffStatsSummary.staffWithEntries} personel · ${selectedYearName}: ${staffStatsSummary.totalActivities} kayıt`
+                    : ` · ${staffStatsSummary.staffWithEntries} personel · Bu akademik yıl ${staffStatsSummary.thisYearActivities} kayıt`
                   : ""}
               </CardDescription>
             </div>
-            <Link href={personelIstatistikHref}>
+            <Link href={withActivityYear(personelIstatistikHref, academicYearId ?? "")}>
               <Button variant="outline" size="sm">
                 Tüm istatistikler
                 <ChevronRight className="h-4 w-4 ml-1" />
@@ -525,7 +693,7 @@ export function IBFaaliyetDashboard({
                 {topStaff.map((s, i) => (
                   <Link
                     key={s.staffId}
-                    href={`${personelIstatistikHref}?staffId=${s.staffId}`}
+                    href={withActivityYear(`${personelIstatistikHref}?staffId=${s.staffId}`, academicYearId ?? "")}
                     className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50/60 px-4 py-3 transition-colors hover:border-violet-300 hover:bg-violet-50/40"
                   >
                     <div className="min-w-0">
@@ -602,7 +770,7 @@ export function IBFaaliyetDashboard({
                 {filteredTopStudents.map((s, i) => (
                   <li key={s.studentId}>
                     <Link
-                      href={studentDetailHref(s.studentId)}
+                      href={withActivityYear(studentDetailHref(s.studentId), academicYearId ?? "")}
                       className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 transition-all hover:border-indigo-300 hover:bg-indigo-50/50 hover:shadow-sm"
                     >
                       <div className="flex items-center gap-3 min-w-0">
@@ -633,7 +801,7 @@ export function IBFaaliyetDashboard({
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-gray-500">
                 <Users className="h-12 w-12 mb-3 text-gray-300" />
-                <p className="text-sm">Henüz katılım verisi yok</p>
+                <p className="text-sm">{isArchive ? "Bu yılda katılım verisi yok" : "Bu akademik yılda henüz katılım verisi yok"}</p>
                 <p className="text-xs mt-1">Faaliyet oluşturma modülü ile kayıt oluşturun</p>
               </div>
             )}
@@ -757,6 +925,7 @@ export function IBFaaliyetDashboard({
           <div>
             <CardTitle className="text-lg font-semibold">Faaliyet Listesi</CardTitle>
             <CardDescription>
+              {isArchive ? `${selectedYearName} · ` : activeYear ? `${activeYear.name} · ` : ""}
               Toplam {totalCount} faaliyet / grup · Satıra tıklayarak veya &quot;Detay&quot; ile katılımcılara inin
             </CardDescription>
           </div>
