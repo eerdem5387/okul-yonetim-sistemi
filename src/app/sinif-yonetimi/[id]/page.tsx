@@ -1,4 +1,5 @@
 "use client";
+import { notify } from "@/lib/notify"
 
 import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -137,7 +138,7 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
         // ✅ Rehberlik kullanıcısı kontrolü: Sadece kendisine atanan sınıfları görebilir
         if (role === "counselor" && staffId) {
           if (classData.counselorId !== staffId) {
-            alert("Bu sınıfa erişim yetkiniz bulunmamaktadır. Sadece size atanan sınıfları görüntüleyebilirsiniz.");
+            notify("Bu sınıfa erişim yetkiniz bulunmamaktadır. Sadece size atanan sınıfları görüntüleyebilirsiniz.");
             router.push("/sinif-yonetimi");
             return;
           }
@@ -192,11 +193,11 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
         setShowAssignCounselorModal(false);
         fetchClassData(userRole, staffId);
       } else {
-        alert(data.error || "Rehberlik ataması güncellenirken bir hata oluştu.");
+        notify(data.error || "Rehberlik ataması güncellenirken bir hata oluştu.");
       }
     } catch (error) {
       console.error("Error assigning counselor:", error);
-      alert("Rehberlik ataması güncellenirken bir hata oluştu.");
+      notify("Rehberlik ataması güncellenirken bir hata oluştu.");
     } finally {
       setActionLoading(false);
     }
@@ -227,18 +228,18 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
           parts.push(String(data.message));
         }
         if (parts.length > 0) {
-          alert(parts.join(". ") + ".");
+          notify(parts.join(". ") + ".");
         }
         setShowAddStudentModal(false);
         setSelectedStudentIds([]);
         setStudentSearch("");
         fetchClassData(userRole, staffId);
       } else {
-        alert(data.error || "Öğrenci eklenirken bir hata oluştu.");
+        notify(data.error || "Öğrenci eklenirken bir hata oluştu.");
       }
     } catch (error) {
       console.error("Error adding students:", error);
-      alert("Öğrenci eklenirken bir hata oluştu.");
+      notify("Öğrenci eklenirken bir hata oluştu.");
     } finally {
       setActionLoading(false);
     }
@@ -262,10 +263,10 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
         router.push("/sinif-yonetimi");
         return;
       }
-      alert(data.error || "Sınıf silinirken bir hata oluştu.");
+      notify(data.error || "Sınıf silinirken bir hata oluştu.");
     } catch (error) {
       console.error("Error deleting class:", error);
-      alert("Sınıf silinirken bir hata oluştu.");
+      notify("Sınıf silinirken bir hata oluştu.");
     } finally {
       setActionLoading(false);
     }
@@ -282,11 +283,11 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
         fetchClassData(userRole, staffId);
       } else {
         const data = await response.json();
-        alert(data.error || "Öğrenci çıkarılırken bir hata oluştu.");
+        notify(data.error || "Öğrenci çıkarılırken bir hata oluştu.");
       }
     } catch (error) {
       console.error("Error removing student:", error);
-      alert("Öğrenci çıkarılırken bir hata oluştu.");
+      notify("Öğrenci çıkarılırken bir hata oluştu.");
     } finally {
       setActionLoading(false);
     }
@@ -439,7 +440,7 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
                       );
                     } else {
                       const data = await res.json().catch(() => ({}));
-                      alert(data.error || "Cumartesi ayarı kaydedilemedi");
+                      notify(data.error || "Cumartesi ayarı kaydedilemedi");
                     }
                   } finally {
                     setActionLoading(false);
@@ -468,7 +469,7 @@ export default function ClassDetailPage({ params }: { params: Promise<{ id: stri
                       );
                     } else {
                       const data = await res.json().catch(() => ({}));
-                      alert(data.error || "Mod kaydedilemedi");
+                      notify(data.error || "Mod kaydedilemedi");
                     }
                   } finally {
                     setActionLoading(false);

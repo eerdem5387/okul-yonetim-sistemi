@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
@@ -210,7 +211,7 @@ export default function NewRegistrationsListPage() {
       document.body.removeChild(a)
     } catch (e) {
       console.error("Export error:", e)
-      alert("Excel dışa aktarım başarısız oldu")
+      notify("Excel dışa aktarım başarısız oldu")
     }
   }, [])
 
@@ -350,11 +351,11 @@ export default function NewRegistrationsListPage() {
         window.URL.revokeObjectURL(url)
         document.body.removeChild(a)
       } else {
-        alert("PDF indirme başarısız oldu!")
+        notify("PDF indirme başarısız oldu!")
       }
     } catch (error) {
       console.error("Error downloading PDF:", error)
-      alert("PDF indirme sırasında bir hata oluştu!")
+      notify("PDF indirme sırasında bir hata oluştu!")
     }
   }
 
@@ -373,7 +374,7 @@ export default function NewRegistrationsListPage() {
       })
 
       if (response.ok) {
-        alert('✅ Kayıt başarıyla silindi!')
+        notify('✅ Kayıt başarıyla silindi!')
         // Listeyi yenile
         fetchRegistrations()
         // Eğer silinen kayıt detay görünümündeyse, detay görünümünü kapat
@@ -385,11 +386,11 @@ export default function NewRegistrationsListPage() {
         }
       } else {
         const errorData = await response.json().catch(() => ({}))
-        alert(`❌ Kayıt silinirken hata oluştu: ${errorData.error || 'Bilinmeyen hata'}`)
+        notify(`❌ Kayıt silinirken hata oluştu: ${errorData.error || 'Bilinmeyen hata'}`)
       }
     } catch (error) {
       console.error("Error deleting registration:", error)
-      alert("Kayıt silme sırasında bir hata oluştu!")
+      notify("Kayıt silme sırasında bir hata oluştu!")
     }
   }
 

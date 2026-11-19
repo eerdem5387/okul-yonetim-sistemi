@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { FileDown, Loader2, RefreshCw, Trash2 } from "lucide-react"
@@ -319,7 +320,7 @@ function NoticesPanel({
       const res = await fetch(`/api/comms/notices/${id}/ack`, { method: "POST", headers: getAuthHeaders() })
       const j = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert(j.error || "İşlem başarısız")
+        notify(j.error || "İşlem başarısız")
         return
       }
       if (j.notice) onSelect(j.notice as OfficialNotice)
@@ -337,7 +338,7 @@ function NoticesPanel({
       const res = await fetch(`/api/comms/notices/${id}/pdf`, { headers: getAuthHeaders() })
       if (!res.ok) {
         const j = await res.json().catch(() => ({}))
-        alert(j.error || "PDF indirilemedi")
+        notify(j.error || "PDF indirilemedi")
         return
       }
       const blob = await res.blob()
@@ -350,7 +351,7 @@ function NoticesPanel({
       a.remove()
       URL.revokeObjectURL(url)
     } catch {
-      alert("PDF indirilemedi")
+      notify("PDF indirilemedi")
     } finally {
       setPdfLoading(false)
     }
@@ -367,7 +368,7 @@ function NoticesPanel({
       })
       const j = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert(j.error || "Silinemedi")
+        notify(j.error || "Silinemedi")
         return
       }
       onSelect(null)
@@ -634,7 +635,7 @@ function TemplatesAdmin({
 
   const save = async () => {
     if (!title.trim() || !body.trim()) {
-      alert("Başlık ve şablon metni zorunlu")
+      notify("Başlık ve şablon metni zorunlu")
       return
     }
     setBusy(true)
@@ -646,7 +647,7 @@ function TemplatesAdmin({
       })
       const j = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert(j.error || "Kaydedilemedi")
+        notify(j.error || "Kaydedilemedi")
         return
       }
       resetForm()
@@ -664,7 +665,7 @@ function TemplatesAdmin({
     })
     const j = await res.json().catch(() => ({}))
     if (!res.ok) {
-      alert(j.error || "Güncellenemedi")
+      notify(j.error || "Güncellenemedi")
       return
     }
     setGrants((prev) => prev.map((s) => (s.id === staffId ? { ...s, sendOfficial: granted } : s)))
@@ -836,7 +837,7 @@ function RequestsPanel({
     })
     const j = await res.json().catch(() => ({}))
     if (!res.ok) {
-      alert(j.error || "Gönderilemedi")
+      notify(j.error || "Gönderilemedi")
       return
     }
     setTemplateId("")
@@ -861,7 +862,7 @@ function RequestsPanel({
       })
       const j = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert(j.error || "İşlem başarısız")
+        notify(j.error || "İşlem başarısız")
         return
       }
       setSelectedId(null)
@@ -882,7 +883,7 @@ function RequestsPanel({
       })
       const j = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert(j.error || "Silinemedi")
+        notify(j.error || "Silinemedi")
         return
       }
       setSelectedId(null)
@@ -1175,7 +1176,7 @@ function GroupsPanel({
     })
     const j = await res.json().catch(() => ({}))
     if (!res.ok) {
-      alert(j.error || "Oluşturulamadı")
+      notify(j.error || "Oluşturulamadı")
       return
     }
     setClassId("")
@@ -1194,7 +1195,7 @@ function GroupsPanel({
     })
     const j = await res.json().catch(() => ({}))
     if (!res.ok) {
-      alert(j.error || "Gönderilemedi")
+      notify(j.error || "Gönderilemedi")
       return
     }
     setText("")
@@ -1215,7 +1216,7 @@ function GroupsPanel({
     })
     const j = await res.json().catch(() => ({}))
     if (!res.ok) {
-      alert(j.error || "Duyuru gönderilemedi")
+      notify(j.error || "Duyuru gönderilemedi")
       return
     }
     setShowAnnouncementForm(false)
@@ -1236,7 +1237,7 @@ function GroupsPanel({
     })
     const j = await res.json().catch(() => ({}))
     if (!res.ok) {
-      alert(j.error || "Mesaj silinemedi")
+      notify(j.error || "Mesaj silinemedi")
       return
     }
     await loadThread(selectedId)
@@ -1251,7 +1252,7 @@ function GroupsPanel({
     })
     const j = await res.json().catch(() => ({}))
     if (!res.ok) {
-      alert(j.error || "Duyuru silinemedi")
+      notify(j.error || "Duyuru silinemedi")
       return
     }
     if (selectedId) await loadThread(selectedId)
@@ -1267,7 +1268,7 @@ function GroupsPanel({
     })
     const j = await res.json().catch(() => ({}))
     if (!res.ok) {
-      alert(j.error || "Grup silinemedi")
+      notify(j.error || "Grup silinemedi")
       return
     }
     onSelect(null)
@@ -1283,7 +1284,7 @@ function GroupsPanel({
     })
     const j = await res.json().catch(() => ({}))
     if (!res.ok) {
-      alert(j.error || "Güncellenemedi")
+      notify(j.error || "Güncellenemedi")
       return
     }
     setDetail((d) => (d ? { ...d, parentsCanPost: !d.parentsCanPost } : d))
@@ -1299,7 +1300,7 @@ function GroupsPanel({
     })
     const j = await res.json().catch(() => ({}))
     if (!res.ok) {
-      alert(j.error || "Eklenemedi")
+      notify(j.error || "Eklenemedi")
       return
     }
     setAddTeacherId("")

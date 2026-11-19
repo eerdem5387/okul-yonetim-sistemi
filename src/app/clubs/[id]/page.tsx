@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -139,15 +140,15 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
       })
 
       if (response.ok) {
-        alert("Öğrenci kulübe eklendi!")
+        notify("Öğrenci kulübe eklendi!")
         fetchClub()
         setShowAddStudent(false)
       } else {
-        alert("Öğrenci eklenirken bir hata oluştu.")
+        notify("Öğrenci eklenirken bir hata oluştu.")
       }
     } catch (error) {
       console.error("Error adding student:", error)
-      alert("Öğrenci eklenirken bir hata oluştu.")
+      notify("Öğrenci eklenirken bir hata oluştu.")
     }
   }
 
@@ -162,14 +163,14 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
       })
 
       if (response.ok) {
-        alert("Öğrenci kulüpten çıkarıldı!")
+        notify("Öğrenci kulüpten çıkarıldı!")
         fetchClub()
       } else {
-        alert("Öğrenci çıkarılırken bir hata oluştu.")
+        notify("Öğrenci çıkarılırken bir hata oluştu.")
       }
     } catch (error) {
       console.error("Error removing student:", error)
-      alert("Öğrenci çıkarılırken bir hata oluştu.")
+      notify("Öğrenci çıkarılırken bir hata oluştu.")
     }
   }
 

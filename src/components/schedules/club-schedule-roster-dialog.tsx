@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Loader2, Plus, RotateCcw, Search, UserMinus, Users } from "lucide-react"
@@ -98,7 +99,7 @@ export function ClubScheduleRosterDialog({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert((data as { error?: string }).error || "İşlem başarısız")
+        notify((data as { error?: string }).error || "İşlem başarısız")
         return
       }
       if (data.roster) setRoster(data.roster)

@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 import { isoDateTR } from "@/lib/dates"
 
 import { useState, useEffect, useCallback } from "react"
@@ -468,7 +469,7 @@ export default function NewRegistrationPage() {
     const uniformErrors = validateUniformFields(otherContractData)
     const allErrors = [...identityErrors, ...contractErrors, ...uniformErrors]
     if (allErrors.length > 0) {
-      alert(formatValidationAlert(allErrors))
+      notify(formatValidationAlert(allErrors))
       return
     }
 
@@ -515,17 +516,17 @@ export default function NewRegistrationPage() {
                   studentId = foundStudent.id
                   setCreatedStudentId(studentId)
                 } else {
-                  alert("⚠️ Bu TC Kimlik Numarası ile kayıtlı bir öğrenci zaten mevcut!\n\nLütfen TC numarasını kontrol edin.")
+                  notify("⚠️ Bu TC Kimlik Numarası ile kayıtlı bir öğrenci zaten mevcut!\n\nLütfen TC numarasını kontrol edin.")
                   setIsSubmitting(false)
                   return
                 }
               } else {
-                alert("⚠️ Bu TC Kimlik Numarası ile kayıtlı bir öğrenci zaten mevcut!\n\nLütfen TC numarasını kontrol edin.")
+                notify("⚠️ Bu TC Kimlik Numarası ile kayıtlı bir öğrenci zaten mevcut!\n\nLütfen TC numarasını kontrol edin.")
                 setIsSubmitting(false)
                 return
               }
             } else {
-              alert(errorData.error || "Öğrenci oluşturulurken hata oluştu!")
+              notify(errorData.error || "Öğrenci oluşturulurken hata oluştu!")
               setIsSubmitting(false)
               return
             }
@@ -534,7 +535,7 @@ export default function NewRegistrationPage() {
             // API response formatı: { success: true, student: {...} } veya direkt student objesi
             studentId = newStudent.student?.id || newStudent.id
             if (!studentId) {
-              alert("⚠️ Öğrenci oluşturuldu ancak ID alınamadı!")
+              notify("⚠️ Öğrenci oluşturuldu ancak ID alınamadı!")
               setIsSubmitting(false)
               return
             }
@@ -615,7 +616,7 @@ export default function NewRegistrationPage() {
           })
         )
         const errorMessages = errorDetails.filter(msg => msg !== null)
-        alert(`⚠️ Sözleşmeler kaydedilirken hata oluştu!\n\n${errorMessages.join("\n")}`)
+        notify(`⚠️ Sözleşmeler kaydedilirken hata oluştu!\n\n${errorMessages.join("\n")}`)
         setIsSubmitting(false)
         return
       }
@@ -626,7 +627,7 @@ export default function NewRegistrationPage() {
       const contractId = mainContractResponse.id || mainContractResponse.newRegistration?.id
       
       if (!contractId) {
-        alert("⚠️ Sözleşme kaydedildi ancak ID alınamadı!")
+        notify("⚠️ Sözleşme kaydedildi ancak ID alınamadı!")
         return
       }
 
@@ -658,7 +659,7 @@ export default function NewRegistrationPage() {
         document.body.removeChild(a)
         
         // Başarı mesajı
-        alert(`✅ Kayıt başarıyla tamamlandı!\n\n` +
+        notify(`✅ Kayıt başarıyla tamamlandı!\n\n` +
           `Öğrenci: ${studentFormData.firstName} ${studentFormData.lastName}\n` +
           `TC: ${studentFormData.tcNumber}\n\n` +
           `✓ Öğrenci sisteme eklendi\n` +
@@ -692,11 +693,11 @@ export default function NewRegistrationPage() {
         await fetchStats()
       } else {
         const errorData = await pdfResponse.json().catch(() => ({}))
-        alert(`⚠️ PDF oluşturulurken hata oluştu!\n\n${errorData.error || errorData.details || "Bilinmeyen hata"}`)
+        notify(`⚠️ PDF oluşturulurken hata oluştu!\n\n${errorData.error || errorData.details || "Bilinmeyen hata"}`)
       }
     } catch (error) {
       console.error("Error downloading PDF:", error)
-      alert("PDF indirilirken hata oluştu!")
+      notify("PDF indirilirken hata oluştu!")
     } finally {
       setIsSubmitting(false)
     }

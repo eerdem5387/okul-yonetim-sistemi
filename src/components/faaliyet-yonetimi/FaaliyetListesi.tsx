@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
@@ -115,10 +116,10 @@ export function FaaliyetListesi() {
         fetchEvents()
       } else {
         const data = await res.json().catch(() => ({}))
-        alert(data.error || "Silme işlemi başarısız")
+        notify(data.error || "Silme işlemi başarısız")
       }
     } catch {
-      alert("Silme işlemi başarısız")
+      notify("Silme işlemi başarısız")
     }
   }
 
@@ -138,7 +139,7 @@ export function FaaliyetListesi() {
       a.click()
       URL.revokeObjectURL(url)
     } catch (e) {
-      alert(e instanceof Error ? e.message : "PDF indirilemedi")
+      notify(e instanceof Error ? e.message : "PDF indirilemedi")
     } finally {
       setDownloadingId(null)
     }

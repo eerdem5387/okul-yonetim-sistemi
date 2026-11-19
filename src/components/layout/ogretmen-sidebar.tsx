@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { CommandPalette } from "@/components/layout/CommandPalette"
 import {
   Home,
   BookOpen,
@@ -134,6 +135,7 @@ export default function OgretmenSidebar({ className }: OgretmenSidebarProps) {
   return (
     <>
       <MobileMenuButton open={isMobileOpen} onToggle={() => setIsMobileOpen(!isMobileOpen)} />
+      <CommandPalette pages={navigation.map((item) => ({ name: item.name, href: item.href }))} />
 
       {isMobileOpen && (
         <div

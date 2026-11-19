@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
@@ -502,7 +503,7 @@ export function FaaliyetForm({ mainType, subtypeId, editEventId }: FaaliyetFormP
       setShowPdfModal(false)
       router.push(`/faaliyet-yonetimi/${created.id}`)
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Kayıt sırasında hata oluştu")
+      notify(e instanceof Error ? e.message : "Kayıt sırasında hata oluştu")
     } finally {
       setSaving(false)
     }

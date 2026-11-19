@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 import { isoDateTR } from "@/lib/dates"
 
 import { useState, useEffect, useCallback, useRef } from "react"
@@ -375,11 +376,11 @@ export default function StudentsPage() {
           classes: Array.isArray(data.classes) ? data.classes : [],
         })
         if (typeof data.error === "string" && data.error) {
-          alert(data.error)
+          notify(data.error)
         }
       } else {
         setUnassignedModalData({ students: [], classes: [] })
-        alert(data.error || "Liste yüklenemedi")
+        notify(data.error || "Liste yüklenemedi")
       }
     } catch (e) {
       console.error(e)
@@ -410,11 +411,11 @@ export default function StudentsPage() {
         await fetchOverview()
         await loadUnassignedModal(unassignedModalGrade)
       } else {
-        alert(data.error || "Atama başarısız")
+        notify(data.error || "Atama başarısız")
       }
     } catch (e) {
       console.error(e)
-      alert("Atama sırasında hata oluştu")
+      notify("Atama sırasında hata oluştu")
     } finally {
       setAssignSaving(false)
     }
@@ -428,23 +429,23 @@ export default function StudentsPage() {
     const tcNumber = formData.tcNumber.trim()
 
     if (!firstName || !lastName) {
-      alert("⚠️ Ad ve soyad zorunludur.")
+      notify("⚠️ Ad ve soyad zorunludur.")
       return
     }
     if (!/^\d{11}$/.test(tcNumber)) {
-      alert("⚠️ TC Kimlik No 11 haneli olmalı ve yalnızca rakamlardan oluşmalıdır.")
+      notify("⚠️ TC Kimlik No 11 haneli olmalı ve yalnızca rakamlardan oluşmalıdır.")
       return
     }
     if (!formData.grade?.trim()) {
-      alert("⚠️ Sınıf seçimi zorunludur.")
+      notify("⚠️ Sınıf seçimi zorunludur.")
       return
     }
     if (!formData.birthDate?.trim()) {
-      alert("⚠️ Doğum tarihi zorunludur.")
+      notify("⚠️ Doğum tarihi zorunludur.")
       return
     }
     if (!formData.address?.trim()) {
-      alert("⚠️ Adres zorunludur.")
+      notify("⚠️ Adres zorunludur.")
       return
     }
 
@@ -472,7 +473,7 @@ export default function StudentsPage() {
         setShowForm(false)
         setEditingStudent(null)
         setFormData({ ...emptyFormData })
-        alert(editingStudent ? "Öğrenci başarıyla güncellendi!" : "Öğrenci başarıyla eklendi!")
+        notify(editingStudent ? "Öğrenci başarıyla güncellendi!" : "Öğrenci başarıyla eklendi!")
         // Listeyi yenile
         fetchStudents(currentPage, searchTerm, selectedGrade, showGraduatesView)
       } else {
@@ -481,11 +482,11 @@ export default function StudentsPage() {
           errorData.error ||
           errorData.details ||
           (editingStudent ? "Öğrenci güncellenirken hata oluştu!" : "Öğrenci eklenirken hata oluştu!")
-        alert(`⚠️ ${message}`)
+        notify(`⚠️ ${message}`)
       }
     } catch (error) {
       console.error("Error saving student:", error)
-      alert("⚠️ Öğrenci kaydedilirken beklenmeyen bir hata oluştu.")
+      notify("⚠️ Öğrenci kaydedilirken beklenmeyen bir hata oluştu.")
     }
   }
 
@@ -538,10 +539,10 @@ export default function StudentsPage() {
         if (response.ok) {
           fetchStudents(currentPage, searchTerm, selectedGrade, showGraduatesView)
           fetchOverview()
-          alert("Öğrenci başarıyla silindi!")
+          notify("Öğrenci başarıyla silindi!")
         } else {
           const errorData = await response.json().catch(() => ({}))
-          alert(errorData.error || "Öğrenci silinirken hata oluştu!")
+          notify(errorData.error || "Öğrenci silinirken hata oluştu!")
         }
       } catch (error) {
         console.error("Error deleting student:", error)
@@ -565,16 +566,16 @@ export default function StudentsPage() {
 
       if (response.ok) {
         const data = await response.json()
-        alert(data.message || "Öğrenciler başarıyla yükseltildi!")
+        notify(data.message || "Öğrenciler başarıyla yükseltildi!")
         fetchStudents(currentPage, searchTerm, selectedGrade, showGraduatesView)
         fetchOverview()
       } else {
         const errorData = await response.json()
-        alert(errorData.error || "Öğrenciler yükseltilirken hata oluştu!")
+        notify(errorData.error || "Öğrenciler yükseltilirken hata oluştu!")
       }
     } catch (error) {
       console.error("Error promoting students:", error)
-      alert("Öğrenciler yükseltilirken hata oluştu!")
+      notify("Öğrenciler yükseltilirken hata oluştu!")
     } finally {
       setConfirmPromote(false)
     }
@@ -1114,7 +1115,7 @@ export default function StudentsPage() {
             document.body.removeChild(a)
           } catch (e) {
             console.error('Export error:', e)
-            alert('Excel dışa aktarım başarısız oldu')
+            notify('Excel dışa aktarım başarısız oldu')
           }
         }} className="flex-1 sm:flex-initial text-xs sm:text-sm">
           <span className="hidden sm:inline">Excel&apos;e Aktar</span>

@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 import { isoDateTR } from "@/lib/dates"
 
 import { useState, useEffect, useCallback } from "react"
@@ -165,11 +166,11 @@ export default function TeacherHomeworkPage() {
         
         setShowForm(true)
       } else {
-        alert("Ödev bilgileri yüklenirken bir hata oluştu")
+        notify("Ödev bilgileri yüklenirken bir hata oluştu")
       }
     } catch (error) {
       console.error("Error loading homework:", error)
-      alert("Ödev yüklenirken bir hata oluştu")
+      notify("Ödev yüklenirken bir hata oluştu")
     } finally {
       setLoading(false)
     }
@@ -187,15 +188,15 @@ export default function TeacherHomeworkPage() {
       })
 
       if (response.ok) {
-        alert("Ödev başarıyla silindi!")
+        notify("Ödev başarıyla silindi!")
         fetchHomeworks(staffId)
       } else {
         const error = await response.json()
-        alert(error.error || "Ödev silinirken bir hata oluştu")
+        notify(error.error || "Ödev silinirken bir hata oluştu")
       }
     } catch (error) {
       console.error("Error deleting homework:", error)
-      alert("Ödev silinirken bir hata oluştu")
+      notify("Ödev silinirken bir hata oluştu")
     } finally {
       setDeletingHomeworkId(null)
     }
@@ -220,14 +221,14 @@ export default function TeacherHomeworkPage() {
         })
 
         if (response.ok) {
-          alert("Ödev başarıyla güncellendi!")
+          notify("Ödev başarıyla güncellendi!")
           setShowForm(false)
           setEditingHomeworkId(null)
           resetForm()
           fetchHomeworks(staffId)
         } else {
           const error = await response.json()
-          alert(error.error || "Bir hata oluştu")
+          notify(error.error || "Bir hata oluştu")
         }
       } else {
         // Yeni ödev oluşturma
@@ -254,7 +255,7 @@ export default function TeacherHomeworkPage() {
         } else if (selectedStudentIds.length > 0) {
           requestBody.studentIds = selectedStudentIds
         } else {
-          alert("Lütfen en az bir öğrenci seçin veya 'Tüm sınıf' seçeneğini işaretleyin")
+          notify("Lütfen en az bir öğrenci seçin veya 'Tüm sınıf' seçeneğini işaretleyin")
           setLoading(false)
           return
         }
@@ -266,18 +267,18 @@ export default function TeacherHomeworkPage() {
       })
 
       if (response.ok) {
-        alert("Ödev başarıyla oluşturuldu!")
+        notify("Ödev başarıyla oluşturuldu!")
         setShowForm(false)
           resetForm()
         fetchHomeworks(staffId)
       } else {
         const error = await response.json()
-        alert(error.error || "Bir hata oluştu")
+        notify(error.error || "Bir hata oluştu")
         }
       }
     } catch (error) {
       console.error("Error saving homework:", error)
-      alert("Ödev kaydedilirken bir hata oluştu")
+      notify("Ödev kaydedilirken bir hata oluştu")
     } finally {
       setLoading(false)
     }
@@ -350,11 +351,11 @@ export default function TeacherHomeworkPage() {
         }
       } else {
         const error = await response.json()
-        alert(error.error || "Durum güncellenirken bir hata oluştu")
+        notify(error.error || "Durum güncellenirken bir hata oluştu")
       }
     } catch (error) {
       console.error("Error updating completion:", error)
-      alert("Durum güncellenirken bir hata oluştu")
+      notify("Durum güncellenirken bir hata oluştu")
     } finally {
       setUpdatingAssignmentId(null)
     }

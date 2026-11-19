@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -248,7 +249,7 @@ export default function ParentPage() {
       await fetchClubs(selectedStudent.id)
     } catch (error) {
       console.error("Error clearing club selections:", error)
-      alert("Mevcut seçimler iptal edilemedi.")
+      notify("Mevcut seçimler iptal edilemedi.")
     } finally {
       setSubmitting(false)
     }
@@ -271,11 +272,11 @@ export default function ParentPage() {
     } else {
       const club = clubs.find((c) => c.id === clubId)
       if (club?.scheduleSelectable === false) {
-        alert("Bu kulüp öğrencinin ÖÇG programıyla çakışıyor veya programı tanımlı değil.")
+        notify("Bu kulüp öğrencinin ÖÇG programıyla çakışıyor veya programı tanımlı değil.")
         return
       }
       if (club && conflictsWithSelected(club, selectedClubs)) {
-        alert("Bu kulüp seçtiğiniz diğer kulüp(ler)le aynı saatte çakışıyor.")
+        notify("Bu kulüp seçtiğiniz diğer kulüp(ler)le aynı saatte çakışıyor.")
         return
       }
       const next = [...selectedClubs, clubId]
@@ -285,7 +286,7 @@ export default function ParentPage() {
       )
       const visibleSelected = next.filter((id) => visibleClubs.some((c) => c.id === id))
       if (countQuotaSelections(visibleSelected, visibleClubs) > MAX_CLUB_SELECTIONS) {
-        alert(
+        notify(
           `Maksimum ${MAX_CLUB_SELECTIONS} kulüp seçebilirsiniz! (Kota dışı kulüpler bu sayıya dahil değildir)`
         )
         return
@@ -301,7 +302,7 @@ export default function ParentPage() {
         
         // Eğer bu kulüp zaten doluysa
         if (currentSelections >= fresh.capacity) {
-          alert(`❌ ${fresh.name} kulübünün kontenjanı dolmuştur!\n\nTalep oluştur butonunu kullanabilirsiniz.`)
+          notify(`❌ ${fresh.name} kulübünün kontenjanı dolmuştur!\n\nTalep oluştur butonunu kullanabilirsiniz.`)
           return
         }
       }
@@ -321,13 +322,13 @@ export default function ParentPage() {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert((data as { error?: string }).error || "Talep oluşturulamadı")
+        notify((data as { error?: string }).error || "Talep oluşturulamadı")
         return
       }
       setDemandedClubIds((prev) =>
         prev.includes(club.id) ? prev : [...prev, club.id]
       )
-      alert(
+      notify(
         (data as { alreadyExists?: boolean }).alreadyExists
           ? `${club.name} için talebiniz zaten kayıtlı.`
           : `${club.name} için talebiniz alındı.`
@@ -339,7 +340,7 @@ export default function ParentPage() {
 
   const handleConfirm = async () => {
     if (!selectedStudent) {
-      alert("Lütfen bir öğrenci seçin!")
+      notify("Lütfen bir öğrenci seçin!")
       return
     }
 
@@ -348,7 +349,7 @@ export default function ParentPage() {
     )
     const visibleSelected = selectedClubs.filter((id) => visibleClubs.some((c) => c.id === id))
     if (countQuotaSelections(visibleSelected, visibleClubs) > MAX_CLUB_SELECTIONS) {
-      alert(
+      notify(
         `Maksimum ${MAX_CLUB_SELECTIONS} kulüp seçebilirsiniz! (Kota dışı kulüpler bu sayıya dahil değildir)`
       )
       return
@@ -369,7 +370,7 @@ export default function ParentPage() {
       }
       
       if (invalidClubs.length > 0) {
-        alert(`⚠️ Uyarı!\n\nŞu kulüplerin kontenjanı dolmuştur:\n${invalidClubs.join(", ")}\n\nLütfen bu kulüpleri çıkarıp başka kulüpler seçin.`)
+        notify(`⚠️ Uyarı!\n\nŞu kulüplerin kontenjanı dolmuştur:\n${invalidClubs.join(", ")}\n\nLütfen bu kulüpleri çıkarıp başka kulüpler seçin.`)
         // Dolu olan kulüpleri seçimlerden otomatik çıkar
         const validClubIds = selectedClubs.filter(id => !invalidClubs.includes(clubs.find(c => c.id === id)?.name || ""))
         setSelectedClubs(validClubIds)
@@ -382,7 +383,7 @@ export default function ParentPage() {
 
   const handleSubmit = async () => {
     if (!selectedStudent) {
-      alert("Lütfen bir öğrenci seçin!")
+      notify("Lütfen bir öğrenci seçin!")
       setShowConfirmModal(false)
       return
     }
@@ -424,14 +425,14 @@ export default function ParentPage() {
         const errorData = await response.json()
         if (errorData.error && errorData.fullClubs) {
           const clubNames = errorData.fullClubs.map((club: { name: string }) => club.name).join(", ")
-          alert(`⚠️ Şu kulüplerin kontenjanı dolmuş:\n\n${clubNames}\n\nLütfen farklı kulüpler seçin.`)
+          notify(`⚠️ Şu kulüplerin kontenjanı dolmuş:\n\n${clubNames}\n\nLütfen farklı kulüpler seçin.`)
         } else {
-          alert(errorData.error || "Kulüp seçimleri kaydedilirken hata oluştu!")
+          notify(errorData.error || "Kulüp seçimleri kaydedilirken hata oluştu!")
         }
       }
     } catch (error) {
       console.error("Error saving club selections:", error)
-      alert("Kulüp seçimleri kaydedilirken hata oluştu!")
+      notify("Kulüp seçimleri kaydedilirken hata oluştu!")
     } finally {
       setSubmitting(false)
     }

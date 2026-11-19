@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useCallback, useEffect, useState } from "react"
 import { Loader2, Trash2, Users } from "lucide-react"
@@ -77,7 +78,7 @@ export function ClubDemandsDialog({
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        alert((data as { error?: string }).error || "Silinemedi")
+        notify((data as { error?: string }).error || "Silinemedi")
         return
       }
       await load()

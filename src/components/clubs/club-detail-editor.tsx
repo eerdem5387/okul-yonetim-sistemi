@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useEffect, useState } from "react"
 import { Pencil } from "lucide-react"
@@ -71,11 +72,11 @@ export function ClubDetailEditor({
 
   const save = async () => {
     if (!form.name.trim()) {
-      alert("Kulüp adı gerekli.")
+      notify("Kulüp adı gerekli.")
       return
     }
     if (form.gradeLevels.length === 0) {
-      alert("En az bir sınıf düzeyi seçin.")
+      notify("En az bir sınıf düzeyi seçin.")
       return
     }
     setSaving(true)
@@ -91,13 +92,13 @@ export function ClubDetailEditor({
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        alert((err as { error?: string }).error || "Kulüp güncellenemedi")
+        notify((err as { error?: string }).error || "Kulüp güncellenemedi")
         return
       }
       setOpen(false)
       onSaved()
     } catch {
-      alert("Kulüp güncellenemedi")
+      notify("Kulüp güncellenemedi")
     } finally {
       setSaving(false)
     }

@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useCallback, useEffect, useState } from "react"
 import { Clock, Loader2, Plus, Trash2 } from "lucide-react"
@@ -113,7 +114,7 @@ export function DayTemplateEditorDialog({
 
   const save = async () => {
     if (slots.some((s) => !s.label.trim() || !s.startTime || !s.endTime)) {
-      alert("Tüm satırlarda etiket ve saat dolu olmalı.")
+      notify("Tüm satırlarda etiket ve saat dolu olmalı.")
       return
     }
     setSaving(true)
@@ -134,7 +135,7 @@ export function DayTemplateEditorDialog({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert((data as { error?: string }).error || "Kaydedilemedi")
+        notify((data as { error?: string }).error || "Kaydedilemedi")
         return
       }
       onSaved?.()

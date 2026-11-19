@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Loader2, Pencil, Plus, Trash2 } from "lucide-react"
@@ -99,7 +100,7 @@ export function StaffScheduleEditor({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.classId || !form.subjectName) {
-      alert("Sınıf ve ders adı zorunludur")
+      notify("Sınıf ve ders adı zorunludur")
       return
     }
     setSubmitting(true)
@@ -128,7 +129,7 @@ export function StaffScheduleEditor({
       setForm(emptyForm)
       onChanged()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Hata")
+      notify(err instanceof Error ? err.message : "Hata")
     } finally {
       setSubmitting(false)
     }
@@ -142,7 +143,7 @@ export function StaffScheduleEditor({
     })
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
-      alert(data.error || "Silinemedi")
+      notify(data.error || "Silinemedi")
       return
     }
     onChanged()

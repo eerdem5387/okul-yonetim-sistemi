@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
@@ -132,7 +133,7 @@ export function ClubUnassignedPage({
       document.body.removeChild(a)
     } catch (e) {
       console.error(e)
-      alert("Excel indirilirken hata oluştu!")
+      notify("Excel indirilirken hata oluştu!")
     } finally {
       setExporting(false)
     }

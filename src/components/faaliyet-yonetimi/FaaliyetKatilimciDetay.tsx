@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useCallback, useEffect, useState, useRef } from "react"
 import Link from "next/link"
@@ -91,7 +92,7 @@ export function FaaliyetKatilimciDetay({ eventId, participantId }: FaaliyetKatil
       a.click()
       URL.revokeObjectURL(url)
     } catch (e) {
-      alert(e instanceof Error ? e.message : "PDF indirilemedi")
+      notify(e instanceof Error ? e.message : "PDF indirilemedi")
     } finally {
       setPdfLoading(false)
     }
@@ -111,7 +112,7 @@ export function FaaliyetKatilimciDetay({ eventId, participantId }: FaaliyetKatil
       }
       await fetchEvent()
     } catch (e) {
-      alert(e instanceof Error ? e.message : "İşlem başarısız")
+      notify(e instanceof Error ? e.message : "İşlem başarısız")
     } finally {
       setActionPid(false)
     }
@@ -153,7 +154,7 @@ export function FaaliyetKatilimciDetay({ eventId, participantId }: FaaliyetKatil
       }
       await fetchEvent()
     } catch (e) {
-      alert(e instanceof Error ? e.message : "İşlem başarısız")
+      notify(e instanceof Error ? e.message : "İşlem başarısız")
     } finally {
       setActionPid(false)
       if (signedRef.current) signedRef.current.value = ""
@@ -193,7 +194,7 @@ export function FaaliyetKatilimciDetay({ eventId, participantId }: FaaliyetKatil
       }
       await fetchEvent()
     } catch (e) {
-      alert(e instanceof Error ? e.message : "İşlem başarısız")
+      notify(e instanceof Error ? e.message : "İşlem başarısız")
     } finally {
       setActionPid(false)
       if (signedCurriculumRef.current) signedCurriculumRef.current.value = ""
@@ -374,7 +375,7 @@ export function FaaliyetKatilimciDetay({ eventId, participantId }: FaaliyetKatil
                     a.click()
                     URL.revokeObjectURL(url)
                   } catch (e) {
-                    alert(e instanceof Error ? e.message : "PDF indirilemedi")
+                    notify(e instanceof Error ? e.message : "PDF indirilemedi")
                   } finally {
                     setPdfLoading(false)
                   }

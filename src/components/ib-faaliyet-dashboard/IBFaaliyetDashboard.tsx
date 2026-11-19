@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
@@ -405,7 +406,7 @@ export function IBFaaliyetDashboard({
       a.click()
       URL.revokeObjectURL(url)
     } catch (e) {
-      alert(e instanceof Error ? e.message : "PDF indirilemedi.")
+      notify(e instanceof Error ? e.message : "PDF indirilemedi.")
     } finally {
       setDownloadingPdfKey(null)
     }
@@ -425,7 +426,7 @@ export function IBFaaliyetDashboard({
       fetchActivities()
       fetchYearOptions()
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Silme işlemi başarısız.")
+      notify(e instanceof Error ? e.message : "Silme işlemi başarısız.")
     }
   }
 

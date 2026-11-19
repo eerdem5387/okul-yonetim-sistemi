@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 import { isoDateTR } from "@/lib/dates"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
@@ -354,7 +355,7 @@ export default function BasvurularPage() {
       document.body.removeChild(a)
     } catch (error) {
       console.error("Error exporting:", error)
-      alert("Excel export sırasında bir hata oluştu")
+      notify("Excel export sırasında bir hata oluştu")
     } finally {
       setIsExporting(false)
     }
@@ -397,7 +398,7 @@ export default function BasvurularPage() {
       }, 5000)
     } catch (error) {
       console.error("Error syncing:", error)
-      alert(error instanceof Error ? error.message : "Senkronizasyon sırasında bir hata oluştu")
+      notify(error instanceof Error ? error.message : "Senkronizasyon sırasında bir hata oluştu")
     } finally {
       setIsSyncing(false)
     }
@@ -442,7 +443,7 @@ export default function BasvurularPage() {
       await fetchStats()
     } catch (error) {
       console.error("Error deleting:", error)
-      alert("Başvuru silinirken bir hata oluştu")
+      notify("Başvuru silinirken bir hata oluştu")
     } finally {
       setDeletingId(null)
     }
@@ -463,7 +464,7 @@ export default function BasvurularPage() {
       }
 
       const data = await response.json()
-      alert(`${data.deleted} test başvurusu silindi`)
+      notify(`${data.deleted} test başvurusu silindi`)
       
       // Başvuruları yeniden yükle
       await fetchBasvurular(
@@ -482,7 +483,7 @@ export default function BasvurularPage() {
       await fetchStats()
     } catch (error) {
       console.error("Error deleting test basvurular:", error)
-      alert("Test başvuruları silinirken bir hata oluştu")
+      notify("Test başvuruları silinirken bir hata oluştu")
     }
   }
 
@@ -696,7 +697,7 @@ export default function BasvurularPage() {
                     setContactModal(null)
                   } catch (error) {
                     console.error("Error updating contact status:", error)
-                    alert(
+                    notify(
                       error instanceof Error
                         ? error.message
                         : "İletişim durumu güncellenirken bir hata oluştu"

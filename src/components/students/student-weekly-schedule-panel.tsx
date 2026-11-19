@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Calendar, Loader2, Plus, RefreshCw } from "lucide-react"
@@ -223,7 +224,7 @@ export function StudentWeeklySchedulePanel({ studentId }: Props) {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert(data.error || "İşlem başarısız")
+        notify(data.error || "İşlem başarısız")
         return false
       }
       if (data.message) {
@@ -271,7 +272,7 @@ export function StudentWeeklySchedulePanel({ studentId }: Props) {
   const submitAdd = async () => {
     if (addTarget === "club") {
       if (!selectedClubGroupId) {
-        alert("Kulüp grubu seçiniz.")
+        notify("Kulüp grubu seçiniz.")
         return
       }
       const ok = await postAction({
@@ -282,7 +283,7 @@ export function StudentWeeklySchedulePanel({ studentId }: Props) {
       return
     }
     if (!selectedStudyGroupId) {
-      alert("ÖÇG grubu seçiniz.")
+      notify("ÖÇG grubu seçiniz.")
       return
     }
     const ok = await postAction({
@@ -296,7 +297,7 @@ export function StudentWeeklySchedulePanel({ studentId }: Props) {
     if (!editItem) return
     if (to === "club") {
       if (!selectedClubGroupId) {
-        alert("Hedef kulüp grubu seçiniz.")
+        notify("Hedef kulüp grubu seçiniz.")
         return
       }
       if (editItem.kind === "club" && editItem.assignmentKey) {
@@ -315,7 +316,7 @@ export function StudentWeeklySchedulePanel({ studentId }: Props) {
       return
     }
     if (!selectedStudyGroupId) {
-      alert("Hedef ÖÇG grubu seçiniz.")
+      notify("Hedef ÖÇG grubu seçiniz.")
       return
     }
     if (editItem.kind === "club" && editItem.assignmentKey) {

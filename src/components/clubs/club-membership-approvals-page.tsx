@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
@@ -61,7 +62,7 @@ export function ClubMembershipApprovalsPage({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert((data as { error?: string }).error || "İşlem başarısız")
+        notify((data as { error?: string }).error || "İşlem başarısız")
         return
       }
       await load()

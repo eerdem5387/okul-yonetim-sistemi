@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
@@ -119,7 +120,7 @@ export default function PersonelGorusmelerPage() {
       headers: getAuthHeaders(),
     })
     if (!res.ok) {
-      alert("Dışa aktarma başarısız")
+      notify("Dışa aktarma başarısız")
       return
     }
     const blob = await res.blob()

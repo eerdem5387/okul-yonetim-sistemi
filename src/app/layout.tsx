@@ -8,6 +8,7 @@ import VeliSidebar from "@/components/layout/veli-sidebar"
 import { usePathname } from "next/navigation"
 import { useEffect, useState, useRef, useCallback } from "react"
 import { ToastProvider } from "@/components/ui/toast"
+import { PageHint } from "@/components/layout/PageHint"
 import { isStaffAuthRole, isStaffTokenExpired } from "@/lib/auth/token"
 import {
   installStaffApiAuthHeader,
@@ -544,6 +545,7 @@ export default function RootLayout({
           <div className="flex h-screen bg-gray-50 lg:flex-row">
             <OgretmenSidebar />
             <div className="flex-1 overflow-y-auto w-full lg:w-auto">
+              {pathname !== "/mesajlar" ? <PageHint /> : null}
               {children}
             </div>
           </div>
@@ -567,6 +569,7 @@ export default function RootLayout({
           <div className="flex h-screen overflow-hidden bg-gray-50 lg:flex-row">
             <OgretmenSidebar />
             <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+              {pathname !== "/mesajlar" ? <PageHint /> : null}
               {children}
             </div>
           </div>
@@ -593,6 +596,7 @@ export default function RootLayout({
           <div className="flex h-screen bg-gray-50 lg:flex-row">
             <OgretmenSidebar />
             <div className="flex-1 overflow-y-auto w-full lg:w-auto">
+              {pathname !== "/mesajlar" ? <PageHint /> : null}
               {children}
             </div>
           </div>
@@ -669,6 +673,7 @@ export default function RootLayout({
                   : "flex-1 overflow-y-auto"
               }
             >
+              {pathname !== "/mesajlar" ? <PageHint /> : null}
               {children}
             </main>
           </div>
@@ -698,6 +703,7 @@ export default function RootLayout({
                   : "flex-1 overflow-y-auto w-full lg:w-auto"
               }
             >
+              {pathname !== "/mesajlar" ? <PageHint /> : null}
               {children}
             </div>
           </div>

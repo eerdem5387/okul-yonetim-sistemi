@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import {
   createContext,
@@ -11,6 +12,7 @@ import {
 } from "react"
 import { X, CheckCircle2, AlertCircle, Info, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { NOTIFY_EVENT, takePendingNotifications, writePending, type NotifyDetail } from "@/lib/notify"
 
 export type ToastType = "success" | "error" | "info" | "warning"
 
@@ -69,7 +71,7 @@ const ToastComponent = ({ toast, onClose }: ToastProps) => {
     >
       <div className="flex-shrink-0 mt-0.5">{icons[toast.type]}</div>
       <div className="flex-1 min-w-0">
-        <p className={`text-sm font-medium ${textColors[toast.type]}`}>
+        <p className={`text-sm font-medium whitespace-pre-line break-words ${textColors[toast.type]}`}>
           {toast.message}
         </p>
       </div>
@@ -145,6 +147,26 @@ function useToastState(): ToastContextValue {
 /** Uygulama genelinde tek toast kuyruğu; tüm bildirimler {TOAST_DURATION_MS} ms sonra kapanır */
 export function ToastProvider({ children }: { children: ReactNode }) {
   const value = useToastState()
+  const { showToast } = value
+
+  // `notify()` (eski notify() çağrılarının yerine) mesajlarını göster
+  useEffect(() => {
+    const show = (detail: NotifyDetail) => {
+      showToast(detail.message, detail.type, detail.type === "error" || detail.message.length > 120 ? 8000 : undefined)
+      // Kısa süre ekranda kaldıysa "gösterildi" say; sayfa hemen yenilenirse sonraki sayfada tekrar gösterilir
+      window.setTimeout(() => {
+        writePending(takePendingNotifications().filter((n) => n.id !== detail.id))
+      }, 1500)
+    }
+    for (const pending of takePendingNotifications()) show(pending)
+    const onNotify = (event: Event) => {
+      const detail = (event as CustomEvent<NotifyDetail>).detail
+      detail.handled = true
+      show(detail)
+    }
+    window.addEventListener(NOTIFY_EVENT, onNotify)
+    return () => window.removeEventListener(NOTIFY_EVENT, onNotify)
+  }, [showToast])
 
   return (
     <ToastContext.Provider value={value}>

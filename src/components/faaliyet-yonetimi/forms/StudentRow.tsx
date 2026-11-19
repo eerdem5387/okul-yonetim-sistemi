@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useRef, useState } from "react"
 import { Upload, X, Loader2 } from "lucide-react"
@@ -96,7 +97,7 @@ export function StudentRow({
     if (!file) return
     const sizeErr = assertFileMaxSize(file, CLIENT_MAX_PARTICIPATION_PHOTO_BYTES, "Katılım fotoğrafı")
     if (sizeErr) {
-      alert(sizeErr)
+      notify(sizeErr)
       return
     }
     setUploadingPhoto(true)
@@ -110,7 +111,7 @@ export function StudentRow({
       })
       const parsed = await parseUploadResponse(res)
       if (parsed.ok && parsed.url) set("participationPhotoUrl", parsed.url)
-      else alert(parsed.error || "Fotoğraf yüklenemedi")
+      else notify(parsed.error || "Fotoğraf yüklenemedi")
     } finally {
       setUploadingPhoto(false)
       if (photoRef.current) photoRef.current.value = ""
@@ -122,7 +123,7 @@ export function StudentRow({
     if (!file) return
     const sizeErr = assertFileMaxSize(file, extraDocumentMaxBytes, "Ek belge")
     if (sizeErr) {
-      alert(sizeErr)
+      notify(sizeErr)
       return
     }
     setUploadingDoc(true)
@@ -136,7 +137,7 @@ export function StudentRow({
       })
       const parsed = await parseUploadResponse(res)
       if (parsed.ok && parsed.url) set("extraDocumentUrl", parsed.url)
-      else alert(parsed.error || "Belge yüklenemedi")
+      else notify(parsed.error || "Belge yüklenemedi")
     } finally {
       setUploadingDoc(false)
       if (docRef.current) docRef.current.value = ""

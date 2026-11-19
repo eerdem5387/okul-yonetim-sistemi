@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { BookOpen, Loader2, Plus, Search, Trash2, Users, X } from "lucide-react"
@@ -97,7 +98,7 @@ export default function BranslarPage() {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert((data as { error?: string }).error || "Eklenemedi")
+        notify((data as { error?: string }).error || "Eklenemedi")
         return
       }
       setNewName("")
@@ -124,7 +125,7 @@ export default function BranslarPage() {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert((data as { error?: string }).error || "Kaydedilemedi")
+        notify((data as { error?: string }).error || "Kaydedilemedi")
         return
       }
       setEditing(null)
@@ -139,7 +140,7 @@ export default function BranslarPage() {
     const res = await fetch(`/api/branches?id=${id}`, { method: "DELETE" })
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
-      alert((data as { error?: string }).error || "Silinemedi")
+      notify((data as { error?: string }).error || "Silinemedi")
       return
     }
     await load()

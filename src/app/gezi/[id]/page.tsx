@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useState, useEffect, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
@@ -58,7 +59,7 @@ export default function GeziDetailPage() {
       setTrip(result.data)
     } catch (error) {
       console.error("Error fetching trip:", error)
-      alert("Gezi yüklenirken hata oluştu: " + (error instanceof Error ? error.message : "Bilinmeyen hata"))
+      notify("Gezi yüklenirken hata oluştu: " + (error instanceof Error ? error.message : "Bilinmeyen hata"))
       router.push("/gezi")
     } finally {
       setLoading(false)
@@ -89,7 +90,7 @@ export default function GeziDetailPage() {
       }
     } catch (error) {
       console.error("Error fetching applications:", error)
-      alert("Başvurular yüklenirken hata oluştu: " + (error instanceof Error ? error.message : "Bilinmeyen hata"))
+      notify("Başvurular yüklenirken hata oluştu: " + (error instanceof Error ? error.message : "Bilinmeyen hata"))
       setApplications([])
     } finally {
       setApplicationsLoading(false)
@@ -124,7 +125,7 @@ export default function GeziDetailPage() {
       document.body.removeChild(a)
     } catch (error) {
       console.error("Error exporting applications:", error)
-      alert("Excel export sırasında hata oluştu: " + (error instanceof Error ? error.message : "Bilinmeyen hata"))
+      notify("Excel export sırasında hata oluştu: " + (error instanceof Error ? error.message : "Bilinmeyen hata"))
     } finally {
       setExporting(false)
     }

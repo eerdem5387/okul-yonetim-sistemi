@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -177,7 +178,7 @@ export default function YazOkuluBasvurularPage() {
       )
       await fetchStats()
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Silme başarısız")
+      notify(error instanceof Error ? error.message : "Silme başarısız")
     } finally {
       setDeletingId(null)
     }
@@ -684,7 +685,7 @@ export default function YazOkuluBasvurularPage() {
                       )
                       fetchStats()
                     } catch (error) {
-                      alert(
+                      notify(
                         error instanceof Error
                           ? error.message
                           : "Güncelleme başarısız"

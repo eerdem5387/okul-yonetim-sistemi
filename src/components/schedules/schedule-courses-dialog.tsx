@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useCallback, useEffect, useState } from "react"
 import { BookOpen, Loader2, Plus, Trash2 } from "lucide-react"
@@ -64,7 +65,7 @@ export function ScheduleCoursesDialog({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert((data as { error?: string }).error || "Eklenemedi")
+        notify((data as { error?: string }).error || "Eklenemedi")
         return
       }
       setNewName("")
@@ -82,7 +83,7 @@ export function ScheduleCoursesDialog({
       const res = await fetch(`/api/schedules/courses?id=${id}`, { method: "DELETE" })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        alert((data as { error?: string }).error || "Silinemedi")
+        notify((data as { error?: string }).error || "Silinemedi")
         return
       }
       await load()

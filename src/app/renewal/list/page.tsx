@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
@@ -196,7 +197,7 @@ export default function RenewalsListPage() {
       document.body.removeChild(a)
     } catch (e) {
       console.error("Export error:", e)
-      alert("Excel dışa aktarım başarısız oldu")
+      notify("Excel dışa aktarım başarısız oldu")
     }
   }, [])
 
@@ -334,11 +335,11 @@ export default function RenewalsListPage() {
         window.URL.revokeObjectURL(url)
         document.body.removeChild(a)
       } else {
-        alert("PDF indirme başarısız oldu!")
+        notify("PDF indirme başarısız oldu!")
       }
     } catch (error) {
       console.error("Error downloading PDF:", error)
-      alert("PDF indirme sırasında bir hata oluştu!")
+      notify("PDF indirme sırasında bir hata oluştu!")
     }
   }
 
@@ -357,7 +358,7 @@ export default function RenewalsListPage() {
       })
 
       if (response.ok) {
-        alert('✅ Kayıt yenileme başarıyla silindi!')
+        notify('✅ Kayıt yenileme başarıyla silindi!')
         // Listeyi yenile
         fetchRenewals()
         // Eğer silinen kayıt detay görünümündeyse, detay görünümünü kapat
@@ -369,11 +370,11 @@ export default function RenewalsListPage() {
         }
       } else {
         const errorData = await response.json().catch(() => ({}))
-        alert(`❌ Kayıt yenileme silinirken hata oluştu: ${errorData.error || 'Bilinmeyen hata'}`)
+        notify(`❌ Kayıt yenileme silinirken hata oluştu: ${errorData.error || 'Bilinmeyen hata'}`)
       }
     } catch (error) {
       console.error("Error deleting renewal:", error)
-      alert("Kayıt yenileme silme sırasında bir hata oluştu!")
+      notify("Kayıt yenileme silme sırasında bir hata oluştu!")
     }
   }
 

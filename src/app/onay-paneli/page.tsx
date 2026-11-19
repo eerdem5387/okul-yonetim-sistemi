@@ -1,4 +1,5 @@
 "use client";
+import { notify } from "@/lib/notify"
 
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -195,7 +196,7 @@ interface ScheduleInfo {
       const staffId = typeof window !== "undefined" ? localStorage.getItem("staff_id") : null;
       
       if (!staffId) {
-        alert("Kullanıcı bilgisi bulunamadı. Lütfen tekrar giriş yapın.");
+        notify("Kullanıcı bilgisi bulunamadı. Lütfen tekrar giriş yapın.");
         return;
       }
 
@@ -206,15 +207,15 @@ interface ScheduleInfo {
       });
       
       if (response.ok) {
-        alert("✅ Değişiklik başarıyla onaylandı!");
+        notify("✅ Değişiklik başarıyla onaylandı!");
         fetchApprovals(); // Refresh list
       } else {
         const data = await response.json();
-        alert(data.error || "Onaylama başarısız oldu.");
+        notify(data.error || "Onaylama başarısız oldu.");
       }
     } catch (error) {
       console.error("Error approving:", error);
-      alert("Onaylama sırasında bir hata oluştu.");
+      notify("Onaylama sırasında bir hata oluştu.");
     } finally {
       setActionLoading(null);
     }
@@ -247,7 +248,7 @@ interface ScheduleInfo {
       const staffId = typeof window !== "undefined" ? localStorage.getItem("staff_id") : null;
       
       if (!staffId) {
-        alert("Kullanıcı bilgisi bulunamadı. Lütfen tekrar giriş yapın.");
+        notify("Kullanıcı bilgisi bulunamadı. Lütfen tekrar giriş yapın.");
         return;
       }
 
@@ -261,15 +262,15 @@ interface ScheduleInfo {
       });
       
       if (response.ok) {
-        alert("❌ Değişiklik reddedildi.");
+        notify("❌ Değişiklik reddedildi.");
         fetchApprovals(); // Refresh list
       } else {
         const data = await response.json();
-        alert(data.error || "Reddetme başarısız oldu.");
+        notify(data.error || "Reddetme başarısız oldu.");
       }
     } catch (error) {
       console.error("Error rejecting:", error);
-      alert("Reddetme sırasında bir hata oluştu.");
+      notify("Reddetme sırasında bir hata oluştu.");
     } finally {
       setActionLoading(null);
     }

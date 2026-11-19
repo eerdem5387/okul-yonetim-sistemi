@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 import { isoDateTR } from "@/lib/dates"
 
 import { useCallback, useEffect, useState } from "react"
@@ -355,13 +356,13 @@ export default function StudentDetailDashboardPage() {
       if (res.ok) {
         setEditMode(false)
         await loadData()
-        alert("Profil güncellendi.")
+        notify("Profil güncellendi.")
       } else {
-        alert(data.error || "Profil güncellenemedi.")
+        notify(data.error || "Profil güncellenemedi.")
       }
     } catch (e) {
       console.error(e)
-      alert("Profil güncellenemedi.")
+      notify("Profil güncellenemedi.")
     } finally {
       setSaving(false)
     }

@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Loader2, Plus, Trash2 } from "lucide-react"
@@ -98,7 +99,7 @@ export function GradeEtutExamsDialog({ open, onOpenChange, onChanged }: Props) {
             .map((s) => ({ startTime: s.startTime, endTime: s.endTime }))
 
       if (!allSlots && (!slots || slots.length === 0)) {
-        alert("En az bir etüt saati seçin.")
+        notify("En az bir etüt saati seçin.")
         return
       }
 
@@ -115,7 +116,7 @@ export function GradeEtutExamsDialog({ open, onOpenChange, onChanged }: Props) {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert(data.error || "Kaydedilemedi")
+        notify(data.error || "Kaydedilemedi")
         return
       }
       await load()
@@ -130,7 +131,7 @@ export function GradeEtutExamsDialog({ open, onOpenChange, onChanged }: Props) {
     const res = await fetch(`/api/schedules/grade-etut-exams/${id}`, { method: "DELETE" })
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
-      alert(data.error || "Silinemedi")
+      notify(data.error || "Silinemedi")
       return
     }
     await load()

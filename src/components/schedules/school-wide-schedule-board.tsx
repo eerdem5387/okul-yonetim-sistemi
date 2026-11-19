@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Loader2, Trash2 } from "lucide-react"
@@ -398,7 +399,7 @@ export function SchoolWideScheduleBoard({
       liseSlots
     )
     if (!times) {
-      alert("Bu dönem için saat şablonu bulunamadı.")
+      notify("Bu dönem için saat şablonu bulunamadı.")
       return
     }
     const startTime = existing
@@ -476,29 +477,29 @@ export function SchoolWideScheduleBoard({
     if (entryKind === "club") {
       const club = clubs.find((c) => c.id === clubId)
       if (!club) {
-        alert("Kulüp seçiniz.")
+        notify("Kulüp seçiniz.")
         return
       }
       finalSubject = `Kulüp · ${club.name}`
       finalTeacher = club.instructorId || teacherId
       if (!finalTeacher) {
-        alert("Bu kulübün öğretmeni yok. Önce kulübe öğretmen atayın veya öğretmen seçin.")
+        notify("Bu kulübün öğretmeni yok. Önce kulübe öğretmen atayın veya öğretmen seçin.")
         return
       }
     } else if (entryKind === "study") {
       const g = studyGroups.find((sg) => sg.id === studyGroupId)
       if (!g) {
-        alert("ÖÇG grubu seçiniz.")
+        notify("ÖÇG grubu seçiniz.")
         return
       }
       finalSubject = `ÖÇG · ${g.name}`
       if (!finalTeacher) {
-        alert("Öğretmen seçiniz.")
+        notify("Öğretmen seçiniz.")
         return
       }
     } else {
       if (!finalSubject || !finalTeacher) {
-        alert("Ders adı ve öğretmen zorunludur.")
+        notify("Ders adı ve öğretmen zorunludur.")
         return
       }
     }
@@ -522,11 +523,11 @@ export function SchoolWideScheduleBoard({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert((data as { error?: string }).error || "Kayıt başarısız")
+        notify((data as { error?: string }).error || "Kayıt başarısız")
         return
       }
       if ((data as { pendingApproval?: boolean }).pendingApproval) {
-        alert("Talebiniz onaya gönderildi.")
+        notify("Talebiniz onaya gönderildi.")
       }
       closeEdit()
       await loadSchedules()
@@ -543,7 +544,7 @@ export function SchoolWideScheduleBoard({
       const res = await fetch(`/api/schedules/${edit.existing.id}`, { method: "DELETE" })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert((data as { error?: string }).error || "Silinemedi")
+        notify((data as { error?: string }).error || "Silinemedi")
         return
       }
       closeEdit()
@@ -682,7 +683,7 @@ export function SchoolWideScheduleBoard({
                           type="button"
                           onClick={() => {
                             if (deneme && !primary) {
-                              alert(
+                              notify(
                                 `${c.grade}. sınıf bu etütte “${deneme.title || DENEME_SINAVI_SUBJECT}” olarak işaretli. Değiştirmek için Ders Programı → Etüt denemesi.`
                               )
                               return

@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { CalendarPlus, Loader2, Pencil, Plus, Search, Trash2, Users, X } from "lucide-react"
@@ -395,17 +396,17 @@ export function StudyGroupsPanel({
     }
 
     if (!sessionForm.teacherId) {
-      alert("Önce öğretmen seçiniz.")
+      notify("Önce öğretmen seçiniz.")
       return
     }
     if (!sessionForm.topic.trim()) {
-      alert("Önce konu yazınız. Her öğretmen için konu, hücre seçmeden önce girilir.")
+      notify("Önce konu yazınız. Her öğretmen için konu, hücre seçmeden önce girilir.")
       return
     }
 
     const existingGroup = groupSessionAt(day, start, end)
     if (existingGroup) {
-      alert(
+      notify(
         `Bu saatte grubun zaten ataması var: ${existingGroup.teacher.firstName} ${existingGroup.teacher.lastName}. ` +
           `Değiştirmek için karttaki atamayı düzenleyin.`
       )
@@ -539,11 +540,11 @@ export function StudyGroupsPanel({
 
   const saveGroup = async () => {
     if (!groupForm.name.trim()) {
-      alert("Grup adı zorunludur. Öğrenciler şimdi veya sonra eklenebilir.")
+      notify("Grup adı zorunludur. Öğrenciler şimdi veya sonra eklenebilir.")
       return
     }
     if (groupForm.gradeLevels.length === 0) {
-      alert("En az bir sınıf düzeyi seçiniz (veya Tümü).")
+      notify("En az bir sınıf düzeyi seçiniz (veya Tümü).")
       return
     }
     setBusy(true)
@@ -562,7 +563,7 @@ export function StudyGroupsPanel({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert((data as { error?: string }).error || "Kayıt başarısız")
+        notify((data as { error?: string }).error || "Kayıt başarısız")
         return
       }
       setGroupModalOpen(false)
@@ -577,7 +578,7 @@ export function StudyGroupsPanel({
 
     if (editingSession) {
       if (!sessionForm.teacherId || !sessionForm.topic.trim()) {
-        alert("Öğretmen ve konu zorunludur.")
+        notify("Öğretmen ve konu zorunludur.")
         return
       }
       setBusy(true)
@@ -597,7 +598,7 @@ export function StudyGroupsPanel({
         })
         const data = await res.json().catch(() => ({}))
         if (!res.ok) {
-          alert((data as { error?: string }).error || "Atama kaydedilemedi")
+          notify((data as { error?: string }).error || "Atama kaydedilemedi")
           return
         }
         setSessionModalOpen(false)
@@ -611,13 +612,13 @@ export function StudyGroupsPanel({
     }
 
     if (selectedSlots.length === 0) {
-      alert("En az bir gün/ders saati seçiniz.")
+      notify("En az bir gün/ders saati seçiniz.")
       return
     }
 
     const missing = selectedSlots.filter((s) => !s.teacherId || !s.topic.trim())
     if (missing.length > 0) {
-      alert("Bazı seçimlerde öğretmen veya konu eksik. Öğretmen ve konuyu seçip hücreleri yeniden işaretleyin.")
+      notify("Bazı seçimlerde öğretmen veya konu eksik. Öğretmen ve konuyu seçip hücreleri yeniden işaretleyin.")
       return
     }
 
@@ -651,7 +652,7 @@ export function StudyGroupsPanel({
         }
       }
       if (errors.length > 0) {
-        alert(
+        notify(
           (okCount > 0 ? `${okCount} atama kaydedildi.\n\n` : "") +
             `Kaydedilemeyenler:\n${errors.join("\n")}`
         )
@@ -673,7 +674,7 @@ export function StudyGroupsPanel({
       const res = await fetch(`/api/study-groups/${id}`, { method: "DELETE" })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        alert((data as { error?: string }).error || "Silinemedi")
+        notify((data as { error?: string }).error || "Silinemedi")
         return
       }
       if (editingGroup?.id === id) setGroupModalOpen(false)
@@ -690,7 +691,7 @@ export function StudyGroupsPanel({
       const res = await fetch(`/api/study-groups/sessions/${sessionId}`, { method: "DELETE" })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        alert((data as { error?: string }).error || "Atama silinemedi")
+        notify((data as { error?: string }).error || "Atama silinemedi")
         return
       }
       if (editingSession?.id === sessionId) setSessionModalOpen(false)

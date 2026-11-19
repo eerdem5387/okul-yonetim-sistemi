@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 import { isoDateTR } from "@/lib/dates"
 
 import { useState, useEffect, useCallback } from "react"
@@ -523,12 +524,12 @@ export default function RenewalPage() {
 
   const handleDownloadCombinedPDF = async () => {
     if (!selectedStudent) {
-      alert("⚠️ Lütfen önce bir öğrenci seçin!")
+      notify("⚠️ Lütfen önce bir öğrenci seçin!")
       return
     }
 
     if (!renewalTarget) {
-      alert(
+      notify(
         `⚠️ ${renewalSetupMessage ?? "Kayıt yenileme için akademik yıl ayarları eksik veya uyumsuz."}\n\nAna menüden Ayarlar → Akademik Yıllar sekmesine gidin.`
       )
       return
@@ -536,13 +537,13 @@ export default function RenewalPage() {
 
     // Mevcut kayıt yenileme kontrolü
     if (hasExistingRenewal) {
-      alert(`⚠️ ${existingRenewalInfo}\n\nBu öğrenci için seçilen akademik yılda zaten kayıt yenileme yapılmış. Tekrar kayıt yenileme yapılamaz!`)
+      notify(`⚠️ ${existingRenewalInfo}\n\nBu öğrenci için seçilen akademik yılda zaten kayıt yenileme yapılmış. Tekrar kayıt yenileme yapılamaz!`)
       return
     }
 
     const renewalClass = renewalTargetClassLabel(selectedStudent.grade)
     if (!renewalClass) {
-      alert(
+      notify(
         "⚠️ Öğrencinin sınıfı kayıt yenileme için uygun değil (5–12. sınıf olmalıdır)."
       )
       return
@@ -557,7 +558,7 @@ export default function RenewalPage() {
     const uniformErrors = validateUniformFields(otherContractData)
     const allErrors = [...contractErrors, ...uniformErrors]
     if (allErrors.length > 0) {
-      alert(formatValidationAlert(allErrors))
+      notify(formatValidationAlert(allErrors))
       return
     }
 
@@ -629,7 +630,7 @@ export default function RenewalPage() {
             return errorData.error || "Bilinmeyen hata"
           })
         )
-        alert(`⚠️ Sözleşmeler kaydedilirken hata oluştu!\n\n${errorMessages.join("\n")}`)
+        notify(`⚠️ Sözleşmeler kaydedilirken hata oluştu!\n\n${errorMessages.join("\n")}`)
         return
       }
 
@@ -638,7 +639,7 @@ export default function RenewalPage() {
       const contractId = mainContractResponse.id || mainContractResponse.renewal?.id
 
       if (!contractId) {
-        alert("⚠️ Sözleşme ID'si alınamadı!")
+        notify("⚠️ Sözleşme ID'si alınamadı!")
         return
       }
 
@@ -667,18 +668,18 @@ export default function RenewalPage() {
         window.URL.revokeObjectURL(url)
         document.body.removeChild(a)
         
-        alert(`✅ Kayıt yenileme başarıyla tamamlandı!\n\n` +
+        notify(`✅ Kayıt yenileme başarıyla tamamlandı!\n\n` +
           `Öğrenci: ${selectedStudent.firstName} ${selectedStudent.lastName}\n` +
           `TC: ${selectedStudent.tcNumber}\n\n` +
           `✓ Sözleşmeler kaydedildi\n` +
           `✓ PDF dosyası indirildi.`)
       } else {
         const errorData = await response.json().catch(() => ({}))
-        alert(`⚠️ PDF oluşturulurken hata oluştu!\n\n${errorData.error || errorData.details || "Bilinmeyen hata"}`)
+        notify(`⚠️ PDF oluşturulurken hata oluştu!\n\n${errorData.error || errorData.details || "Bilinmeyen hata"}`)
       }
     } catch (error) {
       console.error("Error downloading PDF:", error)
-      alert("PDF indirilirken hata oluştu!")
+      notify("PDF indirilirken hata oluştu!")
     }
   }
 

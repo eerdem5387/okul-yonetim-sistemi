@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
@@ -108,7 +109,7 @@ export default function OgretmenGeziYonetimiPage() {
       setTrips(result.data || [])
     } catch (error) {
       console.error("Error fetching trips:", error)
-      alert("Geziler yüklenirken hata oluştu: " + (error instanceof Error ? error.message : "Bilinmeyen hata"))
+      notify("Geziler yüklenirken hata oluştu: " + (error instanceof Error ? error.message : "Bilinmeyen hata"))
       setTrips([])
     } finally {
       setLoading(false)
@@ -202,7 +203,7 @@ export default function OgretmenGeziYonetimiPage() {
       setFormErrors({})
     } catch (error) {
       console.error("Error saving trip:", error)
-      alert("Gezi kaydedilirken hata oluştu: " + (error instanceof Error ? error.message : "Bilinmeyen hata"))
+      notify("Gezi kaydedilirken hata oluştu: " + (error instanceof Error ? error.message : "Bilinmeyen hata"))
     } finally {
       setSubmitting(false)
     }
@@ -238,7 +239,7 @@ export default function OgretmenGeziYonetimiPage() {
       fetchStats()
     } catch (error) {
       console.error("Error toggling trip:", error)
-      alert("Gezi durumu güncellenirken hata oluştu")
+      notify("Gezi durumu güncellenirken hata oluştu")
     }
   }
 

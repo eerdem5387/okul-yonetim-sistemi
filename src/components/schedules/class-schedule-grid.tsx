@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Calendar, Loader2, Plus, Search, Trash2, X } from "lucide-react"
@@ -252,12 +253,12 @@ export function ClassScheduleGrid({
 
   const save = async () => {
     if (!form.subjectName.trim() || !form.teacherId || !form.dayOfWeek || !form.startTime || !form.endTime) {
-      alert("Ders adı, öğretmen, gün ve saat zorunludur.")
+      notify("Ders adı, öğretmen, gün ve saat zorunludur.")
       return
     }
     const day = parseInt(form.dayOfWeek, 10)
     if (day === SATURDAY_INDEX && !saturdayEnabled) {
-      alert("Bu sınıf için cumartesi programı kapalı. Sınıf yönetiminde açabilirsiniz.")
+      notify("Bu sınıf için cumartesi programı kapalı. Sınıf yönetiminde açabilirsiniz.")
       return
     }
     if (
@@ -296,11 +297,11 @@ export function ClassScheduleGrid({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert((data as { error?: string }).error || "Kayıt başarısız")
+        notify((data as { error?: string }).error || "Kayıt başarısız")
         return
       }
       if ((data as { pendingApproval?: boolean }).pendingApproval) {
-        alert("Talebiniz onaya gönderildi. Onaylandıktan sonra programa yansır.")
+        notify("Talebiniz onaya gönderildi. Onaylandıktan sonra programa yansır.")
       }
       closeModal()
       onChanged()
@@ -320,11 +321,11 @@ export function ClassScheduleGrid({
       const res = await fetch(url, { method: "DELETE" })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert((data as { error?: string }).error || "Silinemedi")
+        notify((data as { error?: string }).error || "Silinemedi")
         return
       }
       if ((data as { pendingApproval?: boolean }).pendingApproval) {
-        alert("Silme talebi onaya gönderildi.")
+        notify("Silme talebi onaya gönderildi.")
       }
       closeModal()
       onChanged()

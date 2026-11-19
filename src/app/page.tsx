@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,6 +25,7 @@ import {
 import Link from "next/link"
 import { getAuthHeaders } from "@/components/hr/hr-utils"
 import { KurucuFinanceDashboard } from "@/components/dashboard/KurucuFinanceDashboard"
+import { PendingTasksCard } from "@/components/dashboard/PendingTasksCard"
 
 interface DashboardStats {
   totalStudents: number
@@ -287,7 +289,14 @@ export default function HomePage() {
   }
 
   if (isKurucu) {
-    return <KurucuFinanceDashboard />
+    return (
+      <>
+        <div className="px-3 pt-3 sm:px-4 sm:pt-4 md:px-6 md:pt-6 lg:px-8 lg:pt-8">
+          <PendingTasksCard />
+        </div>
+        <KurucuFinanceDashboard />
+      </>
+    )
   }
 
   return (
@@ -298,10 +307,12 @@ export default function HomePage() {
           <div className="p-1.5 sm:p-2 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg sm:rounded-xl shadow-lg">
             <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-white" />
           </div>
-          <h1 className="page-title text-xl sm:text-2xl lg:text-3xl">Dashboard</h1>
+          <h1 className="page-title text-xl sm:text-2xl lg:text-3xl">Ana Sayfa</h1>
         </div>
         <p className="page-subtitle text-xs sm:text-sm">Okul yönetim sistemine hoş geldiniz</p>
       </div>
+
+      <PendingTasksCard />
 
       {/* Hızlı erişim + özet */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
@@ -1007,7 +1018,7 @@ function StudentsWithoutBookPaymentSection() {
       setTotal((prev) => Math.max(0, prev - 1))
       refreshData()
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Kitap durumu güncellenemedi.")
+      notify(e instanceof Error ? e.message : "Kitap durumu güncellenemedi.")
     } finally {
       setMarkingId(null)
     }

@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
@@ -143,7 +144,7 @@ export default function OgretmenGoruslerPage() {
       })
 
       if (response.ok) {
-        alert(editingId ? "Görüş güncellendi!" : "Görüş başarıyla oluşturuldu!")
+        notify(editingId ? "Görüş güncellendi!" : "Görüş başarıyla oluşturuldu!")
         setShowForm(false)
         setEditingId(null)
         setSelectedClassId("")
@@ -156,11 +157,11 @@ export default function OgretmenGoruslerPage() {
         fetchComments(staffId)
       } else {
         const error = await response.json()
-        alert(error.error || "Bir hata oluştu")
+        notify(error.error || "Bir hata oluştu")
       }
     } catch (error) {
       console.error("Error saving comment:", error)
-      alert("Görüş kaydedilirken bir hata oluştu")
+      notify("Görüş kaydedilirken bir hata oluştu")
     } finally {
       setLoading(false)
     }
@@ -186,14 +187,14 @@ export default function OgretmenGoruslerPage() {
       })
 
       if (response.ok) {
-        alert("Görüş silindi!")
+        notify("Görüş silindi!")
         fetchComments(staffId)
       } else {
-        alert("Görüş silinirken bir hata oluştu")
+        notify("Görüş silinirken bir hata oluştu")
       }
     } catch (error) {
       console.error("Error deleting comment:", error)
-      alert("Görüş silinirken bir hata oluştu")
+      notify("Görüş silinirken bir hata oluştu")
     }
   }
 

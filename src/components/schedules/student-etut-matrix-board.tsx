@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 import { isoDateTR } from "@/lib/dates"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
@@ -288,7 +289,7 @@ export function StudentEtutMatrixBoard({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert(data.error || "Atama başarısız")
+        notify(data.error || "Atama başarısız")
         return
       }
       setAssignTarget(null)
@@ -374,7 +375,7 @@ export function StudentEtutMatrixBoard({
       }
 
       if (!anyRows) {
-        alert("İndirilecek öğrenci yok")
+        notify("İndirilecek öğrenci yok")
         return
       }
 
@@ -404,7 +405,7 @@ export function StudentEtutMatrixBoard({
       a.remove()
       URL.revokeObjectURL(url)
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Excel indirilemedi")
+      notify(e instanceof Error ? e.message : "Excel indirilemedi")
     } finally {
       setExporting(false)
     }
@@ -425,7 +426,7 @@ export function StudentEtutMatrixBoard({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert((data as { error?: string }).error || "İşlem başarısız")
+        notify((data as { error?: string }).error || "İşlem başarısız")
         return
       }
       await load({ silent: true })

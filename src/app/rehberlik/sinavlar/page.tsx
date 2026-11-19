@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
@@ -181,11 +182,11 @@ export default function RehberlikSinavlarPage() {
         router.push(`/rehberlik/sinavlar/${data.exam.id}`)
       } else {
         const error = await response.json()
-        alert(error.error || "Bir hata oluştu")
+        notify(error.error || "Bir hata oluştu")
       }
     } catch (error) {
       console.error("Error creating exam:", error)
-      alert("Sınav oluşturulurken bir hata oluştu")
+      notify("Sınav oluşturulurken bir hata oluştu")
     } finally {
       setLoading(false)
     }
@@ -193,7 +194,7 @@ export default function RehberlikSinavlarPage() {
 
   const handleDelete = async (exam: Exam) => {
     if (exam.status === "PUBLISHED") {
-      alert("Yayınlanmış sınav silinemez.")
+      notify("Yayınlanmış sınav silinemez.")
       return
     }
     const ok = confirm(
@@ -209,13 +210,13 @@ export default function RehberlikSinavlarPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        alert(data.error || "Sınav silinemedi")
+        notify(data.error || "Sınav silinemedi")
         return
       }
       setExams((prev) => prev.filter((e) => e.id !== exam.id))
     } catch (error) {
       console.error("Error deleting exam:", error)
-      alert("Sınav silinirken bir hata oluştu")
+      notify("Sınav silinirken bir hata oluştu")
     } finally {
       setDeletingId(null)
     }

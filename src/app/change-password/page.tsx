@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
@@ -132,12 +133,12 @@ export default function ChangePasswordPage() {
         
         if (isParent) {
           // Veli için - localStorage'da zaten parent bilgileri var, direkt panele yönlendir
-          alert("Şifreniz başarıyla değiştirildi!")
+          notify("Şifreniz başarıyla değiştirildi!")
           window.location.href = "/veli/panel"
         } else {
           // Personel için - localStorage'da role ve diğer bilgiler var, role'e göre yönlendir
           const role = localStorage.getItem("auth_role")
-          alert("Şifreniz başarıyla değiştirildi!")
+          notify("Şifreniz başarıyla değiştirildi!")
           
           if (role === "teacher") {
             window.location.href = "/ogretmen"

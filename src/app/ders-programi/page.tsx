@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
@@ -283,7 +284,7 @@ export default function DersProgramiPage() {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert((data as { error?: string }).error || "Cumartesi ayarı kaydedilemedi")
+        notify((data as { error?: string }).error || "Cumartesi ayarı kaydedilemedi")
         return
       }
       setClasses((prev) =>

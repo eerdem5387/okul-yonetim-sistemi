@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -62,11 +63,11 @@ export function IbViewerManagementModal({ onClose }: { onClose: () => void }) {
         setFormData({ username: "", password: "", fullName: "", email: "", organization: "" })
       } else {
         const err = await res.json()
-        alert(err.error || "Kayıt başarısız")
+        notify(err.error || "Kayıt başarısız")
       }
     } catch (err) {
       console.error(err)
-      alert("Kayıt başarısız")
+      notify("Kayıt başarısız")
     }
   }
 

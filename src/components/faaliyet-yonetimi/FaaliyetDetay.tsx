@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
@@ -100,7 +101,7 @@ export function FaaliyetDetay({ id }: { id: string }) {
       }
       await fetchEvent()
     } catch (e) {
-      alert(e instanceof Error ? e.message : "İşlem başarısız")
+      notify(e instanceof Error ? e.message : "İşlem başarısız")
     } finally {
       setActionPid(null)
     }
@@ -146,7 +147,7 @@ export function FaaliyetDetay({ id }: { id: string }) {
       }
       await fetchEvent()
     } catch (e) {
-      alert(e instanceof Error ? e.message : "İşlem başarısız")
+      notify(e instanceof Error ? e.message : "İşlem başarısız")
     } finally {
       setActionPid(null)
     }
@@ -187,7 +188,7 @@ export function FaaliyetDetay({ id }: { id: string }) {
       }
       await fetchEvent()
     } catch (e) {
-      alert(e instanceof Error ? e.message : "İşlem başarısız")
+      notify(e instanceof Error ? e.message : "İşlem başarısız")
     } finally {
       setActionPid(null)
     }
@@ -206,7 +207,7 @@ export function FaaliyetDetay({ id }: { id: string }) {
       }
       router.push("/faaliyet-yonetimi")
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Silme işlemi başarısız")
+      notify(e instanceof Error ? e.message : "Silme işlemi başarısız")
     }
   }
 
@@ -228,7 +229,7 @@ export function FaaliyetDetay({ id }: { id: string }) {
       a.click()
       URL.revokeObjectURL(url)
     } catch (e) {
-      alert(e instanceof Error ? e.message : "PDF indirilemedi")
+      notify(e instanceof Error ? e.message : "PDF indirilemedi")
     } finally {
       setPdfLoading(false)
     }
@@ -716,7 +717,7 @@ export function FaaliyetDetay({ id }: { id: string }) {
                             a.click()
                             URL.revokeObjectURL(url)
                           } catch (e) {
-                            alert(e instanceof Error ? e.message : "Müfredat PDF indirilemedi")
+                            notify(e instanceof Error ? e.message : "Müfredat PDF indirilemedi")
                           } finally {
                             setActionPid(null)
                           }

@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 import { isoDateTR } from "@/lib/dates"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
@@ -223,7 +224,7 @@ export default function IkBasvurularPage() {
       setMeetingModalApp(updated)
       await fetchApplications()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Telefon kaydedilemedi")
+      notify(err instanceof Error ? err.message : "Telefon kaydedilemedi")
     } finally {
       setSavingMeetingPhone(false)
     }
@@ -252,7 +253,7 @@ export default function IkBasvurularPage() {
       await fetchStats()
       setSelected(null)
     } catch {
-      alert("Güncelleme başarısız")
+      notify("Güncelleme başarısız")
     } finally {
       setSaving(false)
     }
@@ -271,7 +272,7 @@ export default function IkBasvurularPage() {
       await fetchApplications()
       await fetchStats()
     } catch {
-      alert("Silinemedi")
+      notify("Silinemedi")
     } finally {
       setDeletingId(null)
     }
@@ -302,7 +303,7 @@ export default function IkBasvurularPage() {
       await fetchApplications()
       await fetchStats()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Başvuru eklenemedi")
+      notify(err instanceof Error ? err.message : "Başvuru eklenemedi")
     } finally {
       setAdding(false)
     }
@@ -326,7 +327,7 @@ export default function IkBasvurularPage() {
       a.click()
       URL.revokeObjectURL(url)
     } catch {
-      alert("Dışa aktarma başarısız")
+      notify("Dışa aktarma başarısız")
     } finally {
       setExporting(false)
     }

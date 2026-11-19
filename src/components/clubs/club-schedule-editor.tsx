@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useCallback, useEffect, useState } from "react"
 import { CalendarClock, Loader2, Plus, Trash2 } from "lucide-react"
@@ -124,11 +125,11 @@ export function ClubScheduleEditor({
 
   const add = async () => {
     if (selectedSlotKeys.length === 0) {
-      alert("En az bir etüt saati seçin")
+      notify("En az bir etüt saati seçin")
       return
     }
     if (!instructorId) {
-      alert("Sorumlu öğretmen seçin")
+      notify("Sorumlu öğretmen seçin")
       return
     }
     setSaving(true)
@@ -156,7 +157,7 @@ export function ClubScheduleEditor({
       }
       await load()
       if (errors.length > 0) {
-        alert(errors.join("\n"))
+        notify(errors.join("\n"))
       }
     } finally {
       setSaving(false)
@@ -173,7 +174,7 @@ export function ClubScheduleEditor({
       })
       if (!res.ok) {
         const j = await res.json().catch(() => ({}))
-        alert((j as { error?: string }).error || "Silinemedi")
+        notify((j as { error?: string }).error || "Silinemedi")
         return
       }
       await load()

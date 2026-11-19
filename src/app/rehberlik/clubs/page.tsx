@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -133,7 +134,7 @@ export default function ClubsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (formData.gradeLevels.length === 0) {
-      alert("En az bir sınıf düzeyi seçin.")
+      notify("En az bir sınıf düzeyi seçin.")
       return
     }
     try {
@@ -161,7 +162,7 @@ export default function ClubsPage() {
         })
       } else {
         const err = await response.json().catch(() => ({}))
-        alert((err as { error?: string }).error || "Kulüp kaydedilirken hata oluştu!")
+        notify((err as { error?: string }).error || "Kulüp kaydedilirken hata oluştu!")
       }
     } catch (error) {
       console.error("Error saving club:", error)
@@ -178,7 +179,7 @@ export default function ClubsPage() {
         if (response.ok) {
           fetchClubs()
         } else {
-          alert("Kulüp silinirken hata oluştu!")
+          notify("Kulüp silinirken hata oluştu!")
         }
       } catch (error) {
         console.error("Error deleting club:", error)
@@ -217,7 +218,7 @@ export default function ClubsPage() {
       document.body.removeChild(a)
     } catch (error) {
       console.error("Error exporting clubs:", error)
-      alert("Kulüp listesi indirilirken hata oluştu!")
+      notify("Kulüp listesi indirilirken hata oluştu!")
     }
   }
 

@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Check, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
@@ -93,11 +94,11 @@ export function ComposeNoticeWizard({
 
   const submit = async () => {
     if (!subject.trim() || !body.trim()) {
-      alert("Konu ve metin zorunlu")
+      notify("Konu ve metin zorunlu")
       return
     }
     if (!allStaff && recipientIds.length === 0) {
-      alert("Alıcı seçin")
+      notify("Alıcı seçin")
       return
     }
     setBusy(true)
@@ -116,10 +117,10 @@ export function ComposeNoticeWizard({
       })
       const j = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert(j.error || "Gönderilemedi")
+        notify(j.error || "Gönderilemedi")
         return
       }
-      alert(`${j.count} kişiye ${labelLower} iletildi`)
+      notify(`${j.count} kişiye ${labelLower} iletildi`)
       onDone()
     } finally {
       setBusy(false)

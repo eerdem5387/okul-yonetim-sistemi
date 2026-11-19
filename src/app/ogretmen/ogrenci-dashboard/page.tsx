@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
@@ -225,11 +226,11 @@ export default function OgretmenOgrenciDashboardPage() {
         const data = await response.json()
         setDashboardData(data)
       } else {
-        alert("Dashboard verileri alınamadı")
+        notify("Dashboard verileri alınamadı")
       }
     } catch (error) {
       console.error("Error fetching dashboard:", error)
-      alert("Bir hata oluştu")
+      notify("Bir hata oluştu")
     } finally {
       setLoading(false)
     }

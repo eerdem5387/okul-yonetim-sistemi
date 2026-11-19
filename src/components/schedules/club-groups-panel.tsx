@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import {
@@ -360,7 +361,7 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
 
   const openSplit = (group: ClubGroup) => {
     if (group.students.length < 2) {
-      alert("Grubu bölmek için en az 2 öğrenci olmalı.")
+      notify("Grubu bölmek için en az 2 öğrenci olmalı.")
       return
     }
     const sorted = [...group.students].sort((a, b) =>
@@ -405,7 +406,7 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
   const mergeWithSibling = async (group: ClubGroup) => {
     const sibling = findAbSibling(group)
     if (!sibling) {
-      alert("Bu grubun A/B eşi bulunamadı.")
+      notify("Bu grubun A/B eşi bulunamadı.")
       return
     }
     // Salı programı olanı hedef tut (yoksa tıklanan grup hedef)
@@ -439,10 +440,10 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert((data as { error?: string }).error || "Birleştirilemedi")
+        notify((data as { error?: string }).error || "Birleştirilemedi")
         return
       }
-      alert((data as { message?: string }).message || "Gruplar birleştirildi")
+      notify((data as { message?: string }).message || "Gruplar birleştirildi")
       await load()
       notifySchedulesChanged()
     } finally {
@@ -459,15 +460,15 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
   const saveSplit = async () => {
     if (!splitSource) return
     if (!splitNewName.trim()) {
-      alert("Yeni grup adı zorunludur.")
+      notify("Yeni grup adı zorunludur.")
       return
     }
     if (splitMoveIds.length === 0) {
-      alert("Yeni gruba taşınacak en az bir öğrenci seçiniz.")
+      notify("Yeni gruba taşınacak en az bir öğrenci seçiniz.")
       return
     }
     if (splitMoveIds.length >= splitSource.students.length) {
-      alert("Mevcut grupta en az bir öğrenci kalmalı.")
+      notify("Mevcut grupta en az bir öğrenci kalmalı.")
       return
     }
     setBusy(true)
@@ -483,7 +484,7 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert(data.error || "Grup bölünemedi")
+        notify(data.error || "Grup bölünemedi")
         return
       }
       setSplitOpen(false)
@@ -492,7 +493,7 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
       notifySchedulesChanged()
       if (data.message) {
         // soft info via alert is ok for this workflow
-        alert(data.message)
+        notify(data.message)
       }
     } finally {
       setBusy(false)
@@ -590,7 +591,7 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
       setCopiedStudents(true)
       window.setTimeout(() => setCopiedStudents(false), 1500)
     } catch {
-      alert("Kopyalanamadı. Tarayıcı panoya erişim izni vermedi.")
+      notify("Kopyalanamadı. Tarayıcı panoya erişim izni vermedi.")
     }
   }
 
@@ -634,11 +635,11 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
 
   const save = async () => {
     if (!form.clubId) {
-      alert("Kulüp seçiniz.")
+      notify("Kulüp seçiniz.")
       return
     }
     if (!form.name.trim()) {
-      alert("Grup adı zorunludur.")
+      notify("Grup adı zorunludur.")
       return
     }
     setBusy(true)
@@ -657,7 +658,7 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert((data as { error?: string }).error || "Kayıt başarısız")
+        notify((data as { error?: string }).error || "Kayıt başarısız")
         return
       }
       setModalOpen(false)
@@ -681,7 +682,7 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
       : selectedSlots
 
     if (slotsToSave.length === 0 || !slotsToSave[0].startTime || !slotsToSave[0].endTime) {
-      alert("En az bir etüt saati seçiniz.")
+      notify("En az bir etüt saati seçiniz.")
       return
     }
 
@@ -704,7 +705,7 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
         })
         const data = await res.json().catch(() => ({}))
         if (!res.ok) {
-          alert((data as { error?: string }).error || "Atama kaydedilemedi")
+          notify((data as { error?: string }).error || "Atama kaydedilemedi")
           return
         }
       } else {
@@ -733,7 +734,7 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
           }
         }
         if (errors.length > 0) {
-          alert(
+          notify(
             (okCount > 0 ? `${okCount} atama kaydedildi.\n\n` : "") +
               `Kaydedilemeyenler:\n${errors.join("\n")}`
           )
@@ -756,7 +757,7 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
       const res = await fetch(`/api/club-groups/${group.id}`, { method: "DELETE" })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert((data as { error?: string }).error || "Silinemedi")
+        notify((data as { error?: string }).error || "Silinemedi")
         return
       }
       await load()
@@ -773,7 +774,7 @@ export function ClubGroupsPanel({ onSchedulesChanged, refreshKey = 0 }: Props = 
       const res = await fetch(`/api/schedules/clubs/${id}`, { method: "DELETE" })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert((data as { error?: string }).error || "Silinemedi")
+        notify((data as { error?: string }).error || "Silinemedi")
         return
       }
       await load()

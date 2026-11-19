@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 import { isoDateTR } from "@/lib/dates"
 
 import { useState, useEffect, useCallback } from "react"
@@ -427,12 +428,12 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
         
         // TC numarası çakışması varsa kullanıcıya açık bir mesaj göster
         if (errorData.code === "TC_NUMBER_EXISTS") {
-          alert(`⚠️ TC Numarası Güncellenemedi!\n\n${errorMessage}\n\nLütfen TC numarasını kontrol edin veya önce diğer öğrencinin TC numarasını değiştirin.`)
+          notify(`⚠️ TC Numarası Güncellenemedi!\n\n${errorMessage}\n\nLütfen TC numarasını kontrol edin veya önce diğer öğrencinin TC numarasını değiştirin.`)
           setSaving(false)
           return // TC numarası güncellenemediyse sözleşmeyi de kaydetme
         } else {
           // Diğer hatalar için de kullanıcıya bilgi ver
-          alert(`⚠️ Öğrenci Bilgileri Güncellenemedi!\n\n${errorMessage}`)
+          notify(`⚠️ Öğrenci Bilgileri Güncellenemedi!\n\n${errorMessage}`)
           setSaving(false)
           return
         }
@@ -453,7 +454,7 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
 
       if (!response.ok) {
         const errBody = await response.json().catch(() => ({}))
-        alert(errBody.error || "Sözleşme güncellenirken bir hata oluştu.")
+        notify(errBody.error || "Sözleşme güncellenirken bir hata oluştu.")
         return
       }
 
@@ -508,14 +509,14 @@ export default function EditRenewalPage({ params }: { params: Promise<{ id: stri
       }
 
       if (studentData.merged) {
-        alert("Sözleşme bu öğrenciye bağlandı. Listede \"2 sözleşme\" (veya ilgili sayı) olarak görünecektir.")
+        notify("Sözleşme bu öğrenciye bağlandı. Listede \"2 sözleşme\" (veya ilgili sayı) olarak görünecektir.")
       } else {
-        alert("Sözleşme başarıyla güncellendi!")
+        notify("Sözleşme başarıyla güncellendi!")
       }
       window.location.href = "/renewal/list"
     } catch (error) {
       console.error("Error updating contract:", error)
-      alert("Sözleşme güncellenirken bir hata oluştu.")
+      notify("Sözleşme güncellenirken bir hata oluştu.")
     } finally {
       setSaving(false)
     }

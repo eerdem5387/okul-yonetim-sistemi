@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useRef, useState } from "react"
 import { Upload, X, BookOpen, ChevronDown, ChevronUp, FileText, Loader2 } from "lucide-react"
@@ -169,7 +170,7 @@ export function StepDetay({
         const label = isVideo ? "Video kanıtı" : "Görsel kanıt"
         const sizeErr = assertFileMaxSize(f, maxB, label)
         if (sizeErr) {
-          alert(sizeErr)
+          notify(sizeErr)
           continue
         }
         const formData = new FormData()
@@ -181,7 +182,7 @@ export function StepDetay({
         })
         const parsed = await parseUploadResponse(res)
         if (parsed.ok && parsed.url) newUrls.push(parsed.url)
-        else alert(parsed.error || "Yükleme başarısız")
+        else notify(parsed.error || "Yükleme başarısız")
       }
       set("evidenceUrls", [...data.evidenceUrls, ...newUrls])
     } finally {

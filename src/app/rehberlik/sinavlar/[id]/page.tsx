@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useCallback, useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
@@ -244,7 +245,7 @@ export default function ExamDetailPage() {
     setSaving(true)
     const res = await fetch(`/api/exams/${examId}/ready`, { method: "POST", headers: getAuthHeaders() })
     const data = await res.json()
-    if (!res.ok) alert(data.error + (data.readiness?.issues ? "\n" + data.readiness.issues.join("\n") : ""))
+    if (!res.ok) notify(data.error + (data.readiness?.issues ? "\n" + data.readiness.issues.join("\n") : ""))
     await fetchExam()
     setSaving(false)
   }
@@ -254,7 +255,7 @@ export default function ExamDetailPage() {
     setSaving(true)
     const res = await fetch(`/api/exams/${examId}/publish`, { method: "POST", headers: getAuthHeaders() })
     const data = await res.json()
-    if (!res.ok) alert(data.error)
+    if (!res.ok) notify(data.error)
     await fetchExam()
     setSaving(false)
   }
@@ -269,7 +270,7 @@ export default function ExamDetailPage() {
   const deleteExam = async () => {
     if (!exam) return
     if (exam.status === "PUBLISHED") {
-      alert("Yayınlanmış sınav silinemez.")
+      notify("Yayınlanmış sınav silinemez.")
       return
     }
     const ok = confirm(
@@ -284,13 +285,13 @@ export default function ExamDetailPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        alert(data.error || "Sınav silinemedi")
+        notify(data.error || "Sınav silinemedi")
         setSaving(false)
         return
       }
       router.push("/rehberlik/sinavlar")
     } catch {
-      alert("Sınav silinirken bir hata oluştu")
+      notify("Sınav silinirken bir hata oluştu")
       setSaving(false)
     }
   }
@@ -317,7 +318,7 @@ export default function ExamDetailPage() {
       headers: getAuthHeaders(),
     })
     if (!res.ok) {
-      alert("Şablon indirilemedi")
+      notify("Şablon indirilemedi")
       return
     }
     const blob = await res.blob()

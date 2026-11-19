@@ -27,6 +27,8 @@ import {
   Contact,
   Calendar,
   Wallet,
+  Search,
+  ChevronDown,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { UnreadBadge } from "@/components/comms/UnreadBadge"
@@ -38,9 +40,13 @@ import { MobileMenuButton } from "@/components/layout/mobile-menu-button"
 import { extraGrantedNavItems } from "@/lib/permissions/nav-catalog"
 import { applyNavOrder } from "@/lib/nav-order"
 import { useNavOrder } from "@/lib/nav-order-client"
+import { NAV_GROUPS, PAGE_DESCRIPTIONS, navGroupOf, type NavGroupId } from "@/lib/nav-groups"
+import { CommandPalette, OPEN_COMMAND_PALETTE_EVENT } from "@/components/layout/CommandPalette"
+const COLLAPSED_GROUPS_KEY = "nav_collapsed_groups"
+
 const allNavigation = [
   // 1. Dashboard
-  { name: "Dashboard", href: "/", icon: LayoutDashboard, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
+  { name: "Ana Sayfa", href: "/", icon: LayoutDashboard, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
   { name: "Finans", href: "/finans", icon: Wallet, roles: ["admin", "principal"], permission: "finance.view" },
   { name: "İç Haberleşme", href: "/mesajlar", icon: MessageSquare, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor", "teacher"] },
   // 2. Yeni Kayıt
@@ -55,7 +61,7 @@ const allNavigation = [
   { name: "Veli Görüşmeleri", href: "/yonetim/parent-meetings", icon: MessageSquare, roles: ["admin", "principal", "student_affairs"] },
   // 6. Öğrenci Yönetimi
   { name: "Öğrenci Yönetimi", href: "/students", icon: UserPlus, roles: ["admin", "principal", "student_affairs"] },
-  { name: "Öğrenci Dashboard", href: "/ogrenci-dashboard", icon: LayoutDashboard, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
+  { name: "Öğrenci Panosu", href: "/ogrenci-dashboard", icon: LayoutDashboard, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
   // 7. Personel Yönetimi
   { name: "Personel Yönetimi", href: "/personel", icon: Briefcase, roles: ["admin", "principal", "student_affairs"] },
   { name: "İK Başvuruları", href: "/ik-basvurular", icon: UserSearch, roles: ["admin", "principal", "student_affairs"] },
@@ -92,7 +98,7 @@ const allNavigation = [
   { name: "Ödevlerim", href: "/ogretmen/odevler", icon: BookOpen, roles: ["teacher"] },
   { name: "Yoklama", href: "/ogretmen/yoklama", icon: ClipboardList, roles: ["teacher"] },
   { name: "Öğrenci Görüşleri", href: "/ogretmen/gorusler", icon: MessageSquare, roles: ["teacher"] },
-  { name: "Öğrenci Dashboard", href: "/ogretmen/ogrenci-dashboard", icon: LayoutDashboard, roles: ["teacher"] },
+  { name: "Öğrenci Panosu", href: "/ogretmen/ogrenci-dashboard", icon: LayoutDashboard, roles: ["teacher"] },
 ]
 
 /**
@@ -195,6 +201,37 @@ export function Sidebar() {
   const navOrder = useNavOrder()
   const navigation = applyNavOrder(defaultNavigation, navOrder, (item) => item.href)
 
+  // Kişisel sıra kaydedilmemişse menü konu başlıklarına göre gruplanır; kayıtlı sıra varsa o sıra aynen gösterilir.
+  const grouped = !navOrder || navOrder.length === 0
+  const groupedNavigation = NAV_GROUPS.map((group) => ({
+    ...group,
+    items: navigation.filter((item) => navGroupOf(item.href) === group.id),
+  })).filter((group) => group.items.length > 0)
+
+  const [collapsedGroups, setCollapsedGroups] = useState<NavGroupId[]>([])
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(COLLAPSED_GROUPS_KEY)
+      // İlk açılışta gruplar kapalı gelir (aktif sayfanın grubu her zaman açık); sonrası kişinin tercihi
+      setCollapsedGroups(raw ? (JSON.parse(raw) as NavGroupId[]) : NAV_GROUPS.map((g) => g.id))
+    } catch {
+      /* yoksay */
+    }
+  }, [])
+  const toggleGroup = (id: NavGroupId) => {
+    setCollapsedGroups((prev) => {
+      const next = prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]
+      try {
+        localStorage.setItem(COLLAPSED_GROUPS_KEY, JSON.stringify(next))
+      } catch {
+        /* yoksay */
+      }
+      return next
+    })
+  }
+  const isActiveHref = (href: string) =>
+    pathname === href || (href !== "/" && Boolean(pathname?.startsWith(`${href}/`)))
+
   const handleLogout = () => {
     if (confirm("Çıkış yapmak istediğinizden emin misiniz?")) {
       localStorage.removeItem("auth_role")
@@ -212,6 +249,7 @@ export function Sidebar() {
   return (
     <>
       <MobileMenuButton open={mobileMenuOpen} onToggle={() => setMobileMenuOpen(!mobileMenuOpen)} />
+      <CommandPalette pages={navigation.map((item) => ({ name: item.name, href: item.href }))} />
 
       {/* Mobile Overlay */}
       {mobileMenuOpen && (
@@ -246,33 +284,70 @@ export function Sidebar() {
           </div>
         </div>
 
+        {/* Arama (Ctrl+K) */}
+        <div className="px-3 pt-4">
+          <button
+            type="button"
+            onClick={() => {
+              setMobileMenuOpen(false)
+              window.dispatchEvent(new Event(OPEN_COMMAND_PALETTE_EVENT))
+            }}
+            className="flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-500 shadow-sm transition hover:border-blue-300 hover:text-blue-600"
+          >
+            <Search className="h-4 w-4" aria-hidden="true" />
+            <span className="flex-1 text-left">Ara: öğrenci, sınıf, sayfa…</span>
+            <kbd className="hidden rounded border border-gray-200 bg-gray-50 px-1.5 text-[10px] font-medium text-gray-500 lg:inline">Ctrl K</kbd>
+          </button>
+        </div>
+
         {/* Navigation */}
-        <nav className="flex-1 space-y-1 px-3 py-6 overflow-y-auto">
-          {navigation.map((item) => {
-            const isActive = pathname === item.href
+        <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
+          {(grouped ? groupedNavigation : [{ id: "genel" as NavGroupId, label: "", items: navigation }]).map((group) => {
+            const hasActive = group.items.some((item) => isActiveHref(item.href))
+            const isOpen = !group.label || hasActive || !collapsedGroups.includes(group.id)
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className={cn(
-                  "sidebar-nav-item group",
-                  isActive && "active"
-                )}
-              >
-                <item.icon
-                  className={cn(
-                    "h-5 w-5 flex-shrink-0 transition-transform duration-200",
-                    isActive ? "text-white" : "text-gray-500 group-hover:text-blue-600"
-                  )}
-                  aria-hidden="true"
-                />
-                <span className="flex-1">{item.name}</span>
-                {item.href === "/mesajlar" && <UnreadBadge />}
-                {isActive && (
-                  <div className="h-2 w-2 bg-white rounded-full shadow-lg animate-pulse" />
-                )}
-              </Link>
+              <div key={group.id} className={cn(group.label && "pt-2")}>
+                {group.label ? (
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(group.id)}
+                    aria-expanded={isOpen}
+                    className="flex w-full items-center gap-2 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400 hover:text-gray-600"
+                  >
+                    <span className="flex-1 text-left">{group.label}</span>
+                    <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !isOpen && "-rotate-90")} aria-hidden="true" />
+                  </button>
+                ) : null}
+                {isOpen &&
+                  group.items.map((item) => {
+                    const isActive = pathname === item.href
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        title={PAGE_DESCRIPTIONS[item.href]}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={cn(
+                          "sidebar-nav-item group",
+                          isActive && "active"
+                        )}
+                      >
+                        <item.icon
+                          className={cn(
+                            "h-5 w-5 flex-shrink-0 transition-transform duration-200",
+                            isActive ? "text-white" : "text-gray-500 group-hover:text-blue-600"
+                          )}
+                          aria-hidden="true"
+                        />
+                        <span className="flex-1">{item.name}</span>
+                        {item.href === "/mesajlar" && <UnreadBadge />}
+                        {isActive && (
+                          <div className="h-2 w-2 bg-white rounded-full shadow-lg animate-pulse" />
+                        )}
+                      </Link>
+                    )
+                  })}
+              </div>
             )
           })}
         </nav>

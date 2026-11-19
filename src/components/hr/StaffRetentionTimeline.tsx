@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useState } from "react"
 import type { StaffRetentionOutcome } from "@prisma/client"
@@ -79,7 +80,7 @@ export function StaffRetentionTimeline({
       setEditingId(null)
       onChanged()
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Hata")
+      notify(e instanceof Error ? e.message : "Hata")
     } finally {
       setSaving(false)
     }
@@ -102,7 +103,7 @@ export function StaffRetentionTimeline({
     })
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
-      alert(data.error || "Silinemedi")
+      notify(data.error || "Silinemedi")
       return
     }
     onChanged()

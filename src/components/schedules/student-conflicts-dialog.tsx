@@ -1,4 +1,5 @@
 "use client"
+import { notify } from "@/lib/notify"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import {
@@ -159,7 +160,7 @@ export function StudentConflictsDialog({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert((data as { error?: string }).error || "İşlem başarısız")
+        notify((data as { error?: string }).error || "İşlem başarısız")
         return
       }
       setFlash(
@@ -188,7 +189,7 @@ export function StudentConflictsDialog({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert((data as { error?: string }).error || "Atama başarısız")
+        notify((data as { error?: string }).error || "Atama başarısız")
         return
       }
       setFlash(
@@ -214,7 +215,7 @@ export function StudentConflictsDialog({
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        alert((data as { error?: string }).error || "Excel indirilemedi")
+        notify((data as { error?: string }).error || "Excel indirilemedi")
         return
       }
       const blob = await res.blob()
@@ -229,7 +230,7 @@ export function StudentConflictsDialog({
       a.remove()
       URL.revokeObjectURL(url)
     } catch {
-      alert("Excel indirilemedi")
+      notify("Excel indirilemedi")
     } finally {
       setExporting(false)
     }
