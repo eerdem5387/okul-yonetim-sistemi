@@ -1,5 +1,7 @@
 "use client"
 import { notify } from "@/lib/notify"
+import { CopyAddressButton } from "@/components/registration/CopyAddressButton"
+import { FormSectionNav } from "@/components/registration/FormSectionNav"
 import { isoDateTR } from "@/lib/dates"
 
 import { useState, useEffect, useCallback } from "react"
@@ -804,6 +806,15 @@ export default function NewRegistrationPage() {
             </div>
           </CardContent>
         </Card>
+        <FormSectionNav
+          sections={[
+            { id: "bolum-ogrenci", label: "Öğrenci" },
+            { id: "bolum-anne", label: "Anne" },
+            { id: "bolum-baba", label: "Baba" },
+            { id: "bolum-sozlesme", label: "Sözleşme ve ödeme", hint: "Sözleşme bölümü öğrencinin adı, soyadı, TC ve sınıfı girilince açılır." },
+            { id: "bolum-kitap", label: "Kitap ve forma", hint: "Bu bölüm öğrencinin adı, soyadı, TC ve sınıfı girilince açılır." },
+          ]}
+        />
         {/* Öğrenci Bilgileri Formu */}
         <Card className="border-2 border-blue-500 shadow-lg">
           <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
@@ -819,7 +830,7 @@ export default function NewRegistrationPage() {
             <div className="space-y-6">
               {/* Öğrenci Temel Bilgileri */}
               <div>
-                <h3 className="text-lg font-semibold mb-4">Öğrenci Temel Bilgileri</h3>
+                <h3 id="bolum-ogrenci" className="text-lg font-semibold mb-4 scroll-mt-20">Öğrenci Temel Bilgileri</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="firstName">Ad *</Label>
@@ -942,7 +953,7 @@ export default function NewRegistrationPage() {
 
               {/* Anne Bilgileri */}
               <div>
-                <h3 className="text-lg font-semibold mb-4">Anne Bilgileri</h3>
+                <h3 id="bolum-anne" className="text-lg font-semibold mb-4 scroll-mt-20">Anne Bilgileri</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="motherName">Anne Adı Soyadı *</Label>
@@ -975,7 +986,7 @@ export default function NewRegistrationPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="motherAddress">Anne Adres *</Label>
+                    <div className="flex items-center justify-between gap-2"><Label htmlFor="motherAddress">Anne Adres *</Label><CopyAddressButton source={studentFormData.address} onCopy={(v) => setStudentFormData({ ...studentFormData, motherAddress: v })} /></div>
                     <Input
                       id="motherAddress"
                       value={studentFormData.motherAddress}
@@ -995,7 +1006,7 @@ export default function NewRegistrationPage() {
 
               {/* Baba Bilgileri */}
               <div>
-                <h3 className="text-lg font-semibold mb-4">Baba Bilgileri</h3>
+                <h3 id="bolum-baba" className="text-lg font-semibold mb-4 scroll-mt-20">Baba Bilgileri</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="fatherName">Baba Adı Soyadı *</Label>
@@ -1028,7 +1039,7 @@ export default function NewRegistrationPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="fatherAddress">Baba Adres *</Label>
+                    <div className="flex items-center justify-between gap-2"><Label htmlFor="fatherAddress">Baba Adres *</Label><CopyAddressButton source={studentFormData.address} onCopy={(v) => setStudentFormData({ ...studentFormData, fatherAddress: v })} /></div>
                     <Input
                       id="fatherAddress"
                       value={studentFormData.fatherAddress}
@@ -1052,7 +1063,7 @@ export default function NewRegistrationPage() {
         {studentFormData.firstName && studentFormData.lastName && studentFormData.tcNumber && studentFormData.grade && (
           <>
             {/* Ana Sözleşme Formu */}
-            <Card>
+            <Card id="bolum-sozlesme" className="scroll-mt-20">
               <CardHeader>
                 <CardTitle className="text-blue-600">EĞİTİM ÖĞRETİM HİZMET SÖZLEŞMESİ</CardTitle>
                 <CardDescription>Ana sözleşme formu - Öğrenci ve ödeme bilgileri</CardDescription>
@@ -1432,7 +1443,7 @@ export default function NewRegistrationPage() {
             </Card>
 
             {/* Kitap ve Forma Sözleşmesi */}
-            <Card>
+            <Card id="bolum-kitap" className="scroll-mt-20">
               <CardHeader>
                 <CardTitle className="text-green-600">Kitap ve Forma Sözleşmesi</CardTitle>
                 <CardDescription>Öğrenci kitap ve forma sözleşmesi</CardDescription>

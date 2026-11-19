@@ -1,5 +1,6 @@
 "use client"
 import { notify } from "@/lib/notify"
+import { CopyAddressButton } from "@/components/registration/CopyAddressButton"
 import { isoDateTR } from "@/lib/dates"
 
 import { useState, useEffect, useCallback, useRef } from "react"
@@ -1345,7 +1346,7 @@ export default function StudentsPage() {
                   </div>
                 </div>
                 <div className="mt-3 sm:mt-4">
-                  <Label htmlFor="motherAddress" className="text-xs sm:text-sm">Adres</Label>
+                  <div className="flex items-center justify-between gap-2"><Label htmlFor="motherAddress" className="text-xs sm:text-sm">Adres</Label><CopyAddressButton source={formData.address} onCopy={(v) => setFormData({ ...formData, motherAddress: v })} /></div>
                   <Input
                     id="motherAddress"
                     value={formData.motherAddress}
@@ -1424,7 +1425,7 @@ export default function StudentsPage() {
                   </div>
                 </div>
                 <div className="mt-3 sm:mt-4">
-                  <Label htmlFor="fatherAddress" className="text-xs sm:text-sm">Adres</Label>
+                  <div className="flex items-center justify-between gap-2"><Label htmlFor="fatherAddress" className="text-xs sm:text-sm">Adres</Label><CopyAddressButton source={formData.address} onCopy={(v) => setFormData({ ...formData, fatherAddress: v })} /></div>
                   <Input
                     id="fatherAddress"
                     value={formData.fatherAddress}
