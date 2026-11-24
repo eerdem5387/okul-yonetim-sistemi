@@ -1,6 +1,7 @@
 import { requireStaff } from "@/lib/auth/api-guard"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { basvuruGecmisleri, donemKosullari } from "@/lib/bursluluk"
 
 export async function GET(request: NextRequest) {
   const authGuard = await requireStaff(request)
@@ -23,7 +24,9 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit
 
     // Arama ve filtreleme koşulları
-    const whereConditions: Array<Record<string, unknown>> = []
+    const whereConditions: Array<Record<string, unknown>> = [
+      ...(await donemKosullari(prisma, searchParams)),
+    ]
     
     // Arama filtresi - Sadece öğrenci adı ve soyadı ile arama
     if (search) {
@@ -130,8 +133,16 @@ export async function GET(request: NextRequest) {
       take: limit
     })
 
+    // Öğrencinin diğer dönemlerdeki başvuruları (aynı TC)
+    const gecmis = await basvuruGecmisleri(prisma, basvurular.map((b) => b.ogrenciTc))
+    const sonuc = basvurular.map((b) => ({
+      ...b,
+      basvuruSayisi: gecmis.get(b.ogrenciTc)?.basvuruSayisi ?? 1,
+      donemler: gecmis.get(b.ogrenciTc)?.donemler ?? [b.donem],
+    }))
+
     return NextResponse.json({
-      basvurular,
+      basvurular: sonuc,
       pagination: {
         page,
         limit,

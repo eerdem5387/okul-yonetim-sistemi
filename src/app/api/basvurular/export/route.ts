@@ -2,6 +2,7 @@ import { isoDateTR } from "@/lib/dates"
 import { requireStaff } from "@/lib/auth/api-guard"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { basvuruGecmisleri, donemEtiketi, donemKosullari } from "@/lib/bursluluk"
 
 export async function GET(request: NextRequest) {
   const authGuard = await requireStaff(request)
@@ -19,7 +20,9 @@ export async function GET(request: NextRequest) {
     const contactStatus = searchParams.get('contactStatus') || ''
 
     // Filtreleme koşulları (API ile aynı)
-    const whereConditions: Array<Record<string, unknown>> = []
+    const whereConditions: Array<Record<string, unknown>> = [
+      ...(await donemKosullari(prisma, searchParams)),
+    ]
     
     // Arama filtresi - Sadece öğrenci adı ve soyadı ile arama
     if (search) {
@@ -92,6 +95,8 @@ export async function GET(request: NextRequest) {
       }
     })
 
+    const gecmis = await basvuruGecmisleri(prisma, basvurular.map((b) => b.ogrenciTc))
+
     // Excel için veri hazırlama
     const XLSX = await import("xlsx")
     
@@ -99,6 +104,9 @@ export async function GET(request: NextRequest) {
       "Sıra No": index + 1,
       "Öğrenci Ad Soyad": basvuru.ogrenciAdSoyad,
       "TC Kimlik No": basvuru.ogrenciTc,
+      "Dönem": donemEtiketi(basvuru.donem),
+      "Toplam Başvuru Sayısı": gecmis.get(basvuru.ogrenciTc)?.basvuruSayisi ?? 1,
+      "Başvurduğu Dönemler": (gecmis.get(basvuru.ogrenciTc)?.donemler ?? [basvuru.donem]).map(donemEtiketi).join(", "),
       "Okul": basvuru.okul,
       "Sınıf": basvuru.ogrenciSinifi,
       "Şube": basvuru.ogrenciSube,
@@ -111,7 +119,11 @@ export async function GET(request: NextRequest) {
       "Anne Meslek": basvuru.anneMeslek,
       "Anne İş Adresi": basvuru.anneIsAdresi || "",
       "Anne Cep Telefonu": basvuru.anneCepTel,
-      "E-posta": basvuru.email,
+      "İl": basvuru.adresIl || "",
+      "İlçe": basvuru.adresIlce || "",
+      "Mahalle / Köy": basvuru.adresMahalle || "",
+      "Adres Detayı": basvuru.adresDetay || "",
+      "E-posta": basvuru.email || "",
       "İletişim Durumu": basvuru.contactStatus === "ILETISIME_GECILDI" 
         ? "İletişime Geçildi" 
         : basvuru.contactStatus === "ILETISIME_GECILMEDI" && basvuru.lastContactedAt
@@ -126,30 +138,14 @@ export async function GET(request: NextRequest) {
     const wb = XLSX.utils.book_new()
     const ws = XLSX.utils.json_to_sheet(rows)
     
-    // Kolon genişliklerini ayarla
-    const colWidths = [
-      { wch: 8 },   // Sıra No
-      { wch: 25 },  // Öğrenci Ad Soyad
-      { wch: 12 },  // TC Kimlik No
-      { wch: 50 },  // Okul
-      { wch: 10 },  // Sınıf
-      { wch: 8 },   // Şube
-      { wch: 12 },  // Sınav Günü
-      { wch: 25 },  // Baba Ad Soyad
-      { wch: 30 },  // Baba Meslek
-      { wch: 40 },  // Baba İş Adresi
-      { wch: 15 },  // Baba Cep Telefonu
-      { wch: 25 },  // Anne Ad Soyad
-      { wch: 30 },  // Anne Meslek
-      { wch: 40 },  // Anne İş Adresi
-      { wch: 15 },  // Anne Cep Telefonu
-      { wch: 30 },  // E-posta
-      { wch: 18 },  // İletişim Durumu
-      { wch: 40 },  // İletişim Notu
-      { wch: 22 },  // Son İletişim Tarihi
-      { wch: 20 },  // Başvuru Tarihi
-      { wch: 20 },  // Senkronizasyon Tarihi
-    ]
+    // Kolon genişlikleri: başlık ve içerik uzunluğuna göre (en fazla 50 karakter)
+    const headers = rows.length > 0 ? Object.keys(rows[0]) : []
+    const colWidths = headers.map((h) => ({
+      wch: Math.min(
+        50,
+        Math.max(h.length, ...rows.slice(0, 500).map((r) => String(r[h as keyof typeof r] ?? "").length)) + 2
+      ),
+    }))
     ws['!cols'] = colWidths
     
     XLSX.utils.book_append_sheet(wb, ws, "Başvurular")

@@ -18,6 +18,7 @@ import {
   Handshake,
   Contact,
   Calendar,
+  Archive,
 } from "lucide-react"
 import { useState, useEffect, useMemo } from "react"
 import { UnreadBadge } from "@/components/comms/UnreadBadge"
@@ -43,6 +44,7 @@ const baseNavigation: NavDef[] = [
 
 const headCounselorNavigation: NavDef[] = [
   { name: "Bursluluk Başvuruları", href: "/basvurular", icon: ClipboardList, module: "applications", action: "view" },
+  { name: "Bursluluk Arşivi", href: "/basvurular/arsiv", icon: Archive, module: "applications", action: "view" },
   { name: "Yaz Okulu Başvuruları", href: "/yaz-okulu-basvurular", icon: ClipboardList, module: "applications", action: "view" },
   { name: "Teklif Görüşmeleri", href: "/teklif-gorusmeleri", icon: Handshake, module: "applications", action: "view" },
   { name: "Aday Öğrenci Tespiti", href: "/aday-ogrenci-tespiti", icon: Contact, module: "aday_tespit", action: "view" },

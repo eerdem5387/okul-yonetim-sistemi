@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { headers } from "next/headers"
 import { prisma } from "@/lib/prisma"
+import { payloadDonem } from "@/lib/bursluluk"
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
     const payload = await request.json()
 
     // 4. Veri validasyonu
-    if (!payload.id || !payload.ogrenciTc || !payload.email) {
+    if (!payload.id || !payload.ogrenciTc) {
       return NextResponse.json(
         { error: "Invalid payload - missing required fields" },
         { status: 400 }
@@ -66,6 +67,7 @@ export async function POST(request: NextRequest) {
         externalId: payload.id,
         ogrenciAdSoyad: payload.ogrenciAdSoyad,
         ogrenciTc: payload.ogrenciTc,
+        donem: payloadDonem(payload.donem),
         okul: payload.okul,
         ogrenciSinifi: payload.ogrenciSinifi,
         ogrenciSube: payload.ogrenciSube || "Belirtilmedi",
@@ -78,7 +80,11 @@ export async function POST(request: NextRequest) {
         anneMeslek: payload.anneMeslek,
         anneIsAdresi: payload.anneIsAdresi || "",
         anneCepTel: payload.anneCepTel,
-        email: payload.email,
+        adresIl: payload.adresIl || "",
+        adresIlce: payload.adresIlce || "",
+        adresMahalle: payload.adresMahalle || "",
+        adresDetay: payload.adresDetay || "",
+        email: payload.email || "",
         createdAt: new Date(payload.createdAt),
         syncedAt: new Date(),
       }

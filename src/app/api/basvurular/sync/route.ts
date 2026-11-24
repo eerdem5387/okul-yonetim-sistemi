@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { payloadDonem } from "@/lib/bursluluk"
 
 /**
  * Sync endpoint - Başvuru sistemindeki tüm başvuruları çekip senkronize eder
@@ -34,6 +35,7 @@ export async function POST() {
       id: string
       ogrenciAdSoyad?: string
       ogrenciTc?: string
+      donem?: string
       okul?: string
       ogrenciSinifi?: string
       ogrenciSube?: string
@@ -45,6 +47,10 @@ export async function POST() {
       anneMeslek?: string
       anneIsAdresi?: string
       anneCepTel?: string
+      adresIl?: string
+      adresIlce?: string
+      adresMahalle?: string
+      adresDetay?: string
       email?: string
       createdAt?: string
     }
@@ -107,6 +113,7 @@ export async function POST() {
             externalId: payload.id,
             ogrenciAdSoyad: payload.ogrenciAdSoyad,
             ogrenciTc: payload.ogrenciTc,
+            donem: payloadDonem(payload.donem),
             okul: payload.okul,
             ogrenciSinifi: payload.ogrenciSinifi,
             ogrenciSube: payload.ogrenciSube || "Belirtilmedi",
@@ -119,7 +126,11 @@ export async function POST() {
             anneMeslek: payload.anneMeslek,
             anneIsAdresi: payload.anneIsAdresi || "",
             anneCepTel: payload.anneCepTel,
-            email: payload.email,
+            adresIl: payload.adresIl || "",
+            adresIlce: payload.adresIlce || "",
+            adresMahalle: payload.adresMahalle || "",
+            adresDetay: payload.adresDetay || "",
+            email: payload.email || "",
             createdAt: new Date(payload.createdAt),
             syncedAt: new Date(),
           }

@@ -1,6 +1,7 @@
 import { requireStaff } from "@/lib/auth/api-guard"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { donemKosullari, tekrarBasvuranTcler } from "@/lib/bursluluk"
 
 export async function GET(request: NextRequest) {
   const authGuard = await requireStaff(request)
@@ -23,7 +24,10 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    const where = Object.keys(dateFilter).length > 0 ? { createdAt: dateFilter } : {}
+    const donemFiltre = await donemKosullari(prisma, searchParams)
+    const where = {
+      AND: [...donemFiltre, ...(Object.keys(dateFilter).length > 0 ? [{ createdAt: dateFilter }] : [])],
+    }
     
     // Tüm başvuruları çek
     const basvurular = await prisma.basvuru.findMany({
@@ -35,8 +39,13 @@ export async function GET(request: NextRequest) {
         anneMeslek: true,
         createdAt: true,
         sinavGunu: true,
+        ogrenciTc: true,
       }
     })
+
+    // Bu listedeki öğrencilerden başka dönemde de başvurusu olanlar
+    const tekrarSet = new Set(await tekrarBasvuranTcler(prisma))
+    const tekrarCount = basvurular.filter((b) => tekrarSet.has(b.ogrenciTc)).length
     
     // Sınıf bazında sayım
     const sinifStats: Record<string, number> = {}
@@ -94,6 +103,7 @@ export async function GET(request: NextRequest) {
       today: todayCount,
       thisWeek: weekCount,
       thisMonth: monthCount,
+      tekrarCount,
       saturdayCount, // 10 Ocak Cumartesi
       sundayCount,   // 11 Ocak Pazar
       sinifStats,

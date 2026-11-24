@@ -29,6 +29,7 @@ import {
   Wallet,
   Search,
   ChevronDown,
+  Archive,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { UnreadBadge } from "@/components/comms/UnreadBadge"
@@ -86,6 +87,7 @@ const allNavigation = [
   { name: "Devamsızlık", href: "/devamsizlik", icon: ClipboardList, roles: [] as string[], permission: "attendance.view" },
   { name: "Onay Paneli", href: "/onay-paneli", icon: ClipboardList, roles: ["admin", "principal"] },
   { name: "Bursluluk Başvuruları", href: "/basvurular", icon: ClipboardList, roles: ["admin", "principal", "student_affairs", "head_counselor"] },
+  { name: "Bursluluk Arşivi", href: "/basvurular/arsiv", icon: Archive, roles: ["admin", "principal", "student_affairs", "head_counselor"] },
   { name: "Yaz Okulu Başvuruları", href: "/yaz-okulu-basvurular", icon: ClipboardList, roles: ["admin", "principal", "student_affairs", "head_counselor"] },
   { name: "Gezi Yönetimi", href: "/gezi", icon: MapPin, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
   { name: "Kulüp Yönetimi", href: "/clubs", icon: Users, roles: ["admin", "principal", "student_affairs", "counselor", "head_counselor"] },
@@ -144,6 +146,7 @@ export function useMainNavigation() {
     "/devamsizlik": "attendance.view",
     "/onay-paneli": "approval_panel.view",
     "/basvurular": "applications.view",
+    "/basvurular/arsiv": "applications.view",
     "/yaz-okulu-basvurular": "applications.view",
     "/gezi": "gezi.view",
     "/clubs": "clubs.view",
