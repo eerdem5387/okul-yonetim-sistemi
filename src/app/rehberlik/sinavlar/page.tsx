@@ -25,12 +25,12 @@ function getAuthHeaders(): HeadersInit {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  DRAFT: "Taslak",
-  CONFIGURED: "Yapılandırıldı",
-  READY_FOR_SCAN: "Okutmaya hazır",
+  DRAFT: "Hazırlanıyor",
+  CONFIGURED: "Hazırlanıyor",
+  READY_FOR_SCAN: "Okutmaya açık",
   SCANNING: "Okutuluyor",
-  IN_REVIEW: "İncelemede",
-  PUBLISHED: "Yayınlandı",
+  IN_REVIEW: "Kontrol ediliyor",
+  PUBLISHED: "Yayında",
   ARCHIVED: "Arşiv",
 }
 

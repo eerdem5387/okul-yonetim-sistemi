@@ -1,5 +1,6 @@
 import type { Exam, ExamQuestion, ExamScanTemplate, ExamSection } from "@prisma/client"
 import type { ExamReadinessCheck } from "./types"
+import { alternateVariants, isBaseVariant, normalizeBookletVariant } from "./scoring"
 
 type ExamWithRelations = Exam & {
   sections: ExamSection[]
@@ -9,32 +10,46 @@ type ExamWithRelations = Exam & {
 
 export function evaluateExamReadiness(exam: ExamWithRelations): ExamReadinessCheck {
   const issues: string[] = []
+  const warnings: string[] = []
+  // A / kitapçıksız sorular asıl soru listesidir; B vb. yalnızca ayrı cevap anahtarı taşır.
+  const baseQuestions = exam.questions.filter((q) => isBaseVariant(q.bookletVariant))
+  const altQuestions = exam.questions.filter((q) => !isBaseVariant(q.bookletVariant))
   const sectionCount = exam.sections.length
-  const questionCount = exam.questions.length
-  const questionsWithOutcome = exam.questions.filter((q) => q.outcomeId).length
-  const questionsWithKey = exam.questions.filter((q) => q.correctAnswer).length
+  const questionCount = baseQuestions.length
+  const questionsWithOutcome = baseQuestions.filter((q) => q.outcomeId).length
+  const questionsWithKey = baseQuestions.filter((q) => q.correctAnswer).length
   const templateQuestionCount = exam.scanTemplate?.questionCount ?? null
 
-  if (sectionCount === 0) issues.push("En az bir bölüm tanımlanmalı.")
+  if (sectionCount === 0) issues.push("En az bir ders/bölüm tanımlanmalı.")
   if (questionCount === 0) issues.push("En az bir soru tanımlanmalı.")
-  if (questionsWithOutcome < questionCount) {
-    issues.push(`${questionCount - questionsWithOutcome} soruda kazanım eksik.`)
-  }
   if (questionsWithKey < questionCount) {
     issues.push(`${questionCount - questionsWithKey} soruda cevap anahtarı eksik.`)
   }
+  for (const variant of alternateVariants(altQuestions)) {
+    const rows = altQuestions.filter((q) => normalizeBookletVariant(q.bookletVariant) === variant)
+    const missing = rows.filter((q) => !q.correctAnswer).length
+    if (missing > 0) issues.push(`${variant} kitapçığında ${missing} soruda cevap anahtarı eksik.`)
+  }
   if (!exam.scanTemplateId && !exam.templateId) {
-    issues.push("Optik şablon seçilmeli.")
+    issues.push("Optik form şablonu seçilmeli.")
   }
   if (templateQuestionCount != null && templateQuestionCount !== questionCount) {
     issues.push(
-      `Şablon soru sayısı (${templateQuestionCount}) ile tanımlı soru sayısı (${questionCount}) uyuşmuyor.`
+      `Optik formdaki soru sayısı (${templateQuestionCount}) ile tanımlı soru sayısı (${questionCount}) uyuşmuyor.`
+    )
+  }
+  if (questionsWithOutcome < questionCount && questionCount > 0) {
+    warnings.push(
+      questionsWithOutcome === 0
+        ? "Kazanım girilmedi: netler hesaplanır, kazanım analizi yapılmaz."
+        : `${questionCount - questionsWithOutcome} soruda kazanım yok: bu sorular kazanım analizine girmez.`
     )
   }
 
   return {
     ready: issues.length === 0,
     issues,
+    warnings,
     sectionCount,
     questionCount,
     questionsWithOutcome,

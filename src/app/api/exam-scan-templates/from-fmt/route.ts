@@ -31,6 +31,7 @@ export async function POST(request: NextRequest) {
     label?: string
     sectionOverrides?: Array<{ activeLength: number; name?: string; startQuestion?: number }>
     createSectionsForExamId?: string
+    previewOnly?: boolean
   }
   try {
     body = await request.json()
@@ -66,6 +67,25 @@ export async function POST(request: NextRequest) {
   }
   if (body.label?.trim()) {
     layout = { ...layout, label: body.label.trim() }
+  }
+
+  const warnings: string[] = []
+  if (layout.identityMap.tcNumber == null) warnings.push("Formda TC kimlik alanı bulunamadı; öğrenciler ad-soyad ile eşleştirilecek.")
+  if (layout.identityMap.bookletVariant == null) warnings.push("Formda kitapçık alanı bulunamadı; tüm öğrenciler A kitapçığı sayılır.")
+
+  // Önizleme: hiçbir şey kaydetmeden bölümleri göster (kullanıcı soru sayılarını düzeltebilsin)
+  if (body.previewOnly) {
+    return NextResponse.json({
+      layout: {
+        id: layout.id,
+        label: layout.label,
+        questionCount: layout.questionCount,
+        identityMap: layout.identityMap,
+        answerSections: layout.answerSections,
+        fieldOrder: layout.txt.fieldOrder,
+      },
+      warnings,
+    })
   }
 
   const fmtRaw = bytes
@@ -109,7 +129,7 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       )
     }
-    if (exam.status === "READY_FOR_SCAN" || exam.status === "PUBLISHED" || exam.status === "IN_REVIEW") {
+    if (exam.status !== "DRAFT" && exam.status !== "CONFIGURED") {
       return NextResponse.json(
         { error: "Kilitli sınavda bölüm oluşturulamaz", template, layout },
         { status: 409 }
@@ -167,5 +187,6 @@ export async function POST(request: NextRequest) {
       fieldOrder: layout.txt.fieldOrder,
     },
     sectionsCreated,
+    warnings,
   })
 }

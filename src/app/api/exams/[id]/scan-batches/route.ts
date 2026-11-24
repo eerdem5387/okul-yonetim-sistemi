@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireExamScan } from "@/lib/exams/auth"
 import { processScanBatch } from "@/lib/exams/import-batch"
+
+export const maxDuration = 60
 import type { ScanBatchSubmitInput } from "@/lib/exams/types"
 
 export async function POST(

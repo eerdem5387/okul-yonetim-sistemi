@@ -27,8 +27,8 @@ export async function POST(
 
   const exam = await prisma.exam.findUnique({ where: { id: examId } })
   if (!exam) return NextResponse.json({ error: "Sınav bulunamadı" }, { status: 404 })
-  if (exam.status === "READY_FOR_SCAN" || exam.status === "PUBLISHED") {
-    return NextResponse.json({ error: "Kilitli sınavda bölüm eklenemez" }, { status: 409 })
+  if (exam.status !== "DRAFT" && exam.status !== "CONFIGURED") {
+    return NextResponse.json({ error: "Okutmaya açılmış sınavda bölüm eklenemez" }, { status: 409 })
   }
 
   const body = await request.json()
@@ -47,19 +47,26 @@ export async function POST(
     },
   })
 
-  const existing = await prisma.examQuestion.count({ where: { examId } })
-  if (existing === 0) {
-    const questions = []
-    for (let n = questionStart; n <= questionEnd; n++) {
-      questions.push({
-        examId,
-        sectionId: section.id,
-        questionNo: n,
-        sortOrder: n,
+  // Aralıktaki eksik soruları oluştur (önceden yalnız ilk bölümde soru üretiliyordu)
+  const start = Number(questionStart)
+  const end = Number(questionEnd)
+  const existingNos = new Set(
+    (
+      await prisma.examQuestion.findMany({
+        where: { examId, questionNo: { gte: start, lte: end }, OR: [{ bookletVariant: null }, { bookletVariant: "A" }] },
+        select: { questionNo: true },
       })
-    }
-    await prisma.examQuestion.createMany({ data: questions })
+    ).map((q) => q.questionNo)
+  )
+  const questions = []
+  for (let n = start; n <= end; n++) {
+    if (!existingNos.has(n)) questions.push({ examId, sectionId: section.id, questionNo: n, sortOrder: n })
   }
+  if (questions.length) await prisma.examQuestion.createMany({ data: questions })
+  await prisma.examQuestion.updateMany({
+    where: { examId, questionNo: { gte: start, lte: end } },
+    data: { sectionId: section.id },
+  })
 
   return NextResponse.json({ section })
 }
@@ -74,15 +81,17 @@ export async function DELETE(
 
   const exam = await prisma.exam.findUnique({ where: { id: examId } })
   if (!exam) return NextResponse.json({ error: "Sınav bulunamadı" }, { status: 404 })
-  if (exam.status === "READY_FOR_SCAN" || exam.status === "PUBLISHED") {
-    return NextResponse.json({ error: "Kilitli sınavda bölüm silinemez" }, { status: 409 })
+  if (exam.status !== "DRAFT" && exam.status !== "CONFIGURED") {
+    return NextResponse.json({ error: "Okutmaya açılmış sınavda bölüm silinemez" }, { status: 409 })
   }
 
   const { searchParams } = new URL(request.url)
   const sectionId = searchParams.get("sectionId")
   if (!sectionId) return NextResponse.json({ error: "sectionId gerekli" }, { status: 400 })
 
-  await prisma.examQuestion.deleteMany({ where: { sectionId } })
+  const section = await prisma.examSection.findFirst({ where: { id: sectionId, examId } })
+  if (!section) return NextResponse.json({ error: "Bölüm bulunamadı" }, { status: 404 })
+  await prisma.examQuestion.deleteMany({ where: { sectionId, examId } })
   await prisma.examSection.delete({ where: { id: sectionId } })
   return NextResponse.json({ success: true })
 }

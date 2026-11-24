@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { discardAllScans } from "@/lib/exams/import-batch"
 import { requireExamEdit } from "@/lib/exams/auth"
 import { assertTransition } from "@/lib/exams/state-machine"
 
@@ -52,10 +53,9 @@ export async function DELETE(
     return NextResponse.json({ error: "Yalnızca incelemedeki sınav reddedilebilir" }, { status: 409 })
   }
 
-  const updated = await prisma.exam.update({
-    where: { id },
-    data: { status: "READY_FOR_SCAN" },
-  })
+  // Reddedilen okutmaların sonuçları da silinir; aksi halde sonradan yanlışlıkla yayınlanabilirdi
+  await discardAllScans(id)
+  const updated = await prisma.exam.findUnique({ where: { id } })
 
   return NextResponse.json({ exam: updated })
 }

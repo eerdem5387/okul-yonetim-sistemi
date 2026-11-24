@@ -13,6 +13,8 @@ export type DeviceTxtLayout = {
   type?: string
   delimiter?: string
   expectedLineLength?: number
+  /** Satırdaki alan sayısı (ayraçla bölünmüş). FMT şablonlarında alan listesinden hesaplanır. */
+  expectedFieldCount?: number
   encoding?: string[]
   questionCount?: number
   options?: string[]
@@ -98,21 +100,18 @@ function normalizeBooklet(raw: string): string | null {
 }
 
 function decodeBytes(bytes: Uint8Array, preferred?: string): { text: string; encodingUsed: string } {
-  const order = [
-    preferred,
-    "windows-1254",
-    "utf-8",
-    "latin1",
-  ].filter(Boolean) as string[]
+  // Geçerli UTF-8 ise UTF-8; değilse (Türkçe harfler CP1254 baytlarıysa) Windows Türkçe.
+  // windows-1254 her baytı kabul ettiği için önce denenirse UTF-8 dosyalarda Türkçe harfler bozulurdu.
+  const order = ["utf-8", preferred, "windows-1254", "latin1"].filter(
+    (enc, i, arr): enc is string => Boolean(enc) && arr.indexOf(enc) === i
+  )
 
   for (const enc of order) {
     try {
       const text = new TextDecoder(enc, { fatal: enc === "utf-8" }).decode(bytes)
-      // CP1254 / Turkish: common mojibake check — if utf-8 fatal fails we try others
-      if (enc === "utf-8" && text.includes("\uFFFD")) continue
       return { text, encodingUsed: enc }
     } catch {
-      // try next
+      // sonrakini dene
     }
   }
   return { text: new TextDecoder("latin1").decode(bytes), encodingUsed: "latin1" }
@@ -126,12 +125,20 @@ export function layoutFromJson(raw: unknown): DeviceTxtLayout {
   if (obj.type === "sekonic_fmt") {
     const deviceFields = (obj.deviceFields ?? obj.fields) as DeviceTxtLayout["fields"] | undefined
     if (deviceFields?.answerBlocks?.length) {
+      const fmtFields = Array.isArray(obj.fields) ? (obj.fields as Array<{ kind?: string }>) : []
+      const answerSections = Array.isArray(obj.answerSections)
+        ? (obj.answerSections as Array<{ optionChars?: string }>)
+        : []
+      const optionChars = new Set(
+        answerSections.flatMap((s) => (s.optionChars ?? "").toUpperCase().replace(/[^A-E]/g, "").split("")).filter(Boolean)
+      )
       return {
         id: String(obj.id ?? "sekonic_fmt"),
         type: "sekonic_fmt",
         delimiter: String(obj.delimiter ?? "\\"),
+        expectedFieldCount: fmtFields.length ? fmtFields.filter((f) => f.kind !== "separator").length : undefined,
         questionCount: Number(obj.questionCount) || undefined,
-        options: Array.isArray(obj.options) ? (obj.options as string[]) : DEFAULT_LAYOUT.options,
+        options: optionChars.size ? [...optionChars].sort() : Array.isArray(obj.options) ? (obj.options as string[]) : DEFAULT_LAYOUT.options,
         encoding: Array.isArray(obj.encoding) ? (obj.encoding as string[]) : DEFAULT_LAYOUT.encoding,
         fields: {
           formFlag: deviceFields.formFlag,
@@ -222,10 +229,10 @@ export function parseDeviceTxtLine(
   const parts = trimmed.split(delimiter)
   const warnings: string[] = []
 
-  if (layout.expectedLineLength && trimmed.length !== layout.expectedLineLength) {
-    warnings.push(
-      `Satır uzunluğu ${trimmed.length} (beklenen ${layout.expectedLineLength})`
-    )
+  if (layout.expectedFieldCount && parts.length !== layout.expectedFieldCount) {
+    warnings.push(`FORMAT: alan sayısı ${parts.length} (şablonda ${layout.expectedFieldCount})`)
+  } else if (!layout.expectedFieldCount && layout.expectedLineLength && trimmed.length !== layout.expectedLineLength) {
+    warnings.push(`FORMAT: satır uzunluğu ${trimmed.length} (beklenen ${layout.expectedLineLength})`)
   }
 
   const firstName = cleanName(fieldAt(parts, layout.fields.firstName?.index))
@@ -243,9 +250,8 @@ export function parseDeviceTxtLine(
   const bookletCode = fieldAt(parts, layout.fields.bookletCode?.index).trim() || null
 
   const optionSet = new Set(
-    (layout.options ?? ["A", "B", "C", "D", "E"]).map((o) => o.toUpperCase())
+    (layout.options?.length ? layout.options : [...VALID_OPTIONS]).map((o) => o.toUpperCase())
   )
-  for (const o of VALID_OPTIONS) optionSet.add(o)
 
   const { answers, warnings: ansWarnings } = parseAnswerBlocks(
     parts,
@@ -334,6 +340,7 @@ export function deviceTxtRowsToBatchItems(
     for (const w of row.parseWarnings) {
       if (w.includes("TC alanı")) errorCodes.push("TC_INVALID")
     }
+    if (row.parseWarnings.some((w) => w.startsWith("FORMAT:"))) errorCodes.push("FORMAT_MISMATCH")
 
     const nameLabel = row.studentNumber
       ? `[${row.studentNumber}] ${row.studentNameRaw}`.trim()
@@ -350,6 +357,30 @@ export function deviceTxtRowsToBatchItems(
       errorCodes,
     }
   })
+}
+
+/**
+ * Satırların çoğu şablonla uyuşmuyorsa (yanlış şablon / farklı yayınevi formu) yüklemeyi durdurmak için.
+ * Dönen değer: uyuşmayan satır oranı (0–1).
+ */
+export function formatMismatchRatio(rows: ParsedDeviceTxtRow[]): number {
+  if (rows.length === 0) return 0
+  const bad = rows.filter((r) => r.parseWarnings.some((w) => w.startsWith("FORMAT:"))).length
+  return bad / rows.length
+}
+
+/** Sınavın şablonundan TXT düzeni; şablon yoksa ya da cihaz TXT'si okuyamıyorsa null (sessizce varsayılana düşmez). */
+export function resolveTxtLayout(layoutJson: unknown): DeviceTxtLayout | null {
+  if (!layoutJson || typeof layoutJson !== "object") return null
+  const obj = layoutJson as Record<string, unknown>
+  if (obj.type === "sekonic_fmt") {
+    const layout = layoutFromJson(layoutJson)
+    return layout.type === "sekonic_fmt" ? layout : null
+  }
+  if (obj.type && obj.type !== "device_txt") return null
+  const fields = obj.fields as { answerBlocks?: unknown[] } | undefined
+  if (!fields?.answerBlocks?.length) return null
+  return layoutFromJson(layoutJson)
 }
 
 export { DEFAULT_LAYOUT as DEVICE_TXT_V1_LAYOUT }

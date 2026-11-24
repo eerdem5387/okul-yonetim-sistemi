@@ -88,6 +88,7 @@ export type SekonicFmtLayout = {
 function normalizeLabel(label: string): string {
   return label
     .toLocaleUpperCase("tr-TR")
+    .replace(/[.:]/g, "") // "T.C. KİMLİK NO" → "TC KİMLİK NO"
     .replace(/\s+/g, " ")
     .trim()
 }
@@ -111,7 +112,11 @@ function classifyKind(label: string, charset: string, mode: string): SekonicFmtF
 function mapIdentityKey(label: string): keyof SekonicIdentityMap | null {
   const L = normalizeLabel(label)
   if (!L) return null
-  if (L.includes("TC") && (L.includes("KİMLİK") || L.includes("KIMLIK") || L.includes("NO"))) {
+  if (
+    (L.includes("TC") && (L.includes("KİMLİK") || L.includes("KIMLIK") || L.includes("NO"))) ||
+    L.includes("KİMLİK NO") ||
+    L.includes("KIMLIK NO")
+  ) {
     return "tcNumber"
   }
   if (L.includes("ÖĞRENCİ NO") || L.includes("OGRENCI NO") || L === "ÖĞRENCİNO" || L.includes("OGRENCI NO")) {
@@ -190,7 +195,12 @@ export function parseSekonicFmt(params: {
 }): SekonicFmtLayout {
   let text: string
   if (params.bytes) {
-    text = new TextDecoder("windows-1254").decode(params.bytes)
+    // Geçerli UTF-8 değilse Windows Türkçe (CP1254)
+    try {
+      text = new TextDecoder("utf-8", { fatal: true }).decode(params.bytes)
+    } catch {
+      text = new TextDecoder("windows-1254").decode(params.bytes)
+    }
   } else if (params.text != null) {
     text = params.text
   } else {
@@ -312,7 +322,10 @@ export function parseSekonicFmt(params: {
     encoding: ["cp1254", "windows-1254", "utf-8"],
     delimiter: "\\",
     questionCount,
-    options: ["A", "B", "C", "D", "E"],
+    options: (() => {
+      const set = new Set(answerSections.flatMap((a) => a.optionChars.replace(/[^A-E]/g, "").split("")).filter(Boolean))
+      return set.size ? [...set].sort() : ["A", "B", "C", "D", "E"]
+    })(),
     fields,
     identityMap,
     answerSections,

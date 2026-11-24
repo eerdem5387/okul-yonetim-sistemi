@@ -32,12 +32,12 @@ function getAuthHeaders(): HeadersInit {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  DRAFT: "Taslak",
-  CONFIGURED: "Yapılandırıldı",
-  READY_FOR_SCAN: "Okutmaya hazır",
+  DRAFT: "Hazırlanıyor",
+  CONFIGURED: "Hazırlanıyor",
+  READY_FOR_SCAN: "Okutmaya açık",
   SCANNING: "Okutuluyor",
-  IN_REVIEW: "İncelemede",
-  PUBLISHED: "Yayınlandı",
+  IN_REVIEW: "Kontrol ediliyor",
+  PUBLISHED: "Yayında",
   ARCHIVED: "Arşiv",
 }
 
@@ -71,6 +71,7 @@ interface ExamDetail {
     questionNo: number
     correctAnswer: string | null
     outcomeId: string | null
+    bookletVariant: string | null
     outcome?: { subject: string; topic: string } | null
   }>
   scanBatches: Array<{
@@ -86,6 +87,11 @@ interface ExamDetail {
     id: string
     netScore: number | null
     correctCount: number | null
+    wrongCount: number | null
+    blankCount: number | null
+    ranking: number | null
+    bookletVariant: string | null
+    scores: { sections?: Array<{ name: string; net: number }>; rule?: string } | null
     student: { firstName: string; lastName: string; grade: string }
   }>
 }
@@ -93,6 +99,7 @@ interface ExamDetail {
 interface Readiness {
   ready: boolean
   issues: string[]
+  warnings?: string[]
   sectionCount: number
   questionCount: number
   questionsWithOutcome: number
@@ -108,8 +115,78 @@ interface Template {
 
 interface Analytics {
   participantCount: number
+  averageNet?: number | null
+  sectionAverages?: Array<{ name: string; averageNet: number }>
   outcomeSummary: Array<{ subject: string; topic: string; learningOutcome: string; rate: number; correctCount: number; totalQuestions: number }>
   studentWeakness: Array<{ firstName: string; lastName: string; grade: string; weakOutcomes: Array<{ subject: string; topic: string; rate: number }> }>
+}
+
+type FmtSection = { name: string; activeLength: number; startQuestion: number; endQuestion: number }
+type FmtPreview = { file: File; base64: string; label: string; sections: FmtSection[]; warnings: string[] }
+
+type PreviewRow = {
+  index: number
+  nameOnForm: string | null
+  tcNumber: string | null
+  bookletVariant: string | null
+  matchedStudent: string | null
+  errorCodes: string[]
+  firstAnswers: string
+  marked: number
+}
+type TxtPreview = {
+  file: File
+  base64: string
+  parse: { rowCount: number; encodingUsed: string; formatMismatchRows?: number }
+  summary: Record<string, number>
+  rows: PreviewRow[]
+}
+
+type BatchItem = {
+  id: string
+  itemIndex: number
+  studentNameRaw: string | null
+  bookletVariant: string | null
+  matchStatus: string
+  errorCodes: string[]
+  student: { id: string; firstName: string; lastName: string; grade: string } | null
+}
+type BatchDetail = { externalBatchId: string; items: BatchItem[] }
+type ScopeStudent = { id: string; firstName: string; lastName: string; grade: string }
+
+/** Okutma hata kodlarının Türkçe karşılıkları */
+const ERROR_LABELS: Record<string, string> = {
+  TC_MISSING: "TC okunamadı",
+  TC_INVALID: "TC hatalı",
+  STUDENT_NOT_FOUND: "Öğrenci bulunamadı",
+  OUT_OF_SCOPE: "Başka sınıf/şube",
+  DUPLICATE_TC: "Aynı TC iki kez",
+  DUPLICATE_STUDENT: "Aynı öğrenci iki kez",
+  LOW_CONFIDENCE: "Okuma güveni düşük",
+  AMBIGUOUS_ANSWER: "Çift işaret var",
+  NAME_FALLBACK: "İsimle eşleşti",
+  NAME_AMBIGUOUS: "Birden çok benzer isim",
+  NAME_MISMATCH: "İsim TC ile uyuşmuyor",
+  BOOKLET_MISSING: "Kitapçık okunamadı (A sayıldı)",
+  RESCANNED: "Yeniden okutuldu",
+  FORMAT_MISMATCH: "Satır formu uyuşmuyor",
+}
+const BLOCKING = new Set(["STUDENT_NOT_FOUND", "DUPLICATE_TC", "DUPLICATE_STUDENT", "NAME_AMBIGUOUS", "TC_MISSING"])
+
+function ErrorChips({ codes }: { codes: string[] }) {
+  if (!codes.length) return <span className="text-xs text-green-700">Sorunsuz</span>
+  return (
+    <span className="flex flex-wrap gap-1">
+      {codes.map((c) => (
+        <span
+          key={c}
+          className={`rounded px-1.5 py-0.5 text-[11px] ${BLOCKING.has(c) ? "bg-red-100 text-red-800" : "bg-amber-100 text-amber-800"}`}
+        >
+          {ERROR_LABELS[c] ?? c}
+        </span>
+      ))}
+    </span>
+  )
 }
 
 export default function ExamDetailPage() {
@@ -124,7 +201,12 @@ export default function ExamDetailPage() {
   const [readiness, setReadiness] = useState<Readiness | null>(null)
   const [templates, setTemplates] = useState<Template[]>([])
   const [analytics, setAnalytics] = useState<Analytics | null>(null)
-  const [batchDetail, setBatchDetail] = useState<object | null>(null)
+  const [batchDetail, setBatchDetail] = useState<BatchDetail | null>(null)
+  const [fmtPreview, setFmtPreview] = useState<FmtPreview | null>(null)
+  const [txtPreview, setTxtPreview] = useState<TxtPreview | null>(null)
+  const [keyPaste, setKeyPaste] = useState<Record<string, string>>({})
+  const [showBooklet, setShowBooklet] = useState(false)
+  const [scopeStudents, setScopeStudents] = useState<ScopeStudent[]>([])
 
   const [sectionForm, setSectionForm] = useState({ name: "", questionStart: "1", questionEnd: "20" })
   const [outcomeForm, setOutcomeForm] = useState({ code: "", subject: "", topic: "", learningOutcome: "" })
@@ -142,6 +224,7 @@ export default function ExamDetailPage() {
     const keys: Record<string, string> = {}
     const omap: Record<string, string> = {}
     for (const q of data.exam.questions) {
+      if (q.bookletVariant && q.bookletVariant !== "A") continue
       if (q.correctAnswer) keys[q.id] = q.correctAnswer
       if (q.outcomeId) omap[q.id] = q.outcomeId
     }
@@ -227,16 +310,20 @@ export default function ExamDetailPage() {
   const saveQuestions = async () => {
     if (!exam) return
     setSaving(true)
-    const questions = exam.questions.map((q) => ({
+    const baseQuestions = exam.questions.filter((q) => !q.bookletVariant || q.bookletVariant === "A")
+    const questions = baseQuestions.map((q) => ({
       id: q.id,
       correctAnswer: answerKey[q.id] ?? null,
       outcomeId: outcomeMap[q.id] ?? null,
     }))
-    await fetch(`/api/exams/${examId}/questions`, {
+    const res = await fetch(`/api/exams/${examId}/questions`, {
       method: "PUT",
       headers: getAuthHeaders(),
       body: JSON.stringify({ bulk: true, questions }),
     })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) notify(data.error ?? "Kaydedilemedi")
+    else notify(data.rescored ? `Kaydedildi. ${data.rescored} öğrencinin sonucu yeni anahtarla yeniden hesaplandı.` : "Cevap anahtarı kaydedildi.")
     await fetchExam()
     setSaving(false)
   }
@@ -261,10 +348,97 @@ export default function ExamDetailPage() {
   }
 
   const rejectReview = async () => {
+    if (!confirm("Tüm okutmalar ve bunlardan gelen sonuçlar silinecek; sınav yeniden okutmaya açılacak. Devam edilsin mi?")) return
     setSaving(true)
-    await fetch(`/api/exams/${examId}/publish`, { method: "DELETE", headers: getAuthHeaders() })
+    const res = await fetch(`/api/exams/${examId}/publish`, { method: "DELETE", headers: getAuthHeaders() })
+    if (res.ok) notify("Okutmalar ve sonuçlar silindi. Dosyaları yeniden yükleyebilirsiniz.")
+    setBatchDetail(null)
     await fetchExam()
     setSaving(false)
+  }
+
+  const applyKeyPaste = async (sectionId: string, variant: "A" | "B") => {
+    const answers = keyPaste[`${variant}:${sectionId}`] ?? ""
+    setSaving(true)
+    const res = await fetch(`/api/exams/${examId}/questions`, {
+      method: "PUT",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ keyPaste: { sectionId, variant, answers } }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) notify(data.error ?? "Anahtar kaydedilemedi")
+    else {
+      notify(
+        `${variant} kitapçığı anahtarı kaydedildi.` +
+          (data.rescored ? ` ${data.rescored} öğrencinin sonucu yeniden hesaplandı.` : "")
+      )
+      setKeyPaste((prev) => ({ ...prev, [`${variant}:${sectionId}`]: "" }))
+    }
+    await fetchExam()
+    setSaving(false)
+  }
+
+  const removeBooklet = async () => {
+    if (!confirm("B kitapçığının ayrı anahtarı silinsin mi? B kitapçıklı öğrenciler A anahtarıyla puanlanır.")) return
+    setSaving(true)
+    await fetch(`/api/exams/${examId}/questions`, {
+      method: "PUT",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ removeVariant: "B" }),
+    })
+    setShowBooklet(false)
+    await fetchExam()
+    setSaving(false)
+  }
+
+  const loadScopeStudents = async () => {
+    if (scopeStudents.length) return
+    const res = await fetch(`/api/exams/${examId}/students`, { headers: getAuthHeaders() })
+    const data = await res.json().catch(() => ({}))
+    setScopeStudents(data.students ?? [])
+  }
+
+  const assignItem = async (batchId: string, itemId: string, studentId: string) => {
+    if (!studentId) return
+    setSaving(true)
+    const res = await fetch(`/api/exams/${examId}/scan-batches/${batchId}/items/${itemId}`, {
+      method: "PATCH",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ studentId }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) notify(data.error ?? "Eşleştirilemedi")
+    else notify("Kağıt öğrenciyle eşleştirildi ve puanlandı.")
+    await loadBatch(batchId)
+    await fetchExam()
+    setSaving(false)
+  }
+
+  const deleteBatch = async (batchId: string) => {
+    if (!confirm("Bu okutma ve ondan gelen sonuçlar silinsin mi?")) return
+    setSaving(true)
+    const res = await fetch(`/api/exams/${examId}/scan-batches/${batchId}`, { method: "DELETE", headers: getAuthHeaders() })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) notify(data.error ?? "Silinemedi")
+    else notify("Okutma ve sonuçları silindi.")
+    setBatchDetail(null)
+    await fetchExam()
+    setSaving(false)
+  }
+
+  const downloadAnalytics = async () => {
+    const res = await fetch(`/api/exams/${examId}/analytics/export`, { headers: getAuthHeaders() })
+    if (!res.ok) {
+      notify("Analiz indirilemedi")
+      return
+    }
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `${exam?.name ?? "sinav"}-kazanim-analizi.csv`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   const deleteExam = async () => {
@@ -300,6 +474,7 @@ export default function ExamDetailPage() {
     const res = await fetch(`/api/exams/${examId}/scan-batches/${batchId}`, { headers: getAuthHeaders() })
     const data = await res.json()
     setBatchDetail(data.batch)
+    if (data.batch?.items?.some((i: BatchItem) => !i.student)) void loadScopeStudents()
   }
 
   const seedTemplates = async () => {
@@ -377,113 +552,116 @@ export default function ExamDetailPage() {
   const uploadDeviceTxt = async (file: File) => {
     setTxtUploading(true)
     setUploadMsg(null)
+    setTxtPreview(null)
     try {
       const contentBase64 = await fileToBase64(file)
       const res = await fetch(`/api/exams/${examId}/scan-batches/from-txt`, {
         method: "POST",
         headers: getAuthHeaders(),
-        body: JSON.stringify({
-          contentBase64,
-          encoding: "cp1254",
-          operatorNote: `Web TXT: ${file.name}`,
-        }),
+        body: JSON.stringify({ contentBase64, encoding: "cp1254", dryRun: true }),
       })
       const data = await res.json()
-      if (!res.ok) {
-        setUploadMsg(data.error ?? "TXT yükleme başarısız")
-      } else {
-        setUploadMsg(
-          `TXT kabul edildi (${data.parse?.rowCount ?? "?"} satır). ` +
-            `Eşleşen: ${data.summary?.matched ?? 0}, eşleşmeyen: ${data.summary?.unmatched ?? 0}. ` +
-            `Doğrulama sekmesinden inceleyin.`
-        )
-        setTab("dogrulama")
-      }
-      await fetchExam()
+      if (!res.ok) setUploadMsg(data.error ?? "Dosya okunamadı")
+      else setTxtPreview({ file, base64: contentBase64, parse: data.parse, summary: data.summary, rows: data.rows })
     } catch (e) {
-      setUploadMsg(e instanceof Error ? e.message : "TXT yükleme hatası")
+      setUploadMsg(e instanceof Error ? e.message : "Dosya okunamadı")
     } finally {
       setTxtUploading(false)
     }
   }
 
-  const uploadFmt = async (file: File, createSections: boolean) => {
+  const commitTxt = async () => {
+    if (!txtPreview) return
+    setTxtUploading(true)
+    try {
+      const res = await fetch(`/api/exams/${examId}/scan-batches/from-txt`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          contentBase64: txtPreview.base64,
+          encoding: "cp1254",
+          operatorNote: `Web TXT: ${txtPreview.file.name}`,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setUploadMsg(data.error ?? "Kaydedilemedi")
+      } else {
+        notify(
+          `${data.summary?.matched ?? 0} kağıt kaydedildi` +
+            (data.summary?.unmatched ? `, ${data.summary.unmatched} kağıt eşleşmedi (Kontrol sekmesinden elle eşleştirin).` : ".")
+        )
+        setTxtPreview(null)
+        setTab("dogrulama")
+      }
+      await fetchExam()
+    } catch (e) {
+      setUploadMsg(e instanceof Error ? e.message : "Kaydedilemedi")
+    } finally {
+      setTxtUploading(false)
+    }
+  }
+
+  const previewFmt = async (file: File) => {
     setSaving(true)
     setUploadMsg(null)
     try {
       const contentBase64 = await fileToBase64(file)
-
-      // Önizleme: bölümleri göster / onayla
-      let sectionOverrides: Array<{ activeLength: number; name?: string }> | undefined
-      if (createSections) {
-        const previewRes = await fetch("/api/exam-scan-templates/from-fmt", {
-          method: "POST",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({ contentBase64, fileName: file.name }),
-        })
-        const preview = await previewRes.json()
-        if (!previewRes.ok) {
-          setUploadMsg(preview.error ?? "FMT önizleme başarısız")
-          setSaving(false)
-          return
-        }
-        const sections = (preview.layout?.answerSections ?? []) as Array<{
-          name: string
-          activeLength: number
-          startQuestion: number
-          endQuestion: number
-        }>
-        const summary = sections
-          .map((s, i) => `${i + 1}. ${s.name}: soru ${s.startQuestion}–${s.endQuestion} (${s.activeLength} soru)`)
-          .join("\n")
-        const ok = confirm(
-          `FMT bölümleri (onaylayın veya İptal):\n\n${summary}\n\nToplam ${preview.layout?.questionCount} soru.\n\nSoru sayılarını değiştirmek için İptal edip yalnızca şablon olarak ekleyin; ardından bölümleri elle düzenleyin.\n\nDevam edilsin mi?`
-        )
-        if (!ok) {
-          setUploadMsg("FMT yalnızca kütüphaneye eklendi (bölüm oluşturulmadı). Şablon listesinden seçebilirsiniz.")
-          const tplRes = await fetch("/api/exam-scan-templates", { headers: getAuthHeaders() })
-          const tplData = await tplRes.json()
-          setTemplates(tplData.templates ?? [])
-          if (preview.template?.id) await saveTemplate(preview.template.id)
-          setSaving(false)
-          return
-        }
-        sectionOverrides = sections.map((s) => ({ activeLength: s.activeLength, name: s.name }))
+      const res = await fetch("/api/exam-scan-templates/from-fmt", {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ contentBase64, fileName: file.name, previewOnly: true }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setUploadMsg(data.error ?? "Form şablonu okunamadı")
+        return
       }
+      setFmtPreview({
+        file,
+        base64: contentBase64,
+        label: data.layout?.label ?? file.name,
+        sections: (data.layout?.answerSections ?? []).map((s: FmtSection) => ({ ...s })),
+        warnings: data.warnings ?? [],
+      })
+    } catch (e) {
+      setUploadMsg(e instanceof Error ? e.message : "Form şablonu okunamadı")
+    } finally {
+      setSaving(false)
+    }
+  }
 
+  const saveFmt = async (createSections: boolean) => {
+    if (!fmtPreview) return
+    setSaving(true)
+    try {
       const res = await fetch("/api/exam-scan-templates/from-fmt", {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({
-          contentBase64,
-          fileName: file.name,
-          sectionOverrides,
+          contentBase64: fmtPreview.base64,
+          fileName: fmtPreview.file.name,
+          sectionOverrides: fmtPreview.sections.map((s) => ({ activeLength: s.activeLength, name: s.name })),
           createSectionsForExamId: createSections ? examId : undefined,
         }),
       })
       const data = await res.json()
       if (!res.ok) {
-        setUploadMsg(data.error ?? "FMT yükleme başarısız")
-      } else {
-        const secs = data.layout?.answerSections
-          ?.map((s: { name: string; startQuestion: number; endQuestion: number }) =>
-            `${s.name} (${s.startQuestion}–${s.endQuestion})`
-          )
-          .join(", ")
-        setUploadMsg(
-          `FMT kaydedildi: ${data.template?.label ?? data.layout?.label} — ${data.layout?.questionCount ?? "?"} soru` +
-            (createSections ? `. Bölümler oluşturuldu: ${secs}` : ". Şablon listesinden seçebilirsiniz.")
-        )
-        const tplRes = await fetch("/api/exam-scan-templates", { headers: getAuthHeaders() })
-        const tplData = await tplRes.json()
-        setTemplates(tplData.templates ?? [])
-        if (!createSections && data.template?.id) {
-          await saveTemplate(data.template.id)
-        }
-        await fetchExam()
+        setUploadMsg(data.error ?? "Form şablonu kaydedilemedi")
+        return
       }
-    } catch (e) {
-      setUploadMsg(e instanceof Error ? e.message : "FMT yükleme hatası")
+      const tplRes = await fetch("/api/exam-scan-templates", { headers: getAuthHeaders() })
+      const tplData = await tplRes.json()
+      setTemplates(tplData.templates ?? [])
+      if (!createSections && data.template?.id) await saveTemplate(data.template.id)
+      notify(
+        createSections
+          ? `Form kaydedildi, ${data.layout?.answerSections?.length ?? 0} ders oluşturuldu. Şimdi cevap anahtarını girin.`
+          : "Form şablonu kaydedildi ve sınava atandı."
+      )
+      setFmtPreview(null)
+      if (createSections) setTab("sorular")
+      await fetchExam()
     } finally {
       setSaving(false)
     }
@@ -500,13 +678,22 @@ export default function ExamDetailPage() {
     )
   }
 
-  const locked = exam.status === "READY_FOR_SCAN" || exam.status === "PUBLISHED" || exam.status === "IN_REVIEW" || exam.status === "SCANNING"
+  // Yapı (ders/soru/form) okutmaya açılınca kilitlenir; anahtar yayına kadar düzeltilebilir (sonuçlar yeniden hesaplanır)
+  const locked = exam.status !== "DRAFT" && exam.status !== "CONFIGURED"
+  const keyLocked = exam.status === "PUBLISHED" || exam.status === "ARCHIVED"
+  const scanOpen = exam.status === "READY_FOR_SCAN" || exam.status === "SCANNING" || exam.status === "IN_REVIEW"
+  const ruleText = exam.results.find((r) => r.scores?.rule)?.scores?.rule ??
+    (exam.examType === "LGS" || (exam.grade != null && exam.grade >= 5 && exam.grade <= 8 && exam.examType !== "YKS")
+      ? "3 yanlış 1 doğruyu götürür; çift işaret yanlış sayılır"
+      : "4 yanlış 1 doğruyu götürür; çift işaret yanlış sayılır")
+  const hasBooklet = exam.questions.some((q) => q.bookletVariant && q.bookletVariant !== "A")
+  const sectionNames = exam.sections.map((s) => s.name)
   const tabs: { id: Tab; label: string }[] = [
     { id: "genel", label: "Genel" },
     { id: "kazanimlar", label: "Kazanımlar" },
     { id: "sorular", label: "Sorular & Anahtar" },
     { id: "okutma", label: "Okutma" },
-    { id: "dogrulama", label: "Doğrulama" },
+    { id: "dogrulama", label: "Kontrol ve sonuçlar" },
     { id: "analiz", label: "Analiz" },
   ]
 
@@ -587,35 +774,84 @@ export default function ExamDetailPage() {
                       <option key={t.id} value={t.id}>{t.label} ({t.questionCount} soru)</option>
                     ))}
                   </select>
-                  {!locked && (
+                  {!locked && !fmtPreview && (
                     <div className="space-y-2 rounded-lg border border-indigo-100 bg-indigo-50/50 p-3 text-sm">
-                      <p className="text-gray-700">Yayınevi <code>.fmt</code> dosyasını yükleyin. Bölümler otomatik üretilebilir.</p>
-                      <label className="flex flex-col gap-1 cursor-pointer">
-                        <span className="font-medium text-indigo-800">FMT yükle + bölüm/soru oluştur</span>
-                        <input
-                          type="file"
-                          accept=".fmt,text/plain"
-                          disabled={saving}
-                          onChange={(e) => {
-                            const f = e.target.files?.[0]
-                            if (f) void uploadFmt(f, true)
-                            e.target.value = ""
-                          }}
-                        />
-                      </label>
-                      <label className="flex flex-col gap-1 cursor-pointer">
-                        <span className="text-xs text-gray-600">Yalnızca şablon kütüphanesine ekle</span>
-                        <input
-                          type="file"
-                          accept=".fmt,text/plain"
-                          disabled={saving}
-                          onChange={(e) => {
-                            const f = e.target.files?.[0]
-                            if (f) void uploadFmt(f, false)
-                            e.target.value = ""
-                          }}
-                        />
-                      </label>
+                      <p className="text-gray-700">
+                        Listede yoksa yayınevinin <code>.fmt</code> form dosyasını yükleyin. Dersler ve soru sayıları
+                        kaydetmeden önce gösterilir; gerekirse düzeltirsiniz.
+                      </p>
+                      <input
+                        type="file"
+                        accept=".fmt,text/plain"
+                        disabled={saving}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0]
+                          if (f) void previewFmt(f)
+                          e.target.value = ""
+                        }}
+                      />
+                    </div>
+                  )}
+                  {fmtPreview && (
+                    <div className="space-y-3 rounded-lg border border-indigo-200 bg-white p-3 text-sm">
+                      <p className="font-medium text-indigo-900">{fmtPreview.label}: dersleri ve soru sayılarını kontrol edin</p>
+                      {fmtPreview.warnings.map((w) => (
+                        <p key={w} className="flex items-center gap-2 text-amber-700"><AlertTriangle className="h-4 w-4" /> {w}</p>
+                      ))}
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b text-left text-gray-500">
+                            <th className="p-1">Ders</th>
+                            <th className="p-1 w-24">Soru sayısı</th>
+                            <th className="p-1">Sorular</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(() => {
+                            let next = 1
+                            return fmtPreview.sections.map((sec, i) => {
+                              const from = next
+                              next += sec.activeLength
+                              return (
+                                <tr key={i} className="border-b">
+                                  <td className="p-1">
+                                    <Input
+                                      value={sec.name}
+                                      onChange={(e) => {
+                                        const sections = [...fmtPreview.sections]
+                                        sections[i] = { ...sec, name: e.target.value }
+                                        setFmtPreview({ ...fmtPreview, sections })
+                                      }}
+                                    />
+                                  </td>
+                                  <td className="p-1">
+                                    <Input
+                                      type="number"
+                                      min={1}
+                                      value={sec.activeLength}
+                                      onChange={(e) => {
+                                        const sections = [...fmtPreview.sections]
+                                        sections[i] = { ...sec, activeLength: Math.max(1, Number(e.target.value) || 1) }
+                                        setFmtPreview({ ...fmtPreview, sections })
+                                      }}
+                                    />
+                                  </td>
+                                  <td className="p-1 text-gray-600">{from}–{next - 1}</td>
+                                </tr>
+                              )
+                            })
+                          })()}
+                        </tbody>
+                      </table>
+                      <p className="text-xs text-gray-500">
+                        Toplam {fmtPreview.sections.reduce((n, s) => n + s.activeLength, 0)} soru. Soru sayısı formdaki
+                        sütundan fazla olamaz; LGS formlarında çoğunlukla 20 veya 10 olur.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button size="sm" onClick={() => void saveFmt(true)} disabled={saving}>Kaydet ve dersleri oluştur</Button>
+                        <Button size="sm" variant="outline" onClick={() => void saveFmt(false)} disabled={saving}>Yalnızca form şablonu olarak kaydet</Button>
+                        <Button size="sm" variant="ghost" onClick={() => setFmtPreview(null)} disabled={saving}>Vazgeç</Button>
+                      </div>
                     </div>
                   )}
                   {uploadMsg && tab === "genel" && (
@@ -625,7 +861,7 @@ export default function ExamDetailPage() {
               </Card>
               {readiness && (
                 <Card className="md:col-span-2">
-                  <CardHeader><CardTitle>Okutmaya Aç Checklist</CardTitle></CardHeader>
+                  <CardHeader><CardTitle>Okutmaya açmadan önce</CardTitle></CardHeader>
                   <CardContent>
                     <ul className="space-y-1 text-sm">
                       {readiness.issues.length === 0 ? (
@@ -640,9 +876,13 @@ export default function ExamDetailPage() {
                         ))
                       )}
                     </ul>
+                    {readiness.warnings?.map((w, i) => (
+                      <p key={i} className="mt-2 text-sm text-gray-600">ℹ️ {w}</p>
+                    ))}
+                    <p className="mt-2 text-sm text-gray-600">Net kuralı: {ruleText}.</p>
                     {exam.status === "DRAFT" || exam.status === "CONFIGURED" ? (
                       <Button className="mt-4 bg-green-600 hover:bg-green-700" onClick={markReady} disabled={saving || !readiness.ready}>
-                        Okutmaya Aç
+                        Okutmaya aç
                       </Button>
                     ) : null}
                   </CardContent>
@@ -713,9 +953,70 @@ export default function ExamDetailPage() {
 
           {tab === "sorular" && (
             <div className="space-y-4">
-              {!locked && exam.sections.length === 0 && (
+              {exam.sections.length > 0 && !keyLocked && (
                 <Card>
-                  <CardHeader><CardTitle>Bölüm Ekle</CardTitle></CardHeader>
+                  <CardHeader className="flex flex-row items-center justify-between gap-3 flex-wrap">
+                    <CardTitle>Hızlı cevap anahtarı</CardTitle>
+                    {hasBooklet || showBooklet ? (
+                      <Button size="sm" variant="outline" onClick={() => (hasBooklet ? void removeBooklet() : setShowBooklet(false))} disabled={saving}>
+                        B kitapçığını kaldır
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="outline" onClick={() => setShowBooklet(true)}>
+                        + B kitapçığı (ayrı anahtar)
+                      </Button>
+                    )}
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-sm text-gray-600">
+                      Her dersin cevaplarını yayınevinin anahtarından kopyalayıp yapıştırın (ör. <code>ABCDA BDCCA…</code>).
+                      Boşluk ve rakamlar yok sayılır.
+                      {scanOpen ? " Okutma sonrası anahtar değişirse sonuçlar otomatik yeniden hesaplanır." : ""}
+                    </p>
+                    {exam.sections.map((sec) => {
+                      const count = sec.questionEnd - sec.questionStart + 1
+                      const variants: Array<"A" | "B"> = hasBooklet || showBooklet ? ["A", "B"] : ["A"]
+                      return (
+                        <div key={sec.id} className="grid gap-2 md:grid-cols-[160px_1fr]">
+                          <div className="text-sm font-medium pt-2">
+                            {sec.name} <span className="text-gray-500 font-normal">({count} soru)</span>
+                          </div>
+                          <div className="space-y-2">
+                            {variants.map((v) => {
+                              const k = `${v}:${sec.id}`
+                              const typed = (keyPaste[k] ?? "").toUpperCase().replace(/[^A-E]/g, "").length
+                              const current = exam.questions
+                                .filter((q) => q.questionNo >= sec.questionStart && q.questionNo <= sec.questionEnd)
+                                .filter((q) => (v === "A" ? !q.bookletVariant || q.bookletVariant === "A" : q.bookletVariant === v))
+                                .sort((a, b) => a.questionNo - b.questionNo)
+                                .map((q) => q.correctAnswer ?? "·")
+                                .join("")
+                              return (
+                                <div key={v} className="flex flex-wrap items-center gap-2">
+                                  {variants.length > 1 && <span className="w-6 text-xs font-semibold text-gray-500">{v}</span>}
+                                  <Input
+                                    className="flex-1 min-w-[220px] font-mono uppercase"
+                                    placeholder={current && current.replace(/·/g, "") ? current : `${count} harf yapıştırın`}
+                                    value={keyPaste[k] ?? ""}
+                                    onChange={(e) => setKeyPaste({ ...keyPaste, [k]: e.target.value })}
+                                  />
+                                  <span className={`text-xs ${typed === count ? "text-green-700" : "text-gray-500"}`}>{typed}/{count}</span>
+                                  <Button size="sm" disabled={saving || typed !== count} onClick={() => void applyKeyPaste(sec.id, v)}>
+                                    Uygula
+                                  </Button>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </CardContent>
+                </Card>
+              )}
+              {!locked && (
+                <Card>
+                  <CardHeader><CardTitle>Ders / bölüm ekle (form şablonu kullanmıyorsanız)</CardTitle></CardHeader>
                   <CardContent className="grid md:grid-cols-4 gap-3">
                     <div><Label>Ad</Label><Input value={sectionForm.name} onChange={(e) => setSectionForm({ ...sectionForm, name: e.target.value })} placeholder="Türkçe" /></div>
                     <div><Label>Başlangıç</Label><Input type="number" value={sectionForm.questionStart} onChange={(e) => setSectionForm({ ...sectionForm, questionStart: e.target.value })} /></div>
@@ -728,7 +1029,7 @@ export default function ExamDetailPage() {
                 <CardHeader className="flex flex-row items-center justify-between gap-3 flex-wrap">
                   <CardTitle>Sorular & Cevap Anahtarı</CardTitle>
                   <div className="flex flex-wrap gap-2 items-center">
-                    {!locked && (
+                    {!keyLocked && (
                       <>
                         <button
                           type="button"
@@ -770,13 +1071,13 @@ export default function ExamDetailPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {exam.questions.map((q) => (
+                        {exam.questions.filter((q) => !q.bookletVariant || q.bookletVariant === "A").map((q) => (
                           <tr key={q.id} className="border-b">
                             <td className="p-2">{q.questionNo}</td>
                             <td className="p-2">
                               <select
                                 className="w-full p-1 border rounded text-xs"
-                                disabled={locked}
+                                disabled={keyLocked}
                                 value={outcomeMap[q.id] ?? ""}
                                 onChange={(e) => setOutcomeMap({ ...outcomeMap, [q.id]: e.target.value })}
                               >
@@ -789,7 +1090,7 @@ export default function ExamDetailPage() {
                             <td className="p-2">
                               <select
                                 className="w-16 p-1 border rounded"
-                                disabled={locked}
+                                disabled={keyLocked}
                                 value={answerKey[q.id] ?? ""}
                                 onChange={(e) => setAnswerKey({ ...answerKey, [q.id]: e.target.value })}
                               >
@@ -812,49 +1113,101 @@ export default function ExamDetailPage() {
           {tab === "okutma" && (
             <div className="space-y-4">
               <Card>
-                <CardHeader><CardTitle>Okutma Durumu</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  {exam.status === "READY_FOR_SCAN" || exam.status === "SCANNING" ? (
-                    <p className="text-green-700">
-                      Sınav okutmaya açık. Cihaz TXT dosyasını buradan veya masaüstü uygulamadan yükleyebilirsiniz.
+                <CardHeader><CardTitle>Optik okuyucu dosyasını yükle</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  {scanOpen ? (
+                    <p className="text-sm text-gray-700">
+                      Okuyucunun ürettiği <code>.txt</code> dosyasını seçin. Önce okunan kağıtlar gösterilir, onaylarsanız kaydedilir.
+                      Şube şube birden çok dosya yükleyebilirsiniz.
                     </p>
                   ) : (
-                    <p className="text-gray-600">Okutma için sınav &quot;Okutmaya hazır&quot; durumunda olmalıdır.</p>
+                    <p className="text-sm text-gray-600">
+                      Dosya yüklemek için önce Genel sekmesinde &quot;Okutmaya aç&quot; deyin (cevap anahtarı ve form şablonu tamam olmalı).
+                    </p>
                   )}
                   {exam.scanTemplate && (
-                    <p className="text-sm"><strong>Şablon:</strong> {exam.scanTemplate.label} ({exam.scanTemplate.templateKey})</p>
+                    <p className="text-xs text-gray-500">Form: {exam.scanTemplate.label} · Net kuralı: {ruleText}</p>
                   )}
-                  <p className="text-xs text-gray-500">
-                    Eşleştirme sırası: TC → ad-soyad (tek aday). TC boyanmayan formlar incelemede işaretlenir.
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader><CardTitle>Cihaz TXT Yükle</CardTitle></CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-sm text-gray-600">
-                    Optik okuyucunun ürettiği <code>.txt</code> dosyasını seçin (CP1254 / Windows Türkçe).
-                  </p>
-                  <input
-                    type="file"
-                    accept=".txt,text/plain"
-                    disabled={txtUploading || (exam.status !== "READY_FOR_SCAN" && exam.status !== "SCANNING")}
-                    onChange={(e) => {
-                      const f = e.target.files?.[0]
-                      if (f) void uploadDeviceTxt(f)
-                      e.target.value = ""
-                    }}
-                  />
+                  {!txtPreview && (
+                    <input
+                      type="file"
+                      accept=".txt,text/plain"
+                      disabled={txtUploading || !scanOpen}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0]
+                        if (f) void uploadDeviceTxt(f)
+                        e.target.value = ""
+                      }}
+                    />
+                  )}
                   {txtUploading && (
                     <p className="text-sm flex items-center gap-2 text-gray-600">
-                      <Loader2 className="h-4 w-4 animate-spin" /> Yükleniyor…
+                      <Loader2 className="h-4 w-4 animate-spin" /> İşleniyor…
                     </p>
                   )}
                   {uploadMsg && tab === "okutma" && (
-                    <p className="text-sm text-indigo-800 bg-indigo-50 p-2 rounded">{uploadMsg}</p>
+                    <p className="text-sm text-red-800 bg-red-50 p-2 rounded">{uploadMsg}</p>
                   )}
                 </CardContent>
               </Card>
+
+              {txtPreview && (
+                <Card className="border-indigo-200">
+                  <CardHeader><CardTitle>Önizleme: {txtPreview.file.name}</CardTitle></CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex flex-wrap gap-3 text-sm">
+                      <span className="rounded bg-gray-100 px-2 py-1">{txtPreview.parse.rowCount} kağıt</span>
+                      <span className="rounded bg-green-100 px-2 py-1 text-green-800">{txtPreview.summary.matched ?? 0} eşleşti</span>
+                      {(txtPreview.summary.unmatched ?? 0) > 0 && (
+                        <span className="rounded bg-red-100 px-2 py-1 text-red-800">{txtPreview.summary.unmatched} eşleşmedi</span>
+                      )}
+                      {(txtPreview.summary.nameMatched ?? 0) > 0 && (
+                        <span className="rounded bg-amber-100 px-2 py-1 text-amber-800">{txtPreview.summary.nameMatched} isimle eşleşti</span>
+                      )}
+                      {(txtPreview.summary.rescanned ?? 0) > 0 && (
+                        <span className="rounded bg-amber-100 px-2 py-1 text-amber-800">{txtPreview.summary.rescanned} öğrencinin önceki sonucu değişecek</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      İlk sütunlardaki cevapların mantıklı göründüğünü kontrol edin (·: boş, *: çift işaret). Harfler kaymış görünüyorsa yanlış form şablonu seçilmiştir.
+                    </p>
+                    <div className="max-h-96 overflow-auto rounded border">
+                      <table className="w-full text-sm">
+                        <thead className="sticky top-0 bg-gray-50">
+                          <tr className="text-left text-gray-500">
+                            <th className="p-2">Formdaki ad</th>
+                            <th className="p-2">Eşleşen öğrenci</th>
+                            <th className="p-2">Kitapçık</th>
+                            <th className="p-2">İlk 10 cevap</th>
+                            <th className="p-2">Durum</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {txtPreview.rows.map((r) => (
+                            <tr key={r.index} className={`border-t ${r.matchedStudent ? "" : "bg-red-50/60"}`}>
+                              <td className="p-2">{r.nameOnForm || "—"}</td>
+                              <td className="p-2">{r.matchedStudent ?? <span className="text-red-700">Eşleşmedi</span>}</td>
+                              <td className="p-2">{r.bookletVariant ?? "—"}</td>
+                              <td className="p-2 font-mono tracking-wider">{r.firstAnswers}</td>
+                              <td className="p-2"><ErrorChips codes={r.errorCodes} /></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button onClick={() => void commitTxt()} disabled={txtUploading}>
+                        {txtUploading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}
+                        Onayla ve kaydet
+                      </Button>
+                      <Button variant="outline" onClick={() => setTxtPreview(null)} disabled={txtUploading}>Vazgeç</Button>
+                    </div>
+                    {(txtPreview.summary.unmatched ?? 0) > 0 && (
+                      <p className="text-xs text-gray-600">Eşleşmeyen kağıtları kaydettikten sonra Kontrol sekmesinde öğrenci seçerek eşleştirebilirsiniz.</p>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
             </div>
           )}
 
@@ -862,58 +1215,133 @@ export default function ExamDetailPage() {
             <div className="space-y-4">
               {exam.status === "IN_REVIEW" && (
                 <Card>
-                  <CardHeader><CardTitle>İnceleme Onayı</CardTitle></CardHeader>
-                  <CardContent className="flex gap-3">
-                    <Button className="bg-purple-600" onClick={publish} disabled={saving}>Yayınla</Button>
-                    <Button variant="outline" onClick={rejectReview} disabled={saving}>Reddet (okutmaya geri al)</Button>
+                  <CardHeader><CardTitle>Kontrol ve yayın</CardTitle></CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-sm text-gray-600">
+                      {exam.results.length} öğrencinin sonucu hazır. Eşleşmeyen kağıt kalmadıysa yayınlayın; sonuçlar veli ve öğretmenlere görünür.
+                    </p>
+                    <div className="flex flex-wrap gap-3">
+                      <Button className="bg-purple-600" onClick={publish} disabled={saving}>Yayınla</Button>
+                      <Button variant="outline" onClick={rejectReview} disabled={saving}>Tüm okutmaları sil ve baştan başla</Button>
+                    </div>
                   </CardContent>
                 </Card>
               )}
               <Card>
-                <CardHeader><CardTitle>Batch Geçmişi</CardTitle></CardHeader>
+                <CardHeader><CardTitle>Yüklenen dosyalar</CardTitle></CardHeader>
                 <CardContent>
                   {exam.scanBatches.length === 0 ? (
-                    <p className="text-gray-500">Henüz batch yok.</p>
+                    <p className="text-gray-500">Henüz dosya yüklenmedi.</p>
                   ) : (
                     <div className="space-y-2">
                       {exam.scanBatches.map((b) => (
-                        <div key={b.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div key={b.id} className="flex flex-wrap items-center justify-between gap-2 p-3 border rounded-lg">
                           <div>
-                            <p className="font-medium text-sm">{b.externalBatchId.slice(0, 8)}…</p>
-                            <p className="text-xs text-gray-500">
-                              {new Date(b.createdAt).toLocaleString("tr-TR")} — {b.operator.firstName} {b.operator.lastName} — {b._count.items} form
+                            <p className="font-medium text-sm">
+                              {new Date(b.createdAt).toLocaleString("tr-TR")} · {b._count.items} kağıt
                             </p>
-                            {b.summaryJson && (
-                              <p className="text-xs text-gray-600">
-                                Eşleşen: {b.summaryJson.matched ?? 0} / Eşleşmeyen: {b.summaryJson.unmatched ?? 0}
-                              </p>
+                            <p className="text-xs text-gray-500">
+                              {b.operator.firstName} {b.operator.lastName}
+                              {b.summaryJson ? ` · eşleşen ${b.summaryJson.matched ?? 0} · eşleşmeyen ${b.summaryJson.unmatched ?? 0}` : ""}
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline" onClick={() => loadBatch(b.externalBatchId)}>Kağıtlar</Button>
+                            {scanOpen && (
+                              <Button size="sm" variant="outline" className="text-red-600" onClick={() => void deleteBatch(b.externalBatchId)} disabled={saving}>
+                                Geri al
+                              </Button>
                             )}
                           </div>
-                          <Button size="sm" variant="outline" onClick={() => loadBatch(b.externalBatchId)}>Detay</Button>
                         </div>
                       ))}
                     </div>
                   )}
                   {batchDetail && (
-                    <pre className="mt-4 p-3 bg-gray-100 rounded text-xs overflow-auto max-h-64">
-                      {JSON.stringify(batchDetail, null, 2)}
-                    </pre>
+                    <div className="mt-4 max-h-[28rem] overflow-auto rounded border">
+                      <table className="w-full text-sm">
+                        <thead className="sticky top-0 bg-gray-50">
+                          <tr className="text-left text-gray-500">
+                            <th className="p-2">#</th>
+                            <th className="p-2">Formdaki ad</th>
+                            <th className="p-2">Öğrenci</th>
+                            <th className="p-2">Kitapçık</th>
+                            <th className="p-2">Durum</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {batchDetail.items.map((item) => (
+                            <tr key={item.id} className={`border-t ${item.student ? "" : "bg-red-50/60"}`}>
+                              <td className="p-2 text-gray-500">{item.itemIndex + 1}</td>
+                              <td className="p-2">{item.studentNameRaw || "—"}</td>
+                              <td className="p-2">
+                                {scanOpen ? (
+                                  <select
+                                    className="w-full max-w-xs rounded border p-1 text-sm"
+                                    value={item.student?.id ?? ""}
+                                    disabled={saving}
+                                    onFocus={() => void loadScopeStudents()}
+                                    onChange={(e) => void assignItem(batchDetail.externalBatchId, item.id, e.target.value)}
+                                  >
+                                    <option value="">{item.student ? "" : "Öğrenci seçin…"}</option>
+                                    {item.student && !scopeStudents.some((s) => s.id === item.student!.id) && (
+                                      <option value={item.student.id}>{item.student.firstName} {item.student.lastName}</option>
+                                    )}
+                                    {scopeStudents.map((s) => (
+                                      <option key={s.id} value={s.id}>{s.firstName} {s.lastName} ({s.grade})</option>
+                                    ))}
+                                  </select>
+                                ) : item.student ? (
+                                  `${item.student.firstName} ${item.student.lastName}`
+                                ) : (
+                                  <span className="text-red-700">Eşleşmedi</span>
+                                )}
+                              </td>
+                              <td className="p-2">{item.bookletVariant ?? "—"}</td>
+                              <td className="p-2">
+                                {item.matchStatus === "MANUAL" ? <span className="text-xs text-indigo-700">Elle eşleştirildi</span> : <ErrorChips codes={item.errorCodes} />}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader><CardTitle>Sonuçlar ({exam.results.length})</CardTitle></CardHeader>
                 <CardContent>
-                  <div className="overflow-x-auto max-h-80">
+                  <p className="mb-2 text-xs text-gray-500">Net kuralı: {ruleText}.</p>
+                  <div className="overflow-x-auto max-h-[32rem]">
                     <table className="w-full text-sm">
-                      <thead><tr className="border-b"><th className="p-2 text-left">Öğrenci</th><th className="p-2 text-left">Sınıf</th><th className="p-2 text-right">Net</th><th className="p-2 text-right">Doğru</th></tr></thead>
+                      <thead className="sticky top-0 bg-white">
+                        <tr className="border-b">
+                          <th className="p-2 text-right">Sıra</th>
+                          <th className="p-2 text-left">Öğrenci</th>
+                          <th className="p-2 text-left">Sınıf</th>
+                          {hasBooklet && <th className="p-2 text-center">Kit.</th>}
+                          {sectionNames.map((n) => (
+                            <th key={n} className="p-2 text-right whitespace-nowrap">{n}</th>
+                          ))}
+                          <th className="p-2 text-right">D / Y / B</th>
+                          <th className="p-2 text-right">Net</th>
+                        </tr>
+                      </thead>
                       <tbody>
                         {exam.results.map((r) => (
                           <tr key={r.id} className="border-b">
+                            <td className="p-2 text-right text-gray-500">{r.ranking ?? "—"}</td>
                             <td className="p-2">{r.student.firstName} {r.student.lastName}</td>
                             <td className="p-2">{r.student.grade}</td>
-                            <td className="p-2 text-right">{r.netScore?.toFixed(2) ?? "—"}</td>
-                            <td className="p-2 text-right">{r.correctCount ?? "—"}</td>
+                            {hasBooklet && <td className="p-2 text-center">{r.bookletVariant ?? "A"}</td>}
+                            {sectionNames.map((n) => (
+                              <td key={n} className="p-2 text-right">
+                                {r.scores?.sections?.find((s) => s.name === n)?.net.toFixed(2) ?? "—"}
+                              </td>
+                            ))}
+                            <td className="p-2 text-right text-gray-600">{r.correctCount ?? 0} / {r.wrongCount ?? 0} / {r.blankCount ?? 0}</td>
+                            <td className="p-2 text-right font-semibold">{r.netScore?.toFixed(2) ?? "—"}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -929,9 +1357,9 @@ export default function ExamDetailPage() {
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Kazanım Analizi</CardTitle>
                 {exam.status === "PUBLISHED" && (
-                  <a href={`/api/exams/${examId}/analytics/export`} download>
-                    <Button size="sm" variant="outline"><Download className="h-4 w-4 mr-1" /> Excel (CSV)</Button>
-                  </a>
+                  <Button size="sm" variant="outline" onClick={() => void downloadAnalytics()}>
+                    <Download className="h-4 w-4 mr-1" /> Excel (CSV)
+                  </Button>
                 )}
               </CardHeader>
               <CardContent>
@@ -939,7 +1367,15 @@ export default function ExamDetailPage() {
                   <p className="text-gray-600">Analiz yayınlanmış sınavlar için kullanılabilir.</p>
                 ) : analytics ? (
                   <div className="space-y-6">
-                    <p className="text-sm">Katılımcı: {analytics.participantCount}</p>
+                    <div className="flex flex-wrap gap-3 text-sm">
+                      <span className="rounded bg-gray-100 px-3 py-1">Katılımcı: {analytics.participantCount}</span>
+                      {analytics.averageNet != null && (
+                        <span className="rounded bg-purple-100 px-3 py-1 text-purple-800">Ortalama net: {analytics.averageNet.toFixed(2)}</span>
+                      )}
+                      {analytics.sectionAverages?.map((s) => (
+                        <span key={s.name} className="rounded bg-indigo-50 px-3 py-1 text-indigo-800">{s.name}: {s.averageNet.toFixed(2)}</span>
+                      ))}
+                    </div>
                     <div>
                       <h3 className="font-semibold mb-2">Sınıf Kazanım Özeti (en zayıf)</h3>
                       <table className="w-full text-sm">

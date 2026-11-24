@@ -35,6 +35,8 @@ export type ScanBatchSubmitInput = {
 export type ExamReadinessCheck = {
   ready: boolean
   issues: string[]
+  /** Okutmayı engellemeyen notlar (ör. kazanım girilmemiş) */
+  warnings: string[]
   sectionCount: number
   questionCount: number
   questionsWithOutcome: number

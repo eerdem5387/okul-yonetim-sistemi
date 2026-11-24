@@ -1,11 +1,24 @@
 import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
-import { scoreAnswers } from "./scoring"
 import { nameSimilarity, normalizeTc } from "./validation"
-import type { ScanBatchSubmitInput } from "./types"
+import type { ScanBatchItemInput, ScanBatchSubmitInput } from "./types"
 import { gradeLevelWhereClause, parseStudentGradeLevel } from "@/lib/student-grade-level"
+import { alternateVariants, normalizeBookletVariant } from "./scoring"
+import {
+  SCAN_TX_OPTIONS,
+  loadScoringContext,
+  recomputeRankings,
+  writeExamResults,
+} from "./results"
 
 const LOW_CONFIDENCE = 0.75
+
+/** Okutma dosyası kabul edilen sınav durumları (incelemedeyken ek dosya da eklenebilir). */
+export const SCAN_ACCEPTING_STATUSES = ["READY_FOR_SCAN", "SCANNING", "IN_REVIEW"] as const
+
+export function isScanAccepting(status: string): boolean {
+  return (SCAN_ACCEPTING_STATUSES as readonly string[]).includes(status)
+}
 
 function studentInExamScope(
   studentGrade: string,
@@ -13,153 +26,148 @@ function studentInExamScope(
   examClassId: string | null,
   studentClassIds: string[]
 ): boolean {
-  if (examClassId) {
-    return studentClassIds.includes(examClassId)
-  }
-  if (examGrade != null) {
-    const level = parseStudentGradeLevel(studentGrade)
-    return level === examGrade
-  }
+  if (examClassId) return studentClassIds.includes(examClassId)
+  if (examGrade != null) return parseStudentGradeLevel(studentGrade) === examGrade
   return true
 }
 
-export async function processScanBatch(
-  examId: string,
-  operatorId: string,
-  input: ScanBatchSubmitInput
-) {
-  const existing = await prisma.examScanBatch.findUnique({
-    where: { externalBatchId: input.batchId },
-    include: { items: true },
-  })
-  if (existing) {
-    return { duplicate: true as const, batch: existing }
-  }
+export type MatchedItem = {
+  item: ScanBatchItemInput
+  studentId: string | null
+  studentName: string | null
+  errorCodes: string[]
+  matchStatus: "MATCHED" | "UNMATCHED" | "MANUAL" | "LOW_CONFIDENCE"
+}
 
-  const exam = await prisma.exam.findUnique({
+export type MatchSummary = {
+  total: number
+  matched: number
+  unmatched: number
+  lowConfidence: number
+  duplicateTc: number
+  outOfScope: number
+  nameMatched: number
+  bookletMissing: number
+  rescanned: number
+}
+
+/**
+ * Kağıtları öğrencilerle eşleştirir (veritabanına yazmaz — önizleme ve kayıt aynı mantığı kullanır).
+ * Sıra: TC → (TC yoksa) ad-soyad tek aday. Kapsam dışı öğrenci (başka şube/düzey) uyarıdır, engel değil.
+ */
+export async function matchScanItems(
+  examId: string,
+  items: ScanBatchItemInput[],
+  db: Prisma.TransactionClient | typeof prisma = prisma
+) {
+  const exam = await db.exam.findUnique({
     where: { id: examId },
-    include: {
-      questions: true,
-      scanTemplate: true,
+    select: {
+      id: true,
+      grade: true,
+      classId: true,
+      questions: { select: { questionNo: true, correctAnswer: true, bookletVariant: true } },
+      results: { select: { studentId: true } },
     },
   })
   if (!exam) throw new Error("Sınav bulunamadı")
-  if (exam.definitionVersion !== input.definitionVersion) {
-    throw new Error("Sınav tanım sürümü uyuşmuyor")
-  }
-  if (exam.status !== "READY_FOR_SCAN" && exam.status !== "SCANNING") {
-    throw new Error("Sınav okutmaya uygun durumda değil")
-  }
 
-  if (exam.status === "READY_FOR_SCAN") {
-    await prisma.exam.update({
-      where: { id: examId },
-      data: { status: "SCANNING" },
-    })
-  }
+  const hasAltBooklets = alternateVariants(exam.questions).length > 0
+  const alreadyScored = new Set(exam.results.map((r) => r.studentId))
 
-  const seenTc = new Set<string>()
-  const seenStudentIds = new Set<string>()
-  const summary = {
-    total: input.items.length,
-    matched: 0,
-    unmatched: 0,
-    lowConfidence: 0,
-    duplicateTc: 0,
-    outOfScope: 0,
-    nameMatched: 0,
-  }
+  // TC'ler tek sorguda
+  const tcs = [...new Set(items.map((i) => normalizeTc(i.tcNumber)).filter((t): t is string => Boolean(t)))]
+  const byTc = new Map(
+    (
+      await db.student.findMany({
+        where: { tcNumber: { in: tcs } },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          grade: true,
+          tcNumber: true,
+          classAssignments: { select: { classId: true } },
+        },
+      })
+    ).map((s) => [s.tcNumber, s])
+  )
 
-  // Ad-soyad yedek eşleştirme için kapsam adayları (TC yoksa)
-  const scopeCandidates = await prisma.student.findMany({
+  // Ad-soyad yedek eşleştirme adayları
+  const scopeCandidates = await db.student.findMany({
     where: exam.grade != null ? gradeLevelWhereClause(exam.grade) : undefined,
     select: {
       id: true,
       firstName: true,
       lastName: true,
       grade: true,
-      tcNumber: true,
       classAssignments: { select: { classId: true } },
     },
   })
 
-  const processedItems: Array<{
-    item: (typeof input.items)[0]
-    studentId: string | null
-    errorCodes: string[]
-    matchStatus: "MATCHED" | "UNMATCHED" | "MANUAL" | "LOW_CONFIDENCE"
-  }> = []
+  const seenTc = new Set<string>()
+  const seenStudentIds = new Set<string>()
+  const summary: MatchSummary = {
+    total: items.length,
+    matched: 0,
+    unmatched: 0,
+    lowConfidence: 0,
+    duplicateTc: 0,
+    outOfScope: 0,
+    nameMatched: 0,
+    bookletMissing: 0,
+    rescanned: 0,
+  }
+  const matched: MatchedItem[] = []
 
-  for (const item of input.items) {
-    const errorCodes = [...(item.errorCodes ?? [])].filter(
-      (c) => c !== "TC_MISSING" // yeniden değerlendireceğiz
-    )
+  for (const item of items) {
+    const errorCodes = [...(item.errorCodes ?? [])].filter((c) => c !== "TC_MISSING")
     const tc = normalizeTc(item.tcNumber)
     if (!tc) errorCodes.push("TC_MISSING")
     else if (seenTc.has(tc)) {
       errorCodes.push("DUPLICATE_TC")
       summary.duplicateTc++
-    } else {
-      seenTc.add(tc)
-    }
+    } else seenTc.add(tc)
 
     let studentId = item.studentId ?? null
-    let matchStatus = item.matchStatus
+    let studentName: string | null = null
+    let matchStatus: MatchedItem["matchStatus"] = item.matchStatus
     let matchedViaName = false
 
-    // 1) TC öncelikli
     if (tc && !studentId) {
-      const student = await prisma.student.findUnique({
-        where: { tcNumber: tc },
-        include: {
-          classAssignments: { select: { classId: true } },
-        },
-      })
+      const student = byTc.get(tc)
       if (!student) {
         errorCodes.push("STUDENT_NOT_FOUND")
         matchStatus = "UNMATCHED"
       } else {
         studentId = student.id
-        const inScope = studentInExamScope(
-          student.grade,
-          exam.grade,
-          exam.classId,
-          student.classAssignments.map((c) => c.classId)
-        )
-        if (!inScope) {
+        studentName = `${student.firstName} ${student.lastName}`
+        if (!studentInExamScope(student.grade, exam.grade, exam.classId, student.classAssignments.map((c) => c.classId))) {
           errorCodes.push("OUT_OF_SCOPE")
           summary.outOfScope++
         }
-        if (item.studentNameRaw) {
-          const fullName = `${student.firstName} ${student.lastName}`
-          const sim = nameSimilarity(item.studentNameRaw, fullName)
-          if (sim < 0.6) errorCodes.push("NAME_MISMATCH")
+        if (item.studentNameRaw && nameSimilarity(item.studentNameRaw, studentName) < 0.6) {
+          errorCodes.push("NAME_MISMATCH")
         }
       }
     }
 
-    // 2) TC yoksa ad-soyad (tek yüksek skorlu aday)
     if (!studentId && item.studentNameRaw) {
       const scored = scopeCandidates
         .map((s) => ({
           student: s,
           score: nameSimilarity(item.studentNameRaw!, `${s.firstName} ${s.lastName}`),
-          inScope: studentInExamScope(
-            s.grade,
-            exam.grade,
-            exam.classId,
-            s.classAssignments.map((c) => c.classId)
-          ),
+          inScope: studentInExamScope(s.grade, exam.grade, exam.classId, s.classAssignments.map((c) => c.classId)),
         }))
         .filter((x) => x.inScope && x.score >= 0.85)
         .sort((a, b) => b.score - a.score)
 
       if (scored.length === 1) {
         studentId = scored[0].student.id
+        studentName = `${scored[0].student.firstName} ${scored[0].student.lastName}`
         matchedViaName = true
         errorCodes.push("NAME_FALLBACK")
         summary.nameMatched++
-        // TC eksik ama isimle bulundu — TC_MISSING kalsın (incelemede görünsün)
         matchStatus = "MATCHED"
       } else if (scored.length > 1) {
         errorCodes.push("NAME_AMBIGUOUS")
@@ -174,8 +182,19 @@ export async function processScanBatch(
       errorCodes.push("DUPLICATE_STUDENT")
       matchStatus = "UNMATCHED"
       studentId = null
+      studentName = null
     } else if (studentId) {
       seenStudentIds.add(studentId)
+    }
+
+    if (studentId && alreadyScored.has(studentId)) {
+      errorCodes.push("RESCANNED")
+      summary.rescanned++
+    }
+
+    if (hasAltBooklets && !normalizeBookletVariant(item.bookletVariant)) {
+      errorCodes.push("BOOKLET_MISSING")
+      summary.bookletMissing++
     }
 
     const conf = item.confidenceScore ?? 1
@@ -185,37 +204,66 @@ export async function processScanBatch(
       summary.lowConfidence++
     }
 
-    // TC ile eşleşen veya isim yedek eşleşmesi (NAME_FALLBACK) sonuç yazılabilir
     const canImport =
       Boolean(studentId) &&
       matchStatus !== "UNMATCHED" &&
       !errorCodes.includes("DUPLICATE_TC") &&
       !errorCodes.includes("DUPLICATE_STUDENT") &&
-      !errorCodes.includes("OUT_OF_SCOPE") &&
-      (Boolean(tc) || matchedViaName)
+      (Boolean(tc) || matchedViaName || Boolean(item.studentId))
 
     if (canImport) summary.matched++
     else summary.unmatched++
 
-    processedItems.push({
+    matched.push({
       item,
       studentId: canImport ? studentId : null,
+      studentName: canImport ? studentName : null,
       errorCodes,
-      matchStatus: canImport
-        ? matchStatus === "LOW_CONFIDENCE"
-          ? "LOW_CONFIDENCE"
-          : "MATCHED"
-        : "UNMATCHED",
+      matchStatus: canImport ? (matchStatus === "LOW_CONFIDENCE" ? "LOW_CONFIDENCE" : "MATCHED") : "UNMATCHED",
     })
   }
 
-  const result = await prisma.$transaction(async (tx) => {
-    await tx.exam.update({
-      where: { id: examId },
-      data: { status: "IN_REVIEW" },
-    })
+  return { matched, summary }
+}
 
-    const batch = await tx.examScanBatch.create({
+export async function processScanBatch(examId: string, operatorId: string, input: ScanBatchSubmitInput) {
+  const existing = await prisma.examScanBatch.findUnique({
+    where: { externalBatchId: input.batchId },
+    include: { items: true },
+  })
+  if (existing) return { duplicate: true as const, batch: existing }
+
+  const exam = await prisma.exam.findUnique({
+    where: { id: examId },
+    select: { id: true, status: true, definitionVersion: true },
+  })
+  if (!exam) throw new Error("Sınav bulunamadı")
+  if (exam.definitionVersion !== input.definitionVersion) {
+    throw new Error("Sınav tanım sürümü uyuşmuyor")
+  }
+  if (!isScanAccepting(exam.status)) {
+    throw new Error("Sınav okutmaya açık değil. Önce 'Okutmaya aç' deyin.")
+  }
+
+  const { matched, summary } = await matchScanItems(examId, input.items)
+
+  const batch = await prisma.$transaction(async (tx) => {
+    const ctx = await loadScoringContext(tx, examId)
+    if (!ctx) throw new Error("Sınav bulunamadı")
+
+    const importable = matched.filter((m) => m.studentId)
+    const resultIds = await writeExamResults(
+      tx,
+      ctx,
+      importable.map((m) => ({
+        studentId: m.studentId!,
+        bookletVariant: normalizeBookletVariant(m.item.bookletVariant),
+        answers: m.item.answers,
+      })),
+      operatorId
+    )
+
+    const created = await tx.examScanBatch.create({
       data: {
         externalBatchId: input.batchId,
         examId,
@@ -228,102 +276,94 @@ export async function processScanBatch(
       },
     })
 
-    for (const row of processedItems) {
-      const batchItem = await tx.examScanBatchItem.create({
-        data: {
-          batchId: batch.id,
-          itemIndex: row.item.itemIndex,
-          tcNumber: normalizeTc(row.item.tcNumber),
-          studentNameRaw: row.item.studentNameRaw ?? null,
-          studentId: row.studentId,
-          bookletVariant: row.item.bookletVariant ?? null,
-          matchStatus: row.matchStatus,
-          confidenceScore: row.item.confidenceScore ?? null,
-          errorCodes: row.errorCodes,
-          answersJson: row.item.answers as unknown as Prisma.InputJsonValue,
-        },
-      })
+    await tx.examScanBatchItem.createMany({
+      data: matched.map((m) => ({
+        batchId: created.id,
+        itemIndex: m.item.itemIndex,
+        tcNumber: normalizeTc(m.item.tcNumber),
+        studentNameRaw: m.item.studentNameRaw ?? null,
+        studentId: m.studentId,
+        bookletVariant: normalizeBookletVariant(m.item.bookletVariant),
+        matchStatus: m.matchStatus,
+        confidenceScore: m.item.confidenceScore ?? null,
+        errorCodes: m.errorCodes,
+        answersJson: m.item.answers as unknown as Prisma.InputJsonValue,
+        examResultId: m.studentId ? (resultIds.get(m.studentId) ?? null) : null,
+      })),
+    })
 
-      if (!row.studentId) continue
+    await tx.exam.update({ where: { id: examId }, data: { status: "IN_REVIEW" } })
+    await recomputeRankings(tx, examId)
+    return created
+  }, SCAN_TX_OPTIONS)
 
-      const scored = scoreAnswers(
-        row.item.answers,
-        exam.questions.map((q) => ({
-          questionNo: q.questionNo,
-          correctAnswer: q.correctAnswer,
-          bookletVariant: q.bookletVariant,
-        })),
-        row.item.bookletVariant
-      )
+  return { duplicate: false as const, batch, summary }
+}
 
-      const examResult = await tx.examResult.upsert({
-        where: {
-          examId_studentId: { examId, studentId: row.studentId },
-        },
-        create: {
-          examId,
-          studentId: row.studentId,
-          definitionVersion: exam.definitionVersion,
-          bookletVariant: row.item.bookletVariant ?? null,
-          scores: {
-            summary: {
-              correct: scored.correctCount,
-              wrong: scored.wrongCount,
-              blank: scored.blankCount,
-              net: scored.netScore,
-            },
-          } as Prisma.InputJsonValue,
-          totalScore: scored.netScore,
-          correctCount: scored.correctCount,
-          wrongCount: scored.wrongCount,
-          blankCount: scored.blankCount,
-          netScore: scored.netScore,
-          enteredById: operatorId,
-        },
-        update: {
-          definitionVersion: exam.definitionVersion,
-          bookletVariant: row.item.bookletVariant ?? null,
-          scores: {
-            summary: {
-              correct: scored.correctCount,
-              wrong: scored.wrongCount,
-              blank: scored.blankCount,
-              net: scored.netScore,
-            },
-          } as Prisma.InputJsonValue,
-          totalScore: scored.netScore,
-          correctCount: scored.correctCount,
-          wrongCount: scored.wrongCount,
-          blankCount: scored.blankCount,
-          netScore: scored.netScore,
-          enteredById: operatorId,
-        },
-      })
-
-      await tx.examResultAnswer.deleteMany({ where: { examResultId: examResult.id } })
-      for (const ans of scored.answers) {
-        const q = exam.questions.find((qq) => qq.questionNo === ans.questionNo)
-        await tx.examResultAnswer.create({
-          data: {
-            examResultId: examResult.id,
-            questionId: q?.id ?? null,
-            questionNo: ans.questionNo,
-            givenAnswer: ans.givenAnswer ?? null,
-            isCorrect: ans.isCorrect,
-            isBlank: ans.isBlank,
-            isAmbiguous: ans.isAmbiguous,
-          },
-        })
-      }
-
-      await tx.examScanBatchItem.update({
-        where: { id: batchItem.id },
-        data: { examResultId: examResult.id },
-      })
-    }
-
-    return batch
+/** Eşleşmeyen (ya da yanlış eşleşen) bir kağıdı elle bir öğrenciye bağlar ve puanlar. */
+export async function assignScanItem(examId: string, itemId: string, studentId: string, operatorId: string) {
+  const item = await prisma.examScanBatchItem.findFirst({
+    where: { id: itemId, batch: { examId } },
+    select: { id: true, bookletVariant: true, answersJson: true, errorCodes: true, examResultId: true },
   })
+  if (!item) throw new Error("Kağıt bulunamadı")
+  const exam = await prisma.exam.findUnique({ where: { id: examId }, select: { status: true } })
+  if (!exam || !isScanAccepting(exam.status)) throw new Error("Bu durumdaki sınavda eşleştirme yapılamaz")
+  const student = await prisma.student.findUnique({ where: { id: studentId }, select: { id: true } })
+  if (!student) throw new Error("Öğrenci bulunamadı")
 
-  return { duplicate: false as const, batch: result, summary }
+  await prisma.$transaction(async (tx) => {
+    const ctx = await loadScoringContext(tx, examId)
+    if (!ctx) throw new Error("Sınav bulunamadı")
+    // Kağıt önce başka öğrenciye bağlıysa o sonucu kaldır
+    if (item.examResultId) {
+      await tx.examScanBatchItem.update({ where: { id: item.id }, data: { examResultId: null } })
+      await tx.examResult.delete({ where: { id: item.examResultId } }).catch(() => undefined)
+    }
+    const ids = await writeExamResults(
+      tx,
+      ctx,
+      [{ studentId, bookletVariant: item.bookletVariant, answers: item.answersJson as unknown as ScanBatchItemInput["answers"] }],
+      operatorId
+    )
+    await tx.examScanBatchItem.update({
+      where: { id: item.id },
+      data: {
+        studentId,
+        matchStatus: "MANUAL",
+        examResultId: ids.get(studentId) ?? null,
+        errorCodes: item.errorCodes.filter((c) => !["STUDENT_NOT_FOUND", "NAME_AMBIGUOUS", "DUPLICATE_STUDENT"].includes(c)),
+      },
+    })
+    await recomputeRankings(tx, examId)
+  }, SCAN_TX_OPTIONS)
+}
+
+/** Bir okutmayı (batch) ve ondan gelen sonuçları geri alır. Okutma kalmazsa sınav okutmaya hazır durumuna döner. */
+export async function deleteScanBatch(examId: string, externalBatchId: string) {
+  const batch = await prisma.examScanBatch.findFirst({
+    where: { examId, externalBatchId },
+    select: { id: true, items: { select: { examResultId: true } } },
+  })
+  if (!batch) throw new Error("Okutma bulunamadı")
+  const exam = await prisma.exam.findUnique({ where: { id: examId }, select: { status: true } })
+  if (!exam || !isScanAccepting(exam.status)) throw new Error("Yayınlanmış sınavın okutması silinemez")
+
+  await prisma.$transaction(async (tx) => {
+    const resultIds = batch.items.map((i) => i.examResultId).filter((id): id is string => Boolean(id))
+    await tx.examScanBatch.delete({ where: { id: batch.id } })
+    if (resultIds.length) await tx.examResult.deleteMany({ where: { id: { in: resultIds } } })
+    const left = await tx.examScanBatch.count({ where: { examId } })
+    if (left === 0) await tx.exam.update({ where: { id: examId }, data: { status: "READY_FOR_SCAN" } })
+    await recomputeRankings(tx, examId)
+  }, SCAN_TX_OPTIONS)
+}
+
+/** İncelemeyi reddet: tüm okutmalar ve sonuçlar silinir, sınav okutmaya hazır durumuna döner. */
+export async function discardAllScans(examId: string) {
+  await prisma.$transaction(async (tx) => {
+    await tx.examScanBatch.deleteMany({ where: { examId } })
+    await tx.examResult.deleteMany({ where: { examId } })
+    await tx.exam.update({ where: { id: examId }, data: { status: "READY_FOR_SCAN" } })
+  }, SCAN_TX_OPTIONS)
 }

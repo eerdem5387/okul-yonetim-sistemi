@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { isBaseVariant } from "./scoring"
 
 export type OutcomeWeakness = {
   outcomeId: string
@@ -49,19 +50,21 @@ export async function computeExamAnalytics(examId: string) {
     outcomeStats.set(o.id, { outcome: o, total: 0, correct: 0 })
   }
 
-  for (const q of exam.questions) {
-    if (!q.outcomeId) continue
-    const stat = outcomeStats.get(q.outcomeId)
-    if (!stat) continue
-    stat.total += exam.results.length
-  }
+  // Cevap → soru: kayıtlı questionId (kitapçığa göre doğru soru), yoksa A/kitapçıksız soru numarası
+  const questionById = new Map(exam.questions.map((q) => [q.id, q]))
+  const baseByNo = new Map(
+    exam.questions.filter((q) => isBaseVariant(q.bookletVariant)).map((q) => [q.questionNo, q])
+  )
+  const questionOf = (ans: { questionId: string | null; questionNo: number }) =>
+    (ans.questionId ? questionById.get(ans.questionId) : undefined) ?? baseByNo.get(ans.questionNo)
 
   for (const result of exam.results) {
     for (const ans of result.answers) {
-      const q = exam.questions.find((qq) => qq.questionNo === ans.questionNo)
+      const q = questionOf(ans)
       if (!q?.outcomeId) continue
       const stat = outcomeStats.get(q.outcomeId)
       if (!stat) continue
+      stat.total++
       if (ans.isCorrect) stat.correct++
     }
   }
@@ -84,7 +87,7 @@ export async function computeExamAnalytics(examId: string) {
     const byOutcome = new Map<string, { total: number; correct: number }>()
 
     for (const ans of result.answers) {
-      const q = exam.questions.find((qq) => qq.questionNo === ans.questionNo)
+      const q = questionOf(ans)
       if (!q?.outcomeId) continue
       const cur = byOutcome.get(q.outcomeId) ?? { total: 0, correct: 0 }
       cur.total++
@@ -123,18 +126,40 @@ export async function computeExamAnalytics(examId: string) {
     let correct = 0
     let total = 0
     for (const result of exam.results) {
-      const ans = result.answers.find((a) => a.questionNo === q.questionNo)
-      if (!ans || ans.isBlank || ans.isAmbiguous) continue
-      total++
-      if (ans.isCorrect) correct++
+      for (const ans of result.answers) {
+        if (questionOf(ans)?.id !== q.id) continue
+        if (ans.isBlank) continue
+        total++
+        if (ans.isCorrect) correct++
+      }
     }
     return {
       questionNo: q.questionNo,
+      bookletVariant: q.bookletVariant,
       outcomeId: q.outcomeId,
       pValue: total > 0 ? correct / total : null,
       totalAnswered: total,
     }
   })
+
+  // Ders bazlı ve genel ortalamalar (sonuçlardaki scores.sections)
+  const sectionTotals = new Map<string, { net: number; count: number }>()
+  let netSum = 0
+  for (const result of exam.results) {
+    netSum += result.netScore ?? 0
+    const sections = ((result.scores as { sections?: Array<{ name: string; net: number }> } | null)?.sections ?? [])
+    for (const sec of sections) {
+      const cur = sectionTotals.get(sec.name) ?? { net: 0, count: 0 }
+      cur.net += sec.net
+      cur.count++
+      sectionTotals.set(sec.name, cur)
+    }
+  }
+  const averageNet = exam.results.length ? Math.round((netSum / exam.results.length) * 100) / 100 : null
+  const sectionAverages = [...sectionTotals.entries()].map(([name, t]) => ({
+    name,
+    averageNet: Math.round((t.net / t.count) * 100) / 100,
+  }))
 
   return {
     examId: exam.id,
@@ -145,6 +170,8 @@ export async function computeExamAnalytics(examId: string) {
     outcomeSummary,
     studentWeakness,
     questionAnalysis,
+    averageNet,
+    sectionAverages,
     weakThreshold: WEAK_THRESHOLD,
   }
 }
