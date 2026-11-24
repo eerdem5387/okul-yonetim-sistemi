@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { canManageClubRoster, resolveClubStaffActor } from "@/lib/clubs/access"
+import { blockIfClubAddConflict } from "@/lib/clubs/student-club-add-check"
 
 export const dynamic = "force-dynamic"
 
@@ -46,6 +47,27 @@ export async function POST(request: NextRequest) {
   const decision = body.decision === "reject" ? "reject" : body.decision === "approve" ? "approve" : null
   if (!id || !decision) {
     return NextResponse.json({ error: "id ve decision gerekli" }, { status: 400 })
+  }
+
+  if (decision === "approve") {
+    // Talep oluşturulduktan sonra program değişmiş olabilir: onayda tekrar kontrol et
+    const pendingRow = await prisma.clubMembershipRequest.findUnique({
+      where: { id },
+      select: { clubId: true, studentId: true, changeType: true, status: true },
+    })
+    if (pendingRow?.status === "PENDING" && pendingRow.changeType === "ADD") {
+      const alreadyMember = await prisma.clubSelection.findUnique({
+        where: { studentId_clubId: { studentId: pendingRow.studentId, clubId: pendingRow.clubId } },
+        select: { id: true },
+      })
+      if (!alreadyMember) {
+        const conflict = await blockIfClubAddConflict({
+          studentId: pendingRow.studentId,
+          clubId: pendingRow.clubId,
+        })
+        if (conflict) return NextResponse.json(conflict, { status: 409 })
+      }
+    }
   }
 
   try {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { blockIfClubAddConflict } from "@/lib/clubs/student-club-add-check"
 import { clubMatchesStudentGrade } from "@/lib/club-grade-levels"
 import {
   instructorSelect,
@@ -96,6 +97,10 @@ export async function POST(request: NextRequest) {
     }
     if (club._count.selections >= club.capacity) {
       return NextResponse.json({ error: "Kulüp kontenjanı dolu" }, { status: 400 })
+    }
+    const conflict = await blockIfClubAddConflict({ studentId, clubId })
+    if (conflict) {
+      return NextResponse.json(conflict, { status: 409 })
     }
   } else if (!existingSelection) {
     return NextResponse.json({ error: "Öğrenci bu kulüpte değil" }, { status: 400 })

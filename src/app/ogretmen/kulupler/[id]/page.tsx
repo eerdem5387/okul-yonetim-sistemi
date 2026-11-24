@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { formatClubGradeLevels, clubMatchesStudentGrade } from "@/lib/club-grade-levels"
 import { staffAuthHeaders } from "@/lib/permissions/client"
+import { useClubAddConflictGuard } from "@/components/clubs/club-add-conflict-guard"
 
 type Student = {
   id: string
@@ -122,6 +123,8 @@ export default function OgretmenKulupDetailPage() {
       setBusy(false)
     }
   }
+
+  const { guardAdd, checkingId, dialog: conflictDialog } = useClubAddConflictGuard({ clubId })
 
   if (loading) {
     return (
@@ -250,10 +253,19 @@ export default function OgretmenKulupDetailPage() {
                   </div>
                   <Button
                     size="sm"
-                    disabled={busy || pendingStudentIds.has(s.id) || club.selections.length >= club.capacity}
-                    onClick={() => void requestChange(s.id, "ADD")}
+                    disabled={
+                      busy ||
+                      checkingId !== null ||
+                      pendingStudentIds.has(s.id) ||
+                      club.selections.length >= club.capacity
+                    }
+                    onClick={() => void guardAdd(s.id, () => requestChange(s.id, "ADD"))}
                   >
-                    <UserPlus className="h-4 w-4 mr-1" />
+                    {checkingId === s.id ? (
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    ) : (
+                      <UserPlus className="h-4 w-4 mr-1" />
+                    )}
                     Ekle
                   </Button>
                 </div>
@@ -265,6 +277,7 @@ export default function OgretmenKulupDetailPage() {
           </CardContent>
         </Card>
       </div>
+      {conflictDialog}
     </div>
   )
 }

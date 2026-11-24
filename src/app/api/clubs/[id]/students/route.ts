@@ -2,6 +2,7 @@ import { requireStaff } from "@/lib/auth/api-guard"
 import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { blockIfClubAddConflict } from "@/lib/clubs/student-club-add-check"
 
 /**
  * GET /api/clubs/[id]/students
@@ -99,6 +100,12 @@ export async function POST(
 
         if (existingSelection) {
             return NextResponse.json({ error: "Student is already in this club" }, { status: 400 })
+        }
+
+        // Etüt (ÖÇG), diğer kulüpler veya sınıf denemesiyle saat çakışması varsa ekleme yapılmaz
+        const conflict = await blockIfClubAddConflict({ studentId, clubId: params.id })
+        if (conflict) {
+            return NextResponse.json(conflict, { status: 409 })
         }
 
         // Öğrenciyi kulübe ekle

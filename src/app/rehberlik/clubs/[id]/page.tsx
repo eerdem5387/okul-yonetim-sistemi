@@ -7,11 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ArrowLeft, Users, Plus, Search, UserPlus, UserMinus } from "lucide-react"
+import { ArrowLeft, Users, Plus, Search, UserPlus, UserMinus, Loader2 } from "lucide-react"
 import { useParams, useRouter } from "next/navigation"
 import { formatClubGradeLevels } from "@/lib/club-grade-levels"
 import { ClubDetailEditor } from "@/components/clubs/club-detail-editor"
 import { ClubScheduleEditor } from "@/components/clubs/club-schedule-editor"
+import { useClubAddConflictGuard } from "@/components/clubs/club-add-conflict-guard"
 
 interface Club {
   id: string
@@ -125,9 +126,9 @@ export default function RehberlikClubDetailPage() {
     filterStudents()
   }, [filterStudents])
 
-  const handleAddStudent = async (studentId: string) => {
+  const addStudentToClub = async (targetClubId: string, studentId: string): Promise<boolean> => {
     try {
-      const response = await fetch(`/api/clubs/${clubId}/students`, {
+      const response = await fetch(`/api/clubs/${targetClubId}/students`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -139,14 +140,35 @@ export default function RehberlikClubDetailPage() {
         notify("Öğrenci kulübe eklendi!")
         fetchClub()
         setShowAddStudent(false)
-      } else {
-        notify("Öğrenci eklenirken bir hata oluştu.")
+        return true
       }
+      const data = await response.json().catch(() => ({}))
+      const errMsg = (data as { error?: string }).error
+      notify(
+        errMsg === "Club capacity is full"
+          ? "Kulüp kontenjanı dolu."
+          : response.status === 409 && errMsg
+            ? errMsg
+            : "Öğrenci eklenirken bir hata oluştu."
+      )
+      return false
     } catch (error) {
       console.error("Error adding student:", error)
       notify("Öğrenci eklenirken bir hata oluştu.")
+      return false
     }
   }
+
+  const { guardAdd, checkingId, dialog: conflictDialog } = useClubAddConflictGuard({
+    clubId,
+    alternativeHref: (id) => `/rehberlik/clubs/${id}`,
+    onAddToAlternative: (studentId, altClubId) => addStudentToClub(altClubId, studentId),
+  })
+
+  const handleAddStudent = (studentId: string) =>
+    guardAdd(studentId, async () => {
+      await addStudentToClub(clubId, studentId)
+    })
 
   const handleRemoveStudent = async (selectionId: string) => {
     if (!confirm("Öğrenciyi kulüpten çıkarmak istediğinizden emin misiniz?")) {
@@ -336,10 +358,15 @@ export default function RehberlikClubDetailPage() {
                               </div>
                               <Button
                                 size="sm"
-                                onClick={() => handleAddStudent(student.id)}
+                                disabled={checkingId !== null}
+                                onClick={() => void handleAddStudent(student.id)}
                                 className="btn-primary"
                               >
-                                <Plus className="h-4 w-4" />
+                                {checkingId === student.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Plus className="h-4 w-4" />
+                                )}
                               </Button>
                             </div>
                           ))
@@ -385,6 +412,7 @@ export default function RehberlikClubDetailPage() {
           </div>
         </div>
       </main>
+      {conflictDialog}
     </div>
   )
 }
