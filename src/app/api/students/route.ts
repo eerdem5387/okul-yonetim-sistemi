@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
                 : 'all'
         const registrationMeta = searchParams.get('registrationMeta') === '1' || searchParams.get('registrationMeta') === 'true'
         const graduates = searchParams.get('graduates') === '1' || searchParams.get('graduates') === 'true'
+        const leftView = searchParams.get('left') === '1' || searchParams.get('left') === 'true'
         const excludeClubSelected =
             searchParams.get('excludeClubSelected') === '1' ||
             searchParams.get('excludeClubSelected') === 'true'
@@ -58,8 +59,15 @@ export async function GET(request: NextRequest) {
             whereConditions.push(searchWhere)
         }
         
+        // Okuldan ayrılanlar listesi (varsayılan olarak ayrılanlar tüm sorgulardan gizlenir, bkz. lib/prisma.ts)
+        if (leftView) {
+            whereConditions.push({ leftAt: { not: null } })
+        }
+
         // Sınıf / kademe filtresi (gradeBand: ortaokul 5–8, lise 9–12; "5" ve "5. Sınıf" varyantları)
-        if (graduates) {
+        if (leftView) {
+            // Ayrılanlarda sınıf/kademe sınırı yok
+        } else if (graduates) {
             whereConditions.push(graduatesWhereClause())
         } else if (grade) {
             const level = parseInt(grade, 10)
@@ -205,11 +213,13 @@ export async function POST(request: NextRequest) {
 
         const existingByTc = await prisma.student.findUnique({
             where: { tcNumber: normalizedTc },
-            select: { id: true, firstName: true, lastName: true },
+            select: { id: true, firstName: true, lastName: true, leftAt: true },
         })
         if (existingByTc) {
             return NextResponse.json({
-                error: `Bu TC Kimlik No ile kayıtlı öğrenci zaten var: ${existingByTc.firstName} ${existingByTc.lastName}`,
+                error: existingByTc.leftAt
+                    ? `Bu TC Kimlik No ile kayıtlı öğrenci (${existingByTc.firstName} ${existingByTc.lastName}) okuldan ayrıldı olarak işaretli. Yeniden kayıt için «Ayrılanlar» listesinden geri alın.`
+                    : `Bu TC Kimlik No ile kayıtlı öğrenci zaten var: ${existingByTc.firstName} ${existingByTc.lastName}`,
                 code: "DUPLICATE_TC",
             }, { status: 400 })
         }

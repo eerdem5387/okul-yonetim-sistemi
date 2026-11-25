@@ -23,7 +23,6 @@ import {
   Save,
   Plus,
   Edit,
-  Trash2,
   Search,
   X,
   ArrowUp,
@@ -36,12 +35,26 @@ import {
   UserPlus,
   AlertCircle,
   LayoutDashboard,
+  UserMinus,
+  Undo2,
 } from "lucide-react"
+
+const AYRILIS_NEDENLERI = [
+  "Başka okula nakil",
+  "Şehir / adres değişikliği",
+  "Maddi nedenler",
+  "Kayıt yenilemedi",
+  "Diğer",
+]
 
 interface Student {
   id: string
   firstName: string
   lastName: string
+  leftAt?: string | null
+  leftReason?: string | null
+  leftBy?: string | null
+  leftClassName?: string | null
   tcNumber: string
   birthDate: string
   grade: string
@@ -113,6 +126,13 @@ export default function StudentsPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingStudent, setEditingStudent] = useState<Student | null>(null)
   const [confirmPromote, setConfirmPromote] = useState(false)
+  /** Okuldan ayrılanlar görünümü */
+  const [showLeftView, setShowLeftView] = useState(false)
+  const [leaveTarget, setLeaveTarget] = useState<Student | null>(null)
+  const [leaveReason, setLeaveReason] = useState(AYRILIS_NEDENLERI[0])
+  const [leaveNote, setLeaveNote] = useState("")
+  const [leaveDate, setLeaveDate] = useState(() => isoDateTR())
+  const [leaveSaving, setLeaveSaving] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
   const [overview, setOverview] = useState<StudentsOverview | null>(null)
   const [overviewLoading, setOverviewLoading] = useState(true)
@@ -297,7 +317,9 @@ export default function StudentsPage() {
       if (search.trim()) {
         params.append("search", search.trim())
       }
-      if (graduates) {
+      if (showLeftView) {
+        params.set("left", "1")
+      } else if (graduates) {
         params.set("graduates", "1")
       } else if (grade.trim()) {
         params.append("grade", grade.trim())
@@ -326,7 +348,7 @@ export default function StudentsPage() {
       setTotalStudents(0)
     }
   },
-  []
+  [showLeftView]
 )
 
   useEffect(() => {
@@ -530,24 +552,58 @@ export default function StudentsPage() {
     setShowForm(true)
   }
 
-  const handleDelete = async (studentId: string) => {
-    if (confirm("Bu öğrenciyi silmek istediğinizden emin misiniz?")) {
-      try {
-        const response = await fetch(`/api/students/${studentId}`, {
-          method: "DELETE",
-        })
+  const refreshList = () => {
+    fetchStudents(currentPage, searchTerm, selectedGrade, showGraduatesView)
+    fetchOverview()
+  }
 
-        if (response.ok) {
-          fetchStudents(currentPage, searchTerm, selectedGrade, showGraduatesView)
-          fetchOverview()
-          notify("Öğrenci başarıyla silindi!")
-        } else {
-          const errorData = await response.json().catch(() => ({}))
-          notify(errorData.error || "Öğrenci silinirken hata oluştu!")
-        }
-      } catch (error) {
-        console.error("Error deleting student:", error)
-      }
+  const openLeaveDialog = (student: Student) => {
+    setLeaveTarget(student)
+    setLeaveReason(AYRILIS_NEDENLERI[0])
+    setLeaveNote("")
+    setLeaveDate(isoDateTR())
+  }
+
+  const handleMarkLeft = async () => {
+    if (!leaveTarget) return
+    const reason = leaveReason === "Diğer" ? leaveNote.trim() : [leaveReason, leaveNote.trim()].filter(Boolean).join(" — ")
+    if (!reason) {
+      notify("Lütfen ayrılış nedenini yazın.")
+      return
+    }
+    setLeaveSaving(true)
+    try {
+      const res = await fetch(`/api/students/${leaveTarget.id}/leave`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason, leftAt: leaveDate }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || "İşlem başarısız oldu")
+      notify(`${leaveTarget.firstName} ${leaveTarget.lastName} okuldan ayrıldı olarak işaretlendi.`)
+      setLeaveTarget(null)
+      refreshList()
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "İşlem başarısız oldu")
+    } finally {
+      setLeaveSaving(false)
+    }
+  }
+
+  const handleRestore = async (student: Student) => {
+    if (!confirm(`${student.firstName} ${student.lastName} yeniden aktif öğrencilere alınsın mı?`)) return
+    try {
+      const res = await fetch(`/api/students/${student.id}/leave`, { method: "DELETE" })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || "Geri alınamadı")
+      notify(
+        data.sinifaEklendi
+          ? "Öğrenci geri alındı ve önceki sınıfına yeniden eklendi."
+          : "Öğrenci geri alındı. Sınıf ataması gerekiyorsa Sınıf Yönetimi'nden yapın."
+      )
+      refreshList()
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Geri alınamadı")
     }
   }
 
@@ -1046,7 +1102,7 @@ export default function StudentsPage() {
             <select
               value={selectedGrade}
               onChange={(e) => setSelectedGrade(e.target.value)}
-              disabled={showGraduatesView}
+              disabled={showGraduatesView || showLeftView}
               className="w-full sm:w-auto h-9 sm:h-10 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
             >
               <option value="">Tüm Sınıflar</option>
@@ -1069,6 +1125,7 @@ export default function StudentsPage() {
           variant={showGraduatesView ? "default" : "outline"}
           size="sm"
           onClick={() => {
+            setShowLeftView(false)
             setShowGraduatesView((v) => {
               const next = !v
               if (next) setSelectedGrade("")
@@ -1082,7 +1139,28 @@ export default function StudentsPage() {
           <span className="hidden sm:inline">{showGraduatesView ? "Aktif öğrenciler" : "Mezunlar"}</span>
           <span className="sm:hidden">{showGraduatesView ? "Liste" : "Mezun"}</span>
         </Button>
-        {!showGraduatesView &&
+        <Button
+          type="button"
+          variant={showLeftView ? "default" : "outline"}
+          size="sm"
+          onClick={() => {
+            setShowLeftView((v) => {
+              const next = !v
+              if (next) {
+                setSelectedGrade("")
+                setShowGraduatesView(false)
+                setConfirmPromote(false)
+              }
+              return next
+            })
+          }}
+          className="flex-1 sm:flex-initial text-xs sm:text-sm"
+        >
+          <UserMinus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+          <span className="hidden sm:inline">{showLeftView ? "Aktif öğrenciler" : "Ayrılanlar"}</span>
+          <span className="sm:hidden">{showLeftView ? "Liste" : "Ayrılan"}</span>
+        </Button>
+        {!showGraduatesView && !showLeftView &&
           (confirmPromote ? (
             <>
               <Button type="button" variant="destructive" size="sm" onClick={handlePromoteAll} className="flex-1 sm:flex-initial text-xs sm:text-sm">
@@ -1137,6 +1215,82 @@ export default function StudentsPage() {
         </Button>
         </div>
       </div>
+
+      {showLeftView && (
+        <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs text-rose-950">
+          Okuldan ayrılan öğrenciler: sınıf, kulüp, yoklama ve istatistik listelerinde görünmezler; sözleşme, ödeme ve
+          sınav geçmişleri korunur. Bir öğrenciyi yeniden aktif yapmak için satırdaki geri al düğmesini kullanın.
+        </div>
+      )}
+
+      {leaveTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={() => !leaveSaving && setLeaveTarget(null)}
+        >
+          <Card className="w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <UserMinus className="h-5 w-5 text-rose-600" />
+                Okuldan ayrıldı olarak işaretle
+              </CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
+                {leaveTarget.firstName} {leaveTarget.lastName} · {formatGrade(leaveTarget.grade)}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label className="mb-1.5 block text-xs sm:text-sm">Ayrılış nedeni</Label>
+                <select
+                  value={leaveReason}
+                  onChange={(e) => setLeaveReason(e.target.value)}
+                  className="w-full h-10 px-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {AYRILIS_NEDENLERI.map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label className="mb-1.5 block text-xs sm:text-sm">
+                  {leaveReason === "Diğer" ? "Açıklama (zorunlu)" : "Açıklama (isteğe bağlı)"}
+                </Label>
+                <textarea
+                  value={leaveNote}
+                  onChange={(e) => setLeaveNote(e.target.value)}
+                  rows={2}
+                  maxLength={300}
+                  placeholder="Örn. nakil olduğu okul"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <Label className="mb-1.5 block text-xs sm:text-sm">Ayrılış tarihi</Label>
+                <Input type="date" value={leaveDate} onChange={(e) => setLeaveDate(e.target.value)} className="h-10" />
+              </div>
+              <p className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-900">
+                Öğrenci bu yılki sınıfından ve aktif kulüp/etüt gruplarından çıkarılır, tüm listelerden gizlenir.
+                Sözleşme, ödeme, yoklama ve sınav kayıtları silinmez. İşlem «Ayrılanlar» listesinden geri alınabilir.
+              </p>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => setLeaveTarget(null)} disabled={leaveSaving}>
+                  İptal
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleMarkLeft}
+                  disabled={leaveSaving || (leaveReason === "Diğer" && !leaveNote.trim())}
+                  className="bg-rose-600 hover:bg-rose-700 text-white"
+                >
+                  {leaveSaving ? "Kaydediliyor..." : "Ayrıldı olarak işaretle"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {showGraduatesView && (
         <div className="mb-3 rounded-lg border border-violet-200 bg-violet-50/80 px-3 py-2 text-xs text-violet-950">
@@ -1549,6 +1703,13 @@ export default function StudentsPage() {
                       <div className="text-xs sm:text-sm font-medium text-gray-900">
                         {student.firstName} {student.lastName}
                       </div>
+                      {student.leftAt && (
+                        <div className="text-[10px] sm:text-xs text-rose-700 mt-0.5 whitespace-normal max-w-[260px]">
+                          Ayrıldı: {new Date(student.leftAt).toLocaleDateString("tr-TR")}
+                          {student.leftClassName ? ` · ${student.leftClassName}` : ""}
+                          {student.leftReason ? ` · ${student.leftReason}` : ""}
+                        </div>
+                      )}
                       <div className="lg:hidden text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1">
                         TC: {student.tcNumber}
                       </div>
@@ -1614,12 +1775,33 @@ export default function StudentsPage() {
                         >
                           <LayoutDashboard className="h-3 w-3 sm:h-4 sm:w-4" />
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => handleEdit(student)} className="h-7 w-7 sm:h-8 sm:w-8 p-0">
-                          <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => handleDelete(student.id)} className="h-7 w-7 sm:h-8 sm:w-8 p-0">
-                          <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                        </Button>
+                        {student.leftAt ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            title="Geri al (aktif öğrencilere taşı)"
+                            onClick={() => handleRestore(student)}
+                            className="h-7 sm:h-8 px-2 text-xs text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+                          >
+                            <Undo2 className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                            <span className="hidden sm:inline">Geri al</span>
+                          </Button>
+                        ) : (
+                          <>
+                            <Button size="sm" variant="outline" onClick={() => handleEdit(student)} className="h-7 w-7 sm:h-8 sm:w-8 p-0">
+                              <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              title="Okuldan ayrıldı olarak işaretle"
+                              onClick={() => openLeaveDialog(student)}
+                              className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-rose-600 hover:bg-rose-50"
+                            >
+                              <UserMinus className="h-3 w-3 sm:h-4 sm:w-4" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>

@@ -136,6 +136,10 @@ interface ProfileData {
     id: string
     firstName: string
     lastName: string
+    leftAt?: string | null
+    leftReason?: string | null
+    leftBy?: string | null
+    leftClassName?: string | null
     tcNumber: string
     birthDate: string
     grade: string
@@ -398,6 +402,20 @@ export default function StudentDetailDashboardPage() {
             <ArrowLeft className="mr-2 h-4 w-4" />
             Öğrenci Yönetimi
           </Button>
+
+          {student.leftAt && (
+            <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+              <span className="font-semibold">Bu öğrenci okuldan ayrıldı</span>
+              {" · "}
+              {new Date(student.leftAt).toLocaleDateString("tr-TR")}
+              {student.leftClassName ? ` · ${student.leftClassName} sınıfından` : ""}
+              {student.leftReason ? ` · ${student.leftReason}` : ""}
+              {student.leftBy ? ` · İşaretleyen: ${student.leftBy}` : ""}
+              <p className="mt-1 text-xs text-rose-800/80">
+                Geçmiş kayıtları aşağıda görüntülenebilir. Yeniden aktif yapmak için Öğrenci Yönetimi → Ayrılanlar listesini kullanın.
+              </p>
+            </div>
+          )}
 
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex items-start gap-4">

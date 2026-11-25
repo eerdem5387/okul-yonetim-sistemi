@@ -244,7 +244,7 @@ export async function DELETE(
         if (linkedRecordCount > 0) {
             return NextResponse.json({
                 error:
-                    "Bu öğrenciye bağlı kayıtlar (sözleşme, yoklama, sınav, görüş, sınıf, veli vb.) bulunduğu için silinemez. Veri kaybını önlemek için silme engellendi.",
+                    "Bu öğrenciye bağlı kayıtlar (sözleşme, ödeme, yoklama, sınav, veli vb.) bulunduğu için kalıcı olarak silinemez. Okuldan ayrıldıysa «Ayrıldı olarak işaretle» seçeneğini kullanın; geçmiş kayıtlar korunur.",
                 code: "STUDENT_HAS_RECORDS",
                 linkedRecordCount,
             }, { status: 409 })

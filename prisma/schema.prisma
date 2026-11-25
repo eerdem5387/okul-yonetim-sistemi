@@ -43,6 +43,14 @@ model Student {
   registrationStatusPeriodLabel   String?
   /// Kitap ödemesi alındı mı? (null = belirtilmemiş)
   bookPaymentPaid                 Boolean?
+  /// Okuldan ayrıldıysa tarih. Dolu olan öğrenciler varsayılan olarak tüm listelerden gizlenir
+  /// (bkz. src/lib/prisma.ts); sözleşme, ödeme, yoklama ve sınav geçmişi korunur.
+  leftAt              DateTime?
+  leftReason          String?
+  leftBy              String?
+  /// Ayrılırken kayıtlı olduğu sınıf (geri alınırsa yeniden atanmak için)
+  leftClassId         String?
+  leftClassName       String?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @default(now()) @updatedAt
 
@@ -70,6 +78,7 @@ model Student {
   examScanBatchItems   ExamScanBatchItem[]
   comments             StudentComment[] // Öğretmen/Rehberlik görüşleri (FAZ 4)
 
+  @@index([leftAt])
   @@map("students")
 }
 
