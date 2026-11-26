@@ -5,12 +5,14 @@ import { resolveChatActor } from "@/lib/comms/identity"
 import {
   canCreateClassGroup,
   canDeleteComms,
+  canManageGrants,
   canManageTemplates,
   canSendClassAnnouncement,
   canSendOfficialNotice,
+  isNativeOfficialSender,
   isRequestApprover,
 } from "@/lib/comms/access"
-import { prisma } from "@/lib/prisma"
+import { parentBadges, staffBadges } from "@/lib/comms/unread"
 
 export const dynamic = "force-dynamic"
 
@@ -19,21 +21,28 @@ export async function GET(request: NextRequest) {
   if (!chat) return NextResponse.json({ error: "Yetkisiz" }, { status: 401 })
 
   if (chat.kind === "parent") {
-    const unreadAnnouncements = await prisma.classAnnouncementAck.count({
-      where: { parentId: chat.parentId, seenAt: null },
-    })
+    const b = await parentBadges(chat.parentId)
     return NextResponse.json({
       actor: { kind: "parent", id: chat.parentId, displayName: chat.displayName },
       capabilities: {
         sendOfficial: false,
         sendClassAnnouncement: false,
         manageTemplates: false,
+        manageGrants: false,
         approveRequests: false,
         createClassGroup: false,
         createRequest: false,
         deleteComms: false,
+        showInbox: false,
+        viewAllNotices: false,
       },
-      badges: { unreadNotices: 0, pendingRequests: 0, unreadAnnouncements },
+      badges: {
+        unreadNotices: 0,
+        pendingRequests: 0,
+        decidedRequests: 0,
+        unreadAnnouncements: b.unreadAnnouncements,
+        unreadMessages: b.unreadMessages,
+      },
     })
   }
 
@@ -41,18 +50,10 @@ export async function GET(request: NextRequest) {
   if (!actor) return NextResponse.json({ error: "Yetkisiz" }, { status: 401 })
 
   const approveRequests = isRequestApprover(actor.department)
-  const sendOfficial = await canSendOfficialNotice(actor.staffId, actor.department)
-  const [sendClassAnnouncement, unreadNotices, pendingRequests] = await Promise.all([
+  const [sendOfficial, sendClassAnnouncement, badges] = await Promise.all([
+    canSendOfficialNotice(actor.staffId, actor.department),
     canSendClassAnnouncement(actor.staffId, actor.department),
-    // Gönderim yetkilileri resmi ileti almaz
-    sendOfficial
-      ? Promise.resolve(0)
-      : prisma.officialNotice.count({ where: { recipientStaffId: actor.staffId, seenAt: null } }),
-    approveRequests
-      ? prisma.staffCommsRequest.count({ where: { status: "PENDING" } })
-      : prisma.staffCommsRequest.count({
-          where: { requesterStaffId: actor.staffId, status: "PENDING" },
-        }),
+    staffBadges(actor.staffId, approveRequests),
   ])
 
   return NextResponse.json({
@@ -66,12 +67,17 @@ export async function GET(request: NextRequest) {
       sendOfficial,
       sendClassAnnouncement,
       manageTemplates: canManageTemplates(actor.department),
+      manageGrants: canManageGrants(actor.department),
       approveRequests,
       createClassGroup: canCreateClassGroup(actor.department),
-      // Onay mercileri talep oluşturmaz; personel oluşturur
-      createRequest: !approveRequests && !sendOfficial,
+      // Onay mercileri talep oluşturmaz; diğer tüm personel (yetkililer dahil) talep açabilir
+      createRequest: !approveRequests,
       deleteComms: canDeleteComms(actor.department),
+      // Yönetim hiyerarşide alıcı değildir; diğer herkes gelen kutusunu görür
+      showInbox: !isNativeOfficialSender(actor.department),
+      // Yönetim tüm gönderimleri (yetki verilen personelinkiler dahil) denetleyebilir
+      viewAllNotices: approveRequests,
     },
-    badges: { unreadNotices, pendingRequests, unreadAnnouncements: 0 },
+    badges: { ...badges, unreadAnnouncements: 0 },
   })
 }

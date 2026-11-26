@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import { CommsLayout } from "@/components/comms/CommsLayout"
@@ -28,5 +28,9 @@ export default function StaffMessagesPage() {
     )
   }
 
-  return <CommsLayout kind="staff" />
+  return (
+    <Suspense fallback={null}>
+      <CommsLayout kind="staff" />
+    </Suspense>
+  )
 }

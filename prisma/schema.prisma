@@ -1035,6 +1035,7 @@ enum NotificationType {
   PROGRAM_DEGISTI // Öğretmenin ders programı değişti
   HATIRLATMA // Rehberlikten geciken konu hatırlatması
   REHBERLIK_NOTU // Rehberlik notu
+  ILETISIM // İç haberleşme: ihtar, talimat, duyuru, talep
 }
 
 enum NotificationPriority {
@@ -1759,6 +1760,7 @@ model Parent {
   classGroupMemberships  ClassGroupMember[]  @relation("ClassGroupParentMember")
   sentClassGroupMessages ClassGroupMessage[] @relation("ClassGroupParentSender")
   classAnnouncementAcks  ClassAnnouncementAck[]
+  pushDevices            ParentPushDevice[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2285,6 +2287,7 @@ enum StaffCommsRequestStatus {
   PENDING
   APPROVED
   REJECTED
+  CANCELLED
 }
 
 enum ClassGroupMemberRole {
@@ -2326,6 +2329,12 @@ model OfficialNotice {
   recipientStaff    Staff              @relation("OfficialNoticeRecipient", fields: [recipientStaffId], references: [id], onDelete: Cascade)
   batchId           String
   seenAt            DateTime?
+  /// Görmeyenlere son hatırlatma zamanı ve sayısı
+  remindedAt        DateTime?
+  remindCount       Int                @default(0)
+  /// Geri çekme (yumuşak silme): resmi kayıt izi korunur
+  deletedAt         DateTime?
+  deletedByStaffId  String?
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
@@ -2333,6 +2342,7 @@ model OfficialNotice {
   @@index([senderStaffId, createdAt])
   @@index([batchId])
   @@index([type, createdAt])
+  @@index([deletedAt])
   @@map("official_notices")
 }
 
@@ -2349,6 +2359,12 @@ model StaffCommsRequest {
   decidedByStaff   Staff?                  @relation("StaffCommsDecider", fields: [decidedByStaffId], references: [id], onDelete: SetNull)
   decidedAt        DateTime?
   rejectReason     String?
+  /// Onay/red notu (onayda da yazılabilir)
+  decisionNote     String?
+  /// Onay merciinin talebi ilk açtığı an
+  viewedAt         DateTime?
+  /// Talep sahibinin kararı gördüğü an (okunmamış rozet)
+  decisionSeenAt   DateTime?
   createdAt        DateTime                @default(now())
   updatedAt        DateTime                @updatedAt
 
@@ -2373,6 +2389,7 @@ model ClassGroup {
   members        ClassGroupMember[]
   messages       ClassGroupMessage[]
   announcements  ClassAnnouncement[]
+  reads          ClassGroupRead[]
 
   @@index([classId])
   @@index([counselorStaffId])
@@ -2404,6 +2421,8 @@ model ClassGroupMessage {
   classGroup     ClassGroup @relation(fields: [classGroupId], references: [id], onDelete: Cascade)
   body           String     @db.Text
   attachmentUrl  String?
+  attachmentName String?
+  attachmentType String?
   senderStaffId  String?
   senderStaff    Staff?     @relation("ClassGroupStaffSender", fields: [senderStaffId], references: [id], onDelete: SetNull)
   senderParentId String?
@@ -2412,6 +2431,38 @@ model ClassGroupMessage {
 
   @@index([classGroupId, createdAt])
   @@map("class_group_messages")
+}
+
+/// Sınıf grubu sohbeti: okuyucu başına son okuma zamanı (okunmamış sayacı)
+model ClassGroupRead {
+  id           String     @id @default(cuid())
+  classGroupId String
+  classGroup   ClassGroup @relation(fields: [classGroupId], references: [id], onDelete: Cascade)
+  staffId      String?
+  parentId     String?
+  lastReadAt   DateTime   @default(now())
+
+  @@unique([classGroupId, staffId])
+  @@unique([classGroupId, parentId])
+  @@index([staffId])
+  @@index([parentId])
+  @@map("class_group_reads")
+}
+
+/// Veli mobil uygulaması Expo push token kaydı (cihaz başına)
+model ParentPushDevice {
+  id         String   @id @default(cuid())
+  parentId   String
+  parent     Parent   @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  token      String   @unique
+  platform   String?
+  appVersion String?
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([parentId])
+  @@map("parent_push_devices")
 }
 
 /// Sınıf / veli duyurusu — her veli için ayrı ack

@@ -2,7 +2,8 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { resolveStaffActor } from "@/lib/hr/actor"
-import { canSendOfficialNotice } from "@/lib/comms/access"
+import { isCommsManager } from "@/lib/comms/access"
+import { STAFF_DEPARTMENT_LABELS } from "@/lib/hr/constants"
 import { generatePDF } from "@/lib/pdf-generator"
 import { buildOfficialNoticePdfHtml } from "@/lib/comms/notice-pdf"
 import { NOTICE_TYPE_LABEL } from "@/lib/comms/labels"
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest, context: Ctx) {
   const notice = await prisma.officialNotice.findUnique({
     where: { id },
     include: {
-      senderStaff: { select: { id: true, firstName: true, lastName: true } },
+      senderStaff: { select: { id: true, firstName: true, lastName: true, department: true } },
       recipientStaff: { select: { id: true, firstName: true, lastName: true } },
     },
   })
@@ -38,8 +39,12 @@ export async function GET(request: NextRequest, context: Ctx) {
 
   const isSender = notice.senderStaffId === actor.staffId
   const isRecipient = notice.recipientStaffId === actor.staffId
-  const canSend = await canSendOfficialNotice(actor.staffId, actor.department)
-  if (!isSender && !isRecipient && !canSend) {
+  const manager = isCommsManager(actor.department)
+  // Geri çekilmiş kayıt yalnızca yönetim tarafından (denetim için) indirilebilir
+  if (notice.deletedAt && !manager) {
+    return NextResponse.json({ error: "Kayıt bulunamadı" }, { status: 404 })
+  }
+  if (!isSender && !isRecipient && !manager) {
     return NextResponse.json({ error: "Bu iletiyi indirme yetkiniz yok" }, { status: 403 })
   }
 
@@ -54,6 +59,7 @@ export async function GET(request: NextRequest, context: Ctx) {
       createdAt: notice.createdAt,
       seenAt: notice.seenAt,
       senderName,
+      senderTitle: STAFF_DEPARTMENT_LABELS[notice.senderStaff.department] || "",
       recipientName,
     })
     const pdf = await generatePDF(html, {
@@ -75,10 +81,7 @@ export async function GET(request: NextRequest, context: Ctx) {
   } catch (error) {
     console.error("GET /api/comms/notices/[id]/pdf error:", error)
     return NextResponse.json(
-      {
-        error: "PDF oluşturulamadı",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
+{ error: "PDF oluşturulamadı" },
       { status: 500 }
     )
   }

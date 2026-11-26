@@ -1,11 +1,25 @@
+export type NoticeType = "IHTAR" | "TALIMAT" | "PERSONEL_DUYURU"
+export type RequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED"
+
 export type CommsCapabilities = {
   sendOfficial: boolean
   sendClassAnnouncement: boolean
   manageTemplates: boolean
+  manageGrants: boolean
   approveRequests: boolean
   createClassGroup: boolean
   createRequest: boolean
   deleteComms: boolean
+  showInbox: boolean
+  viewAllNotices: boolean
+}
+
+export type CommsBadges = {
+  unreadNotices: number
+  pendingRequests: number
+  decidedRequests: number
+  unreadAnnouncements: number
+  unreadMessages: number
 }
 
 export type CommsMe = {
@@ -17,7 +31,7 @@ export type CommsMe = {
     displayName?: string
   }
   capabilities: CommsCapabilities
-  badges: { unreadNotices: number; pendingRequests: number; unreadAnnouncements: number }
+  badges: CommsBadges
 }
 
 export type CommsTemplate = {
@@ -28,28 +42,57 @@ export type CommsTemplate = {
   isActive: boolean
 }
 
+export type StaffRef = { id: string; firstName: string; lastName: string; department?: string }
+
 export type OfficialNotice = {
   id: string
-  type: "IHTAR" | "TALIMAT" | "PERSONEL_DUYURU"
+  type: NoticeType
   subject: string
   body: string
   createdAt: string
   seenAt: string | null
   batchId?: string
-  senderStaff?: { id: string; firstName: string; lastName: string }
-  recipientStaff?: { id: string; firstName: string; lastName: string }
+  senderStaff?: StaffRef
+  recipientStaff?: StaffRef
+}
+
+export type NoticeBatch = {
+  batchId: string
+  type: NoticeType
+  subject: string
+  body: string
+  createdAt: string
+  sender: StaffRef
+  singleRecipient: StaffRef | null
+  total: number
+  seen: number
+  unseen: number
+  lastRemindedAt: string | null
+  mine: boolean
+}
+
+export type BatchRecipient = {
+  noticeId: string
+  staff: StaffRef
+  seenAt: string | null
+  remindedAt: string | null
+  remindCount: number
 }
 
 export type StaffCommsRequest = {
   id: string
   subject: string
   body: string
-  status: "PENDING" | "APPROVED" | "REJECTED"
+  status: RequestStatus
   createdAt: string
+  viewedAt?: string | null
   decidedAt?: string | null
+  decisionNote?: string | null
   rejectReason?: string | null
-  requesterStaff?: { id: string; firstName: string; lastName: string; department: string }
-  decidedByStaff?: { id: string; firstName: string; lastName: string } | null
+  newDecision?: boolean
+  requesterStaff?: StaffRef
+  decidedByStaff?: StaffRef | null
+  template?: { id: string; title: string } | null
 }
 
 export type ClassGroupSummary = {
@@ -57,6 +100,58 @@ export type ClassGroupSummary = {
   title: string
   parentsCanPost: boolean
   class: { id: string; name: string }
-  counselorStaff?: { id: string; firstName: string; lastName: string } | null
+  counselorStaff?: StaffRef | null
   _count?: { members: number; messages?: number }
+  unreadCount?: number
+  lastMessage?: { body: string; createdAt: string; senderName: string } | null
 }
+
+export type GroupMember = {
+  id: string
+  role: "COUNSELOR" | "TEACHER" | "PARENT"
+  staff: StaffRef | null
+  parent: { id: string; displayName: string } | null
+}
+
+export type GroupDetail = {
+  id: string
+  title: string
+  classId: string
+  class: { id: string; name: string }
+  parentsCanPost: boolean
+  counselorStaffId: string | null
+  counselorStaff: StaffRef | null
+  parentCount: number
+  members: GroupMember[]
+}
+
+export type GroupPermissions = {
+  canManage: boolean
+  canPost: boolean
+  canChangeCounselor: boolean
+  canDelete: boolean
+}
+
+export type TimelineSender = { kind: "staff" | "parent"; id: string; displayName: string } | null
+
+export type GroupTimelineItem =
+  | {
+      kind: "message"
+      id: string
+      body: string
+      attachmentUrl?: string | null
+      attachmentName?: string | null
+      attachmentType?: string | null
+      createdAt: string
+      sender: TimelineSender
+    }
+  | {
+      kind: "announcement"
+      id: string
+      subject: string
+      body: string
+      createdAt: string
+      sender: TimelineSender
+      seenAt: string | null
+      readStats?: { total: number; seen: number }
+    }

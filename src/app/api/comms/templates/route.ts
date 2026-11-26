@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
   const actor = await resolveStaffActor(request)
   if (!actor) return NextResponse.json({ error: "Yetkisiz" }, { status: 401 })
   if (!canManageTemplates(actor.department)) {
-    return NextResponse.json({ error: "Şablon yönetimi yalnızca sistem yöneticisine aittir" }, { status: 403 })
+    return NextResponse.json({ error: "Şablon yönetimi yalnızca yönetime aittir" }, { status: 403 })
   }
 
   const body = await request.json().catch(() => null)

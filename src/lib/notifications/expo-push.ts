@@ -61,6 +61,7 @@ export async function sendExpoPush(messages: ExpoPushMessage[]): Promise<void> {
 
     if (staleTokens.length > 0) {
       await prisma.staffPushDevice.deleteMany({ where: { token: { in: staleTokens } } })
+      await prisma.parentPushDevice.deleteMany({ where: { token: { in: staleTokens } } })
     }
   }
 }

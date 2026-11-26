@@ -14,7 +14,7 @@ export async function POST(_request: NextRequest, context: Ctx) {
   const { id } = await context.params
 
   const notice = await prisma.officialNotice.findUnique({ where: { id } })
-  if (!notice) return NextResponse.json({ error: "Kayıt bulunamadı" }, { status: 404 })
+  if (!notice || notice.deletedAt) return NextResponse.json({ error: "Kayıt bulunamadı" }, { status: 404 })
   if (notice.recipientStaffId !== actor.staffId) {
     return NextResponse.json({ error: "Bu ileti size ait değil" }, { status: 403 })
   }

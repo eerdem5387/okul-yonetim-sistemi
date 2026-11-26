@@ -2,7 +2,8 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { resolveStaffActor } from "@/lib/hr/actor"
-import { isRequestApprover } from "@/lib/comms/access"
+import { clampText, COMMS_LIMITS, isRequestApprover } from "@/lib/comms/access"
+import { decideRequests, REQUEST_INCLUDE } from "@/lib/comms/requests"
 
 export const dynamic = "force-dynamic"
 
@@ -21,10 +22,8 @@ export async function POST(request: NextRequest, context: Ctx) {
   if (!decision) {
     return NextResponse.json({ error: "decision: approve | reject" }, { status: 400 })
   }
-  const rejectReason =
-    decision === "REJECTED" && typeof body?.rejectReason === "string"
-      ? body.rejectReason.trim() || null
-      : null
+  // Eski istemciler `rejectReason`, yeniler `note` gönderir
+  const note = clampText(body?.note ?? body?.rejectReason, COMMS_LIMITS.note) || null
 
   const existing = await prisma.staffCommsRequest.findUnique({ where: { id } })
   if (!existing) return NextResponse.json({ error: "Talep bulunamadı" }, { status: 404 })
@@ -32,18 +31,9 @@ export async function POST(request: NextRequest, context: Ctx) {
     return NextResponse.json({ error: "Talep zaten karara bağlanmış" }, { status: 400 })
   }
 
-  const updated = await prisma.staffCommsRequest.update({
-    where: { id },
-    data: {
-      status: decision,
-      decidedByStaffId: actor.staffId,
-      decidedAt: new Date(),
-      rejectReason,
-    },
-    include: {
-      requesterStaff: { select: { id: true, firstName: true, lastName: true } },
-      decidedByStaff: { select: { id: true, firstName: true, lastName: true } },
-    },
-  })
-  return NextResponse.json({ request: updated })
+  const { updated } = await decideRequests({ ids: [id], decision, note, decider: actor })
+  if (!updated) return NextResponse.json({ error: "Talep zaten karara bağlanmış" }, { status: 409 })
+
+  const row = await prisma.staffCommsRequest.findUnique({ where: { id }, include: REQUEST_INCLUDE })
+  return NextResponse.json({ request: row })
 }

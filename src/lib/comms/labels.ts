@@ -25,6 +25,7 @@ export const REQUEST_STATUS_LABEL: Record<StaffCommsRequestStatus, string> = {
   PENDING: "Bekliyor",
   APPROVED: "Onaylandı",
   REJECTED: "Reddedildi",
+  CANCELLED: "Geri çekildi",
 }
 
 export function formatCommsDate(value: string | Date) {

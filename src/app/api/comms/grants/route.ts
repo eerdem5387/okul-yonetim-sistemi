@@ -2,18 +2,18 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { resolveStaffActor } from "@/lib/hr/actor"
-import { canManageTemplates, COMMS_MODULE, SEND_OFFICIAL_ACTION } from "@/lib/comms/access"
+import { canManageGrants, COMMS_MODULE, SEND_OFFICIAL_ACTION } from "@/lib/comms/access"
 
 export const dynamic = "force-dynamic"
 
 /**
- * SUPER_ADMIN: messaging.create (= send_official) yetki listesi / toggle
+ * Kurucu / SUPER_ADMIN: messaging.create (= send_official) yetki listesi / toggle
  */
 export async function GET(request: NextRequest) {
   const actor = await resolveStaffActor(request)
   if (!actor) return NextResponse.json({ error: "Yetkisiz" }, { status: 401 })
-  if (!canManageTemplates(actor.department)) {
-    return NextResponse.json({ error: "Yetki grant yönetimi yalnızca sistem yöneticisine aittir" }, { status: 403 })
+  if (!canManageGrants(actor.department)) {
+    return NextResponse.json({ error: "Gönderim yetkisi dağıtımı yalnızca Kurucu ve sistem yöneticisine aittir" }, { status: 403 })
   }
 
   const staff = await prisma.staff.findMany({
@@ -47,8 +47,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const actor = await resolveStaffActor(request)
   if (!actor) return NextResponse.json({ error: "Yetkisiz" }, { status: 401 })
-  if (!canManageTemplates(actor.department)) {
-    return NextResponse.json({ error: "Yetki grant yönetimi yalnızca sistem yöneticisine aittir" }, { status: 403 })
+  if (!canManageGrants(actor.department)) {
+    return NextResponse.json({ error: "Gönderim yetkisi dağıtımı yalnızca Kurucu ve sistem yöneticisine aittir" }, { status: 403 })
   }
 
   const body = await request.json().catch(() => null)

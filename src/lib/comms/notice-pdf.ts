@@ -1,8 +1,8 @@
 import { NOTICE_TYPE_LABEL } from "@/lib/comms/labels"
 import type { OfficialNoticeType } from "@prisma/client"
 
-const PRINCIPAL_NAME = "Ramazan Koçali"
-const PRINCIPAL_TITLE = "Müdür"
+/** Okul adı ortam değişkeninden okunur; yoksa varsayılan */
+const SCHOOL_NAME = process.env.SCHOOL_NAME?.trim() || "RİZE LEVENT KOLEJİ"
 
 function escapeHtml(text: string | null | undefined): string {
   if (!text) return ""
@@ -34,10 +34,12 @@ export type OfficialNoticePdfInput = {
   createdAt: Date | string
   seenAt?: Date | string | null
   senderName: string
+  /** İmza bloğundaki unvan (gönderenin görevi: Müdür, Kurucu, …) */
+  senderTitle: string
   recipientName: string
 }
 
-/** Resmi ihtar / talimat / duyuru PDF HTML — sağ altta müdür imza/kaşe alanı */
+/** Resmi ihtar / talimat / duyuru PDF HTML — sağ altta gönderenin imza/kaşe alanı */
 export function buildOfficialNoticePdfHtml(notice: OfficialNoticePdfInput): string {
   const typeLabel = NOTICE_TYPE_LABEL[notice.type] || notice.type
   const subject = escapeHtml(notice.subject)
@@ -46,8 +48,9 @@ export function buildOfficialNoticePdfHtml(notice: OfficialNoticePdfInput): stri
   const recipient = escapeHtml(notice.recipientName)
   const createdAt = escapeHtml(formatTr(notice.createdAt))
   const seenAt = notice.seenAt ? escapeHtml(formatTr(notice.seenAt)) : null
-  const principalName = escapeHtml(PRINCIPAL_NAME)
-  const principalTitle = escapeHtml(PRINCIPAL_TITLE)
+  const signerName = escapeHtml(notice.senderName)
+  const signerTitle = escapeHtml(notice.senderTitle)
+  const school = escapeHtml(SCHOOL_NAME)
 
   return `<!DOCTYPE html>
 <html lang="tr">
@@ -142,7 +145,7 @@ export function buildOfficialNoticePdfHtml(notice: OfficialNoticePdfInput): stri
   </style>
 </head>
 <body>
-  <div class="school">RİZE LEVENT KOLEJİ</div>
+  <div class="school">${school}</div>
   <div class="doc-type">${escapeHtml(typeLabel)}</div>
 
   <table class="meta">
@@ -174,8 +177,8 @@ export function buildOfficialNoticePdfHtml(notice: OfficialNoticePdfInput): stri
   <div class="footer">
     <div class="sign-block">
       <div class="sign-space"></div>
-      <p class="sign-name">${principalName}</p>
-      <p class="sign-title">${principalTitle}</p>
+      <p class="sign-name">${signerName}</p>
+      <p class="sign-title">${signerTitle}</p>
     </div>
   </div>
 </body>

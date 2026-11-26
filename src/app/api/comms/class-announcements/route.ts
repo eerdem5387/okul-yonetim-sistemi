@@ -4,11 +4,13 @@ import { randomUUID } from "crypto"
 import { prisma } from "@/lib/prisma"
 import { resolveStaffActor } from "@/lib/hr/actor"
 import { resolveChatActor } from "@/lib/comms/identity"
-import { canSendClassAnnouncement } from "@/lib/comms/access"
+import { canSendClassAnnouncement, clampText, COMMS_LIMITS } from "@/lib/comms/access"
 import {
   syncClassGroupParentsForClass,
   syncClassGroupParentsForParent,
 } from "@/lib/comms/sync-class-group-parents"
+import { resolveGroupAccess } from "@/lib/comms/groups"
+import { notifyParentsComms, notifyStaffComms } from "@/lib/comms/notify"
 
 export const dynamic = "force-dynamic"
 
@@ -67,21 +69,18 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json().catch(() => null)
   const classGroupId = String(body?.classGroupId || "")
-  const subject = String(body?.subject || "").trim()
-  const text = String(body?.body || "").trim()
+  const subject = clampText(body?.subject, COMMS_LIMITS.subject)
+  const text = clampText(body?.body, COMMS_LIMITS.body)
   const templateId = body?.templateId ? String(body.templateId) : null
   if (!classGroupId || !subject || !text) {
-    return NextResponse.json({ error: "classGroupId, subject ve body zorunlu" }, { status: 400 })
+    return NextResponse.json({ error: "Grup, konu ve metin zorunlu" }, { status: 400 })
   }
 
-  const group = await prisma.classGroup.findUnique({
-    where: { id: classGroupId },
-    select: { id: true, classId: true },
-  })
-  if (!group) return NextResponse.json({ error: "Sınıf grubu bulunamadı" }, { status: 404 })
+  const access = await resolveGroupAccess(classGroupId, { kind: "staff", ...actor })
+  if (!access) return NextResponse.json({ error: "Sınıf grubu bulunamadı" }, { status: 404 })
 
   // Gönderim öncesi sınıf roster'ını gruba senkronize et
-  const synced = await syncClassGroupParentsForClass(group.classId)
+  const synced = await syncClassGroupParentsForClass(access.group.classId)
   const parentIds = synced.parentIds
   if (!parentIds.length) {
     return NextResponse.json(
@@ -90,7 +89,6 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const batchId = randomUUID()
   const announcement = await prisma.classAnnouncement.create({
     data: {
       classGroupId,
@@ -98,11 +96,31 @@ export async function POST(request: NextRequest) {
       subject,
       body: text,
       senderStaffId: actor.staffId,
-      batchId,
-      acks: {
-        create: parentIds.map((parentId) => ({ parentId })),
-      },
+      batchId: randomUUID(),
+      acks: { create: parentIds.map((parentId) => ({ parentId })) },
     },
   })
+  await prisma.classGroup.update({ where: { id: classGroupId }, data: { updatedAt: new Date() } })
+
+  const data = { kind: "comms_class_announcement" as const, tab: "groups" as const, groupId: classGroupId }
+  notifyParentsComms({
+    parentIds,
+    title: `Duyuru · ${access.group.title}`,
+    body: subject,
+    data,
+    official: true,
+  })
+  const staffMembers = await prisma.classGroupMember.findMany({
+    where: { classGroupId, staffId: { not: null } },
+    select: { staffId: true },
+  })
+  notifyStaffComms({
+    staffIds: staffMembers.map((m) => m.staffId!).filter((s) => s !== actor.staffId),
+    title: `Duyuru · ${access.group.title}`,
+    body: subject,
+    data,
+    inApp: false,
+  })
+
   return NextResponse.json({ announcement, recipientCount: parentIds.length }, { status: 201 })
 }
