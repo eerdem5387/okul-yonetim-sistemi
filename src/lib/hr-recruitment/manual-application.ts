@@ -1,12 +1,9 @@
 import { randomUUID } from "crypto"
 import { prisma } from "@/lib/prisma"
 
-const PLACEHOLDER_PHONE = "—"
+import { PLACEHOLDER_PHONE } from "./phone"
 
-export function isPlaceholderPhone(phone: string | null | undefined): boolean {
-  if (!phone?.trim() || phone.trim() === PLACEHOLDER_PHONE) return true
-  return false
-}
+export { formatDisplayPhone, isPlaceholderPhone } from "./phone"
 
 export function normalizeManualPhone(phone?: string | null): string {
   const trimmed = phone?.trim() ?? ""
@@ -18,10 +15,6 @@ export function normalizeManualPhone(phone?: string | null): string {
   return trimmed
 }
 
-export function formatDisplayPhone(phone: string | null | undefined): string {
-  if (isPlaceholderPhone(phone)) return ""
-  return phone!.trim()
-}
 
 export interface CreateManualApplicationInput {
   fullName: string

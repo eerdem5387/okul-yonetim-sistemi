@@ -38,6 +38,9 @@ function createClient(): PrismaClient {
     return extended as unknown as PrismaClient
 }
 
-export const prisma = globalForPrisma.prisma ?? createClient()
+// Tarayıcı paketine yanlışlıkla girerse (istemci bileşeni, prisma'yı da içe aktaran bir yardımcıyı
+// kullandığında) $extends çağrısı modül yüklenirken hata fırlatıp sayfayı çökertir; orada uzantı kurulmaz.
+export const prisma =
+    globalForPrisma.prisma ?? (typeof window === 'undefined' ? createClient() : (new PrismaClient() as PrismaClient))
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma

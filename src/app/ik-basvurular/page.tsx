@@ -33,7 +33,7 @@ import {
   HR_STATUS_LABELS,
   HR_STATUS_OPTIONS,
 } from "@/lib/hr-recruitment/constants"
-import { formatDisplayPhone } from "@/lib/hr-recruitment/manual-application"
+import { formatDisplayPhone } from "@/lib/hr-recruitment/phone"
 import {
   canViewHrRecruitment,
   fetchPermissionsMe,
