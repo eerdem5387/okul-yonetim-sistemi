@@ -1,7 +1,7 @@
 import { requireStaff } from "@/lib/auth/api-guard"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { donemKosullari, tekrarBasvuranTcler } from "@/lib/bursluluk"
+import { AKTIF_OTURUMLAR, donemKosullari, tekrarBasvuranTcler } from "@/lib/bursluluk"
 
 export async function GET(request: NextRequest) {
   const authGuard = await requireStaff(request)
@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
         anneMeslek: true,
         createdAt: true,
         sinavGunu: true,
+        oturum: true,
         ogrenciTc: true,
       }
     })
@@ -86,18 +87,18 @@ export async function GET(request: NextRequest) {
     const weekCount = basvurular.filter(b => new Date(b.createdAt) >= thisWeek).length
     const monthCount = basvurular.filter(b => new Date(b.createdAt) >= thisMonth).length
     
-    // Gün bazında sayım (10 Ocak Cumartesi ve 11 Ocak Pazar)
-    // sinavGunu alanında "10 Ocak Cumartesi", "11 Ocak Pazar" veya sadece "Cumartesi", "Pazar" olabilir
-    const saturdayCount = basvurular.filter(b => {
-      const gun = b.sinavGunu || ''
-      return gun.includes('Cumartesi') || gun.includes('10 Ocak')
-    }).length
-    
-    const sundayCount = basvurular.filter(b => {
-      const gun = b.sinavGunu || ''
-      return gun.includes('Pazar') || gun.includes('11 Ocak')
-    }).length
-    
+    // Gün bazında sayım (geçmiş dönem: 10 Ocak Cumartesi ve 11 Ocak Pazar)
+    const saturdayCount = basvurular.filter(b => (b.sinavGunu || '').includes('Cumartesi')).length
+    const sundayCount = basvurular.filter(b => (b.sinavGunu || '').includes('Pazar')).length
+
+    // Aktif dönem oturum bazında sayım
+    const oturumStats = AKTIF_OTURUMLAR.map(o => ({
+      key: o.key,
+      gun: o.gun,
+      oturum: o.oturum,
+      count: basvurular.filter(b => b.sinavGunu === o.gun && b.oturum === o.oturum).length,
+    }))
+
     return NextResponse.json({
       total: basvurular.length,
       today: todayCount,
@@ -106,6 +107,7 @@ export async function GET(request: NextRequest) {
       tekrarCount,
       saturdayCount, // 10 Ocak Cumartesi
       sundayCount,   // 11 Ocak Pazar
+      oturumStats,
       sinifStats,
       topOkullar: Object.entries(okulStats)
         .sort(([, a], [, b]) => b - a)

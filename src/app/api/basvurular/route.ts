@@ -1,7 +1,7 @@
 import { requireStaff } from "@/lib/auth/api-guard"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { basvuruGecmisleri, donemKosullari } from "@/lib/bursluluk"
+import { basvuruGecmisleri, donemKosullari, sinavGunuKosulu } from "@/lib/bursluluk"
 
 export async function GET(request: NextRequest) {
   const authGuard = await requireStaff(request)
@@ -80,30 +80,10 @@ export async function GET(request: NextRequest) {
       whereConditions.push({ contactStatus: 'ILETISIME_GECILMEDI' })
     }
     
-    // Sınav günü filtresi
-    if (sinavGunu) {
-      if (sinavGunu === 'Cumartesi') {
-        // Cumartesi günü için - "Cumartesi" veya "10 Ocak" içeren kayıtlar
-        whereConditions.push({
-          OR: [
-            { sinavGunu: { contains: 'Cumartesi', mode: 'insensitive' as const } },
-            { sinavGunu: { contains: '10 Ocak', mode: 'insensitive' as const } },
-          ]
-        })
-      } else if (sinavGunu === 'Pazar') {
-        // Pazar günü için - "Pazar" veya "11 Ocak" içeren kayıtlar
-        whereConditions.push({
-          OR: [
-            { sinavGunu: { contains: 'Pazar', mode: 'insensitive' as const } },
-            { sinavGunu: { contains: '11 Ocak', mode: 'insensitive' as const } },
-          ]
-        })
-      } else {
-        // Diğer durumlar için direkt eşleşme
-        whereConditions.push({ sinavGunu: { contains: sinavGunu, mode: 'insensitive' as const } })
-      }
-    }
-    
+    // Sınav günü / oturum filtresi
+    const sinavKosulu = sinavGunuKosulu(sinavGunu)
+    if (sinavKosulu) whereConditions.push(sinavKosulu)
+
     // Tarih filtresi
     if (startDate || endDate) {
       const dateFilter: Record<string, unknown> = {}

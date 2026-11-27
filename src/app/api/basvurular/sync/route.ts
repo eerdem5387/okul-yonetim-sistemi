@@ -39,6 +39,8 @@ export async function POST() {
       okul?: string
       ogrenciSinifi?: string
       ogrenciSube?: string
+      sinavGunu?: string
+      oturum?: string
       babaAdSoyad?: string
       babaMeslek?: string
       babaIsAdresi?: string
@@ -118,6 +120,7 @@ export async function POST() {
             ogrenciSinifi: payload.ogrenciSinifi,
             ogrenciSube: payload.ogrenciSube || "Belirtilmedi",
             sinavGunu: payload.sinavGunu || "Belirtilmedi",
+            oturum: typeof payload.oturum === "string" ? payload.oturum.slice(0, 100) : "",
             babaAdSoyad: payload.babaAdSoyad,
             babaMeslek: payload.babaMeslek,
             babaIsAdresi: payload.babaIsAdresi || "",

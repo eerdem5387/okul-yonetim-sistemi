@@ -315,6 +315,8 @@ model Basvuru {
   ogrenciSinifi  String
   ogrenciSube    String   @default("Belirtilmedi")
   sinavGunu      String   @default("Belirtilmedi")
+  /// Sınav oturumu (örn. "1. Oturum - 09.30"); eski dönemlerde boş
+  oturum         String   @default("")
   babaAdSoyad    String
   babaMeslek     String
   babaIsAdresi   String   @default("")

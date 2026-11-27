@@ -2,7 +2,7 @@
 import { notify } from "@/lib/notify"
 import { isoDateTR } from "@/lib/dates"
 import Link from "next/link"
-import { AKTIF_BURSLULUK_DONEM, donemEtiketi } from "@/lib/bursluluk"
+import { AKTIF_BURSLULUK_DONEM, AKTIF_OTURUMLAR, donemEtiketi, sinavGunuFiltreEtiketi, sinavOturumuEtiketi } from "@/lib/bursluluk"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -34,6 +34,7 @@ interface Basvuru {
   ogrenciSinifi: string
   ogrenciSube: string
   sinavGunu: string
+  oturum?: string
   babaAdSoyad: string
   babaMeslek: string
   babaIsAdresi: string
@@ -113,6 +114,7 @@ export default function BasvurularView({ arsiv = false }: { arsiv?: boolean }) {
     tekrarCount: 0,
     saturdayCount: 0, // 10 Ocak Cumartesi
     sundayCount: 0,   // 11 Ocak Pazar
+    oturumStats: [] as Array<{ key: string; gun: string; oturum: string; count: number }>,
     sinifStats: {} as Record<string, number>,
     topOkullar: [] as Array<{ okul: string; count: number }>,
     topBabaMeslekler: [] as Array<{ meslek: string; count: number }>,
@@ -903,6 +905,45 @@ export default function BasvurularView({ arsiv = false }: { arsiv?: boolean }) {
         </>)}
       </div>
 
+      {/* Sınav Oturumları (aktif dönem) */}
+      {!arsiv && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6">
+          {AKTIF_OTURUMLAR.map((o) => {
+            const count = stats.oturumStats?.find((s) => s.key === o.key)?.count ?? 0
+            const secili = selectedSinavGunu === o.key
+            return (
+              <button
+                key={o.key}
+                type="button"
+                aria-pressed={secili}
+                title="Bu oturumu seçen başvuruları listele"
+                onClick={() => {
+                  const yeni = secili ? "" : o.key
+                  setSelectedSinavGunu(yeni)
+                  handleFilterChange(undefined, undefined, undefined, undefined, yeni)
+                }}
+                className={`text-left rounded-xl border px-4 py-3 sm:px-5 sm:py-4 transition shadow-sm ${
+                  secili
+                    ? "border-sky-500 bg-sky-100 ring-2 ring-sky-400"
+                    : "border-sky-200 bg-sky-50 hover:border-sky-400 hover:bg-sky-100"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm font-semibold text-sky-900 truncate">{o.gun.replace(" - ", " ")}</p>
+                    <p className="text-xs text-sky-700 truncate">{o.oturum}</p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-xl sm:text-2xl font-bold text-sky-900">{count}</span>
+                    <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-sky-500" />
+                  </div>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       {/* Filtrelenmiş Sonuç Sayısı */}
       {hasActiveFilters && (
         <Card className="mb-4 sm:mb-6 border-0 shadow-lg bg-gradient-to-r from-indigo-50 to-blue-50 border-l-4 border-indigo-500">
@@ -1050,11 +1091,10 @@ export default function BasvurularView({ arsiv = false }: { arsiv?: boolean }) {
                   </select>
                 </div>
 
-                {arsiv && (
                 <div>
                   <Label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2 block">
                     <Calendar className="h-3 w-3 sm:h-4 sm:w-4 inline mr-1" />
-                    Sınav Günü
+                    {arsiv ? "Sınav Günü" : "Sınav Oturumu"}
                   </Label>
                   <select
                     value={selectedSinavGunu}
@@ -1065,12 +1105,24 @@ export default function BasvurularView({ arsiv = false }: { arsiv?: boolean }) {
                     }}
                     className="w-full h-9 sm:h-10 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
-                    <option value="">Tüm Günler</option>
-                    <option value="Cumartesi">10 Ocak Cumartesi</option>
-                    <option value="Pazar">11 Ocak Pazar</option>
+                    {arsiv ? (
+                      <>
+                        <option value="">Tüm Günler</option>
+                        <option value="Cumartesi">10 Ocak Cumartesi</option>
+                        <option value="Pazar">11 Ocak Pazar</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="">Tüm Oturumlar</option>
+                        {AKTIF_OTURUMLAR.map((o) => (
+                          <option key={o.key} value={o.key}>
+                            {sinavOturumuEtiketi(o.gun, o.oturum)}
+                          </option>
+                        ))}
+                      </>
+                    )}
                   </select>
                 </div>
-                )}
 
                 <div>
                   <Label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2 block">
@@ -1217,8 +1269,8 @@ export default function BasvurularView({ arsiv = false }: { arsiv?: boolean }) {
                 )}
                 {selectedSinavGunu && (
                   <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-0.5 sm:py-1 bg-teal-100 text-teal-700 rounded-full text-xs sm:text-sm">
-                    <span className="hidden sm:inline">Sınav Günü: </span>
-                    {selectedSinavGunu === "Cumartesi" ? "10 Ocak Cumartesi" : "11 Ocak Pazar"}
+                    <span className="hidden sm:inline">{arsiv ? "Sınav Günü: " : "Oturum: "}</span>
+                    {sinavGunuFiltreEtiketi(selectedSinavGunu)}
                     <button
                       onClick={() => {
                         setSelectedSinavGunu("")
@@ -1402,6 +1454,12 @@ export default function BasvurularView({ arsiv = false }: { arsiv?: boolean }) {
                                 ? "İletişime Geçilemedi"
                                 : "İletişime Geçilmedi"}
                             </span>
+                            {basvuru.oturum && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-sky-50 text-sky-800 ring-1 ring-sky-200">
+                                <Calendar className="h-3 w-3" />
+                                {sinavOturumuEtiketi(basvuru.sinavGunu, basvuru.oturum)}
+                              </span>
+                            )}
                             {(basvuru.basvuruSayisi ?? 1) > 1 && (
                               <span
                                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-fuchsia-100 text-fuchsia-700 ring-1 ring-fuchsia-200"
@@ -1619,10 +1677,12 @@ export default function BasvurularView({ arsiv = false }: { arsiv?: boolean }) {
                         </p>
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-gray-500 text-xs font-medium uppercase tracking-wide">Sınav Günü</Label>
+                        <Label className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                          {selectedBasvuru.oturum ? "Sınav Günü / Oturumu" : "Sınav Günü"}
+                        </Label>
                         <p className="font-semibold text-sm sm:text-base text-blue-600 flex items-center gap-2">
                           <Calendar className="h-4 w-4 flex-shrink-0" />
-                          {selectedBasvuru.sinavGunu || "Belirtilmedi"}
+                          {sinavOturumuEtiketi(selectedBasvuru.sinavGunu, selectedBasvuru.oturum)}
                         </p>
                       </div>
                       <div className="space-y-1.5 sm:col-span-2">

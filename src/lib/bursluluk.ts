@@ -72,3 +72,41 @@ export async function donemKosullari(
   }
   return kosullar
 }
+
+/**
+ * Aktif dönemin sınav oturumları. Başvuru sistemindeki OTURUMLAR ile aynı olmalıdır;
+ * başvuru `sinavGunu` ("9 Ocak - Cumartesi") ve `oturum` ("1. Oturum - 09.30") olarak gelir.
+ */
+export const AKTIF_OTURUMLAR = [
+  { key: "9-ocak-1", gun: "9 Ocak - Cumartesi", oturum: "1. Oturum - 09.30" },
+  { key: "9-ocak-2", gun: "9 Ocak - Cumartesi", oturum: "2. Oturum - 13.30" },
+  { key: "10-ocak-1", gun: "10 Ocak - Pazar", oturum: "1. Oturum - 09.30" },
+] as const
+
+/** "9 Ocak Cumartesi · 1. Oturum - 09.30" — oturum yoksa yalnızca gün. */
+export function sinavOturumuEtiketi(sinavGunu: string | null | undefined, oturum?: string | null): string {
+  const gun = sinavGunu && sinavGunu !== "Belirtilmedi" ? sinavGunu.replace(" - ", " ") : ""
+  if (!gun) return "Belirtilmedi"
+  return oturum ? `${gun} · ${oturum}` : gun
+}
+
+/** Filtre değerinin (oturum anahtarı, "Cumartesi" veya "Pazar") okunabilir adı. */
+export function sinavGunuFiltreEtiketi(value: string): string {
+  const o = AKTIF_OTURUMLAR.find((x) => x.key === value)
+  if (o) return sinavOturumuEtiketi(o.gun, o.oturum)
+  if (value === "Cumartesi") return "10 Ocak Cumartesi"
+  if (value === "Pazar") return "11 Ocak Pazar"
+  return value
+}
+
+/**
+ * `sinavGunu` filtre parametresini sorgu koşuluna çevirir.
+ * - Oturum anahtarı (örn. "9-ocak-1"): gün + oturum birebir eşleşir
+ * - "Cumartesi" / "Pazar": gün adına göre (geçmiş dönemler)
+ */
+export function sinavGunuKosulu(value: string): Prisma.BasvuruWhereInput | null {
+  if (!value) return null
+  const o = AKTIF_OTURUMLAR.find((x) => x.key === value)
+  if (o) return { sinavGunu: o.gun, oturum: o.oturum }
+  return { sinavGunu: { contains: value, mode: "insensitive" } }
+}

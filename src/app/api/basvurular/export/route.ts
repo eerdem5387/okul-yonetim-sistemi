@@ -2,7 +2,7 @@ import { isoDateTR } from "@/lib/dates"
 import { requireStaff } from "@/lib/auth/api-guard"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { basvuruGecmisleri, donemEtiketi, donemKosullari } from "@/lib/bursluluk"
+import { basvuruGecmisleri, donemEtiketi, donemKosullari, sinavGunuKosulu } from "@/lib/bursluluk"
 
 export async function GET(request: NextRequest) {
   const authGuard = await requireStaff(request)
@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate') || ''
     const endDate = searchParams.get('endDate') || ''
     const contactStatus = searchParams.get('contactStatus') || ''
+    const sinavGunu = searchParams.get('sinavGunu') || ''
 
     // Filtreleme koşulları (API ile aynı)
     const whereConditions: Array<Record<string, unknown>> = [
@@ -42,6 +43,9 @@ export async function GET(request: NextRequest) {
     if (okul) {
       whereConditions.push({ okul: { contains: okul, mode: 'insensitive' as const } })
     }
+
+    const sinavKosulu = sinavGunuKosulu(sinavGunu)
+    if (sinavKosulu) whereConditions.push(sinavKosulu)
     
     if (babaMeslek) {
       whereConditions.push({ babaMeslek: { contains: babaMeslek, mode: 'insensitive' as const } })
@@ -111,6 +115,7 @@ export async function GET(request: NextRequest) {
       "Sınıf": basvuru.ogrenciSinifi,
       "Şube": basvuru.ogrenciSube,
       "Sınav Günü": basvuru.sinavGunu || "Belirtilmedi",
+      "Oturum": basvuru.oturum || "",
       "Baba Ad Soyad": basvuru.babaAdSoyad,
       "Baba Meslek": basvuru.babaMeslek,
       "Baba İş Adresi": basvuru.babaIsAdresi || "",

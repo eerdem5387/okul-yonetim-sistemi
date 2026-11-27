@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
         ogrenciSinifi: payload.ogrenciSinifi,
         ogrenciSube: payload.ogrenciSube || "Belirtilmedi",
         sinavGunu: payload.sinavGunu || "Belirtilmedi",
+        oturum: typeof payload.oturum === "string" ? payload.oturum.slice(0, 100) : "",
         babaAdSoyad: payload.babaAdSoyad,
         babaMeslek: payload.babaMeslek,
         babaIsAdresi: payload.babaIsAdresi || "",
