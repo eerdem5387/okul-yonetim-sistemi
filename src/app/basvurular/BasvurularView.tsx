@@ -1560,12 +1560,18 @@ export default function BasvurularView({ arsiv = false }: { arsiv?: boolean }) {
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 mt-3">
                         {[
-                          { etiket: "Anne", ad: basvuru.anneAdSoyad, tel: basvuru.anneCepTel, kutu: "bg-rose-50 ring-rose-100", yazi: "text-rose-700" },
-                          { etiket: "Baba", ad: basvuru.babaAdSoyad, tel: basvuru.babaCepTel, kutu: "bg-sky-50 ring-sky-100", yazi: "text-sky-700" },
+                          { etiket: "Anne", ad: basvuru.anneAdSoyad, meslek: basvuru.anneMeslek, tel: basvuru.anneCepTel, kutu: "bg-rose-50 ring-rose-100", yazi: "text-rose-700" },
+                          { etiket: "Baba", ad: basvuru.babaAdSoyad, meslek: basvuru.babaMeslek, tel: basvuru.babaCepTel, kutu: "bg-sky-50 ring-sky-100", yazi: "text-sky-700" },
                         ].map((v) => (
                           <div key={v.etiket} className={`rounded-lg ring-1 px-3 py-2 min-w-0 ${v.kutu}`}>
                             <p className={`text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide ${v.yazi}`}>{v.etiket}</p>
                             <p className="text-sm font-semibold text-gray-900 break-words">{v.ad || "-"}</p>
+                            {v.meslek && (
+                              <p className="flex items-center gap-1.5 text-xs sm:text-sm text-gray-600 break-words">
+                                <Briefcase className="h-3.5 w-3.5 flex-shrink-0" />
+                                {v.meslek}
+                              </p>
+                            )}
                             {v.tel ? (
                               <a
                                 href={`tel:${telefonLink(v.tel)}`}
