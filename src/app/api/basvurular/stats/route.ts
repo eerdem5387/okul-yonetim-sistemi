@@ -92,12 +92,15 @@ export async function GET(request: NextRequest) {
     const sundayCount = basvurular.filter(b => (b.sinavGunu || '').includes('Pazar')).length
 
     // Aktif dönem oturum bazında sayım
-    const oturumStats = AKTIF_OTURUMLAR.map(o => ({
-      key: o.key,
-      gun: o.gun,
-      oturum: o.oturum,
-      count: basvurular.filter(b => b.sinavGunu === o.gun && b.oturum === o.oturum).length,
-    }))
+    const oturumStats = AKTIF_OTURUMLAR.map(o => {
+      const liste = basvurular.filter(b => b.sinavGunu === o.gun && b.oturum === o.oturum)
+      const siniflar: Record<string, number> = {}
+      for (const b of liste) {
+        const sinif = b.ogrenciSinifi || 'Belirtilmemiş'
+        siniflar[sinif] = (siniflar[sinif] || 0) + 1
+      }
+      return { key: o.key, gun: o.gun, oturum: o.oturum, count: liste.length, siniflar }
+    })
 
     return NextResponse.json({
       total: basvurular.length,

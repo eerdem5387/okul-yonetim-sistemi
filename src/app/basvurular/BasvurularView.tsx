@@ -4,7 +4,7 @@ import { isoDateTR } from "@/lib/dates"
 import Link from "next/link"
 import { AKTIF_BURSLULUK_DONEM, AKTIF_OTURUMLAR, donemEtiketi, sinavGunuFiltreEtiketi, sinavOturumuEtiketi } from "@/lib/bursluluk"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -68,7 +68,29 @@ const siniflar = [
   "11. Sınıf",
 ]
 
+const OTURUM_RENKLERI = [
+  { bg: "from-sky-500 to-blue-600", ring: "ring-sky-300", text: "text-sky-100", icon: "text-sky-200", bar: "bg-sky-500" },
+  { bg: "from-cyan-600 to-teal-600", ring: "ring-teal-300", text: "text-teal-100", icon: "text-teal-200", bar: "bg-teal-500" },
+  { bg: "from-indigo-500 to-violet-600", ring: "ring-indigo-300", text: "text-indigo-100", icon: "text-indigo-200", bar: "bg-indigo-500" },
+]
+
 export default function BasvurularView({ arsiv = false }: { arsiv?: boolean }) {
+  // Sınıf dağılımı menüsü açık olan oturum kartı
+  const [acikOturum, setAcikOturum] = useState<string | null>(null)
+  const oturumKartlariRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!acikOturum) return
+    const kapat = (e: PointerEvent) => {
+      if (!oturumKartlariRef.current?.contains(e.target as Node)) setAcikOturum(null)
+    }
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setAcikOturum(null)
+    document.addEventListener("pointerdown", kapat)
+    document.addEventListener("keydown", esc)
+    return () => {
+      document.removeEventListener("pointerdown", kapat)
+      document.removeEventListener("keydown", esc)
+    }
+  }, [acikOturum])
   // Aktif sayfa aktif dönemi, arşiv sayfası seçilen geçmiş dönemi gösterir
   const [donem, setDonem] = useState(arsiv ? "" : AKTIF_BURSLULUK_DONEM)
   const [donemListesi, setDonemListesi] = useState<Array<{ donem: string; count: number; aktif: boolean }>>([])
@@ -114,7 +136,7 @@ export default function BasvurularView({ arsiv = false }: { arsiv?: boolean }) {
     tekrarCount: 0,
     saturdayCount: 0, // 10 Ocak Cumartesi
     sundayCount: 0,   // 11 Ocak Pazar
-    oturumStats: [] as Array<{ key: string; gun: string; oturum: string; count: number }>,
+    oturumStats: [] as Array<{ key: string; gun: string; oturum: string; count: number; siniflar?: Record<string, number> }>,
     sinifStats: {} as Record<string, number>,
     topOkullar: [] as Array<{ okul: string; count: number }>,
     topBabaMeslekler: [] as Array<{ meslek: string; count: number }>,
@@ -905,40 +927,84 @@ export default function BasvurularView({ arsiv = false }: { arsiv?: boolean }) {
         </>)}
       </div>
 
-      {/* Sınav Oturumları (aktif dönem) */}
+      {/* Sınav Oturumları (aktif dönem): kart başvuru sayısını, tıklanınca açılan menü sınıf dağılımını gösterir */}
       {!arsiv && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6">
-          {AKTIF_OTURUMLAR.map((o) => {
-            const count = stats.oturumStats?.find((s) => s.key === o.key)?.count ?? 0
-            const secili = selectedSinavGunu === o.key
+        <div ref={oturumKartlariRef} className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6">
+          {AKTIF_OTURUMLAR.map((o, idx) => {
+            const st = stats.oturumStats?.find((s) => s.key === o.key)
+            const count = st?.count ?? 0
+            const acik = acikOturum === o.key
+            const filtreli = selectedSinavGunu === o.key
+            const renk = OTURUM_RENKLERI[idx % OTURUM_RENKLERI.length]
             return (
-              <button
-                key={o.key}
-                type="button"
-                aria-pressed={secili}
-                title="Bu oturumu seçen başvuruları listele"
-                onClick={() => {
-                  const yeni = secili ? "" : o.key
-                  setSelectedSinavGunu(yeni)
-                  handleFilterChange(undefined, undefined, undefined, undefined, yeni)
-                }}
-                className={`text-left rounded-xl border px-4 py-3 sm:px-5 sm:py-4 transition shadow-sm ${
-                  secili
-                    ? "border-sky-500 bg-sky-100 ring-2 ring-sky-400"
-                    : "border-sky-200 bg-sky-50 hover:border-sky-400 hover:bg-sky-100"
-                }`}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-xs sm:text-sm font-semibold text-sky-900 truncate">{o.gun.replace(" - ", " ")}</p>
-                    <p className="text-xs text-sky-700 truncate">{o.oturum}</p>
+              <div key={o.key} className="relative">
+                <button
+                  type="button"
+                  aria-expanded={acik}
+                  aria-controls={`oturum-menu-${o.key}`}
+                  onClick={() => setAcikOturum(acik ? null : o.key)}
+                  className={`w-full text-left rounded-xl shadow-lg text-white bg-gradient-to-br ${renk.bg} transition hover:brightness-110 ${
+                    acik || filtreli ? `ring-4 ${renk.ring} ring-offset-2` : ""
+                  }`}
+                >
+                  <div className="px-5 sm:px-6 pt-4 sm:pt-5 pb-4 sm:pb-5 flex items-center justify-between">
+                    <div className="min-w-0 flex-1">
+                      <p className={`${renk.text} text-xs sm:text-sm font-medium truncate`}>{o.gun.replace(" - ", " ")}</p>
+                      <p className="text-sm sm:text-base font-semibold truncate">{o.oturum}</p>
+                      <p className="text-xl sm:text-2xl lg:text-3xl font-bold mt-1">{count}</p>
+                      <p className={`text-[11px] sm:text-xs ${renk.text} mt-0.5 truncate`}>
+                        {filtreli ? "Liste bu oturuma göre filtreli" : "Sınıf dağılımı için tıkla"}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-2 flex-shrink-0 ml-2">
+                      <Calendar className={`h-6 w-6 sm:h-8 sm:w-8 ${renk.icon}`} />
+                      <ChevronDown className={`h-4 w-4 ${renk.icon} transition-transform ${acik ? "rotate-180" : ""}`} />
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className="text-xl sm:text-2xl font-bold text-sky-900">{count}</span>
-                    <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-sky-500" />
+                </button>
+
+                {acik && (
+                  <div
+                    id={`oturum-menu-${o.key}`}
+                    className="absolute left-0 right-0 top-full mt-2 z-30 rounded-xl border border-gray-200 bg-white shadow-xl p-3"
+                  >
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Sınıf Dağılımı</p>
+                    {count === 0 ? (
+                      <p className="text-sm text-gray-500 py-2">Bu oturuma henüz başvuru yok.</p>
+                    ) : (
+                      <ul className="divide-y divide-gray-100">
+                        {siniflar.map((sinif) => {
+                          const n = st?.siniflar?.[sinif] ?? 0
+                          return (
+                            <li key={sinif} className="flex items-center gap-3 py-1.5 text-sm">
+                              <span className={`w-16 flex-shrink-0 ${n ? "text-gray-800" : "text-gray-400"}`}>{sinif}</span>
+                              <span className="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                                <span
+                                  className={`block h-full rounded-full ${renk.bar}`}
+                                  style={{ width: `${count ? (n / count) * 100 : 0}%` }}
+                                />
+                              </span>
+                              <span className={`w-8 text-right font-semibold ${n ? "text-gray-900" : "text-gray-400"}`}>{n}</span>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const yeni = filtreli ? "" : o.key
+                        setSelectedSinavGunu(yeni)
+                        handleFilterChange(undefined, undefined, undefined, undefined, yeni)
+                        setAcikOturum(null)
+                      }}
+                      className="mt-2 w-full rounded-lg bg-gray-50 hover:bg-gray-100 text-xs sm:text-sm font-medium text-blue-700 py-2"
+                    >
+                      {filtreli ? "Oturum filtresini kaldır" : "Bu oturumun başvurularını listele"}
+                    </button>
                   </div>
-                </div>
-              </button>
+                )}
+              </div>
             )
           })}
         </div>
