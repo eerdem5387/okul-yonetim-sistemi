@@ -74,6 +74,17 @@ const OTURUM_RENKLERI = [
   { bg: "from-indigo-500 to-violet-600", ring: "ring-indigo-300", text: "text-indigo-100", icon: "text-indigo-200", bar: "bg-indigo-500" },
 ]
 
+/** 5331231212 → "0533 123 12 12"; farklı biçimdeki eski kayıtlar olduğu gibi gösterilir. */
+function telefonGoster(tel: string): string {
+  const d = tel.replace(/\D/g, "").replace(/^(90|0)(?=5\d{9}$)/, "")
+  return /^5\d{9}$/.test(d) ? `0${d.slice(0, 3)} ${d.slice(3, 6)} ${d.slice(6, 8)} ${d.slice(8)}` : tel
+}
+
+function telefonLink(tel: string): string {
+  const d = tel.replace(/\D/g, "").replace(/^(90|0)(?=5\d{9}$)/, "")
+  return /^5\d{9}$/.test(d) ? `+90${d}` : tel.replace(/[^\d+]/g, "")
+}
+
 export default function BasvurularView({ arsiv = false }: { arsiv?: boolean }) {
   // Sınıf dağılımı menüsü açık olan oturum kartı
   const [acikOturum, setAcikOturum] = useState<string | null>(null)
@@ -1536,41 +1547,39 @@ export default function BasvurularView({ arsiv = false }: { arsiv?: boolean }) {
                               </span>
                             )}
                           </div>
-                          <p className="text-xs sm:text-sm text-gray-500">TC: {basvuru.ogrenciTc}</p>
+                          <p className="text-xs sm:text-sm font-medium text-gray-600 flex items-center gap-1.5 mt-0.5">
+                            <GraduationCap className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-indigo-600 flex-shrink-0" />
+                            {basvuru.ogrenciSinifi}
+                          </p>
                         </div>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mt-3 sm:mt-4">
-                        <div className="flex items-center gap-2 text-xs sm:text-sm min-w-0">
-                          <School className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600 flex-shrink-0" />
-                          <span className="text-gray-700 truncate" title={basvuru.okul}>
-                            {basvuru.okul}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs sm:text-sm">
-                          <GraduationCap className="h-3 w-3 sm:h-4 sm:w-4 text-indigo-600 flex-shrink-0" />
-                          <span className="text-gray-700">
-                            {basvuru.ogrenciSinifi} · {basvuru.ogrenciSube} Şubesi
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs sm:text-sm min-w-0">
-                          {basvuru.adresIlce ? (
-                            <>
-                              <MapPin className="h-3 w-3 sm:h-4 sm:w-4 text-green-600 flex-shrink-0" />
-                              <span className="text-gray-700 truncate">{basvuru.adresIlce} / {basvuru.adresMahalle}</span>
-                            </>
-                          ) : (
-                            <>
-                              <Mail className="h-3 w-3 sm:h-4 sm:w-4 text-green-600 flex-shrink-0" />
-                              <span className="text-gray-700 truncate">{basvuru.email || "-"}</span>
-                            </>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 text-xs sm:text-sm">
-                          <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-orange-600 flex-shrink-0" />
-                          <span className="text-gray-700">
-                            {new Date(basvuru.createdAt).toLocaleDateString('tr-TR')}
-                          </span>
-                        </div>
+                      {/* Okul adı kısaltılmadan, gerekirse alt satıra geçerek gösterilir */}
+                      <div className="flex items-start gap-2 text-xs sm:text-sm mt-3 sm:mt-4">
+                        <School className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                        <span className="text-gray-800 font-medium break-words">{basvuru.okul}</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 mt-3">
+                        {[
+                          { etiket: "Anne", ad: basvuru.anneAdSoyad, tel: basvuru.anneCepTel, kutu: "bg-rose-50 ring-rose-100", yazi: "text-rose-700" },
+                          { etiket: "Baba", ad: basvuru.babaAdSoyad, tel: basvuru.babaCepTel, kutu: "bg-sky-50 ring-sky-100", yazi: "text-sky-700" },
+                        ].map((v) => (
+                          <div key={v.etiket} className={`rounded-lg ring-1 px-3 py-2 min-w-0 ${v.kutu}`}>
+                            <p className={`text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide ${v.yazi}`}>{v.etiket}</p>
+                            <p className="text-sm font-semibold text-gray-900 break-words">{v.ad || "-"}</p>
+                            {v.tel ? (
+                              <a
+                                href={`tel:${telefonLink(v.tel)}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center gap-1.5 text-xs sm:text-sm text-gray-700 hover:text-blue-700 hover:underline"
+                              >
+                                <Phone className="h-3.5 w-3.5 flex-shrink-0" />
+                                {telefonGoster(v.tel)}
+                              </a>
+                            ) : (
+                              <p className="text-xs text-gray-400">Telefon yok</p>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2 sm:ml-4 flex-shrink-0 min-w-[160px]">
@@ -1739,7 +1748,8 @@ export default function BasvurularView({ arsiv = false }: { arsiv?: boolean }) {
                         <Label className="text-gray-500 text-xs font-medium uppercase tracking-wide">Sınıf / Şube</Label>
                         <p className="font-semibold text-sm sm:text-base text-gray-800 flex items-center gap-2">
                           <GraduationCap className="h-4 w-4 text-indigo-600 flex-shrink-0" />
-                          {selectedBasvuru.ogrenciSinifi} · {selectedBasvuru.ogrenciSube} Şubesi
+                          {selectedBasvuru.ogrenciSinifi}
+                          {selectedBasvuru.ogrenciSube && selectedBasvuru.ogrenciSube !== "Belirtilmedi" && ` · ${selectedBasvuru.ogrenciSube} Şubesi`}
                         </p>
                       </div>
                       <div className="space-y-1">
