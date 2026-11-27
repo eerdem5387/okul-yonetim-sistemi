@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
+import { INCLUDE_PRE_ENROLLMENT, prisma } from "@/lib/prisma"
 import { requireStaff, requireStaffAccess } from "@/lib/auth/api-guard"
 import { buildStudentSearchWhere, expandTurkishSearchVariants, sanitizeSearchInput } from "@/lib/turkish-search"
 
@@ -27,8 +27,9 @@ export async function GET(request: NextRequest) {
   const [students, classes, staff] = await Promise.all([
     canStudents.ok && studentWhere
       ? prisma.student.findMany({
-          where: studentWhere,
-          select: { id: true, firstName: true, lastName: true, grade: true },
+          // Genel aramada ön kayıtlı (sonraki yıl başlayacak) öğrenciler de bulunur, etiketiyle gösterilir
+          where: { AND: [studentWhere, INCLUDE_PRE_ENROLLMENT] },
+          select: { id: true, firstName: true, lastName: true, grade: true, preEnrollment: true },
           orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
           take: 8,
         })
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
   ])
 
   return NextResponse.json({
-    students: students.map((s) => ({ id: s.id, name: `${s.firstName} ${s.lastName}`, detail: s.grade })),
+    students: students.map((s) => ({ id: s.id, name: `${s.firstName} ${s.lastName}`, detail: s.preEnrollment ? `${s.grade} · Ön kayıt (sonraki yıl)` : s.grade })),
     classes: classes.map((c) => ({ id: c.id, name: c.name, detail: `${c._count.students} öğrenci` })),
     staff: staff.map((s) => ({ id: s.id, name: `${s.firstName} ${s.lastName}`, detail: s.department })),
   })

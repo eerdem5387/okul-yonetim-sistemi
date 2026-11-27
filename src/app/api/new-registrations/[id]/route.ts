@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireStaffAccess } from "@/lib/auth/api-guard"
 import { updateNewRegistrationContract } from "@/lib/contract-registration-update"
+import { syncPreEnrollmentFlagsSafe } from "@/lib/pre-enrollment"
 
 export async function GET(
     request: NextRequest,
@@ -61,6 +62,8 @@ export async function PUT(
                 { status: result.status }
             )
         }
+        // Sözleşmenin akademik yılı değişmiş olabilir
+        await syncPreEnrollmentFlagsSafe()
         return NextResponse.json(result.registration)
     } catch (error) {
         console.error("Error updating new registration:", error)

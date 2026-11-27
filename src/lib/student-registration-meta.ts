@@ -379,6 +379,8 @@ export async function getRenewalTargetContext(client: PrismaClient): Promise<{
       where: {
         registrationStatusOverride: { not: null },
         registrationStatusPeriodLabel: { not: null },
+        // Ön kayıtlı öğrenciler varsayılan olarak gizlenir (lib/prisma.ts); burada onlar da gerekli.
+        OR: [{ preEnrollment: true }, { preEnrollment: false }],
       },
       select: {
         id: true,

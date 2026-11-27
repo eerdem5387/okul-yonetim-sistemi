@@ -5,6 +5,7 @@ import { getRenewalTargetYear } from "@/lib/academic-year-contract-server"
 import { normalizeRegistrationStatusOverride } from "@/lib/student-registration-meta"
 import { isSystemAdmin, requireStaff, requireStaffAccess } from "@/lib/auth/api-guard"
 import { normalizeTcInput, parseBirthDateInput } from "@/lib/students/student-input"
+import { syncPreEnrollmentFlagsSafe } from "@/lib/pre-enrollment"
 
 const TC_TAKEN_MESSAGE =
     "Bu TC numarası başka bir öğrenciye ait! Lütfen farklı bir TC numarası deneyin veya önce diğer öğrencinin TC numarasını değiştirin."
@@ -177,6 +178,9 @@ export async function PUT(
             where: { id: params.id },
             data: updateData
         })
+
+        // Elle verilen kayıt durumu (örn. sonraki yıl "yeni kayıt") ön kayıt bayrağını etkiler
+        if (registrationStatusOverride !== undefined) await syncPreEnrollmentFlagsSafe()
 
         return NextResponse.json({ student })
     } catch (error) {

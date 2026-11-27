@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireStaff } from "@/lib/auth/api-guard"
-import { prisma } from "@/lib/prisma"
+import { INCLUDE_PRE_ENROLLMENT, prisma } from "@/lib/prisma"
 import { getRenewalTargetContext } from "@/lib/student-registration-meta"
 import { contractYearLabelFromAcademicYear, resolveActiveAndNextAcademicYear } from "@/lib/academic-year-ui"
 import {
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     } = await getRenewalTargetContext(prisma)
 
     const allStudents = await prisma.student.findMany({
-      where: k12GradeWhereClause(),
+      where: { AND: [k12GradeWhereClause(), INCLUDE_PRE_ENROLLMENT] },
       select: { id: true, grade: true },
     })
 

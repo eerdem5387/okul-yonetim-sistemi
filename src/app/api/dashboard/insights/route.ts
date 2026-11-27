@@ -1,7 +1,7 @@
 import { requireStaff } from "@/lib/auth/api-guard"
 import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
+import { INCLUDE_PRE_ENROLLMENT, prisma } from "@/lib/prisma"
 import {
   buildNewRegistrationMatchTargets,
   contractMatchesAcademicYearTargets,
@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
 
     const [allStudentsForRenewal, allRenewals, allNewRegs, k12Students] = await Promise.all([
       prisma.student.findMany({
+        where: INCLUDE_PRE_ENROLLMENT,
         select: { id: true, firstName: true, lastName: true, grade: true },
         orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
       }),
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
         select: { studentId: true, contractData: true },
       }),
       prisma.student.findMany({
-        where: k12GradeWhereClause(),
+        where: { AND: [k12GradeWhereClause(), INCLUDE_PRE_ENROLLMENT] },
         select: { id: true, grade: true },
       }),
     ])

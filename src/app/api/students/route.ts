@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
-import { prisma } from "@/lib/prisma"
+import { INCLUDE_PRE_ENROLLMENT, prisma } from "@/lib/prisma"
 import { getRenewalTargetYear } from "@/lib/academic-year-contract-server"
 import {
   getRenewalTargetContext,
@@ -12,6 +12,7 @@ import { buildStudentSearchWhere } from "@/lib/turkish-search"
 import { isSystemAdmin, requireStaff, requireStaffAccess } from "@/lib/auth/api-guard"
 import { gradeBandWhereClause } from "@/lib/student-grade-level"
 import { ensureParentAccountForStudent, normalizeTcInput, parseBirthDateInput } from "@/lib/students/student-input"
+import { syncPreEnrollmentFlagsSafe } from "@/lib/pre-enrollment"
 
 /** Tek istekte dönebilecek en fazla öğrenci (panolar 1000 ile çağırıyor). */
 const MAX_PAGE_SIZE = 5000
@@ -118,6 +119,11 @@ export async function GET(request: NextRequest) {
             if (excluded.length > 0) {
                 whereConditions.push({ NOT: { id: { in: excluded } } })
             }
+        }
+
+        // Ön kayıtlılar varsayılan olarak gizlidir (lib/prisma.ts); istenirse dahil et
+        if (includePreEnrollment) {
+            whereConditions.push(INCLUDE_PRE_ENROLLMENT)
         }
 
         if (
@@ -301,6 +307,8 @@ export async function POST(request: NextRequest) {
             // Veli hesabı oluşturma hatası öğrenci oluşturmayı engellemez, sadece log'lanır
             console.error("Error creating parent account for student:", parentError)
         }
+
+        if (statusOverride) await syncPreEnrollmentFlagsSafe()
 
         return NextResponse.json({
             success: true,

@@ -51,6 +51,10 @@ model Student {
   /// Ayrılırken kayıtlı olduğu sınıf (geri alınırsa yeniden atanmak için)
   leftClassId         String?
   leftClassName       String?
+  /// Yalnızca aktif olmayan sonraki akademik yıl için yeni kaydı olan öğrenci (ön kayıt): henüz
+  /// okulda değil. Varsayılan olarak tüm listelerden gizlenir (bkz. src/lib/prisma.ts);
+  /// değeri src/lib/pre-enrollment.ts içindeki syncPreEnrollmentFlags hesaplar.
+  preEnrollment       Boolean  @default(false)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @default(now()) @updatedAt
 
@@ -79,6 +83,7 @@ model Student {
   comments             StudentComment[] // Öğretmen/Rehberlik görüşleri (FAZ 4)
 
   @@index([leftAt])
+  @@index([preEnrollment])
   @@map("students")
 }
 

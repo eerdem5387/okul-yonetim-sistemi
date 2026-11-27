@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { prisma } from "@/lib/prisma"
+import { INCLUDE_PRE_ENROLLMENT, prisma } from "@/lib/prisma"
 import { resolveStaffActor } from "@/lib/hr/actor"
 import { canViewFinance } from "@/lib/finance/access"
 import { fetchMuhasebeFinanceSummary } from "@/lib/finance/muhasebe-sync"
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
   const [ctx, students, yearRows] = await Promise.all([
     getRenewalTargetContext(prisma),
     prisma.student.findMany({
-      where: k12GradeWhereClause(),
+      where: { AND: [k12GradeWhereClause(), INCLUDE_PRE_ENROLLMENT] },
       select: { id: true, grade: true },
     }),
     prisma.academicYear.findMany({

@@ -8,6 +8,7 @@ import {
 } from "@/lib/academic-year-ui"
 import { listAcademicYearsForContract, validateNewRegistrationAcademicYear } from "@/lib/academic-year-contract-server"
 import { academicYearLabelsEquivalent } from "@/lib/student-registration-meta"
+import { syncPreEnrollmentFlagsSafe } from "@/lib/pre-enrollment"
 
 export async function GET(request: NextRequest) {
     const auth = await requireStaffAccess(request, { module: "registrations", action: "view" })
@@ -145,6 +146,9 @@ export async function POST(request: NextRequest) {
             return created
         })
 
+        // Sonraki yıla yapılan kayıt öğrenciyi "ön kayıt" yapar (bu yıl listelerinde görünmez)
+        await syncPreEnrollmentFlagsSafe()
+
         return NextResponse.json(registration)
     } catch (error) {
         console.error("Error creating new registration:", error)
@@ -176,6 +180,8 @@ export async function DELETE(request: NextRequest) {
                 where: { id: contractIds as string }
             })
         }
+
+        await syncPreEnrollmentFlagsSafe()
 
         return NextResponse.json({ success: true })
     } catch (error) {
